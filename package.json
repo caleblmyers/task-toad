@@ -1,0 +1,28 @@
+{
+  "name": "task-toad",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "build": "pnpm -r run build",
+    "build:order": "pnpm --filter @task-toad/shared build && pnpm --filter api build",
+    "prepare": "pnpm --filter @task-toad/shared build",
+    "lint": "pnpm -r run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
+    "typecheck": "pnpm -r run typecheck",
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "pnpm --filter api dev",
+    "deploy": "pnpm --filter infra cdk deploy"
+  },
+  "devDependencies": {
+    "prettier": "^3.2.5"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "pnpm": {
+    "overrides": {
+      "esbuild": "0.21.5"
+    }
+  }
+}
