@@ -1,78 +1,58 @@
 # TaskToad
 
-Multi-tenant SaaS Project Management MVP: React frontend, Node.js/TypeScript API, AWS (Cognito, API Gateway, Lambda, DynamoDB). Org-scoped projects and tasks with RBAC (org:admin / org:member).
+Multi-tenant SaaS project management MVP. Org-scoped projects, sprints, kanban boards, and AI-assisted task planning with RBAC (org:admin / org:member).
+
+## Stack
+
+- **API**: Express + graphql-yoga + Prisma (PostgreSQL) + HMAC JWT + helmet/cors/rate-limit
+- **Web**: React 18 + Vite + Tailwind CSS
+- **AI**: Anthropic Claude (task plan generation, sprint planning)
 
 ## Prerequisites
 
 - **Node.js 20+**
 - **pnpm** (`npm install -g pnpm`)
-- **AWS CLI** configured (`aws configure`)
-- **Docker** (optional; for CDK asset bundling in some setups)
+- **Docker** (for PostgreSQL)
 
 ## Repo structure
 
 ```
 task-toad/
 ├── apps/
-│   ├── api/          # Express API (Lambda + local)
+│   ├── api/          # Express + graphql-yoga API
+│   │   ├── prisma/   # Schema + migrations
+│   │   └── src/
+│   │       ├── graphql/  # schema.ts, context.ts, ai.ts
+│   │       └── utils/    # encryption.ts
 │   └── web/          # React + Vite + Tailwind
-├── packages/
-│   └── shared/       # Zod schemas + shared types
-├── infra/            # AWS CDK (Cognito, DynamoDB, Lambda, API Gateway, S3, EventBridge)
-├── package.json
+│       └── src/
+│           ├── components/  # KanbanBoard, BacklogView, TaskDetailPanel, etc.
+│           ├── pages/       # ProjectDetail, Projects, Home, etc.
+│           ├── api/         # gql() fetch helper
+│           └── auth/        # AuthProvider, useAuth
+├── .claude-knowledge/  # Architecture docs and decision log
+├── CLAUDE.md
 └── pnpm-workspace.yaml
 ```
 
 ## Setup
 
-**Quick order (first time):** 1) Install → 2) Build infra → 3) CDK bootstrap → 4) CDK deploy → 5) Copy `.env.example` to `.env` for api and web, fill in CDK outputs → 6) Run api and web (see below).
-
 ### 1. Install dependencies
-
-From the repo root:
 
 ```bash
 pnpm install
 ```
 
-This also runs `prepare`, which builds the shared package so `@task-toad/shared` types are available. If you skip install or need to rebuild shared later:
+### 2. Start PostgreSQL
 
 ```bash
-pnpm --filter @task-toad/shared build
+docker run -d --name tasktoad-db \
+  -e POSTGRES_PASSWORD=postgres \
+  -p 5432:5432 \
+  postgres:16
 ```
 
-### 2. Build infra (required before any CDK commands)
-
-The CDK app is TypeScript and must be compiled to `dist/` before bootstrap or deploy. From repo root:
-
-```bash
-pnpm --filter infra build
-```
-
-Or from the infra directory:
-
-```bash
-cd infra
-pnpm build
-```
-
-### 3. Bootstrap CDK (once per AWS account/region)
-
-```bash
-cd infra
-pnpm cdk bootstrap
-```
-
-### 4. Deploy the stack
-
-```bash
-cd infra
-pnpm cdk deploy
-```
-
-Note the outputs: `UserPoolId`, `UserPoolClientId`, `ApiUrl`, `TableName`. You will need these for local dev env (next step).
-
-### 5. Configure env for local dev
+### 3. Configure environment
 
 **API** (`apps/api/.env`):
 
@@ -80,12 +60,13 @@ Note the outputs: `UserPoolId`, `UserPoolClientId`, `ApiUrl`, `TableName`. You w
 cp apps/api/.env.example apps/api/.env
 ```
 
-Set:
-
-- `COGNITO_USER_POOL_ID` = CDK output `UserPoolId`
-- `COGNITO_REGION` = your region (e.g. `us-east-1`)
-- `TABLE_NAME` = CDK output `TableName`
-- `AWS_REGION` = same as above
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | `postgresql://postgres:postgres@localhost:5432/tasktoad` |
+| `JWT_SECRET` | Secret for HMAC JWT signing (any random string) |
+| `ENCRYPTION_MASTER_KEY` | 32-byte hex key for AES-256-GCM (org API key encryption) |
+| `CORS_ORIGINS` | Comma-separated allowed origins, e.g. `http://localhost:5173` |
+| `ANTHROPIC_API_KEY` | Anthropic API key (required for AI features) |
 
 **Web** (`apps/web/.env`):
 
@@ -93,132 +74,69 @@ Set:
 cp apps/web/.env.example apps/web/.env
 ```
 
-Set:
+| Variable | Value |
+|---|---|
+| `VITE_API_URL` | `/api` (Vite proxy routes to `localhost:3001`) |
 
-- `VITE_API_URL` = `http://localhost:3001` (for local API) or `/api` if using Vite proxy
-- `VITE_COGNITO_USER_POOL_ID` = CDK output `UserPoolId`
-- `VITE_COGNITO_CLIENT_ID` = CDK output `UserPoolClientId`
-- `VITE_AWS_REGION` = same region
-
-### 6. Run locally
-
-Terminal 1 – API (from repo root):
+### 4. Run migrations
 
 ```bash
-pnpm --filter api build
-pnpm dev:api
-# API at http://localhost:3001
+cd apps/api && npx prisma migrate dev
 ```
 
-If the api build fails with “Cannot find module '@task-toad/shared'”, run `pnpm --filter @task-toad/shared build` first.
-
-Terminal 2 – Web:
+### 5. Start dev servers
 
 ```bash
-pnpm dev:web
-# App at http://localhost:5173
+pnpm dev   # starts both API and web concurrently
 ```
 
-If using Vite proxy: set `VITE_API_URL=/api` in `apps/web/.env` so requests go to `http://localhost:5173/api/*` and Vite proxies to `http://localhost:3001`.
-
-### 7. Create a test user and get JWT (Cognito)
-
-**Option A – UI**
-
-1. Open http://localhost:5173/signup
-2. Sign up with email + password
-3. Confirm email (Cognito sends a code; use AWS Console → Cognito → User pool → Users to set user as confirmed if not using email in dev)
-4. Sign in at /login
-5. On “Create organization”, enter a name and submit
-6. You’re in the app as org admin; create projects (admin) and tasks (any member)
-
-**Option B – AWS CLI**
+Or separately:
 
 ```bash
-# Create user (replace PoolId and email)
-aws cognito-idp sign-up \
-  --client-id <UserPoolClientId> \
-  --username your@email.com \
-  --password TempPass1! \
-  --user-attributes Name=email,Value=your@email.com
-
-# Confirm user (replace PoolId)
-aws cognito-idp admin-confirm-sign-up \
-  --user-pool-id <UserPoolId> \
-  --username your@email.com
-
-# Get tokens (replace PoolId, ClientId, email, password)
-aws cognito-idp initiate-auth \
-  --auth-flow USER_PASSWORD_AUTH \
-  --client-id <UserPoolClientId> \
-  --auth-parameters USERNAME=your@email.com,PASSWORD=TempPass1!
+pnpm dev:api   # API at http://localhost:3001/graphql (GraphiQL available)
+pnpm dev:web   # Web at http://localhost:5173
 ```
 
-Use the `IdToken` from the response as `Authorization: Bearer <IdToken>` for API calls.
+## Usage
 
-**Create org (required before projects/tasks)**
+1. Open http://localhost:5173/signup and create an account
+2. Create an organization
+3. Create a project
+4. Add tasks manually or use AI to generate a task plan
+5. Create a sprint, plan it from the backlog, and track progress on the kanban board
 
-```bash
-curl -X POST http://localhost:3001/orgs \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <IdToken>" \
-  -d '{"name":"My Org"}'
-```
+## GraphQL API
 
-Then set the user’s `custom:org_id` and `custom:role` in Cognito (e.g. via Console or AdminUpdateUserAttributes) so the next token includes them, or use the “Create organization” flow in the UI after first login.
+All operations require `Authorization: Bearer <token>` except `signup` and `login`.
 
-**Create project (admin) and task**
+GraphiQL UI is available at `http://localhost:3001/graphql` in development.
 
-```bash
-# Create project (admin only)
-curl -X POST http://localhost:3001/projects \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <IdToken>" \
-  -d '{"name":"My Project"}'
+**Key queries:** `me`, `projects`, `project(projectId)`, `tasks(projectId)`, `sprints(projectId)`, `orgUsers`
 
-# List projects
-curl -H "Authorization: Bearer <IdToken>" http://localhost:3001/projects
-
-# Create task (replace <projectId>)
-curl -X POST http://localhost:3001/projects/<projectId>/tasks \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <IdToken>" \
-  -d '{"title":"First task","status":"todo"}'
-
-# List tasks
-curl -H "Authorization: Bearer <IdToken>" http://localhost:3001/projects/<projectId>/tasks
-
-# Update task (replace <taskId>)
-curl -X PATCH http://localhost:3001/tasks/<taskId> \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <IdToken>" \
-  -d '{"status":"in_progress"}'
-```
+**Key mutations:** `signup`, `login`, `createOrg`, `createProject`, `createTask`, `updateTask`, `createSprint`, `updateSprint`, `deleteSprint`
 
 ## Scripts
 
-| Script        | Description                |
-|---------------|----------------------------|
-| `pnpm build`  | Build all packages         |
-| `pnpm lint`   | Lint all                   |
-| `pnpm typecheck` | Type-check all          |
-| `pnpm dev:web`| Run web dev server         |
-| `pnpm dev:api`| Run API dev server         |
-| `pnpm deploy` | Deploy CDK stack (from root) |
+| Script | Description |
+|---|---|
+| `pnpm dev` | Run API + web together |
+| `pnpm dev:api` | API only |
+| `pnpm dev:web` | Web only |
+| `pnpm build` | Build all packages |
+| `pnpm lint` | ESLint all packages |
+| `pnpm typecheck` | TypeScript check all packages |
+| `pnpm format` | Prettier format all |
 
-## Auth and multi-tenancy
+## Auth
 
-- **Cognito**: JWT access/ID tokens. Custom attributes: `custom:org_id`, `custom:role` (e.g. `org:admin`, `org:member`).
-- **API**: All endpoints require `Authorization: Bearer <token>`. JWT is verified against Cognito JWKS; `orgId` and `role` are taken from the token and used for tenant isolation and RBAC.
-- **RBAC**: Only `org:admin` can create projects; all org members can create/edit tasks within their org.
+HMAC JWT (HS256) signed with `JWT_SECRET`. Token stored in `localStorage` as `task-toad-id-token`. All GraphQL resolvers verify the token and load the user from the database on each request.
 
-## Data model (DynamoDB single table)
+## Security
 
-- **Table**: `PmAppTable` (PK, SK).
-- **GSI1**: List projects by org (GSI1PK = `ORG#<orgId>`, GSI1SK = `PROJECT#<createdAt>#<projectId>`).
-- **GSI2**: List tasks by project (GSI2PK = `ORG#<orgId>#PROJECT#<projectId>`, GSI2SK = `TASK#<createdAt>#<taskId>`).
-
-## Placeholders (no UI)
-
-- **S3**: Bucket created by CDK for future file storage.
-- **EventBridge**: Bus `task-toad-events` for future events (e.g. TaskCreated, ProjectCreated).
+- `helmet` for HTTP security headers
+- `cors` with origin whitelist (`CORS_ORIGINS`)
+- `express-rate-limit`: 200 req/min global, 10 req/min for auth endpoints
+- 1MB request body limit
+- AI prompts sanitized with `<user_input>` delimiters
+- AI responses validated with Zod schemas
+- Org API keys encrypted with AES-256-GCM at rest
