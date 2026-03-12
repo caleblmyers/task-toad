@@ -1,0 +1,98 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Org {
+  orgId           String    @id @default(uuid()) @map("org_id")
+  name            String
+  createdAt       DateTime  @default(now()) @map("created_at")
+  anthropicApiKeyEncrypted String?   @map("anthropic_api_key_encrypted")
+  users           User[]
+  projects        Project[]
+  sprints         Sprint[]
+
+  @@map("orgs")
+}
+
+model User {
+  userId       String   @id @default(uuid()) @map("user_id")
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  orgId        String?  @map("org_id")
+  role         String?
+  org          Org?     @relation(fields: [orgId], references: [orgId])
+  assignedTasks Task[]  @relation("TaskAssignee")
+
+  @@map("users")
+}
+
+model Project {
+  projectId   String   @id @default(uuid()) @map("project_id")
+  orgId       String   @map("org_id")
+  name        String
+  description String?
+  prompt      String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  org         Org      @relation(fields: [orgId], references: [orgId])
+  tasks       Task[]
+  sprints     Sprint[]
+
+  @@index([orgId])
+  @@map("projects")
+}
+
+model Sprint {
+  sprintId  String    @id @default(uuid()) @map("sprint_id")
+  orgId     String    @map("org_id")
+  projectId String    @map("project_id")
+  name      String
+  isActive  Boolean   @default(false) @map("is_active")
+  columns   String    @default("[\"To Do\",\"In Progress\",\"Done\"]")
+  startDate String?   @map("start_date")
+  endDate   String?   @map("end_date")
+  createdAt DateTime  @default(now()) @map("created_at")
+  closedAt  DateTime? @map("closed_at")
+  org       Org       @relation(fields: [orgId], references: [orgId])
+  project   Project   @relation(fields: [projectId], references: [projectId])
+  tasks     Task[]
+
+  @@index([projectId])
+  @@map("sprints")
+}
+
+model Task {
+  taskId         String   @id @default(uuid()) @map("task_id")
+  orgId          String   @map("org_id")
+  projectId      String   @map("project_id")
+  parentTaskId   String?  @map("parent_task_id")
+  title          String
+  description    String?
+  instructions   String?
+  suggestedTools String?  @map("suggested_tools")
+  estimatedHours Float?   @map("estimated_hours")
+  priority       String   @default("medium")
+  dependsOn      String?  @map("depends_on")
+  status         String   @default("todo")
+  sprintId       String?  @map("sprint_id")
+  sprintColumn   String?  @map("sprint_column")
+  assigneeId     String?  @map("assignee_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  archived       Boolean  @default(false)
+  project        Project  @relation(fields: [projectId], references: [projectId])
+  parentTask     Task?    @relation("TaskSubtasks", fields: [parentTaskId], references: [taskId])
+  subtasks       Task[]   @relation("TaskSubtasks")
+  sprint         Sprint?  @relation(fields: [sprintId], references: [sprintId])
+  assignee       User?    @relation("TaskAssignee", fields: [assigneeId], references: [userId])
+
+  @@index([projectId])
+  @@index([parentTaskId])
+  @@index([sprintId])
+  @@index([assigneeId])
+  @@index([orgId])
+  @@map("tasks")
+}

@@ -16,13 +16,18 @@ export default function AppLayout() {
         <div className="p-4 border-b border-slate-700">
           <Link to="/app" className="font-semibold text-lg">TaskToad</Link>
         </div>
-        <nav className="p-2 flex-1">
-          <Link
-            to="/app"
-            className="block px-3 py-2 rounded hover:bg-slate-700"
-          >
+        <nav className="p-2 flex-1 space-y-1">
+          <Link to="/app" className="block px-3 py-2 rounded hover:bg-slate-700">
+            New Project
+          </Link>
+          <Link to="/app/projects" className="block px-3 py-2 rounded hover:bg-slate-700">
             Projects
           </Link>
+          {user?.role === 'org:admin' && (
+            <Link to="/app/settings" className="block px-3 py-2 rounded hover:bg-slate-700">
+              Settings
+            </Link>
+          )}
         </nav>
         <div className="p-4 border-t border-slate-700 text-sm">
           <p className="truncate">{user?.email}</p>

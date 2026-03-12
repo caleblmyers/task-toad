@@ -4,8 +4,11 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import CreateOrg from './pages/CreateOrg';
 import AppLayout from './pages/AppLayout';
+import Home from './pages/Home';
+import NewProject from './pages/NewProject';
 import Projects from './pages/Projects';
 import ProjectDetail from './pages/ProjectDetail';
+import OrgSettings from './pages/OrgSettings';
 
 function Protected({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -36,8 +39,11 @@ export default function App() {
           </Protected>
         }
       >
-        <Route index element={<Projects />} />
+        <Route index element={<Home />} />
+        <Route path="projects" element={<Projects />} />
+        <Route path="projects/new" element={<NewProject />} />
         <Route path="projects/:projectId" element={<ProjectDetail />} />
+        <Route path="settings" element={<OrgSettings />} />
       </Route>
       <Route path="/" element={<Navigate to="/app" replace />} />
       <Route path="*" element={<Navigate to="/app" replace />} />

@@ -1,19 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import {
-  CognitoUserPool,
-  CognitoUser,
-  AuthenticationDetails,
-  type CognitoUserAttribute,
-} from 'amazon-cognito-identity-js';
+import { gql, TOKEN_KEY } from '../api/client';
 import type { MeResponse } from '../types';
-
-const poolId = import.meta.env.VITE_COGNITO_USER_POOL_ID as string;
-const clientId = import.meta.env.VITE_COGNITO_CLIENT_ID as string;
-
-const userPool =
-  poolId && clientId
-    ? new CognitoUserPool({ UserPoolId: poolId, ClientId: clientId })
-    : null;
 
 type AuthState = {
   user: MeResponse | null;
@@ -27,31 +14,21 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-const ID_TOKEN_KEY = 'task-toad-id-token';
-
-function getCognitoUser(email: string): CognitoUser {
-  return new CognitoUser({
-    Username: email,
-    Pool: userPool!,
-  });
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<MeResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const BASE = (import.meta.env.VITE_API_URL as string) ?? '';
-
   const fetchMe = useCallback(async (): Promise<MeResponse | null> => {
-    const token = localStorage.getItem(ID_TOKEN_KEY);
+    const token = localStorage.getItem(TOKEN_KEY);
     if (!token) return null;
-    const res = await fetch(`${BASE}/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as MeResponse;
-  }, [BASE]);
+    try {
+      const data = await gql<{ me: MeResponse | null }>('query { me { userId email orgId role } }');
+      return data.me;
+    } catch {
+      return null;
+    }
+  }, []);
 
   const refreshMe = useCallback(async () => {
     const me = await fetchMe();
@@ -67,71 +44,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string) => {
-      if (!userPool) {
-        setError('Cognito not configured');
-        return;
-      }
       setError(null);
-      return new Promise<void>((resolve, reject) => {
-        const cognitoUser = getCognitoUser(email);
-        cognitoUser.authenticateUser(
-          new AuthenticationDetails({ Username: email, Password: password }),
-          {
-            onSuccess: (result) => {
-              const idToken = result.getIdToken().getJwtToken();
-              localStorage.setItem(ID_TOKEN_KEY, idToken);
-              fetchMe().then((me) => {
-                setUser(me);
-                resolve();
-              });
-            },
-            onFailure: (err) => {
-              setError(err.message ?? 'Login failed');
-              reject(err);
-            },
-          }
+      try {
+        const data = await gql<{ login: { token: string } }>(
+          `mutation Login($email: String!, $password: String!) {
+            login(email: $email, password: $password) { token }
+          }`,
+          { email, password }
         );
-      });
+        localStorage.setItem(TOKEN_KEY, data.login.token);
+        const me = await fetchMe();
+        setUser(me);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Login failed';
+        setError(msg);
+        throw err;
+      }
     },
     [fetchMe]
   );
 
-  const signup = useCallback(
-    async (email: string, password: string) => {
-      if (!userPool) {
-        setError('Cognito not configured');
-        return;
-      }
-      setError(null);
-      return new Promise<void>((resolve, reject) => {
-        userPool.signUp(
-          email,
-          password,
-          [new CognitoUserAttribute({ Name: 'email', Value: email })],
-          [],
-          (err) => {
-            if (err) {
-              setError(err.message ?? 'Signup failed');
-              reject(err);
-              return;
-            }
-            resolve();
-          }
-        );
-      });
-    },
-    []
-  );
+  const signup = useCallback(async (email: string, password: string) => {
+    setError(null);
+    try {
+      await gql<{ signup: boolean }>(
+        `mutation Signup($email: String!, $password: String!) {
+          signup(email: $email, password: $password)
+        }`,
+        { email, password }
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Signup failed';
+      setError(msg);
+      throw err;
+    }
+  }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem(ID_TOKEN_KEY);
+    localStorage.removeItem(TOKEN_KEY);
     setUser(null);
   }, []);
 
   return (
-    <AuthContext.Provider
-      value={{ user, loading, error, login, signup, logout, refreshMe }}
-    >
+    <AuthContext.Provider value={{ user, loading, error, login, signup, logout, refreshMe }}>
       {children}
     </AuthContext.Provider>
   );
