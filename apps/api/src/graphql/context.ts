@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 export const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET ?? 'dev-secret');
 
 export interface Context {
-  user: { userId: string; email: string; orgId: string | null; role: string | null } | null;
+  user: { userId: string; email: string; orgId: string | null; role: string | null; emailVerifiedAt: Date | null } | null;
   org: { orgId: string; name: string; anthropicApiKeyEncrypted: string | null } | null;
   prisma: PrismaClient;
 }
@@ -41,6 +41,7 @@ export async function buildContext(ctx: { request: Request }): Promise<Context> 
         email: dbUser.email,
         orgId: dbUser.orgId,
         role: dbUser.role,
+        emailVerifiedAt: dbUser.emailVerifiedAt,
       },
       org,
       prisma,

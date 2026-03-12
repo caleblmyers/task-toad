@@ -35,6 +35,7 @@ export interface TaskDetailPanelProps {
   onGenerateInstructions: (task: Task) => void;
   onAssignSprint: (taskId: string, sprintId: string | null) => void;
   onAssignUser: (taskId: string, assigneeId: string | null) => void;
+  onDueDateChange: (taskId: string, dueDate: string | null) => void;
   onClose?: () => void;
   isDrawer?: boolean;
 }
@@ -52,7 +53,7 @@ function formatHours(h: number): string {
   return `${h}h`;
 }
 
-function PanelContent({ task, subtasks, editingTitle, editTitleValue, titleEditRef, generatingInstructions, sprints, orgUsers, disabled, onStartEditTitle, onTitleChange, onTitleSave, onTitleKeyDown, onStatusChange, onSubtaskStatusChange, onGenerateInstructions, onAssignSprint, onAssignUser }: Omit<TaskDetailPanelProps, 'onClose' | 'isDrawer'>) {
+function PanelContent({ task, subtasks, editingTitle, editTitleValue, titleEditRef, generatingInstructions, sprints, orgUsers, disabled, onStartEditTitle, onTitleChange, onTitleSave, onTitleKeyDown, onStatusChange, onSubtaskStatusChange, onGenerateInstructions, onAssignSprint, onAssignUser, onDueDateChange }: Omit<TaskDetailPanelProps, 'onClose' | 'isDrawer'>) {
   const tools = parseTools(task.suggestedTools);
 
   return (
@@ -128,6 +129,18 @@ function PanelContent({ task, subtasks, editingTitle, editTitleValue, titleEditR
             <option key={u.userId} value={u.userId}>{u.email}</option>
           ))}
         </select>
+      </div>
+
+      {/* Due Date */}
+      <div className="mb-4">
+        <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Due Date</label>
+        <input
+          type="date"
+          value={task.dueDate ?? ''}
+          onChange={(e) => onDueDateChange(task.taskId, e.target.value || null)}
+          className="block mt-1 border border-slate-300 rounded px-2 py-1 text-sm w-full"
+          disabled={disabled}
+        />
       </div>
 
       {/* Metadata: priority + estimate */}

@@ -15,20 +15,41 @@ model Org {
   users           User[]
   projects        Project[]
   sprints         Sprint[]
+  invites         OrgInvite[]
 
   @@map("orgs")
 }
 
 model User {
-  userId       String   @id @default(uuid()) @map("user_id")
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  orgId        String?  @map("org_id")
-  role         String?
-  org          Org?     @relation(fields: [orgId], references: [orgId])
-  assignedTasks Task[]  @relation("TaskAssignee")
+  userId              String    @id @default(uuid()) @map("user_id")
+  email               String    @unique
+  passwordHash        String    @map("password_hash")
+  orgId               String?   @map("org_id")
+  role                String?
+  emailVerifiedAt     DateTime? @map("email_verified_at")
+  verificationToken   String?   @unique @map("verification_token")
+  resetToken          String?   @unique @map("reset_token")
+  resetTokenExpiry    DateTime? @map("reset_token_expiry")
+  org                 Org?      @relation(fields: [orgId], references: [orgId])
+  assignedTasks       Task[]    @relation("TaskAssignee")
 
   @@map("users")
+}
+
+model OrgInvite {
+  inviteId   String    @id @default(uuid()) @map("invite_id")
+  orgId      String    @map("org_id")
+  email      String
+  token      String    @unique
+  role       String    @default("org:member")
+  expiresAt  DateTime  @map("expires_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  acceptedAt DateTime? @map("accepted_at")
+  org        Org       @relation(fields: [orgId], references: [orgId])
+
+  @@index([token])
+  @@index([orgId])
+  @@map("org_invites")
 }
 
 model Project {
@@ -38,6 +59,7 @@ model Project {
   description String?
   prompt      String?
   createdAt   DateTime @default(now()) @map("created_at")
+  archived    Boolean  @default(false)
   org         Org      @relation(fields: [orgId], references: [orgId])
   tasks       Task[]
   sprints     Sprint[]
@@ -81,6 +103,8 @@ model Task {
   sprintId       String?  @map("sprint_id")
   sprintColumn   String?  @map("sprint_column")
   assigneeId     String?  @map("assignee_id")
+  position       Float?   @map("position")
+  dueDate        String?  @map("due_date")
   createdAt      DateTime @default(now()) @map("created_at")
   archived       Boolean  @default(false)
   project        Project  @relation(fields: [projectId], references: [projectId])
@@ -94,5 +118,6 @@ model Task {
   @@index([sprintId])
   @@index([assigneeId])
   @@index([orgId])
+  @@index([projectId, sprintId, position])
   @@map("tasks")
 }

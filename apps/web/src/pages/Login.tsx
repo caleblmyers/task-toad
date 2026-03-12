@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/context';
 
 export default function Login() {
@@ -7,6 +7,8 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const { login, error } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const successMessage = (location.state as { message?: string } | null)?.message;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,6 +24,7 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-slate-100">
       <div className="w-full max-w-sm p-6 bg-white rounded-lg shadow">
         <h1 className="text-xl font-semibold text-slate-800 mb-4">TaskToad</h1>
+        {successMessage && <p className="mb-3 text-sm text-green-700">{successMessage}</p>}
         <form onSubmit={handleSubmit} className="space-y-3">
           <input
             type="email"
@@ -46,6 +49,9 @@ export default function Login() {
         </form>
         <p className="mt-4 text-sm text-slate-600">
           No account? <Link to="/signup" className="text-slate-800 underline">Sign up</Link>
+        </p>
+        <p className="mt-2 text-sm text-slate-600">
+          <Link to="/forgot-password" className="text-slate-800 underline">Forgot password?</Link>
         </p>
       </div>
     </div>

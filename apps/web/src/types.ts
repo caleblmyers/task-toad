@@ -3,6 +3,16 @@ export interface MeResponse {
   email: string;
   orgId: string | null;
   role: 'org:admin' | 'org:member' | null;
+  emailVerifiedAt: string | null;
+}
+
+export interface OrgInvite {
+  inviteId: string;
+  email: string;
+  role: string;
+  expiresAt: string;
+  createdAt: string;
+  acceptedAt: string | null;
 }
 
 export interface Project {
@@ -11,6 +21,7 @@ export interface Project {
   description?: string | null;
   prompt?: string | null;
   createdAt: string;
+  archived?: boolean;
 }
 
 export interface Task {
@@ -30,6 +41,14 @@ export interface Task {
   sprintColumn?: string | null;
   assigneeId?:   string | null;
   archived?:     boolean;
+  position?:     number | null;
+  dueDate?:      string | null;
+}
+
+export interface TaskConnection {
+  tasks:   Task[];
+  hasMore: boolean;
+  total:   number;
 }
 
 export interface Sprint {

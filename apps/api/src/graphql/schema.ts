@@ -4,6 +4,8 @@ import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
 import { JWT_SECRET, type Context } from './context.js';
 import { encryptApiKey, decryptApiKey } from '../utils/encryption.js';
+import { generateToken } from '../utils/token.js';
+import { sendEmail, verifyEmailText, resetPasswordText, inviteText } from '../utils/email.js';
 import {
   generateProjectOptions as aiGenerateProjectOptions,
   generateTaskPlan as aiGenerateTaskPlan,
@@ -63,6 +65,16 @@ export const schema = createSchema<Context>({
       email: String!
       orgId: ID
       role: String
+      emailVerifiedAt: String
+    }
+
+    type OrgInvite {
+      inviteId:   ID!
+      email:      String!
+      role:       String!
+      expiresAt:  String!
+      createdAt:  String!
+      acceptedAt: String
     }
 
     type Org {
@@ -80,6 +92,7 @@ export const schema = createSchema<Context>({
       prompt: String
       createdAt: String!
       orgId: ID!
+      archived: Boolean!
     }
 
     type Task {
@@ -99,6 +112,14 @@ export const schema = createSchema<Context>({
       sprintColumn: String
       assigneeId: ID
       archived: Boolean!
+      position: Float
+      dueDate: String
+    }
+
+    type TaskConnection {
+      tasks:   [Task!]!
+      hasMore: Boolean!
+      total:   Int!
     }
 
     type Sprint {
@@ -191,21 +212,33 @@ export const schema = createSchema<Context>({
     type Query {
       me: User
       org: Org
-      projects: [Project!]!
+      projects(includeArchived: Boolean): [Project!]!
       project(projectId: ID!): Project
-      tasks(projectId: ID!, parentTaskId: ID): [Task!]!
+      tasks(projectId: ID!, parentTaskId: ID, limit: Int, offset: Int): TaskConnection!
       sprints(projectId: ID!): [Sprint!]!
       orgUsers: [OrgUser!]!
+      orgInvites: [OrgInvite!]!
     }
 
     type Mutation {
       signup(email: String!, password: String!): Boolean!
       login(email: String!, password: String!): AuthPayload!
+
+      sendVerificationEmail: Boolean!
+      verifyEmail(token: String!): Boolean!
+
+      requestPasswordReset(email: String!): Boolean!
+      resetPassword(token: String!, newPassword: String!): Boolean!
+
+      inviteOrgMember(email: String!, role: String): Boolean!
+      acceptInvite(token: String!, password: String): AuthPayload!
+      revokeInvite(inviteId: ID!): Boolean!
       createOrg(name: String!, apiKey: String): Org!
       setOrgApiKey(apiKey: String!): Org!
       createProject(name: String!): Project!
+      archiveProject(projectId: ID!, archived: Boolean!): Project!
       createTask(projectId: ID!, title: String!, status: TaskStatus): Task!
-      updateTask(taskId: ID!, title: String, status: TaskStatus, sprintId: ID, sprintColumn: String, assigneeId: ID): Task!
+      updateTask(taskId: ID!, title: String, status: TaskStatus, sprintId: ID, sprintColumn: String, assigneeId: ID, dueDate: String, position: Float): Task!
 
       createSprint(projectId: ID!, name: String!, columns: String, startDate: String, endDate: String): Sprint!
       updateSprint(sprintId: ID!, name: String, columns: String, isActive: Boolean, startDate: String, endDate: String): Sprint!
@@ -226,6 +259,18 @@ export const schema = createSchema<Context>({
     }
   `,
   resolvers: {
+    User: {
+      emailVerifiedAt: (parent: { emailVerifiedAt: Date | null }) =>
+        parent.emailVerifiedAt ? parent.emailVerifiedAt.toISOString() : null,
+    },
+
+    OrgInvite: {
+      expiresAt: (parent: { expiresAt: Date }) => parent.expiresAt.toISOString(),
+      createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
+      acceptedAt: (parent: { acceptedAt: Date | null }) =>
+        parent.acceptedAt ? parent.acceptedAt.toISOString() : null,
+    },
+
     Org: {
       hasApiKey: (parent: { anthropicApiKeyEncrypted?: string | null }) => !!parent.anthropicApiKeyEncrypted,
       apiKeyHint: (parent: { anthropicApiKeyEncrypted?: string | null }) => {
@@ -254,10 +299,13 @@ export const schema = createSchema<Context>({
         return context.org;
       },
 
-      projects: async (_parent, _args, context) => {
+      projects: async (_parent, args: { includeArchived?: boolean | null }, context) => {
         const user = requireOrg(context);
         return context.prisma.project.findMany({
-          where: { orgId: user.orgId },
+          where: {
+            orgId: user.orgId,
+            ...(args.includeArchived ? {} : { archived: false }),
+          },
           orderBy: { createdAt: 'desc' },
         });
       },
@@ -287,24 +335,59 @@ export const schema = createSchema<Context>({
         });
       },
 
-      tasks: async (_parent, args: { projectId: string; parentTaskId?: string | null }, context) => {
-        await requireProjectAccess(context, args.projectId);
-        return context.prisma.task.findMany({
-          where: {
-            projectId: args.projectId,
-            parentTaskId: args.parentTaskId !== undefined ? args.parentTaskId : null,
-          },
-          orderBy: { createdAt: 'asc' },
+      orgInvites: async (_parent, _args, context) => {
+        const user = requireOrg(context);
+        if (user.role !== 'org:admin') {
+          throw new GraphQLError('Admin role required', { extensions: { code: 'FORBIDDEN' } });
+        }
+        return context.prisma.orgInvite.findMany({
+          where: { orgId: user.orgId, acceptedAt: null },
+          orderBy: { createdAt: 'desc' },
         });
+      },
+
+      tasks: async (
+        _parent,
+        args: { projectId: string; parentTaskId?: string | null; limit?: number | null; offset?: number | null },
+        context
+      ) => {
+        await requireProjectAccess(context, args.projectId);
+        const limit = args.limit ?? 100;
+        const offset = args.offset ?? 0;
+        const where = {
+          projectId: args.projectId,
+          parentTaskId: args.parentTaskId !== undefined ? args.parentTaskId : null,
+        };
+        const [tasks, total] = await Promise.all([
+          context.prisma.task.findMany({
+            where,
+            orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+            take: limit,
+            skip: offset,
+          }),
+          context.prisma.task.count({ where }),
+        ]);
+        return { tasks, hasMore: offset + limit < total, total };
       },
     },
 
     Mutation: {
       signup: async (_parent, args: { email: string; password: string }, context) => {
+        if (args.password.length < 8) {
+          throw new GraphQLError('Password must be at least 8 characters');
+        }
         const existing = await context.prisma.user.findUnique({ where: { email: args.email } });
         if (existing) throw new GraphQLError('Email already in use');
         const passwordHash = await bcrypt.hash(args.password, 10);
-        await context.prisma.user.create({ data: { email: args.email, passwordHash } });
+        const verificationToken = generateToken();
+        await context.prisma.user.create({
+          data: { email: args.email, passwordHash, verificationToken },
+        });
+        await sendEmail(
+          args.email,
+          'Verify your TaskToad account',
+          verifyEmailText(verificationToken)
+        );
         return true;
       },
 
@@ -318,6 +401,171 @@ export const schema = createSchema<Context>({
           .setExpirationTime('7d')
           .sign(JWT_SECRET);
         return { token };
+      },
+
+      sendVerificationEmail: async (_parent, _args, context) => {
+        const user = requireAuth(context);
+        const dbUser = await context.prisma.user.findUnique({ where: { userId: user.userId } });
+        if (!dbUser) throw new GraphQLError('User not found');
+        if (dbUser.emailVerifiedAt) return true;
+        const verificationToken = generateToken();
+        await context.prisma.user.update({
+          where: { userId: user.userId },
+          data: { verificationToken },
+        });
+        await sendEmail(
+          dbUser.email,
+          'Verify your TaskToad account',
+          verifyEmailText(verificationToken)
+        );
+        return true;
+      },
+
+      verifyEmail: async (_parent, args: { token: string }, context) => {
+        const user = await context.prisma.user.findUnique({
+          where: { verificationToken: args.token },
+        });
+        if (!user) throw new GraphQLError('Invalid or expired verification token');
+        await context.prisma.user.update({
+          where: { userId: user.userId },
+          data: { emailVerifiedAt: new Date(), verificationToken: null },
+        });
+        return true;
+      },
+
+      requestPasswordReset: async (_parent, args: { email: string }, context) => {
+        const user = await context.prisma.user.findUnique({ where: { email: args.email } });
+        if (!user) return true; // silent - no enumeration
+        const resetToken = generateToken();
+        const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+        await context.prisma.user.update({
+          where: { userId: user.userId },
+          data: { resetToken, resetTokenExpiry },
+        });
+        await sendEmail(
+          user.email,
+          'Reset your TaskToad password',
+          resetPasswordText(resetToken)
+        );
+        return true;
+      },
+
+      resetPassword: async (_parent, args: { token: string; newPassword: string }, context) => {
+        if (args.newPassword.length < 8) {
+          throw new GraphQLError('Password must be at least 8 characters');
+        }
+        const user = await context.prisma.user.findFirst({
+          where: {
+            resetToken: args.token,
+            resetTokenExpiry: { gt: new Date() },
+          },
+        });
+        if (!user) throw new GraphQLError('Invalid or expired reset token');
+        const passwordHash = await bcrypt.hash(args.newPassword, 10);
+        await context.prisma.user.update({
+          where: { userId: user.userId },
+          data: { passwordHash, resetToken: null, resetTokenExpiry: null },
+        });
+        return true;
+      },
+
+      inviteOrgMember: async (_parent, args: { email: string; role?: string | null }, context) => {
+        const user = requireOrg(context);
+        if (user.role !== 'org:admin') {
+          throw new GraphQLError('Admin role required', { extensions: { code: 'FORBIDDEN' } });
+        }
+        const existingUser = await context.prisma.user.findUnique({ where: { email: args.email } });
+        if (existingUser?.orgId) {
+          throw new GraphQLError('This email already belongs to an org member');
+        }
+        const token = generateToken();
+        const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
+        const role = args.role ?? 'org:member';
+        await context.prisma.orgInvite.upsert({
+          where: { token },
+          update: {},
+          create: {
+            orgId: user.orgId,
+            email: args.email,
+            token,
+            role,
+            expiresAt,
+          },
+        });
+        // If a prior invite exists for this email+org, replace it
+        await context.prisma.orgInvite.deleteMany({
+          where: {
+            orgId: user.orgId,
+            email: args.email,
+            acceptedAt: null,
+            token: { not: token },
+          },
+        });
+        const org = await context.prisma.org.findUnique({ where: { orgId: user.orgId } });
+        await sendEmail(
+          args.email,
+          `You're invited to join ${org?.name ?? 'TaskToad'}`,
+          inviteText(org?.name ?? 'TaskToad', token)
+        );
+        return true;
+      },
+
+      acceptInvite: async (_parent, args: { token: string; password?: string | null }, context) => {
+        const invite = await context.prisma.orgInvite.findUnique({ where: { token: args.token } });
+        if (!invite || invite.acceptedAt || invite.expiresAt < new Date()) {
+          throw new GraphQLError('Invalid or expired invite');
+        }
+        let userId: string;
+        const existingUser = await context.prisma.user.findUnique({ where: { email: invite.email } });
+        if (existingUser) {
+          if (existingUser.orgId) {
+            throw new GraphQLError('Email already belongs to an org member');
+          }
+          await context.prisma.user.update({
+            where: { userId: existingUser.userId },
+            data: { orgId: invite.orgId, role: invite.role, emailVerifiedAt: new Date() },
+          });
+          userId = existingUser.userId;
+        } else {
+          if (!args.password || args.password.length < 8) {
+            throw new GraphQLError('Password must be at least 8 characters');
+          }
+          const passwordHash = await bcrypt.hash(args.password, 10);
+          const newUser = await context.prisma.user.create({
+            data: {
+              email: invite.email,
+              passwordHash,
+              orgId: invite.orgId,
+              role: invite.role,
+              emailVerifiedAt: new Date(),
+            },
+          });
+          userId = newUser.userId;
+        }
+        await context.prisma.orgInvite.update({
+          where: { inviteId: invite.inviteId },
+          data: { acceptedAt: new Date() },
+        });
+        const updatedUser = await context.prisma.user.findUnique({ where: { userId } });
+        if (!updatedUser) throw new GraphQLError('User not found');
+        const token = await new SignJWT({ sub: updatedUser.userId, email: updatedUser.email })
+          .setProtectedHeader({ alg: 'HS256' })
+          .setExpirationTime('7d')
+          .sign(JWT_SECRET);
+        return { token };
+      },
+
+      revokeInvite: async (_parent, args: { inviteId: string }, context) => {
+        const user = requireOrg(context);
+        if (user.role !== 'org:admin') {
+          throw new GraphQLError('Admin role required', { extensions: { code: 'FORBIDDEN' } });
+        }
+        const invite = await context.prisma.orgInvite.findUnique({ where: { inviteId: args.inviteId } });
+        if (!invite || invite.orgId !== user.orgId) {
+          throw new GraphQLError('Invite not found', { extensions: { code: 'NOT_FOUND' } });
+        }
+        await context.prisma.orgInvite.delete({ where: { inviteId: args.inviteId } });
+        return true;
       },
 
       createOrg: async (_parent, args: { name: string; apiKey?: string | null }, context) => {
@@ -368,19 +616,25 @@ export const schema = createSchema<Context>({
         if (!project || project.orgId !== user.orgId) {
           throw new GraphQLError('Project not found', { extensions: { code: 'NOT_FOUND' } });
         }
+        const maxResult = await context.prisma.task.aggregate({
+          where: { projectId: args.projectId, sprintId: null, parentTaskId: null },
+          _max: { position: true },
+        });
+        const nextPosition = (maxResult._max.position ?? 0) + 1.0;
         return context.prisma.task.create({
           data: {
             title: args.title,
             status: args.status ?? 'todo',
             projectId: args.projectId,
             orgId: user.orgId,
+            position: nextPosition,
           },
         });
       },
 
       updateTask: async (
         _parent,
-        args: { taskId: string; title?: string; status?: string; sprintId?: string | null; sprintColumn?: string | null; assigneeId?: string | null },
+        args: { taskId: string; title?: string; status?: string; sprintId?: string | null; sprintColumn?: string | null; assigneeId?: string | null; dueDate?: string | null; position?: number | null },
         context
       ) => {
         const user = requireOrg(context);
@@ -396,7 +650,21 @@ export const schema = createSchema<Context>({
             ...(args.sprintId !== undefined ? { sprintId: args.sprintId } : {}),
             ...(args.sprintColumn !== undefined ? { sprintColumn: args.sprintColumn } : {}),
             ...(args.assigneeId !== undefined ? { assigneeId: args.assigneeId } : {}),
+            ...(args.dueDate !== undefined ? { dueDate: args.dueDate } : {}),
+            ...(args.position !== undefined ? { position: args.position } : {}),
           },
+        });
+      },
+
+      archiveProject: async (_parent, args: { projectId: string; archived: boolean }, context) => {
+        const user = requireOrg(context);
+        if (user.role !== 'org:admin') {
+          throw new GraphQLError('Admin role required', { extensions: { code: 'FORBIDDEN' } });
+        }
+        await requireProjectAccess(context, args.projectId);
+        return context.prisma.project.update({
+          where: { projectId: args.projectId },
+          data: { archived: args.archived },
         });
       },
 

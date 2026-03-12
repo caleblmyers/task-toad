@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { gql } from '../api/client';
-import type { Task, TaskPlanPreview, Sprint, OrgUser, CloseSprintResult } from '../types';
+import type { Task, TaskConnection, TaskPlanPreview, Sprint, OrgUser, CloseSprintResult } from '../types';
 import KanbanBoard from '../components/KanbanBoard';
 import TaskDetailPanel from '../components/TaskDetailPanel';
 import TaskPlanApprovalDialog from '../components/TaskPlanApprovalDialog';
@@ -12,7 +12,7 @@ import CloseSprintModal from '../components/CloseSprintModal';
 import { TaskListSkeleton, KanbanBoardSkeleton } from '../components/Skeleton';
 
 const TASK_FIELDS = `
-  taskId title description instructions suggestedTools estimatedHours priority dependsOn status projectId parentTaskId createdAt sprintId sprintColumn assigneeId archived
+  taskId title description instructions suggestedTools estimatedHours priority dependsOn status projectId parentTaskId createdAt sprintId sprintColumn assigneeId archived position dueDate
 `;
 
 const VIEW_KEY = 'task-toad-view';
@@ -60,6 +60,8 @@ export default function ProjectDetail() {
   const locationState = location.state as { autoPreview?: boolean } | null;
 
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [taskOffset, setTaskOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [subtasks, setSubtasks] = useState<Record<string, Task[]>>({});
@@ -155,16 +157,18 @@ export default function ProjectDetail() {
   const loadTasks = async (): Promise<Task[]> => {
     if (!projectId) return [];
     try {
-      const data = await gql<{ tasks: Task[] }>(
-        `query Tasks($projectId: ID!) { tasks(projectId: $projectId) { ${TASK_FIELDS} } }`,
+      const data = await gql<{ tasks: TaskConnection }>(
+        `query Tasks($projectId: ID!) { tasks(projectId: $projectId) { tasks { ${TASK_FIELDS} } hasMore total } }`,
         { projectId }
       );
-      setTasks(data.tasks);
+      setTasks(data.tasks.tasks);
+      setHasMore(data.tasks.hasMore);
+      setTaskOffset(0);
       if (selectedTask) {
-        const refreshed = data.tasks.find((t) => t.taskId === selectedTask.taskId);
+        const refreshed = data.tasks.tasks.find((t) => t.taskId === selectedTask.taskId);
         if (refreshed) setSelectedTask(refreshed);
       }
-      return data.tasks;
+      return data.tasks.tasks;
     } catch {
       return [];
     } finally {
@@ -172,14 +176,30 @@ export default function ProjectDetail() {
     }
   };
 
+  const loadMoreTasks = async () => {
+    if (!projectId || !hasMore) return;
+    const newOffset = taskOffset + 100;
+    try {
+      const data = await gql<{ tasks: TaskConnection }>(
+        `query Tasks($projectId: ID!, $limit: Int, $offset: Int) { tasks(projectId: $projectId, limit: $limit, offset: $offset) { tasks { ${TASK_FIELDS} } hasMore total } }`,
+        { projectId, limit: 100, offset: newOffset }
+      );
+      setTasks((prev) => [...prev, ...data.tasks.tasks]);
+      setHasMore(data.tasks.hasMore);
+      setTaskOffset(newOffset);
+    } catch {
+      // ignore
+    }
+  };
+
   const loadSubtasks = async (taskId: string) => {
     if (!projectId) return;
     try {
-      const data = await gql<{ tasks: Task[] }>(
-        `query Subtasks($projectId: ID!, $parentTaskId: ID) { tasks(projectId: $projectId, parentTaskId: $parentTaskId) { ${TASK_FIELDS} } }`,
+      const data = await gql<{ tasks: TaskConnection }>(
+        `query Subtasks($projectId: ID!, $parentTaskId: ID) { tasks(projectId: $projectId, parentTaskId: $parentTaskId) { tasks { ${TASK_FIELDS} } } }`,
         { projectId, parentTaskId: taskId }
       );
-      setSubtasks((prev) => ({ ...prev, [taskId]: data.tasks }));
+      setSubtasks((prev) => ({ ...prev, [taskId]: data.tasks.tasks }));
     } catch {
       // ignore
     }
@@ -341,6 +361,88 @@ export default function ProjectDetail() {
           updateTask(taskId: $taskId, assigneeId: $assigneeId) { taskId }
         }`,
         { taskId, assigneeId }
+      );
+    } catch {
+      loadTasks();
+    }
+  };
+
+  const handleDueDateChange = async (taskId: string, dueDate: string | null) => {
+    setTasks((prev) => prev.map((t) => t.taskId === taskId ? { ...t, dueDate } : t));
+    if (selectedTask?.taskId === taskId) setSelectedTask((t) => t ? { ...t, dueDate } : t);
+    try {
+      await gql<{ updateTask: Task }>(
+        `mutation UpdateTask($taskId: ID!, $dueDate: String) {
+          updateTask(taskId: $taskId, dueDate: $dueDate) { taskId }
+        }`,
+        { taskId, dueDate }
+      );
+    } catch {
+      loadTasks();
+    }
+  };
+
+  const handleReorderTask = async (
+    taskId: string,
+    beforeTaskId: string | null,
+    afterTaskId: string | null,
+    targetSprintId: string | null
+  ) => {
+    const task = tasks.find((t) => t.taskId === taskId);
+    if (!task) return;
+
+    // Build sorted list of tasks in target section (excluding dragged task)
+    const sectionTasks = tasks
+      .filter((t) => !t.parentTaskId && !t.archived && t.sprintId === targetSprintId && t.taskId !== taskId)
+      .sort((a, b) => {
+        if (a.position != null && b.position != null) return a.position - b.position;
+        if (a.position != null) return -1;
+        if (b.position != null) return 1;
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      });
+
+    let maxPos = 0;
+    sectionTasks.forEach((t) => { if (t.position != null && t.position > maxPos) maxPos = t.position; });
+    const getVP = (t: Task, idx: number): number => t.position ?? (maxPos + idx + 1);
+
+    const beforeTask = beforeTaskId ? sectionTasks.find((t) => t.taskId === beforeTaskId) ?? null : null;
+    const afterTask = afterTaskId ? sectionTasks.find((t) => t.taskId === afterTaskId) ?? null : null;
+    const beforeIdx = beforeTask ? sectionTasks.indexOf(beforeTask) : -1;
+    const afterIdx = afterTask ? sectionTasks.indexOf(afterTask) : -1;
+
+    let newPosition: number;
+    if (beforeTask && afterTask) {
+      newPosition = (getVP(beforeTask, beforeIdx) + getVP(afterTask, afterIdx)) / 2;
+    } else if (beforeTask) {
+      newPosition = getVP(beforeTask, beforeIdx) + 1;
+    } else if (afterTask) {
+      newPosition = getVP(afterTask, afterIdx) - 1;
+    } else {
+      newPosition = 0;
+    }
+
+    const isChangingSprint = task.sprintId !== targetSprintId;
+    const targetSprint = targetSprintId ? sprints.find((s) => s.sprintId === targetSprintId) : null;
+    const newSprintColumn = isChangingSprint
+      ? (targetSprint ? (JSON.parse(targetSprint.columns) as string[])[0] ?? null : null)
+      : task.sprintColumn;
+
+    // Optimistic update
+    setTasks((prev) => prev.map((t) =>
+      t.taskId === taskId
+        ? { ...t, position: newPosition, sprintId: targetSprintId, sprintColumn: newSprintColumn }
+        : t
+    ));
+    if (selectedTask?.taskId === taskId) {
+      setSelectedTask((t) => t ? { ...t, position: newPosition, sprintId: targetSprintId, sprintColumn: newSprintColumn } : t);
+    }
+
+    try {
+      await gql<{ updateTask: Task }>(
+        `mutation UpdateTask($taskId: ID!, $position: Float, $sprintId: ID, $sprintColumn: String) {
+          updateTask(taskId: $taskId, position: $position, sprintId: $sprintId, sprintColumn: $sprintColumn) { taskId }
+        }`,
+        { taskId, position: newPosition, sprintId: targetSprintId, sprintColumn: newSprintColumn }
       );
     } catch {
       loadTasks();
@@ -604,6 +706,7 @@ export default function ProjectDetail() {
     onGenerateInstructions: handleGenerateInstructions,
     onAssignSprint: handleAssignSprint,
     onAssignUser: handleAssignUser,
+    onDueDateChange: handleDueDateChange,
   };
 
   const viewToggle = (
@@ -725,6 +828,9 @@ export default function ProjectDetail() {
               onActivateSprint={handleActivateSprint}
               onCloseSprint={(sprintId) => setCloseSprintId(sprintId)}
               onAssignSprint={handleAssignSprint}
+              onReorderTask={handleReorderTask}
+              hasMore={hasMore}
+              onLoadMore={loadMoreTasks}
             />
           ) : activeSprint ? (
             <div className="flex-1 overflow-x-auto overflow-y-hidden px-6 py-4">

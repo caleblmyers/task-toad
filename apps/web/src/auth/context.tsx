@@ -23,7 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const token = localStorage.getItem(TOKEN_KEY);
     if (!token) return null;
     try {
-      const data = await gql<{ me: MeResponse | null }>('query { me { userId email orgId role } }');
+      const data = await gql<{ me: MeResponse | null }>('query { me { userId email orgId role emailVerifiedAt } }');
       return data.me;
     } catch {
       return null;

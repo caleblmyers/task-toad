@@ -74,6 +74,12 @@ cp apps/api/.env.example apps/api/.env
 | `ENCRYPTION_MASTER_KEY` | 32-byte hex key for AES-256-GCM (org API key encryption) |
 | `CORS_ORIGINS` | Comma-separated allowed origins, e.g. `http://localhost:5173` |
 | `ANTHROPIC_API_KEY` | Anthropic API key (required for AI features) |
+| `SMTP_HOST` | SMTP server host (optional — if unset, email links are printed to the console) |
+| `SMTP_PORT` | SMTP port (default `587`) |
+| `SMTP_USER` | SMTP username |
+| `SMTP_PASS` | SMTP password |
+| `EMAIL_FROM` | Sender address (default `noreply@tasktoad.app`) |
+| `APP_URL` | Public app URL used in email links (default `http://localhost:5173`) |
 
 **Web** (`apps/web/.env`):
 
@@ -107,10 +113,12 @@ pnpm dev:web   # Web at http://localhost:5173
 ## Usage
 
 1. Open http://localhost:5173/signup and create an account
-2. Create an organization
-3. Create a project
-4. Add tasks manually or use AI to generate a task plan
-5. Create a sprint, plan it from the backlog, and track progress on the kanban board
+2. Check the API console for the verification link (or configure SMTP for real email) and verify your email
+3. Create an organization
+4. Create a project
+5. Add tasks manually or use AI to generate a task plan
+6. Create a sprint, plan it from the backlog, and track progress on the kanban board
+7. Invite team members from Settings → Team (invite links are printed to the API console in dev)
 
 ## GraphQL API
 
@@ -118,9 +126,9 @@ All operations require `Authorization: Bearer <token>` except `signup` and `logi
 
 GraphiQL UI is available at `http://localhost:3001/graphql` in development.
 
-**Key queries:** `me`, `projects`, `project(projectId)`, `tasks(projectId)`, `sprints(projectId)`, `orgUsers`
+**Key queries:** `me`, `projects`, `project(projectId)`, `tasks(projectId)`, `sprints(projectId)`, `orgUsers`, `orgInvites`
 
-**Key mutations:** `signup`, `login`, `createOrg`, `createProject`, `createTask`, `updateTask`, `createSprint`, `updateSprint`, `deleteSprint`
+**Key mutations:** `signup`, `login`, `createOrg`, `createProject`, `createTask`, `updateTask`, `createSprint`, `updateSprint`, `deleteSprint`, `verifyEmail`, `sendVerificationEmail`, `requestPasswordReset`, `resetPassword`, `inviteOrgMember`, `acceptInvite`, `revokeInvite`
 
 ## Scripts
 
