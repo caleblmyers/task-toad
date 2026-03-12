@@ -131,6 +131,26 @@ GraphiQL UI available in dev for interactive exploration.
 
 ---
 
+## 2026-03-12 — ProjectDetail refactor: extract hooks, utils, shared components
+
+**Decision:** Decomposed `ProjectDetail.tsx` (~830 lines, 20+ useState) into focused modules.
+
+**Extracted modules:**
+- `hooks/useProjectData.ts` — all data fetching, mutations, sprint/task CRUD, AI operations
+- `hooks/useTaskFiltering.ts` — search, status/priority/assignee filter logic
+- `hooks/useKeyboardShortcuts.ts` — j/k navigation, Esc, n, /, ? shortcuts
+- `hooks/useToast.ts` — toast notification state management
+- `utils/taskHelpers.ts` — `TASK_FIELDS` query fragment, `columnToStatus`, `statusToColumn` mapping
+- `components/shared/` — `SearchInput`, `FilterBar`, `ToastContainer`, `KeyboardShortcutHelp`, SVG `Icons`
+
+**Also added:** Tailwind config extensions for semantic status/priority colors and slide/fade animations.
+
+**Result:** `ProjectDetail.tsx` reduced from ~830 lines to ~357 lines. Each extracted module is independently testable.
+
+**Rationale:** The god-component pattern made `ProjectDetail` difficult to navigate, debug, and extend. Custom hooks align with React best practices for separating data/logic from presentation.
+
+---
+
 ## Stack Lock-in Notes
 
 - `graphql-yoga` requires casting as `unknown as express.RequestHandler` for TS compat in `app.ts`

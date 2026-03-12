@@ -84,6 +84,11 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 - `apps/api/prisma/schema.prisma` — Prisma schema (User, Org, Project, Task, Sprint)
 - `apps/web/src/api/client.ts` — `gql<T>()` fetch helper with AbortSignal support, `TOKEN_KEY`
 - `apps/web/src/auth/context.tsx` — `AuthProvider`, `useAuth` hook
+- `apps/web/src/hooks/useProjectData.ts` — data fetching, mutations, sprint/task CRUD, AI ops
+- `apps/web/src/hooks/useTaskFiltering.ts` — search + filter logic
+- `apps/web/src/hooks/useKeyboardShortcuts.ts` — keyboard shortcut handling
+- `apps/web/src/utils/taskHelpers.ts` — `TASK_FIELDS`, status↔column mapping
+- `apps/web/src/components/shared/` — reusable UI (SearchInput, FilterBar, Icons, Toast, etc.)
 - `apps/web/src/components/Skeleton.tsx` — Loading skeleton components
 
 ### TypeScript Config

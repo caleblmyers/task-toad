@@ -26,10 +26,13 @@ task-toad/
 │   │       └── utils/    # encryption.ts
 │   └── web/          # React + Vite + Tailwind
 │       └── src/
-│           ├── components/  # KanbanBoard, BacklogView, TaskDetailPanel, etc.
-│           ├── pages/       # ProjectDetail, Projects, Home, etc.
-│           ├── api/         # gql() fetch helper
-│           └── auth/        # AuthProvider, useAuth
+│           ├── components/         # KanbanBoard, BacklogView, TaskDetailPanel, etc.
+│           │   └── shared/         # SearchInput, FilterBar, Icons, ToastContainer
+│           ├── hooks/              # useProjectData, useTaskFiltering, useKeyboardShortcuts, useToast
+│           ├── utils/              # taskHelpers (status↔column mapping)
+│           ├── pages/              # ProjectDetail, Projects, Home, etc.
+│           ├── api/                # gql() fetch helper
+│           └── auth/               # AuthProvider, useAuth
 ├── .claude-knowledge/  # Architecture docs and decision log
 ├── CLAUDE.md
 └── pnpm-workspace.yaml

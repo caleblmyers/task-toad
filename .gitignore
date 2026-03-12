@@ -9,5 +9,6 @@ cdk.out
 .DS_Store
 coverage
 .vite
-
-
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts

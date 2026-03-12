@@ -60,6 +60,12 @@ Browser → Vite dev server (localhost:5173)
 | Vite proxy config | `apps/web/vite.config.ts` |
 | App routing | `apps/web/src/App.tsx` |
 | Project detail (board/backlog) | `apps/web/src/pages/ProjectDetail.tsx` |
+| Project data fetching + mutations | `apps/web/src/hooks/useProjectData.ts` |
+| Task search/filter logic | `apps/web/src/hooks/useTaskFiltering.ts` |
+| Keyboard shortcut handling | `apps/web/src/hooks/useKeyboardShortcuts.ts` |
+| Toast notification hook | `apps/web/src/hooks/useToast.ts` |
+| Status ↔ column mapping, TASK_FIELDS | `apps/web/src/utils/taskHelpers.ts` |
+| Shared UI (SearchInput, FilterBar, Icons, etc.) | `apps/web/src/components/shared/` |
 | Kanban board (dynamic columns) | `apps/web/src/components/KanbanBoard.tsx` |
 | Task detail panel (drawer) | `apps/web/src/components/TaskDetailPanel.tsx` |
 | Backlog view | `apps/web/src/components/BacklogView.tsx` |
