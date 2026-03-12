@@ -20,6 +20,8 @@ interface BacklogViewProps {
   selectedTask: Task | null;
   onSelectTask: (task: Task) => void;
   onCreateSprint: () => void;
+  onEditSprint: (sprint: Sprint) => void;
+  onDeleteSprint: (sprintId: string) => void;
   onActivateSprint: (sprintId: string) => void;
   onCloseSprint: (sprintId: string) => void;
   onAssignSprint: (taskId: string, sprintId: string | null) => void;
@@ -80,6 +82,8 @@ export default function BacklogView({
   selectedTask,
   onSelectTask,
   onCreateSprint,
+  onEditSprint,
+  onDeleteSprint,
   onActivateSprint,
   onCloseSprint,
   onPlanSprints,
@@ -140,6 +144,14 @@ export default function BacklogView({
                   )}
                 </div>
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onEditSprint(sprint)}
+                    className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1 border border-slate-200 rounded hover:bg-white"
+                    title="Edit sprint"
+                  >
+                    Edit
+                  </button>
                   {sprint.isActive && (
                     <button
                       type="button"
@@ -150,13 +162,27 @@ export default function BacklogView({
                     </button>
                   )}
                   {!sprint.isActive && (
-                    <button
-                      type="button"
-                      onClick={() => onActivateSprint(sprint.sprintId)}
-                      className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1 border border-slate-300 rounded hover:bg-white"
-                    >
-                      Set Active
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => onActivateSprint(sprint.sprintId)}
+                        className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1 border border-slate-300 rounded hover:bg-white"
+                      >
+                        Set Active
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm(`Delete sprint "${sprint.name}"? Tasks will be moved to the backlog.`)) {
+                            onDeleteSprint(sprint.sprintId);
+                          }
+                        }}
+                        className="text-xs text-slate-400 hover:text-red-600 px-2 py-1 border border-slate-200 rounded hover:border-red-300 hover:bg-red-50"
+                        title="Delete sprint"
+                      >
+                        Delete
+                      </button>
+                    </>
                   )}
                 </div>
               </div>

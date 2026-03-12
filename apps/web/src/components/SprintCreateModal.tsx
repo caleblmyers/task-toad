@@ -4,17 +4,21 @@ import type { Sprint } from '../types';
 
 interface SprintCreateModalProps {
   projectId: string;
+  initialSprint?: Sprint;
   onCreated: (sprint: Sprint) => void;
+  onUpdated?: (sprint: Sprint) => void;
   onClose: () => void;
 }
 
 const DEFAULT_COLUMNS = ['To Do', 'In Progress', 'Done'];
 
-export default function SprintCreateModal({ projectId, onCreated, onClose }: SprintCreateModalProps) {
-  const [name, setName] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [columns, setColumns] = useState<string[]>(DEFAULT_COLUMNS);
+export default function SprintCreateModal({ projectId, initialSprint, onCreated, onUpdated, onClose }: SprintCreateModalProps) {
+  const isEdit = !!initialSprint;
+  const [name, setName] = useState(initialSprint?.name ?? '');
+  const [startDate, setStartDate] = useState(initialSprint?.startDate ?? '');
+  const [endDate, setEndDate] = useState(initialSprint?.endDate ?? '');
+  const initialColumns = initialSprint ? (() => { try { return JSON.parse(initialSprint.columns) as string[]; } catch { return DEFAULT_COLUMNS; } })() : DEFAULT_COLUMNS;
+  const [columns, setColumns] = useState<string[]>(initialColumns);
   const [newCol, setNewCol] = useState('');
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editingVal, setEditingVal] = useState('');
@@ -27,23 +31,41 @@ export default function SprintCreateModal({ projectId, onCreated, onClose }: Spr
     setLoading(true);
     setErr(null);
     try {
-      const data = await gql<{ createSprint: Sprint }>(
-        `mutation CreateSprint($projectId: ID!, $name: String!, $columns: String, $startDate: String, $endDate: String) {
-          createSprint(projectId: $projectId, name: $name, columns: $columns, startDate: $startDate, endDate: $endDate) {
-            sprintId projectId name isActive columns startDate endDate createdAt
+      if (isEdit && initialSprint) {
+        const data = await gql<{ updateSprint: Sprint }>(
+          `mutation UpdateSprint($sprintId: ID!, $name: String, $columns: String, $startDate: String, $endDate: String) {
+            updateSprint(sprintId: $sprintId, name: $name, columns: $columns, startDate: $startDate, endDate: $endDate) {
+              sprintId projectId name isActive columns startDate endDate createdAt closedAt
+            }
+          }`,
+          {
+            sprintId: initialSprint.sprintId,
+            name: name.trim(),
+            columns: JSON.stringify(columns),
+            startDate: startDate || null,
+            endDate: endDate || null,
           }
-        }`,
-        {
-          projectId,
-          name: name.trim(),
-          columns: JSON.stringify(columns),
-          startDate: startDate || null,
-          endDate: endDate || null,
-        }
-      );
-      onCreated(data.createSprint);
+        );
+        onUpdated?.(data.updateSprint);
+      } else {
+        const data = await gql<{ createSprint: Sprint }>(
+          `mutation CreateSprint($projectId: ID!, $name: String!, $columns: String, $startDate: String, $endDate: String) {
+            createSprint(projectId: $projectId, name: $name, columns: $columns, startDate: $startDate, endDate: $endDate) {
+              sprintId projectId name isActive columns startDate endDate createdAt closedAt
+            }
+          }`,
+          {
+            projectId,
+            name: name.trim(),
+            columns: JSON.stringify(columns),
+            startDate: startDate || null,
+            endDate: endDate || null,
+          }
+        );
+        onCreated(data.createSprint);
+      }
     } catch (error) {
-      setErr(error instanceof Error ? error.message : 'Failed to create sprint');
+      setErr(error instanceof Error ? error.message : isEdit ? 'Failed to update sprint' : 'Failed to create sprint');
     } finally {
       setLoading(false);
     }
@@ -80,7 +102,7 @@ export default function SprintCreateModal({ projectId, onCreated, onClose }: Spr
       <div className="absolute inset-0 bg-black/20" onClick={onClose} />
       <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-slate-800">Create Sprint</h2>
+          <h2 className="text-lg font-semibold text-slate-800">{isEdit ? 'Edit Sprint' : 'Create Sprint'}</h2>
           <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
         </div>
 
@@ -177,7 +199,7 @@ export default function SprintCreateModal({ projectId, onCreated, onClose }: Spr
               disabled={loading || !name.trim()}
               className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50"
             >
-              {loading ? 'Creating…' : 'Create Sprint'}
+              {loading ? (isEdit ? 'Saving…' : 'Creating…') : (isEdit ? 'Save Changes' : 'Create Sprint')}
             </button>
           </div>
         </form>

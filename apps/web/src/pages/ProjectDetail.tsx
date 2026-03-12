@@ -66,6 +66,7 @@ export default function ProjectDetail() {
   const [sprints, setSprints] = useState<Sprint[]>([]);
   const [orgUsers, setOrgUsers] = useState<OrgUser[]>([]);
   const [showSprintModal, setShowSprintModal] = useState(false);
+  const [editingSprint, setEditingSprint] = useState<Sprint | null>(null);
   const [showSprintPlanModal, setShowSprintPlanModal] = useState(false);
   const [closeSprintId, setCloseSprintId] = useState<string | null>(null);
 
@@ -376,6 +377,24 @@ export default function ProjectDetail() {
     );
     setCloseSprintId(null);
     loadTasks();
+  };
+
+  const handleSprintUpdated = (sprint: Sprint) => {
+    setSprints((prev) => prev.map((s) => s.sprintId === sprint.sprintId ? sprint : s));
+    setEditingSprint(null);
+  };
+
+  const handleDeleteSprint = async (sprintId: string) => {
+    try {
+      await gql<{ deleteSprint: boolean }>(
+        `mutation DeleteSprint($sprintId: ID!) { deleteSprint(sprintId: $sprintId) }`,
+        { sprintId }
+      );
+      setSprints((prev) => prev.filter((s) => s.sprintId !== sprintId));
+      setTasks((prev) => prev.map((t) => t.sprintId === sprintId ? { ...t, sprintId: null, sprintColumn: null } : t));
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Failed to delete sprint');
+    }
   };
 
   // ---------------------------------------------------------------------------
@@ -700,6 +719,8 @@ export default function ProjectDetail() {
               selectedTask={selectedTask}
               onSelectTask={selectTask}
               onCreateSprint={() => setShowSprintModal(true)}
+              onEditSprint={(sprint) => setEditingSprint(sprint)}
+              onDeleteSprint={handleDeleteSprint}
               onPlanSprints={() => setShowSprintPlanModal(true)}
               onActivateSprint={handleActivateSprint}
               onCloseSprint={(sprintId) => setCloseSprintId(sprintId)}
@@ -753,6 +774,17 @@ export default function ProjectDetail() {
           projectId={projectId}
           onCreated={handleCreateSprint}
           onClose={() => setShowSprintModal(false)}
+        />
+      )}
+
+      {/* Sprint edit modal */}
+      {editingSprint && projectId && (
+        <SprintCreateModal
+          projectId={projectId}
+          initialSprint={editingSprint}
+          onCreated={handleCreateSprint}
+          onUpdated={handleSprintUpdated}
+          onClose={() => setEditingSprint(null)}
         />
       )}
 

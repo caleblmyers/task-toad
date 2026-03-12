@@ -3,8 +3,26 @@ import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { createYoga } from 'graphql-yoga';
+import { z } from 'zod';
 import { schema } from './graphql/schema.js';
 import { buildContext } from './graphql/context.js';
+
+// Validate required environment variables at startup
+const envSchema = z.object({
+  DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+  JWT_SECRET: z.string().min(1, 'JWT_SECRET is required'),
+  ENCRYPTION_MASTER_KEY: z.string().min(1, 'ENCRYPTION_MASTER_KEY is required'),
+  PORT: z.string().default('3001'),
+  NODE_ENV: z.string().default('development'),
+  CORS_ORIGINS: z.string().optional(),
+});
+
+const envResult = envSchema.safeParse(process.env);
+if (!envResult.success) {
+  const missing = envResult.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`).join('\n');
+  console.error(`Missing or invalid environment variables:\n${missing}\n\nCopy apps/api/.env.example to apps/api/.env and fill in the values.`);
+  process.exit(1);
+}
 
 const app: express.Express = express();
 

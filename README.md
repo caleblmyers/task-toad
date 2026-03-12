@@ -46,8 +46,15 @@ pnpm install
 ### 2. Start PostgreSQL
 
 ```bash
+docker compose up -d
+```
+
+Or manually if you prefer not to use Compose:
+
+```bash
 docker run -d --name tasktoad-db \
   -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=tasktoad \
   -p 5432:5432 \
   postgres:16
 ```

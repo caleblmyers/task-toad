@@ -1,0 +1,19 @@
+services:
+  db:
+    image: postgres:16
+    container_name: tasktoad-db
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: tasktoad
+    ports:
+      - "5432:5432"
+    volumes:
+      - tasktoad_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  tasktoad_postgres:

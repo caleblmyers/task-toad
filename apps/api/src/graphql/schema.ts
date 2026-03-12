@@ -228,7 +228,15 @@ export const schema = createSchema<Context>({
   resolvers: {
     Org: {
       hasApiKey: (parent: { anthropicApiKeyEncrypted?: string | null }) => !!parent.anthropicApiKeyEncrypted,
-      apiKeyHint: (_parent: { anthropicApiKeyEncrypted?: string | null }) => null,
+      apiKeyHint: (parent: { anthropicApiKeyEncrypted?: string | null }) => {
+        if (!parent.anthropicApiKeyEncrypted) return null;
+        try {
+          const plaintext = decryptApiKey(parent.anthropicApiKeyEncrypted);
+          return `...${plaintext.slice(-4)}`;
+        } catch {
+          return null;
+        }
+      },
     },
 
     Sprint: {
