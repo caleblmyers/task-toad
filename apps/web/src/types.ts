@@ -20,8 +20,47 @@ export interface Project {
   name: string;
   description?: string | null;
   prompt?: string | null;
+  statuses: string;
   createdAt: string;
   archived?: boolean;
+}
+
+export interface Comment {
+  commentId: string;
+  taskId: string;
+  userId: string;
+  userEmail: string;
+  parentCommentId?: string | null;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  replies: Comment[];
+}
+
+export interface Activity {
+  activityId: string;
+  projectId?: string | null;
+  taskId?: string | null;
+  sprintId?: string | null;
+  userId: string;
+  userEmail: string;
+  action: string;
+  field?: string | null;
+  oldValue?: string | null;
+  newValue?: string | null;
+  createdAt: string;
+}
+
+export interface ProjectStats {
+  totalTasks: number;
+  completedTasks: number;
+  overdueTasks: number;
+  completionPercent: number;
+  tasksByStatus: Array<{ label: string; count: number }>;
+  tasksByPriority: Array<{ label: string; count: number }>;
+  tasksByAssignee: Array<{ userId: string; email: string; count: number }>;
+  totalEstimatedHours: number;
+  completedEstimatedHours: number;
 }
 
 export interface Task {
@@ -33,7 +72,7 @@ export interface Task {
   estimatedHours?: number | null;
   priority: string;
   dependsOn?: string | null;
-  status: 'todo' | 'in_progress' | 'done';
+  status: string;
   projectId: string;
   parentTaskId?: string | null;
   createdAt: string;
@@ -43,6 +82,7 @@ export interface Task {
   archived?:     boolean;
   position?:     number | null;
   dueDate?:      string | null;
+  labels?:       Label[];
 }
 
 export interface TaskConnection {
@@ -72,6 +112,12 @@ export interface OrgUser {
   userId: string;
   email:  string;
   role:   string | null;
+}
+
+export interface Label {
+  labelId: string;
+  name: string;
+  color: string;
 }
 
 export interface SubtaskPreview {
@@ -113,4 +159,14 @@ export interface SprintPlanItem {
   name:       string;
   taskIds:    string[];
   totalHours: number;
+}
+
+export interface Notification {
+  notificationId: string;
+  type: string;
+  title: string;
+  body?: string | null;
+  linkUrl?: string | null;
+  isRead: boolean;
+  createdAt: string;
 }

@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { gql } from '../api/client';
-import type { Task, TaskConnection, TaskPlanPreview, Sprint, OrgUser, CloseSprintResult } from '../types';
+import { useAuth } from '../auth/context';
+import type { Task, TaskConnection, TaskPlanPreview, Sprint, OrgUser, CloseSprintResult, Project, Comment, Activity, ProjectStats, Label } from '../types';
 import { TASK_FIELDS, columnToStatus, statusToColumn } from '../utils/taskHelpers';
 
 const VIEW_KEY = 'task-toad-view';
@@ -10,6 +11,7 @@ export interface ProjectData {
   projectId: string | undefined;
 
   // State
+  project: Project | null;
   tasks: Task[];
   hasMore: boolean;
   loading: boolean;
@@ -26,7 +28,7 @@ export interface ProjectData {
   summarizing: boolean;
   generatingInstructions: string | null;
   isGenerating: boolean;
-  view: 'backlog' | 'board';
+  view: 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar';
   editingTitle: boolean;
   editTitleValue: string;
   showAddForm: boolean;
@@ -36,13 +38,19 @@ export interface ProjectData {
   editingSprint: Sprint | null;
   showSprintPlanModal: boolean;
   closeSprintId: string | null;
+  comments: Record<string, Comment[]>;
+  taskActivities: Record<string, Activity[]>;
+  dashboardStats: ProjectStats | null;
+  labels: Label[];
+  selectedTaskIds: Set<string>;
+  projectStatuses: string[];
 
   // Actions
   loadTasks: () => Promise<Task[]>;
   loadMoreTasks: () => Promise<void>;
   selectTask: (task: Task) => void;
-  handleStatusChange: (taskId: string, status: Task['status']) => Promise<void>;
-  handleSubtaskStatusChange: (parentTaskId: string, taskId: string, status: Task['status']) => Promise<void>;
+  handleStatusChange: (taskId: string, status: string) => Promise<void>;
+  handleSubtaskStatusChange: (parentTaskId: string, taskId: string, status: string) => Promise<void>;
   handleSprintColumnChange: (taskId: string, sprintColumn: string) => Promise<void>;
   handleAssignSprint: (taskId: string, sprintId: string | null) => Promise<void>;
   handleAssignUser: (taskId: string, assigneeId: string | null) => Promise<void>;
@@ -61,7 +69,20 @@ export interface ProjectData {
   handleAddTask: (e: React.FormEvent) => Promise<void>;
   startEditTitle: (task: Task) => void;
   handleTitleSave: () => Promise<void>;
-  switchView: (v: 'backlog' | 'board') => void;
+  handleUpdateTask: (taskId: string, updates: { description?: string; instructions?: string }) => Promise<void>;
+  switchView: (v: 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar') => void;
+  handleUpdateProject: (data: { name?: string; description?: string; statuses?: string }) => Promise<void>;
+  handleUpdateDependencies: (taskId: string, dependsOnIds: string[]) => Promise<void>;
+  handleBulkUpdate: (taskIds: string[], updates: { status?: string; assigneeId?: string | null; sprintId?: string | null; archived?: boolean }) => Promise<void>;
+  handleArchiveTask: (taskId: string, archived: boolean) => Promise<void>;
+  handleCreateLabel: (name: string, color: string) => Promise<Label | null>;
+  handleDeleteLabel: (labelId: string) => Promise<void>;
+  handleAddTaskLabel: (taskId: string, labelId: string) => Promise<void>;
+  handleRemoveTaskLabel: (taskId: string, labelId: string) => Promise<void>;
+  handleCreateComment: (taskId: string, content: string, parentCommentId?: string) => Promise<void>;
+  handleUpdateComment: (commentId: string, content: string) => Promise<void>;
+  handleDeleteComment: (commentId: string, taskId: string) => Promise<void>;
+  loadDashboardStats: () => Promise<void>;
   setSelectedTask: React.Dispatch<React.SetStateAction<Task | null>>;
   setErr: React.Dispatch<React.SetStateAction<string | null>>;
   setSummary: React.Dispatch<React.SetStateAction<string | null>>;
@@ -75,6 +96,7 @@ export interface ProjectData {
   setEditingSprint: React.Dispatch<React.SetStateAction<Sprint | null>>;
   setShowSprintPlanModal: React.Dispatch<React.SetStateAction<boolean>>;
   setCloseSprintId: React.Dispatch<React.SetStateAction<string | null>>;
+  setSelectedTaskIds: React.Dispatch<React.SetStateAction<Set<string>>>;
 
   // Computed
   activeSprint: Sprint | undefined;
@@ -89,8 +111,10 @@ export function useProjectData(): ProjectData {
   const { projectId } = useParams<{ projectId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const locationState = location.state as { autoPreview?: boolean } | null;
 
+  const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [taskOffset, setTaskOffset] = useState(0);
@@ -103,9 +127,17 @@ export function useProjectData(): ProjectData {
   const [editingSprint, setEditingSprint] = useState<Sprint | null>(null);
   const [showSprintPlanModal, setShowSprintPlanModal] = useState(false);
   const [closeSprintId, setCloseSprintId] = useState<string | null>(null);
+  const [comments, setComments] = useState<Record<string, Comment[]>>({});
+  const [taskActivities, setTaskActivities] = useState<Record<string, Activity[]>>({});
+  const [dashboardStats, setDashboardStats] = useState<ProjectStats | null>(null);
+  const [labels, setLabels] = useState<Label[]>([]);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
 
   const stored = localStorage.getItem(VIEW_KEY);
-  const [view, setView] = useState<'backlog' | 'board'>(stored === 'board' ? 'board' : 'backlog');
+  const validViews = ['backlog', 'board', 'dashboard', 'table', 'calendar'];
+  const [view, setView] = useState<'backlog' | 'board' | 'dashboard' | 'table' | 'calendar'>(
+    validViews.includes(stored ?? '') ? (stored as 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar') : 'backlog'
+  );
 
   const [previewTasks, setPreviewTasks] = useState<TaskPlanPreview[] | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -130,6 +162,10 @@ export function useProjectData(): ProjectData {
   const isGenerating = previewLoading || summarizing || committing || generatingInstructions !== null;
   const isGeneratingRef = useRef(false);
   isGeneratingRef.current = isGenerating;
+
+  const projectStatuses: string[] = project
+    ? (() => { try { return JSON.parse(project.statuses) as string[]; } catch { return ['todo', 'in_progress', 'done']; } })()
+    : ['todo', 'in_progress', 'done'];
 
   // Block browser tab close / refresh during generation
   useEffect(() => {
@@ -166,6 +202,19 @@ export function useProjectData(): ProjectData {
   }, []);
 
   // --- Data loading ---
+
+  const loadProject = async () => {
+    if (!projectId) return;
+    try {
+      const data = await gql<{ project: Project | null }>(
+        `query Project($projectId: ID!) { project(projectId: $projectId) { projectId name description prompt statuses createdAt orgId archived } }`,
+        { projectId }
+      );
+      if (data.project) setProject(data.project);
+    } catch {
+      // ignore
+    }
+  };
 
   const loadTasks = async (): Promise<Task[]> => {
     if (!projectId) return [];
@@ -242,8 +291,56 @@ export function useProjectData(): ProjectData {
     }
   };
 
+  const loadLabels = async () => {
+    try {
+      const data = await gql<{ labels: Label[] }>(
+        `query Labels { labels { labelId name color } }`
+      );
+      setLabels(data.labels);
+    } catch {
+      // ignore
+    }
+  };
+
+  const loadComments = async (taskId: string) => {
+    try {
+      const data = await gql<{ comments: Comment[] }>(
+        `query Comments($taskId: ID!) { comments(taskId: $taskId) { commentId taskId userId userEmail parentCommentId content createdAt updatedAt replies { commentId taskId userId userEmail parentCommentId content createdAt updatedAt replies { commentId } } } }`,
+        { taskId }
+      );
+      setComments((prev) => ({ ...prev, [taskId]: data.comments }));
+    } catch {
+      // ignore
+    }
+  };
+
+  const loadTaskActivities = async (taskId: string) => {
+    try {
+      const data = await gql<{ activities: Activity[] }>(
+        `query Activities($taskId: ID!) { activities(taskId: $taskId, limit: 30) { activityId projectId taskId sprintId userId userEmail action field oldValue newValue createdAt } }`,
+        { taskId }
+      );
+      setTaskActivities((prev) => ({ ...prev, [taskId]: data.activities }));
+    } catch {
+      // ignore
+    }
+  };
+
+  const loadDashboardStats = async () => {
+    if (!projectId) return;
+    try {
+      const data = await gql<{ projectStats: ProjectStats }>(
+        `query ProjectStats($projectId: ID!) { projectStats(projectId: $projectId) { totalTasks completedTasks overdueTasks completionPercent tasksByStatus { label count } tasksByPriority { label count } tasksByAssignee { userId email count } totalEstimatedHours completedEstimatedHours } }`,
+        { projectId }
+      );
+      setDashboardStats(data.projectStats);
+    } catch {
+      // ignore
+    }
+  };
+
   useEffect(() => {
-    Promise.all([loadTasks(), loadSprints(), loadOrgUsers()]).then(([loadedTasks]) => {
+    Promise.all([loadProject(), loadTasks(), loadSprints(), loadOrgUsers(), loadLabels()]).then(([, loadedTasks]) => {
       if (
         locationState?.autoPreview &&
         loadedTasks.length === 0 &&
@@ -268,41 +365,45 @@ export function useProjectData(): ProjectData {
 
   // --- Event handlers ---
 
-  const switchView = (v: 'backlog' | 'board') => {
+  const switchView = (v: 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar') => {
     setView(v);
     localStorage.setItem(VIEW_KEY, v);
+    if (v === 'dashboard') loadDashboardStats();
   };
 
-  const handleStatusChange = async (taskId: string, status: Task['status']) => {
+  const handleStatusChange = async (taskId: string, status: string) => {
     const task = tasks.find((t) => t.taskId === taskId);
     const columns = task ? getTaskSprintColumns(task) : null;
     const newColumn = columns ? statusToColumn(status, columns) : undefined;
 
+    // Auto-assign if moving to in_progress and unassigned
+    const autoAssign = status === 'in_progress' && task && !task.assigneeId && user ? user.userId : undefined;
+
     setTasks((prev) => prev.map((t) =>
       t.taskId === taskId
-        ? { ...t, status, ...(newColumn !== undefined ? { sprintColumn: newColumn } : {}) }
+        ? { ...t, status, ...(newColumn !== undefined ? { sprintColumn: newColumn } : {}), ...(autoAssign ? { assigneeId: autoAssign } : {}) }
         : t
     ));
     if (selectedTask?.taskId === taskId) {
-      setSelectedTask((t) => t ? { ...t, status, ...(newColumn !== undefined ? { sprintColumn: newColumn } : {}) } : t);
+      setSelectedTask((t) => t ? { ...t, status, ...(newColumn !== undefined ? { sprintColumn: newColumn } : {}), ...(autoAssign ? { assigneeId: autoAssign } : {}) } : t);
     }
 
     try {
       await gql<{ updateTask: Task }>(
-        `mutation UpdateTask($taskId: ID!, $status: TaskStatus!${newColumn !== undefined ? ', $sprintColumn: String' : ''}) {
-          updateTask(taskId: $taskId, status: $status${newColumn !== undefined ? ', sprintColumn: $sprintColumn' : ''}) { taskId }
+        `mutation UpdateTask($taskId: ID!, $status: String!${newColumn !== undefined ? ', $sprintColumn: String' : ''}${autoAssign ? ', $assigneeId: ID' : ''}) {
+          updateTask(taskId: $taskId, status: $status${newColumn !== undefined ? ', sprintColumn: $sprintColumn' : ''}${autoAssign ? ', assigneeId: $assigneeId' : ''}) { taskId }
         }`,
-        { taskId, status, ...(newColumn !== undefined ? { sprintColumn: newColumn } : {}) }
+        { taskId, status, ...(newColumn !== undefined ? { sprintColumn: newColumn } : {}), ...(autoAssign ? { assigneeId: autoAssign } : {}) }
       );
     } catch {
       loadTasks();
     }
   };
 
-  const handleSubtaskStatusChange = async (parentTaskId: string, taskId: string, status: Task['status']) => {
+  const handleSubtaskStatusChange = async (parentTaskId: string, taskId: string, status: string) => {
     try {
       await gql<{ updateTask: Task }>(
-        `mutation UpdateTask($taskId: ID!, $status: TaskStatus!) {
+        `mutation UpdateTask($taskId: ID!, $status: String!) {
           updateTask(taskId: $taskId, status: $status) { taskId }
         }`,
         { taskId, status }
@@ -320,20 +421,25 @@ export function useProjectData(): ProjectData {
 
   const handleSprintColumnChange = async (taskId: string, sprintColumn: string) => {
     const newStatus = columnToStatus(sprintColumn);
+    const task = tasks.find((t) => t.taskId === taskId);
+
+    // Auto-assign if moving to in-progress column and unassigned
+    const autoAssign = newStatus === 'in_progress' && task && !task.assigneeId && user ? user.userId : undefined;
+
     setTasks((prev) => prev.map((t) =>
       t.taskId === taskId
-        ? { ...t, sprintColumn, ...(newStatus ? { status: newStatus } : {}) }
+        ? { ...t, sprintColumn, ...(newStatus ? { status: newStatus } : {}), ...(autoAssign ? { assigneeId: autoAssign } : {}) }
         : t
     ));
     if (selectedTask?.taskId === taskId) {
-      setSelectedTask((t) => t ? { ...t, sprintColumn, ...(newStatus ? { status: newStatus } : {}) } : t);
+      setSelectedTask((t) => t ? { ...t, sprintColumn, ...(newStatus ? { status: newStatus } : {}), ...(autoAssign ? { assigneeId: autoAssign } : {}) } : t);
     }
     try {
       await gql<{ updateTask: Task }>(
-        `mutation UpdateTask($taskId: ID!, $sprintColumn: String${newStatus ? ', $status: TaskStatus!' : ''}) {
-          updateTask(taskId: $taskId, sprintColumn: $sprintColumn${newStatus ? ', status: $status' : ''}) { taskId }
+        `mutation UpdateTask($taskId: ID!, $sprintColumn: String${newStatus ? ', $status: String!' : ''}${autoAssign ? ', $assigneeId: ID' : ''}) {
+          updateTask(taskId: $taskId, sprintColumn: $sprintColumn${newStatus ? ', status: $status' : ''}${autoAssign ? ', assigneeId: $assigneeId' : ''}) { taskId }
         }`,
-        { taskId, sprintColumn, ...(newStatus ? { status: newStatus } : {}) }
+        { taskId, sprintColumn, ...(newStatus ? { status: newStatus } : {}), ...(autoAssign ? { assigneeId: autoAssign } : {}) }
       );
     } catch {
       loadTasks();
@@ -499,6 +605,194 @@ export function useProjectData(): ProjectData {
       setTasks((prev) => prev.map((t) => t.sprintId === sprintId ? { ...t, sprintId: null, sprintColumn: null } : t));
     } catch (error) {
       setErr(error instanceof Error ? error.message : 'Failed to delete sprint');
+    }
+  };
+
+  // --- Project management ---
+
+  const handleUpdateProject = async (data: { name?: string; description?: string; statuses?: string }) => {
+    if (!projectId) return;
+    try {
+      const result = await gql<{ updateProject: Project }>(
+        `mutation UpdateProject($projectId: ID!, $name: String, $description: String, $statuses: String) {
+          updateProject(projectId: $projectId, name: $name, description: $description, statuses: $statuses) {
+            projectId name description prompt statuses createdAt orgId archived
+          }
+        }`,
+        { projectId, ...data }
+      );
+      setProject(result.updateProject);
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Failed to update project');
+    }
+  };
+
+  // --- Dependencies ---
+
+  const handleUpdateDependencies = async (taskId: string, dependsOnIds: string[]) => {
+    const depValue = dependsOnIds.length > 0 ? JSON.stringify(dependsOnIds) : null;
+    setTasks((prev) => prev.map((t) => t.taskId === taskId ? { ...t, dependsOn: depValue } : t));
+    if (selectedTask?.taskId === taskId) {
+      setSelectedTask((t) => t ? { ...t, dependsOn: depValue } : t);
+    }
+    try {
+      await gql<{ updateTask: Task }>(
+        `mutation UpdateTask($taskId: ID!, $dependsOn: String) {
+          updateTask(taskId: $taskId, dependsOn: $dependsOn) { taskId }
+        }`,
+        { taskId, dependsOn: depValue }
+      );
+    } catch {
+      loadTasks();
+    }
+  };
+
+  // --- Bulk actions ---
+
+  const handleBulkUpdate = async (taskIds: string[], updates: { status?: string; assigneeId?: string | null; sprintId?: string | null; archived?: boolean }) => {
+    // Optimistic update
+    setTasks((prev) => prev.map((t) =>
+      taskIds.includes(t.taskId) ? { ...t, ...updates } : t
+    ));
+    try {
+      await gql<{ bulkUpdateTasks: Task[] }>(
+        `mutation BulkUpdateTasks($taskIds: [ID!]!, $status: String, $assigneeId: ID, $sprintId: ID, $archived: Boolean) {
+          bulkUpdateTasks(taskIds: $taskIds, status: $status, assigneeId: $assigneeId, sprintId: $sprintId, archived: $archived) { ${TASK_FIELDS} }
+        }`,
+        { taskIds, ...updates }
+      );
+      setSelectedTaskIds(new Set());
+    } catch {
+      loadTasks();
+    }
+  };
+
+  const handleArchiveTask = async (taskId: string, archived: boolean) => {
+    // Optimistically update
+    setTasks((prev) => prev.map((t) => t.taskId === taskId ? { ...t, archived } : t));
+    if (selectedTask?.taskId === taskId) {
+      if (archived) setSelectedTask(null);
+      else setSelectedTask((t) => t ? { ...t, archived } : t);
+    }
+    try {
+      await gql<{ updateTask: Task }>(
+        `mutation UpdateTask($taskId: ID!, $archived: Boolean) {
+          updateTask(taskId: $taskId, archived: $archived) { taskId }
+        }`,
+        { taskId, archived }
+      );
+    } catch {
+      loadTasks();
+    }
+  };
+
+  // --- Labels ---
+
+  const handleCreateLabel = async (name: string, color: string): Promise<Label | null> => {
+    try {
+      const data = await gql<{ createLabel: Label }>(
+        `mutation CreateLabel($name: String!, $color: String) { createLabel(name: $name, color: $color) { labelId name color } }`,
+        { name, color }
+      );
+      setLabels((prev) => [...prev, data.createLabel].sort((a, b) => a.name.localeCompare(b.name)));
+      return data.createLabel;
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Failed to create label');
+      return null;
+    }
+  };
+
+  const handleDeleteLabel = async (labelId: string) => {
+    try {
+      await gql<{ deleteLabel: boolean }>(
+        `mutation DeleteLabel($labelId: ID!) { deleteLabel(labelId: $labelId) }`,
+        { labelId }
+      );
+      setLabels((prev) => prev.filter((l) => l.labelId !== labelId));
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Failed to delete label');
+    }
+  };
+
+  const handleAddTaskLabel = async (taskId: string, labelId: string) => {
+    const label = labels.find((l) => l.labelId === labelId);
+    if (!label) return;
+    // Optimistic update
+    setTasks((prev) => prev.map((t) =>
+      t.taskId === taskId ? { ...t, labels: [...(t.labels ?? []), label] } : t
+    ));
+    if (selectedTask?.taskId === taskId) {
+      setSelectedTask((t) => t ? { ...t, labels: [...(t.labels ?? []), label] } : t);
+    }
+    try {
+      await gql<{ addTaskLabel: Task }>(
+        `mutation AddTaskLabel($taskId: ID!, $labelId: ID!) { addTaskLabel(taskId: $taskId, labelId: $labelId) { taskId } }`,
+        { taskId, labelId }
+      );
+    } catch {
+      loadTasks();
+    }
+  };
+
+  const handleRemoveTaskLabel = async (taskId: string, labelId: string) => {
+    setTasks((prev) => prev.map((t) =>
+      t.taskId === taskId ? { ...t, labels: (t.labels ?? []).filter((l) => l.labelId !== labelId) } : t
+    ));
+    if (selectedTask?.taskId === taskId) {
+      setSelectedTask((t) => t ? { ...t, labels: (t.labels ?? []).filter((l) => l.labelId !== labelId) } : t);
+    }
+    try {
+      await gql<{ removeTaskLabel: Task }>(
+        `mutation RemoveTaskLabel($taskId: ID!, $labelId: ID!) { removeTaskLabel(taskId: $taskId, labelId: $labelId) { taskId } }`,
+        { taskId, labelId }
+      );
+    } catch {
+      loadTasks();
+    }
+  };
+
+  // --- Comments ---
+
+  const handleCreateComment = async (taskId: string, content: string, parentCommentId?: string) => {
+    try {
+      await gql<{ createComment: Comment }>(
+        `mutation CreateComment($taskId: ID!, $content: String!, $parentCommentId: ID) {
+          createComment(taskId: $taskId, content: $content, parentCommentId: $parentCommentId) {
+            commentId taskId userId userEmail parentCommentId content createdAt updatedAt replies { commentId }
+          }
+        }`,
+        { taskId, content, parentCommentId: parentCommentId ?? null }
+      );
+      // Reload comments for this task
+      await loadComments(taskId);
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Failed to create comment');
+    }
+  };
+
+  const handleUpdateComment = async (commentId: string, content: string) => {
+    try {
+      await gql<{ updateComment: Comment }>(
+        `mutation UpdateComment($commentId: ID!, $content: String!) {
+          updateComment(commentId: $commentId, content: $content) { commentId content updatedAt }
+        }`,
+        { commentId, content }
+      );
+      if (selectedTask) await loadComments(selectedTask.taskId);
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Failed to update comment');
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string, taskId: string) => {
+    try {
+      await gql<{ deleteComment: boolean }>(
+        `mutation DeleteComment($commentId: ID!) { deleteComment(commentId: $commentId) }`,
+        { commentId }
+      );
+      await loadComments(taskId);
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Failed to delete comment');
     }
   };
 
@@ -676,33 +970,62 @@ export function useProjectData(): ProjectData {
     }
   };
 
+  const handleUpdateTask = async (taskId: string, updates: { description?: string; instructions?: string }) => {
+    const mutationParts: string[] = ['$taskId: ID!'];
+    const vars: Record<string, unknown> = { taskId };
+    if (updates.description !== undefined) { mutationParts.push('$description: String'); vars.description = updates.description; }
+    if (updates.instructions !== undefined) { mutationParts.push('$instructions: String'); vars.instructions = updates.instructions; }
+
+    const argsPart = Object.keys(updates).map((k) => `${k}: $${k}`).join(', ');
+
+    setTasks((prev) => prev.map((t) => t.taskId === taskId ? { ...t, ...updates } : t));
+    if (selectedTask?.taskId === taskId) setSelectedTask((t) => t ? { ...t, ...updates } : t);
+
+    try {
+      await gql<{ updateTask: Task }>(
+        `mutation UpdateTask(${mutationParts.join(', ')}) { updateTask(taskId: $taskId, ${argsPart}) { taskId } }`,
+        vars
+      );
+    } catch {
+      loadTasks();
+    }
+  };
+
   const selectTask = (task: Task) => {
     setSelectedTask(task);
     loadSubtasks(task.taskId);
+    loadComments(task.taskId);
+    loadTaskActivities(task.taskId);
   };
 
   // --- Computed ---
 
   const activeSprint = sprints.find((s) => s.isActive);
-  const rootTasks = tasks.filter((t) => !t.parentTaskId && !t.archived);
+  const rootTasks = tasks.filter((t) => !t.parentTaskId);
 
   return {
     projectId,
-    tasks, hasMore, loading, err, selectedTask, subtasks, sprints, orgUsers,
+    project, tasks, hasMore, loading, err, selectedTask, subtasks, sprints, orgUsers, labels,
     previewTasks, previewLoading, previewError, committing, summary, summarizing,
     generatingInstructions, isGenerating, view, editingTitle, editTitleValue,
     showAddForm, newTaskTitle, addErr, showSprintModal, editingSprint,
-    showSprintPlanModal, closeSprintId,
+    showSprintPlanModal, closeSprintId, comments, taskActivities, dashboardStats,
+    selectedTaskIds, projectStatuses,
     loadTasks, loadMoreTasks, selectTask,
     handleStatusChange, handleSubtaskStatusChange, handleSprintColumnChange,
     handleAssignSprint, handleAssignUser, handleDueDateChange, handleReorderTask,
     handleActivateSprint, handleCreateSprint, handleSprintPlanCreated,
     handleSprintClosed, handleSprintUpdated, handleDeleteSprint,
     openPreview, handleCommitPlan, handleSummarize, handleGenerateInstructions,
-    handleAddTask, startEditTitle, handleTitleSave, switchView,
+    handleAddTask, startEditTitle, handleTitleSave, handleUpdateTask, switchView,
+    handleUpdateProject, handleUpdateDependencies, handleBulkUpdate, handleArchiveTask,
+    handleCreateLabel, handleDeleteLabel, handleAddTaskLabel, handleRemoveTaskLabel,
+    handleCreateComment, handleUpdateComment, handleDeleteComment,
+    loadDashboardStats,
     setSelectedTask, setErr, setSummary, setPreviewTasks, setPreviewError,
     setShowAddForm, setNewTaskTitle, setEditTitleValue, setEditingTitle,
     setShowSprintModal, setEditingSprint, setShowSprintPlanModal, setCloseSprintId,
+    setSelectedTaskIds,
     activeSprint, rootTasks,
     titleEditRef, abortRef,
   };

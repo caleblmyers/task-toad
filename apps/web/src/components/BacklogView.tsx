@@ -41,12 +41,20 @@ function computeDropIndex(clientY: number, container: HTMLElement): number {
   return rows.length;
 }
 
+function parseDepsCount(raw?: string | null): number {
+  if (!raw) return 0;
+  try { return (JSON.parse(raw) as string[]).length; } catch { return 0; }
+}
+
 interface BacklogViewProps {
   tasks: Task[];
   sprints: Sprint[];
   orgUsers: OrgUser[];
   selectedTask: Task | null;
+  selectedTaskIds: Set<string>;
   onSelectTask: (task: Task) => void;
+  onToggleTaskId: (taskId: string) => void;
+  onToggleAll: (taskIds: string[]) => void;
   onCreateSprint: () => void;
   onEditSprint: (sprint: Sprint) => void;
   onDeleteSprint: (sprintId: string) => void;
@@ -57,6 +65,8 @@ interface BacklogViewProps {
   onReorderTask: (taskId: string, beforeId: string | null, afterId: string | null, targetSprintId: string | null) => void;
   hasMore: boolean;
   onLoadMore: () => void;
+  showArchived?: boolean;
+  onToggleShowArchived?: () => void;
 }
 
 function TaskRow({
@@ -65,15 +75,22 @@ function TaskRow({
   selectedTask,
   onSelectTask,
   onDragStart,
+  isChecked,
+  showCheckboxes,
+  onToggle,
 }: {
   task: Task;
   orgUsers: OrgUser[];
   selectedTask: Task | null;
   onSelectTask: (task: Task) => void;
   onDragStart: (taskId: string) => void;
+  isChecked: boolean;
+  showCheckboxes: boolean;
+  onToggle: () => void;
 }) {
   const isSelected = selectedTask?.taskId === task.taskId;
   const assignee = orgUsers.find((u) => u.userId === task.assigneeId);
+  const depCount = parseDepsCount(task.dependsOn);
 
   return (
     <div
@@ -89,12 +106,27 @@ function TaskRow({
         onDragStart(task.taskId);
         e.dataTransfer.effectAllowed = 'move';
       }}
-      className={`w-full text-left px-3 py-2 rounded-lg border border-transparent hover:bg-slate-50 hover:border-slate-200 transition-colors flex items-center gap-2 cursor-grab active:cursor-grabbing ${
+      className={`w-full text-left px-3 py-2 rounded-lg border border-transparent hover:bg-slate-50 hover:border-slate-200 transition-colors flex items-center gap-2 cursor-grab active:cursor-grabbing group ${
         isSelected ? 'bg-blue-50 border-blue-200' : ''
-      }`}
+      } ${task.archived ? 'opacity-50' : ''}`}
     >
+      {/* Checkbox */}
+      <input
+        type="checkbox"
+        checked={isChecked}
+        onChange={(e) => { e.stopPropagation(); onToggle(); }}
+        onClick={(e) => e.stopPropagation()}
+        className={`w-3.5 h-3.5 rounded border-slate-300 text-slate-600 flex-shrink-0 cursor-pointer ${
+          showCheckboxes ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+        } transition-opacity`}
+      />
       <span className="flex-1 text-sm text-slate-800 leading-snug">{task.title}</span>
       <div className="flex items-center gap-1.5 flex-shrink-0">
+        {depCount > 0 && (
+          <span className="text-xs text-slate-400" title={`${depCount} dependenc${depCount === 1 ? 'y' : 'ies'}`}>
+            🔗{depCount}
+          </span>
+        )}
         {task.dueDate && (
           <span className={`text-xs px-1.5 py-0.5 rounded ${dueDateColor(task.dueDate)}`}>
             {task.dueDate}
@@ -104,6 +136,21 @@ function TaskRow({
           <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${priorityStyles[task.priority] ?? ''}`}>
             {task.priority}
           </span>
+        )}
+        {task.labels && task.labels.length > 0 && (
+          <div className="flex items-center gap-0.5">
+            {task.labels.slice(0, 3).map((l) => (
+              <span
+                key={l.labelId}
+                className="w-2 h-2 rounded-full flex-shrink-0"
+                style={{ backgroundColor: l.color }}
+                title={l.name}
+              />
+            ))}
+            {task.labels.length > 3 && (
+              <span className="text-[10px] text-slate-400">+{task.labels.length - 3}</span>
+            )}
+          </div>
         )}
         {task.estimatedHours != null && (
           <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
@@ -133,7 +180,10 @@ export default function BacklogView({
   sprints,
   orgUsers,
   selectedTask,
+  selectedTaskIds,
   onSelectTask,
+  onToggleTaskId,
+  onToggleAll,
   onCreateSprint,
   onEditSprint,
   onDeleteSprint,
@@ -143,12 +193,15 @@ export default function BacklogView({
   onReorderTask,
   hasMore,
   onLoadMore,
+  showArchived,
+  onToggleShowArchived,
 }: BacklogViewProps) {
   const openSprints = sprints.filter((s) => !s.closedAt);
   const bySprint: Record<string, Task[]> = Object.fromEntries(
     openSprints.map((s) => [s.sprintId, sortTasks(tasks.filter((t) => t.sprintId === s.sprintId))])
   );
   const backlog = sortTasks(tasks.filter((t) => !t.sprintId));
+  const showCheckboxes = selectedTaskIds.size > 0;
 
   // DnD state
   const draggedId = useRef<string | null>(null);
@@ -195,7 +248,6 @@ export default function BacklogView({
 
     if (!taskId || !info || info.sectionId !== sectionId) return;
 
-    // Build list without dragged task for position calculation
     const withoutDragged = sectionTasks.filter((t) => t.taskId !== taskId);
     const beforeTask = withoutDragged[info.index - 1] ?? null;
     const afterTask = withoutDragged[info.index] ?? null;
@@ -221,6 +273,9 @@ export default function BacklogView({
             selectedTask={selectedTask}
             onSelectTask={onSelectTask}
             onDragStart={handleDragStart}
+            isChecked={selectedTaskIds.has(task.taskId)}
+            showCheckboxes={showCheckboxes}
+            onToggle={() => onToggleTaskId(task.taskId)}
           />
           {renderDropIndicator(sectionId, i + 1)}
         </div>
@@ -228,12 +283,38 @@ export default function BacklogView({
     </>
   );
 
+  const renderSectionCheckbox = (sectionTasks: Task[]) => {
+    const ids = sectionTasks.map((t) => t.taskId);
+    const allChecked = ids.length > 0 && ids.every((id) => selectedTaskIds.has(id));
+    return (
+      <input
+        type="checkbox"
+        checked={allChecked}
+        onChange={() => onToggleAll(ids)}
+        className={`w-3.5 h-3.5 rounded border-slate-300 text-slate-600 cursor-pointer ${
+          showCheckboxes ? 'opacity-100' : 'opacity-0 hover:opacity-100'
+        } transition-opacity`}
+      />
+    );
+  };
+
   return (
     <div className="flex-1 overflow-y-auto px-6 py-4">
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Backlog</h2>
+          {onToggleShowArchived && (
+            <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer ml-2">
+              <input
+                type="checkbox"
+                checked={showArchived ?? false}
+                onChange={onToggleShowArchived}
+                className="w-3 h-3 rounded border-slate-300"
+              />
+              Show archived
+            </label>
+          )}
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -265,7 +346,6 @@ export default function BacklogView({
             ? `${sprint.startDate} → ${sprint.endDate}`
             : sprint.startDate ? `from ${sprint.startDate}` : null;
 
-          // Sprint velocity
           const doneTasks = sprintTasks.filter((t) => t.status === 'done');
           const totalEst = sprintTasks.reduce((s, t) => s + (t.estimatedHours ?? 0), 0);
           const doneEst = doneTasks.reduce((s, t) => s + (t.estimatedHours ?? 0), 0);
@@ -278,6 +358,7 @@ export default function BacklogView({
             <div key={sprint.sprintId} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200">
                 <div className="flex items-center gap-2">
+                  {renderSectionCheckbox(sprintTasks)}
                   <span className="font-semibold text-slate-800 text-sm">{sprint.name}</span>
                   <span className="text-xs text-slate-400">({countLabel})</span>
                   {dateRange && <span className="text-xs text-slate-400">{dateRange}</span>}
@@ -349,9 +430,10 @@ export default function BacklogView({
 
         {/* Backlog section */}
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-          <div className="px-4 py-3 bg-slate-50 border-b border-slate-200">
+          <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
+            {renderSectionCheckbox(backlog)}
             <span className="font-semibold text-slate-800 text-sm">Backlog (unassigned)</span>
-            <span className="text-xs text-slate-400 ml-2">({backlog.length} tasks)</span>
+            <span className="text-xs text-slate-400">({backlog.length} tasks)</span>
           </div>
           <div
             ref={(el) => { if (el) containerRefs.current.set(null, el); }}

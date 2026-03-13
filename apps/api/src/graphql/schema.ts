@@ -14,6 +14,8 @@ import {
   summarizeProject as aiSummarizeProject,
   planSprints as aiPlanSprints,
 } from '../ai/index.js';
+import { logActivity } from '../utils/activity.js';
+import { createNotification } from '../utils/notification.js';
 
 function requireAuth(context: Context) {
   if (!context.user) {
@@ -90,6 +92,7 @@ export const schema = createSchema<Context>({
       name: String!
       description: String
       prompt: String
+      statuses: String!
       createdAt: String!
       orgId: ID!
       archived: Boolean!
@@ -104,7 +107,7 @@ export const schema = createSchema<Context>({
       estimatedHours: Float
       priority: String!
       dependsOn: String
-      status: TaskStatus!
+      status: String!
       projectId: ID!
       parentTaskId: ID
       createdAt: String!
@@ -114,6 +117,7 @@ export const schema = createSchema<Context>({
       archived: Boolean!
       position: Float
       dueDate: String
+      labels: [Label!]!
     }
 
     type TaskConnection {
@@ -199,14 +203,107 @@ export const schema = createSchema<Context>({
       subtasks: [SubtaskInput!]!
     }
 
-    enum TaskStatus {
-      todo
-      in_progress
-      done
+    type Comment {
+      commentId: ID!
+      taskId: ID!
+      userId: ID!
+      userEmail: String!
+      parentCommentId: ID
+      content: String!
+      createdAt: String!
+      updatedAt: String!
+      replies: [Comment!]!
+    }
+
+    type Activity {
+      activityId: ID!
+      projectId: ID
+      taskId: ID
+      sprintId: ID
+      userId: ID!
+      userEmail: String!
+      action: String!
+      field: String
+      oldValue: String
+      newValue: String
+      createdAt: String!
+    }
+
+    type Label {
+      labelId: ID!
+      name: String!
+      color: String!
+    }
+
+    type Notification {
+      notificationId: ID!
+      type: String!
+      title: String!
+      body: String
+      linkUrl: String
+      isRead: Boolean!
+      createdAt: String!
+    }
+
+    type CountEntry {
+      label: String!
+      count: Int!
+    }
+
+    type AssigneeCount {
+      userId: ID!
+      email: String!
+      count: Int!
+    }
+
+    type ProjectStats {
+      totalTasks: Int!
+      completedTasks: Int!
+      overdueTasks: Int!
+      completionPercent: Float!
+      tasksByStatus: [CountEntry!]!
+      tasksByPriority: [CountEntry!]!
+      tasksByAssignee: [AssigneeCount!]!
+      totalEstimatedHours: Float!
+      completedEstimatedHours: Float!
+    }
+
+    type SprintVelocityPoint {
+      sprintId: ID!
+      sprintName: String!
+      completedTasks: Int!
+      completedHours: Float!
+      totalTasks: Int!
+      totalHours: Float!
+    }
+
+    type BurndownDay {
+      date: String!
+      remaining: Int!
+      completed: Int!
+      added: Int!
+    }
+
+    type SprintBurndownData {
+      days: [BurndownDay!]!
+      totalScope: Int!
+      sprintName: String!
+      startDate: String!
+      endDate: String!
     }
 
     type AuthPayload {
       token: String!
+    }
+
+    type TaskSearchHit {
+      task: Task!
+      projectName: String!
+    }
+
+    type GlobalSearchResult {
+      tasks: [TaskSearchHit!]!
+      projects: [Project!]!
     }
 
     type Query {
@@ -218,6 +315,15 @@ export const schema = createSchema<Context>({
       sprints(projectId: ID!): [Sprint!]!
       orgUsers: [OrgUser!]!
       orgInvites: [OrgInvite!]!
+      comments(taskId: ID!): [Comment!]!
+      activities(projectId: ID, taskId: ID, limit: Int): [Activity!]!
+      projectStats(projectId: ID!): ProjectStats!
+      labels: [Label!]!
+      notifications(unreadOnly: Boolean, limit: Int): [Notification!]!
+      unreadNotificationCount: Int!
+      sprintVelocity(projectId: ID!): [SprintVelocityPoint!]!
+      sprintBurndown(sprintId: ID!): SprintBurndownData!
+      globalSearch(query: String!, limit: Int): GlobalSearchResult!
     }
 
     type Mutation {
@@ -236,9 +342,20 @@ export const schema = createSchema<Context>({
       createOrg(name: String!, apiKey: String): Org!
       setOrgApiKey(apiKey: String!): Org!
       createProject(name: String!): Project!
+      updateProject(projectId: ID!, name: String, description: String, statuses: String): Project!
       archiveProject(projectId: ID!, archived: Boolean!): Project!
-      createTask(projectId: ID!, title: String!, status: TaskStatus): Task!
-      updateTask(taskId: ID!, title: String, status: TaskStatus, sprintId: ID, sprintColumn: String, assigneeId: ID, dueDate: String, position: Float): Task!
+      createTask(projectId: ID!, title: String!, status: String): Task!
+      updateTask(taskId: ID!, title: String, status: String, description: String, instructions: String, dependsOn: String, sprintId: ID, sprintColumn: String, assigneeId: ID, dueDate: String, position: Float, archived: Boolean): Task!
+      bulkUpdateTasks(taskIds: [ID!]!, status: String, assigneeId: ID, sprintId: ID, archived: Boolean): [Task!]!
+
+      createComment(taskId: ID!, content: String!, parentCommentId: ID): Comment!
+      updateComment(commentId: ID!, content: String!): Comment!
+      deleteComment(commentId: ID!): Boolean!
+
+      createLabel(name: String!, color: String): Label!
+      deleteLabel(labelId: ID!): Boolean!
+      addTaskLabel(taskId: ID!, labelId: ID!): Task!
+      removeTaskLabel(taskId: ID!, labelId: ID!): Task!
 
       createSprint(projectId: ID!, name: String!, columns: String, startDate: String, endDate: String): Sprint!
       updateSprint(sprintId: ID!, name: String, columns: String, isActive: Boolean, startDate: String, endDate: String): Sprint!
@@ -256,6 +373,9 @@ export const schema = createSchema<Context>({
       expandTask(taskId: ID!, context: String): [Task!]!
       generateTaskInstructions(taskId: ID!): Task!
       summarizeProject(projectId: ID!): String!
+
+      markNotificationRead(notificationId: ID!): Notification!
+      markAllNotificationsRead: Boolean!
     }
   `,
   resolvers: {
@@ -284,9 +404,23 @@ export const schema = createSchema<Context>({
       },
     },
 
+    Task: {
+      labels: async (parent: { taskId: string }, _args: unknown, context: Context) => {
+        const taskLabels = await context.prisma.taskLabel.findMany({
+          where: { taskId: parent.taskId },
+          include: { label: true },
+        });
+        return taskLabels.map((tl) => tl.label);
+      },
+    },
+
     Sprint: {
       closedAt: (parent: { closedAt: Date | null }) =>
         parent.closedAt ? parent.closedAt.toISOString() : null,
+    },
+
+    Notification: {
+      createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
     },
 
     Query: {
@@ -368,6 +502,248 @@ export const schema = createSchema<Context>({
           context.prisma.task.count({ where }),
         ]);
         return { tasks, hasMore: offset + limit < total, total };
+      },
+
+      comments: async (_parent, args: { taskId: string }, context) => {
+        const user = requireOrg(context);
+        const task = await context.prisma.task.findUnique({ where: { taskId: args.taskId } });
+        if (!task || task.orgId !== user.orgId) {
+          throw new GraphQLError('Task not found', { extensions: { code: 'NOT_FOUND' } });
+        }
+        const comments = await context.prisma.comment.findMany({
+          where: { taskId: args.taskId, parentCommentId: null },
+          include: { user: { select: { email: true } }, replies: { include: { user: { select: { email: true } } }, orderBy: { createdAt: 'asc' } } },
+          orderBy: { createdAt: 'asc' },
+        });
+        return comments.map((c) => ({
+          ...c,
+          userEmail: c.user.email,
+          createdAt: c.createdAt.toISOString(),
+          updatedAt: c.updatedAt.toISOString(),
+          replies: c.replies.map((r) => ({
+            ...r,
+            userEmail: r.user.email,
+            createdAt: r.createdAt.toISOString(),
+            updatedAt: r.updatedAt.toISOString(),
+            replies: [],
+          })),
+        }));
+      },
+
+      activities: async (_parent, args: { projectId?: string | null; taskId?: string | null; limit?: number | null }, context) => {
+        const user = requireOrg(context);
+        const where: Record<string, unknown> = { orgId: user.orgId };
+        if (args.projectId) where.projectId = args.projectId;
+        if (args.taskId) where.taskId = args.taskId;
+        const activities = await context.prisma.activity.findMany({
+          where,
+          include: { user: { select: { email: true } } },
+          orderBy: { createdAt: 'desc' },
+          take: args.limit ?? 50,
+        });
+        return activities.map((a) => ({
+          ...a,
+          userEmail: a.user.email,
+          createdAt: a.createdAt.toISOString(),
+        }));
+      },
+
+      projectStats: async (_parent, args: { projectId: string }, context) => {
+        await requireProjectAccess(context, args.projectId);
+        const tasks = await context.prisma.task.findMany({
+          where: { projectId: args.projectId, parentTaskId: null, archived: false },
+          select: { status: true, priority: true, assigneeId: true, estimatedHours: true, dueDate: true },
+        });
+        const orgUsers = await context.prisma.user.findMany({
+          where: { orgId: context.user!.orgId! },
+          select: { userId: true, email: true },
+        });
+        const userMap = new Map(orgUsers.map((u) => [u.userId, u.email]));
+
+        const totalTasks = tasks.length;
+        const completedTasks = tasks.filter((t) => t.status === 'done').length;
+        const today = new Date().toISOString().slice(0, 10);
+        const overdueTasks = tasks.filter((t) => t.dueDate && t.dueDate < today && t.status !== 'done').length;
+        const completionPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+        const statusMap = new Map<string, number>();
+        const priorityMap = new Map<string, number>();
+        const assigneeMap = new Map<string, number>();
+        let totalEstimatedHours = 0;
+        let completedEstimatedHours = 0;
+
+        for (const t of tasks) {
+          statusMap.set(t.status, (statusMap.get(t.status) ?? 0) + 1);
+          priorityMap.set(t.priority, (priorityMap.get(t.priority) ?? 0) + 1);
+          if (t.assigneeId) {
+            assigneeMap.set(t.assigneeId, (assigneeMap.get(t.assigneeId) ?? 0) + 1);
+          }
+          totalEstimatedHours += t.estimatedHours ?? 0;
+          if (t.status === 'done') completedEstimatedHours += t.estimatedHours ?? 0;
+        }
+
+        return {
+          totalTasks,
+          completedTasks,
+          overdueTasks,
+          completionPercent,
+          tasksByStatus: Array.from(statusMap, ([label, count]) => ({ label, count })),
+          tasksByPriority: Array.from(priorityMap, ([label, count]) => ({ label, count })),
+          tasksByAssignee: Array.from(assigneeMap, ([userId, count]) => ({
+            userId,
+            email: userMap.get(userId) ?? 'Unknown',
+            count,
+          })),
+          totalEstimatedHours,
+          completedEstimatedHours,
+        };
+      },
+
+      labels: async (_parent, _args, context) => {
+        const user = requireOrg(context);
+        return context.prisma.label.findMany({
+          where: { orgId: user.orgId },
+          orderBy: { name: 'asc' },
+        });
+      },
+
+      notifications: async (_parent, args: { unreadOnly?: boolean | null; limit?: number | null }, context) => {
+        const user = requireOrg(context);
+        return context.prisma.notification.findMany({
+          where: {
+            userId: user.userId,
+            orgId: user.orgId,
+            ...(args.unreadOnly ? { isRead: false } : {}),
+          },
+          orderBy: { createdAt: 'desc' },
+          take: args.limit ?? 50,
+        });
+      },
+
+      unreadNotificationCount: async (_parent, _args, context) => {
+        const user = requireOrg(context);
+        return context.prisma.notification.count({
+          where: { userId: user.userId, orgId: user.orgId, isRead: false },
+        });
+      },
+
+      sprintVelocity: async (_parent, args: { projectId: string }, context) => {
+        const { user } = await requireProjectAccess(context, args.projectId);
+        const closedSprints = await context.prisma.sprint.findMany({
+          where: { projectId: args.projectId, orgId: user.orgId, closedAt: { not: null } },
+          orderBy: { closedAt: 'asc' },
+        });
+        const results = [];
+        for (const sprint of closedSprints) {
+          const tasks = await context.prisma.task.findMany({
+            where: { sprintId: sprint.sprintId, parentTaskId: null },
+          });
+          const doneTasks = tasks.filter((t) => t.status === 'done');
+          results.push({
+            sprintId: sprint.sprintId,
+            sprintName: sprint.name,
+            completedTasks: doneTasks.length,
+            completedHours: doneTasks.reduce((s, t) => s + (t.estimatedHours ?? 0), 0),
+            totalTasks: tasks.length,
+            totalHours: tasks.reduce((s, t) => s + (t.estimatedHours ?? 0), 0),
+          });
+        }
+        return results;
+      },
+
+      sprintBurndown: async (_parent, args: { sprintId: string }, context) => {
+        const user = requireOrg(context);
+        const sprint = await context.prisma.sprint.findUnique({ where: { sprintId: args.sprintId } });
+        if (!sprint || sprint.orgId !== user.orgId) {
+          throw new GraphQLError('Sprint not found', { extensions: { code: 'NOT_FOUND' } });
+        }
+        if (!sprint.startDate || !sprint.endDate) {
+          throw new GraphQLError('Sprint must have start and end dates', { extensions: { code: 'BAD_USER_INPUT' } });
+        }
+
+        const tasks = await context.prisma.task.findMany({
+          where: { sprintId: sprint.sprintId, parentTaskId: null },
+        });
+        const totalScope = tasks.length;
+
+        // Get status change activities for these tasks
+        const taskIds = tasks.map((t) => t.taskId);
+        const activities = await context.prisma.activity.findMany({
+          where: {
+            taskId: { in: taskIds },
+            action: 'task.updated',
+            field: 'status',
+          },
+          orderBy: { createdAt: 'asc' },
+        });
+
+        // Walk through each day
+        const startDate = new Date(sprint.startDate + 'T00:00:00');
+        const endDateOrToday = sprint.closedAt
+          ? new Date(sprint.endDate + 'T23:59:59')
+          : new Date(Math.min(new Date().getTime(), new Date(sprint.endDate + 'T23:59:59').getTime()));
+
+        const days: Array<{ date: string; remaining: number; completed: number; added: number }> = [];
+        let completedSoFar = 0;
+
+        for (let d = new Date(startDate); d <= endDateOrToday; d.setDate(d.getDate() + 1)) {
+          const dayStr = d.toISOString().split('T')[0];
+          const dayEnd = new Date(dayStr + 'T23:59:59');
+
+          // Count status changes to 'done' by this day
+          const completedByDay = activities.filter((a) =>
+            a.newValue === 'done' && a.createdAt <= dayEnd
+          ).length;
+          // Count status changes from 'done' (uncompleted) by this day
+          const uncompletedByDay = activities.filter((a) =>
+            a.oldValue === 'done' && a.createdAt <= dayEnd
+          ).length;
+
+          completedSoFar = completedByDay - uncompletedByDay;
+          if (completedSoFar < 0) completedSoFar = 0;
+
+          days.push({
+            date: dayStr,
+            remaining: totalScope - completedSoFar,
+            completed: completedSoFar,
+            added: 0,
+          });
+        }
+
+        return {
+          days,
+          totalScope,
+          sprintName: sprint.name,
+          startDate: sprint.startDate,
+          endDate: sprint.endDate,
+        };
+      },
+
+      globalSearch: async (_parent, args: { query: string; limit?: number | null }, context) => {
+        const user = requireOrg(context);
+        const take = args.limit ?? 10;
+        const [projects, tasks] = await Promise.all([
+          context.prisma.project.findMany({
+            where: { orgId: user.orgId, name: { contains: args.query, mode: 'insensitive' }, archived: false },
+            take,
+          }),
+          context.prisma.task.findMany({
+            where: {
+              orgId: user.orgId,
+              archived: false,
+              OR: [
+                { title: { contains: args.query, mode: 'insensitive' } },
+                { description: { contains: args.query, mode: 'insensitive' } },
+              ],
+            },
+            include: { project: { select: { name: true } } },
+            take,
+          }),
+        ]);
+        return {
+          projects,
+          tasks: tasks.map((t) => ({ task: t, projectName: (t as { project: { name: string } }).project.name })),
+        };
       },
     },
 
@@ -604,6 +980,42 @@ export const schema = createSchema<Context>({
         });
       },
 
+      updateProject: async (
+        _parent,
+        args: { projectId: string; name?: string | null; description?: string | null; statuses?: string | null },
+        context
+      ) => {
+        const user = requireOrg(context);
+        if (user.role !== 'org:admin') {
+          throw new GraphQLError('Admin role required', { extensions: { code: 'FORBIDDEN' } });
+        }
+        const { project } = await requireProjectAccess(context, args.projectId);
+        if (args.statuses !== undefined && args.statuses !== null) {
+          try {
+            const parsed = JSON.parse(args.statuses) as unknown;
+            if (!Array.isArray(parsed) || parsed.length === 0 || !parsed.every((s) => typeof s === 'string')) {
+              throw new Error();
+            }
+          } catch {
+            throw new GraphQLError('statuses must be a non-empty JSON array of strings');
+          }
+        }
+        const updated = await context.prisma.project.update({
+          where: { projectId: args.projectId },
+          data: {
+            ...(args.name !== undefined && args.name !== null ? { name: args.name } : {}),
+            ...(args.description !== undefined ? { description: args.description } : {}),
+            ...(args.statuses !== undefined && args.statuses !== null ? { statuses: args.statuses } : {}),
+          },
+        });
+        logActivity(context.prisma, {
+          orgId: user.orgId, projectId: args.projectId, userId: user.userId,
+          action: 'project.updated',
+          ...(args.name && args.name !== project.name ? { field: 'name', oldValue: project.name, newValue: args.name } : {}),
+        });
+        return updated;
+      },
+
       createTask: async (
         _parent,
         args: { projectId: string; title: string; status?: string },
@@ -616,44 +1028,108 @@ export const schema = createSchema<Context>({
         if (!project || project.orgId !== user.orgId) {
           throw new GraphQLError('Project not found', { extensions: { code: 'NOT_FOUND' } });
         }
+        const status = args.status ?? 'todo';
+        const validStatuses = JSON.parse(project.statuses) as string[];
+        if (!validStatuses.includes(status)) {
+          throw new GraphQLError(`Invalid status "${status}". Valid: ${validStatuses.join(', ')}`);
+        }
         const maxResult = await context.prisma.task.aggregate({
           where: { projectId: args.projectId, sprintId: null, parentTaskId: null },
           _max: { position: true },
         });
         const nextPosition = (maxResult._max.position ?? 0) + 1.0;
-        return context.prisma.task.create({
+        const task = await context.prisma.task.create({
           data: {
             title: args.title,
-            status: args.status ?? 'todo',
+            status,
             projectId: args.projectId,
             orgId: user.orgId,
             position: nextPosition,
           },
         });
+        logActivity(context.prisma, {
+          orgId: user.orgId, projectId: args.projectId, taskId: task.taskId, userId: user.userId,
+          action: 'task.created',
+        });
+        return task;
       },
 
       updateTask: async (
         _parent,
-        args: { taskId: string; title?: string; status?: string; sprintId?: string | null; sprintColumn?: string | null; assigneeId?: string | null; dueDate?: string | null; position?: number | null },
+        args: { taskId: string; title?: string; status?: string; description?: string; instructions?: string; dependsOn?: string | null; sprintId?: string | null; sprintColumn?: string | null; assigneeId?: string | null; dueDate?: string | null; position?: number | null; archived?: boolean },
         context
       ) => {
         const user = requireOrg(context);
-        const task = await context.prisma.task.findUnique({ where: { taskId: args.taskId } });
+        const task = await context.prisma.task.findUnique({ where: { taskId: args.taskId }, include: { project: true } });
         if (!task || task.orgId !== user.orgId) {
           throw new GraphQLError('Task not found', { extensions: { code: 'NOT_FOUND' } });
         }
-        return context.prisma.task.update({
+        if (args.status !== undefined) {
+          const validStatuses = JSON.parse(task.project.statuses) as string[];
+          if (!validStatuses.includes(args.status)) {
+            throw new GraphQLError(`Invalid status "${args.status}". Valid: ${validStatuses.join(', ')}`);
+          }
+        }
+        const updated = await context.prisma.task.update({
           where: { taskId: args.taskId },
           data: {
             ...(args.title !== undefined ? { title: args.title } : {}),
             ...(args.status !== undefined ? { status: args.status } : {}),
+            ...(args.description !== undefined ? { description: args.description } : {}),
+            ...(args.instructions !== undefined ? { instructions: args.instructions } : {}),
+            ...(args.dependsOn !== undefined ? { dependsOn: args.dependsOn } : {}),
             ...(args.sprintId !== undefined ? { sprintId: args.sprintId } : {}),
             ...(args.sprintColumn !== undefined ? { sprintColumn: args.sprintColumn } : {}),
             ...(args.assigneeId !== undefined ? { assigneeId: args.assigneeId } : {}),
             ...(args.dueDate !== undefined ? { dueDate: args.dueDate } : {}),
             ...(args.position !== undefined ? { position: args.position } : {}),
+            ...(args.archived !== undefined ? { archived: args.archived } : {}),
           },
         });
+        // Log each changed field
+        const fields: Array<[string, string | null | undefined, string | null | undefined]> = [
+          ['title', task.title, args.title],
+          ['status', task.status, args.status],
+          ['assigneeId', task.assigneeId, args.assigneeId],
+          ['sprintId', task.sprintId, args.sprintId],
+          ['dueDate', task.dueDate, args.dueDate],
+          ['dependsOn', task.dependsOn, args.dependsOn],
+          ['archived', String(task.archived), args.archived !== undefined ? String(args.archived) : undefined],
+        ];
+        for (const [field, oldVal, newVal] of fields) {
+          if (newVal !== undefined && newVal !== oldVal) {
+            logActivity(context.prisma, {
+              orgId: user.orgId, projectId: task.projectId, taskId: task.taskId, userId: user.userId,
+              action: 'task.updated', field, oldValue: oldVal ?? null, newValue: newVal ?? null,
+            });
+          }
+        }
+        // Notify on assignment change
+        if (args.assigneeId !== undefined && args.assigneeId !== task.assigneeId && args.assigneeId && args.assigneeId !== user.userId) {
+          createNotification(context.prisma, {
+            orgId: user.orgId,
+            userId: args.assigneeId,
+            type: 'assigned',
+            title: `You were assigned to "${task.title}"`,
+            linkUrl: `/app/projects/${task.projectId}`,
+            relatedTaskId: task.taskId,
+            relatedProjectId: task.projectId,
+          });
+        }
+        // Notify on status change
+        if (args.status !== undefined && args.status !== task.status && task.assigneeId && task.assigneeId !== user.userId) {
+          const userRecord = await context.prisma.user.findUnique({ where: { userId: user.userId }, select: { email: true } });
+          createNotification(context.prisma, {
+            orgId: user.orgId,
+            userId: task.assigneeId,
+            type: 'status_changed',
+            title: `${userRecord?.email ?? 'Someone'} changed "${task.title}" status to ${args.status}`,
+            linkUrl: `/app/projects/${task.projectId}`,
+            relatedTaskId: task.taskId,
+            relatedProjectId: task.projectId,
+          });
+        }
+        return updated;
       },
 
       archiveProject: async (_parent, args: { projectId: string; archived: boolean }, context) => {
@@ -662,10 +1138,15 @@ export const schema = createSchema<Context>({
           throw new GraphQLError('Admin role required', { extensions: { code: 'FORBIDDEN' } });
         }
         await requireProjectAccess(context, args.projectId);
-        return context.prisma.project.update({
+        const result = await context.prisma.project.update({
           where: { projectId: args.projectId },
           data: { archived: args.archived },
         });
+        logActivity(context.prisma, {
+          orgId: user.orgId, projectId: args.projectId, userId: user.userId,
+          action: args.archived ? 'project.archived' : 'project.unarchived',
+        });
+        return result;
       },
 
       createSprint: async (_parent, args: { projectId: string; name: string; columns?: string | null; startDate?: string | null; endDate?: string | null }, context) => {
@@ -674,7 +1155,7 @@ export const schema = createSchema<Context>({
         if (!project || project.orgId !== user.orgId) {
           throw new GraphQLError('Project not found', { extensions: { code: 'NOT_FOUND' } });
         }
-        return context.prisma.sprint.create({
+        const sprint = await context.prisma.sprint.create({
           data: {
             name: args.name,
             projectId: args.projectId,
@@ -684,6 +1165,11 @@ export const schema = createSchema<Context>({
             endDate: args.endDate ?? null,
           },
         });
+        logActivity(context.prisma, {
+          orgId: user.orgId, projectId: args.projectId, sprintId: sprint.sprintId, userId: user.userId,
+          action: 'sprint.created',
+        });
+        return sprint;
       },
 
       updateSprint: async (_parent, args: { sprintId: string; name?: string | null; columns?: string | null; isActive?: boolean | null; startDate?: string | null; endDate?: string | null }, context) => {
@@ -698,7 +1184,7 @@ export const schema = createSchema<Context>({
             data: { isActive: false },
           });
         }
-        return context.prisma.sprint.update({
+        const updated = await context.prisma.sprint.update({
           where: { sprintId: args.sprintId },
           data: {
             ...(args.name !== undefined && args.name !== null ? { name: args.name } : {}),
@@ -708,6 +1194,11 @@ export const schema = createSchema<Context>({
             ...(args.endDate !== undefined ? { endDate: args.endDate } : {}),
           },
         });
+        logActivity(context.prisma, {
+          orgId: user.orgId, projectId: sprint.projectId, sprintId: sprint.sprintId, userId: user.userId,
+          action: 'sprint.updated',
+        });
+        return updated;
       },
 
       deleteSprint: async (_parent, args: { sprintId: string }, context) => {
@@ -721,6 +1212,10 @@ export const schema = createSchema<Context>({
           data: { sprintId: null, sprintColumn: null },
         });
         await context.prisma.sprint.delete({ where: { sprintId: args.sprintId } });
+        logActivity(context.prisma, {
+          orgId: user.orgId, projectId: sprint.projectId, sprintId: sprint.sprintId, userId: user.userId,
+          action: 'sprint.deleted',
+        });
         return true;
       },
 
@@ -1172,6 +1667,223 @@ export const schema = createSchema<Context>({
           });
         }
         return aiSummarizeProject(apiKey, project.name, project.description ?? '', tasks);
+      },
+
+      bulkUpdateTasks: async (
+        _parent,
+        args: { taskIds: string[]; status?: string | null; assigneeId?: string | null; sprintId?: string | null; archived?: boolean | null },
+        context
+      ) => {
+        const user = requireOrg(context);
+        // Verify all tasks belong to user's org
+        const tasks = await context.prisma.task.findMany({
+          where: { taskId: { in: args.taskIds }, orgId: user.orgId },
+        });
+        if (tasks.length !== args.taskIds.length) {
+          throw new GraphQLError('One or more tasks not found', { extensions: { code: 'NOT_FOUND' } });
+        }
+        const data: Record<string, unknown> = {};
+        if (args.status !== undefined && args.status !== null) data.status = args.status;
+        if (args.assigneeId !== undefined) data.assigneeId = args.assigneeId;
+        if (args.sprintId !== undefined) data.sprintId = args.sprintId;
+        if (args.archived !== undefined && args.archived !== null) data.archived = args.archived;
+
+        await context.prisma.task.updateMany({
+          where: { taskId: { in: args.taskIds }, orgId: user.orgId },
+          data,
+        });
+        const updated = await context.prisma.task.findMany({
+          where: { taskId: { in: args.taskIds } },
+        });
+        // Log activity for bulk action
+        for (const task of tasks) {
+          logActivity(context.prisma, {
+            orgId: user.orgId, projectId: task.projectId, taskId: task.taskId, userId: user.userId,
+            action: 'task.bulk_updated',
+            ...(args.status ? { field: 'status', oldValue: task.status, newValue: args.status } : {}),
+          });
+        }
+        return updated;
+      },
+
+      createComment: async (_parent, args: { taskId: string; content: string; parentCommentId?: string | null }, context) => {
+        const user = requireOrg(context);
+        const task = await context.prisma.task.findUnique({ where: { taskId: args.taskId } });
+        if (!task || task.orgId !== user.orgId) {
+          throw new GraphQLError('Task not found', { extensions: { code: 'NOT_FOUND' } });
+        }
+        if (args.parentCommentId) {
+          const parent = await context.prisma.comment.findUnique({ where: { commentId: args.parentCommentId } });
+          if (!parent || parent.taskId !== args.taskId) {
+            throw new GraphQLError('Parent comment not found', { extensions: { code: 'NOT_FOUND' } });
+          }
+        }
+        const comment = await context.prisma.comment.create({
+          data: {
+            taskId: args.taskId,
+            userId: user.userId,
+            content: args.content,
+            parentCommentId: args.parentCommentId ?? null,
+          },
+          include: { user: { select: { email: true } } },
+        });
+        logActivity(context.prisma, {
+          orgId: user.orgId, projectId: task.projectId, taskId: task.taskId, userId: user.userId,
+          action: 'comment.created',
+        });
+        // Notify task assignee about new comment
+        if (task.assigneeId && task.assigneeId !== user.userId) {
+          createNotification(context.prisma, {
+            orgId: user.orgId,
+            userId: task.assigneeId,
+            type: 'commented',
+            title: `New comment on "${task.title}"`,
+            body: args.content.length > 100 ? args.content.slice(0, 100) + '\u2026' : args.content,
+            linkUrl: `/app/projects/${task.projectId}`,
+            relatedTaskId: task.taskId,
+            relatedProjectId: task.projectId,
+          });
+        }
+        // Extract @mentions and create notifications
+        const mentionPattern = /@(\S+@\S+)/g;
+        let mentionMatch: RegExpExecArray | null;
+        while ((mentionMatch = mentionPattern.exec(args.content)) !== null) {
+          const mentionedEmail = mentionMatch[1];
+          const mentionedUser = await context.prisma.user.findFirst({
+            where: { email: mentionedEmail, orgId: user.orgId },
+          });
+          if (mentionedUser && mentionedUser.userId !== user.userId) {
+            createNotification(context.prisma, {
+              orgId: user.orgId,
+              userId: mentionedUser.userId,
+              type: 'mentioned',
+              title: `You were mentioned in a comment on "${task.title}"`,
+              body: args.content.length > 100 ? args.content.slice(0, 100) + '\u2026' : args.content,
+              linkUrl: `/app/projects/${task.projectId}`,
+              relatedTaskId: task.taskId,
+              relatedProjectId: task.projectId,
+            });
+          }
+        }
+        return {
+          ...comment,
+          userEmail: comment.user.email,
+          createdAt: comment.createdAt.toISOString(),
+          updatedAt: comment.updatedAt.toISOString(),
+          replies: [],
+        };
+      },
+
+      updateComment: async (_parent, args: { commentId: string; content: string }, context) => {
+        const user = requireAuth(context);
+        const comment = await context.prisma.comment.findUnique({ where: { commentId: args.commentId } });
+        if (!comment) throw new GraphQLError('Comment not found', { extensions: { code: 'NOT_FOUND' } });
+        if (comment.userId !== user.userId) {
+          throw new GraphQLError('Not authorized to edit this comment', { extensions: { code: 'FORBIDDEN' } });
+        }
+        const updated = await context.prisma.comment.update({
+          where: { commentId: args.commentId },
+          data: { content: args.content },
+          include: { user: { select: { email: true } } },
+        });
+        return {
+          ...updated,
+          userEmail: updated.user.email,
+          createdAt: updated.createdAt.toISOString(),
+          updatedAt: updated.updatedAt.toISOString(),
+          replies: [],
+        };
+      },
+
+      deleteComment: async (_parent, args: { commentId: string }, context) => {
+        const user = requireOrg(context);
+        const comment = await context.prisma.comment.findUnique({ where: { commentId: args.commentId } });
+        if (!comment) throw new GraphQLError('Comment not found', { extensions: { code: 'NOT_FOUND' } });
+        if (comment.userId !== user.userId && user.role !== 'org:admin') {
+          throw new GraphQLError('Not authorized to delete this comment', { extensions: { code: 'FORBIDDEN' } });
+        }
+        // Delete replies first, then the comment
+        await context.prisma.comment.deleteMany({ where: { parentCommentId: args.commentId } });
+        await context.prisma.comment.delete({ where: { commentId: args.commentId } });
+        return true;
+      },
+
+      createLabel: async (_parent, args: { name: string; color?: string | null }, context) => {
+        const user = requireOrg(context);
+        const existing = await context.prisma.label.findUnique({
+          where: { orgId_name: { orgId: user.orgId, name: args.name } },
+        });
+        if (existing) {
+          throw new GraphQLError('Label already exists', { extensions: { code: 'BAD_USER_INPUT' } });
+        }
+        return context.prisma.label.create({
+          data: {
+            orgId: user.orgId,
+            name: args.name,
+            color: args.color ?? '#6b7280',
+          },
+        });
+      },
+
+      deleteLabel: async (_parent, args: { labelId: string }, context) => {
+        const user = requireOrg(context);
+        const label = await context.prisma.label.findUnique({ where: { labelId: args.labelId } });
+        if (!label || label.orgId !== user.orgId) {
+          throw new GraphQLError('Label not found', { extensions: { code: 'NOT_FOUND' } });
+        }
+        await context.prisma.label.delete({ where: { labelId: args.labelId } });
+        return true;
+      },
+
+      addTaskLabel: async (_parent, args: { taskId: string; labelId: string }, context) => {
+        const user = requireOrg(context);
+        const task = await context.prisma.task.findUnique({ where: { taskId: args.taskId } });
+        if (!task || task.orgId !== user.orgId) {
+          throw new GraphQLError('Task not found', { extensions: { code: 'NOT_FOUND' } });
+        }
+        const label = await context.prisma.label.findUnique({ where: { labelId: args.labelId } });
+        if (!label || label.orgId !== user.orgId) {
+          throw new GraphQLError('Label not found', { extensions: { code: 'NOT_FOUND' } });
+        }
+        await context.prisma.taskLabel.upsert({
+          where: { taskId_labelId: { taskId: args.taskId, labelId: args.labelId } },
+          create: { taskId: args.taskId, labelId: args.labelId },
+          update: {},
+        });
+        return task;
+      },
+
+      removeTaskLabel: async (_parent, args: { taskId: string; labelId: string }, context) => {
+        const user = requireOrg(context);
+        const task = await context.prisma.task.findUnique({ where: { taskId: args.taskId } });
+        if (!task || task.orgId !== user.orgId) {
+          throw new GraphQLError('Task not found', { extensions: { code: 'NOT_FOUND' } });
+        }
+        await context.prisma.taskLabel.deleteMany({
+          where: { taskId: args.taskId, labelId: args.labelId },
+        });
+        return task;
+      },
+
+      markNotificationRead: async (_parent, args: { notificationId: string }, context) => {
+        const user = requireAuth(context);
+        const notification = await context.prisma.notification.findUnique({ where: { notificationId: args.notificationId } });
+        if (!notification || notification.userId !== user.userId) {
+          throw new GraphQLError('Notification not found', { extensions: { code: 'NOT_FOUND' } });
+        }
+        return context.prisma.notification.update({
+          where: { notificationId: args.notificationId },
+          data: { isRead: true },
+        });
+      },
+
+      markAllNotificationsRead: async (_parent, _args, context) => {
+        const user = requireOrg(context);
+        await context.prisma.notification.updateMany({
+          where: { userId: user.userId, orgId: user.orgId, isRead: false },
+          data: { isRead: true },
+        });
+        return true;
       },
     },
   },

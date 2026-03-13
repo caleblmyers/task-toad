@@ -1,8 +1,19 @@
-import type { Task, ToolSuggestion, Sprint, OrgUser } from '../types';
+import { useState } from 'react';
+import type { Task, ToolSuggestion, Sprint, OrgUser, Comment, Activity, Label } from '../types';
+import { statusLabel } from '../utils/taskHelpers';
+import CommentSection from './CommentSection';
+import ActivityFeed from './ActivityFeed';
+import MarkdownRenderer from './shared/MarkdownRenderer';
+import MarkdownEditor from './shared/MarkdownEditor';
 
 function parseTools(raw?: string | null): ToolSuggestion[] {
   if (!raw) return [];
   try { return JSON.parse(raw) as ToolSuggestion[]; } catch { return []; }
+}
+
+function parseDependsOn(raw?: string | null): string[] {
+  if (!raw) return [];
+  try { return JSON.parse(raw) as string[]; } catch { return []; }
 }
 
 const categoryColors: Record<string, string> = {
@@ -25,17 +36,33 @@ export interface TaskDetailPanelProps {
   generatingInstructions: string | null;
   sprints: Sprint[];
   orgUsers: OrgUser[];
+  statuses: string[];
+  allTasks: Task[];
+  comments: Comment[];
+  activities: Activity[];
+  currentUserId: string;
+  isAdmin: boolean;
   disabled?: boolean;
   onStartEditTitle: (task: Task) => void;
   onTitleChange: (val: string) => void;
   onTitleSave: () => void;
   onTitleKeyDown: (e: React.KeyboardEvent) => void;
-  onStatusChange: (taskId: string, status: Task['status']) => void;
-  onSubtaskStatusChange: (parentId: string, taskId: string, status: Task['status']) => void;
+  onStatusChange: (taskId: string, status: string) => void;
+  onSubtaskStatusChange: (parentId: string, taskId: string, status: string) => void;
   onGenerateInstructions: (task: Task) => void;
   onAssignSprint: (taskId: string, sprintId: string | null) => void;
   onAssignUser: (taskId: string, assigneeId: string | null) => void;
   onDueDateChange: (taskId: string, dueDate: string | null) => void;
+  onUpdateDependencies: (taskId: string, dependsOnIds: string[]) => void;
+  onCreateComment: (content: string, parentCommentId?: string) => Promise<void>;
+  onUpdateComment: (commentId: string, content: string) => Promise<void>;
+  onDeleteComment: (commentId: string) => Promise<void>;
+  onUpdateTask?: (taskId: string, updates: { description?: string; instructions?: string }) => Promise<void>;
+  onArchiveTask?: (taskId: string, archived: boolean) => Promise<void>;
+  labels?: Label[];
+  onAddTaskLabel?: (taskId: string, labelId: string) => Promise<void>;
+  onRemoveTaskLabel?: (taskId: string, labelId: string) => Promise<void>;
+  onCreateLabel?: (name: string, color: string) => Promise<Label | null>;
   onClose?: () => void;
   isDrawer?: boolean;
 }
@@ -53,8 +80,33 @@ function formatHours(h: number): string {
   return `${h}h`;
 }
 
-function PanelContent({ task, subtasks, editingTitle, editTitleValue, titleEditRef, generatingInstructions, sprints, orgUsers, disabled, onStartEditTitle, onTitleChange, onTitleSave, onTitleKeyDown, onStatusChange, onSubtaskStatusChange, onGenerateInstructions, onAssignSprint, onAssignUser, onDueDateChange }: Omit<TaskDetailPanelProps, 'onClose' | 'isDrawer'>) {
+function PanelContent({
+  task, subtasks, editingTitle, editTitleValue, titleEditRef, generatingInstructions,
+  sprints, orgUsers, statuses, allTasks, comments, activities, currentUserId, isAdmin,
+  labels, onAddTaskLabel, onRemoveTaskLabel, onCreateLabel,
+  disabled, onStartEditTitle, onTitleChange, onTitleSave, onTitleKeyDown,
+  onStatusChange, onSubtaskStatusChange, onGenerateInstructions,
+  onAssignSprint, onAssignUser, onDueDateChange, onUpdateDependencies,
+  onCreateComment, onUpdateComment, onDeleteComment, onUpdateTask, onArchiveTask,
+}: Omit<TaskDetailPanelProps, 'onClose' | 'isDrawer'>) {
   const tools = parseTools(task.suggestedTools);
+  const depIds = parseDependsOn(task.dependsOn);
+  const [showDepPicker, setShowDepPicker] = useState(false);
+  const [depSearch, setDepSearch] = useState('');
+  const [showLabelPicker, setShowLabelPicker] = useState(false);
+  const [newLabelName, setNewLabelName] = useState('');
+  const [newLabelColor, setNewLabelColor] = useState('#6b7280');
+  const [editingDescription, setEditingDescription] = useState(false);
+  const [editDescValue, setEditDescValue] = useState('');
+  const [editingInstructions, setEditingInstructions] = useState(false);
+  const [editInstrValue, setEditInstrValue] = useState('');
+
+  const availableTasks = allTasks.filter(
+    (t) => t.taskId !== task.taskId && !t.parentTaskId && !depIds.includes(t.taskId)
+  );
+  const filteredAvailable = depSearch
+    ? availableTasks.filter((t) => t.title.toLowerCase().includes(depSearch.toLowerCase()))
+    : availableTasks;
 
   return (
     <div className="p-6 max-w-2xl">
@@ -87,13 +139,13 @@ function PanelContent({ task, subtasks, editingTitle, editTitleValue, titleEditR
         <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Status</label>
         <select
           value={task.status}
-          onChange={(e) => onStatusChange(task.taskId, e.target.value as Task['status'])}
+          onChange={(e) => onStatusChange(task.taskId, e.target.value)}
           className="block mt-1 border border-slate-300 rounded px-2 py-1 text-sm"
           disabled={disabled}
         >
-          <option value="todo">To do</option>
-          <option value="in_progress">In progress</option>
-          <option value="done">Done</option>
+          {statuses.map((s) => (
+            <option key={s} value={s}>{statusLabel(s)}</option>
+          ))}
         </select>
       </div>
 
@@ -157,30 +209,235 @@ function PanelContent({ task, subtasks, editingTitle, editTitleValue, titleEditR
         </div>
       )}
 
-      {/* Description */}
-      {task.description && (
+      {/* Labels */}
+      {(onAddTaskLabel || (task.labels && task.labels.length > 0)) && (
         <div className="mb-4">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Description</p>
-          <p className="text-slate-700 text-sm leading-relaxed">{task.description}</p>
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Labels</p>
+          <div className="flex flex-wrap gap-1.5 mb-1">
+            {(task.labels ?? []).map((label) => (
+              <span
+                key={label.labelId}
+                className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium"
+                style={{ backgroundColor: label.color + '20', color: label.color, border: `1px solid ${label.color}40` }}
+              >
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: label.color }} />
+                {label.name}
+                {onRemoveTaskLabel && (
+                  <button
+                    onClick={() => onRemoveTaskLabel(task.taskId, label.labelId)}
+                    className="ml-0.5 hover:opacity-70"
+                    disabled={disabled}
+                  >
+                    ✕
+                  </button>
+                )}
+              </span>
+            ))}
+          </div>
+          {onAddTaskLabel && (
+            showLabelPicker ? (
+              <div className="mt-1">
+                <div className="max-h-32 overflow-y-auto border border-slate-200 rounded mb-1">
+                  {(labels ?? [])
+                    .filter((l) => !(task.labels ?? []).some((tl) => tl.labelId === l.labelId))
+                    .map((l) => (
+                      <button
+                        key={l.labelId}
+                        onClick={() => {
+                          onAddTaskLabel(task.taskId, l.labelId);
+                          setShowLabelPicker(false);
+                        }}
+                        className="w-full text-left px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                      >
+                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: l.color }} />
+                        {l.name}
+                      </button>
+                    ))}
+                  {(labels ?? []).filter((l) => !(task.labels ?? []).some((tl) => tl.labelId === l.labelId)).length === 0 && (
+                    <p className="text-xs text-slate-400 px-2 py-1">No more labels</p>
+                  )}
+                </div>
+                {onCreateLabel && (
+                  <div className="flex items-center gap-1 mt-1">
+                    <input
+                      type="color"
+                      value={newLabelColor}
+                      onChange={(e) => setNewLabelColor(e.target.value)}
+                      className="w-6 h-6 rounded border border-slate-300 cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={newLabelName}
+                      onChange={(e) => setNewLabelName(e.target.value)}
+                      placeholder="New label…"
+                      className="flex-1 text-xs border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                      onKeyDown={async (e) => {
+                        if (e.key === 'Enter' && newLabelName.trim()) {
+                          const label = await onCreateLabel(newLabelName.trim(), newLabelColor);
+                          if (label) {
+                            onAddTaskLabel(task.taskId, label.labelId);
+                            setNewLabelName('');
+                            setShowLabelPicker(false);
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+                <button onClick={() => setShowLabelPicker(false)} className="text-xs text-slate-400 hover:text-slate-600 mt-1">Cancel</button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowLabelPicker(true)}
+                className="text-xs text-slate-500 hover:text-slate-700"
+                disabled={disabled}
+              >
+                + Add label
+              </button>
+            )
+          )}
         </div>
       )}
+
+      {/* Dependencies */}
+      <div className="mb-4">
+        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Dependencies</p>
+        <div className="flex flex-wrap gap-1.5 mb-1">
+          {depIds.map((id) => {
+            const depTask = allTasks.find((t) => t.taskId === id);
+            return (
+              <span key={id} className="inline-flex items-center gap-1 text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                {depTask?.title ?? id.slice(0, 8)}
+                <button
+                  onClick={() => onUpdateDependencies(task.taskId, depIds.filter((d) => d !== id))}
+                  className="text-slate-400 hover:text-red-500 ml-0.5"
+                  disabled={disabled}
+                >
+                  ✕
+                </button>
+              </span>
+            );
+          })}
+          {depIds.length === 0 && !showDepPicker && (
+            <span className="text-xs text-slate-400">None</span>
+          )}
+        </div>
+        {showDepPicker ? (
+          <div>
+            <input
+              type="text"
+              value={depSearch}
+              onChange={(e) => setDepSearch(e.target.value)}
+              placeholder="Search tasks…"
+              className="w-full text-sm border border-slate-300 rounded px-2 py-1 mb-1 focus:outline-none focus:ring-1 focus:ring-slate-400"
+              autoFocus
+            />
+            <div className="max-h-32 overflow-y-auto border border-slate-200 rounded">
+              {filteredAvailable.slice(0, 10).map((t) => (
+                <button
+                  key={t.taskId}
+                  onClick={() => {
+                    onUpdateDependencies(task.taskId, [...depIds, t.taskId]);
+                    setDepSearch('');
+                    setShowDepPicker(false);
+                  }}
+                  className="w-full text-left px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                >
+                  {t.title}
+                </button>
+              ))}
+              {filteredAvailable.length === 0 && (
+                <p className="text-xs text-slate-400 px-2 py-1">No tasks available</p>
+              )}
+            </div>
+            <button onClick={() => setShowDepPicker(false)} className="text-xs text-slate-400 hover:text-slate-600 mt-1">Cancel</button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowDepPicker(true)}
+            className="text-xs text-slate-500 hover:text-slate-700"
+            disabled={disabled}
+          >
+            + Add dependency
+          </button>
+        )}
+      </div>
+
+      {/* Description */}
+      <div className="mb-4">
+        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Description</p>
+        {editingDescription ? (
+          <MarkdownEditor
+            value={editDescValue}
+            onChange={setEditDescValue}
+            onSave={async () => {
+              if (onUpdateTask) await onUpdateTask(task.taskId, { description: editDescValue });
+              setEditingDescription(false);
+            }}
+            onCancel={() => setEditingDescription(false)}
+            placeholder="Add a description…"
+            rows={4}
+          />
+        ) : task.description ? (
+          <div
+            className="cursor-pointer hover:bg-slate-50 rounded p-1 -m-1"
+            onClick={() => { if (!disabled) { setEditDescValue(task.description ?? ''); setEditingDescription(true); } }}
+            title="Click to edit"
+          >
+            <MarkdownRenderer content={task.description} />
+          </div>
+        ) : (
+          <button
+            onClick={() => { setEditDescValue(''); setEditingDescription(true); }}
+            className="text-xs text-slate-400 hover:text-slate-600"
+            disabled={disabled}
+          >
+            + Add description
+          </button>
+        )}
+      </div>
 
       {/* Instructions */}
       <div className="mb-4">
         <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Instructions</p>
-        {task.instructions ? (
-          <div className="bg-slate-50 rounded-lg p-3 text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
-            {task.instructions}
+        {editingInstructions ? (
+          <MarkdownEditor
+            value={editInstrValue}
+            onChange={setEditInstrValue}
+            onSave={async () => {
+              if (onUpdateTask) await onUpdateTask(task.taskId, { instructions: editInstrValue });
+              setEditingInstructions(false);
+            }}
+            onCancel={() => setEditingInstructions(false)}
+            placeholder="Add instructions…"
+            rows={6}
+          />
+        ) : task.instructions ? (
+          <div
+            className="bg-slate-50 rounded-lg p-3 cursor-pointer hover:bg-slate-100"
+            onClick={() => { if (!disabled) { setEditInstrValue(task.instructions ?? ''); setEditingInstructions(true); } }}
+            title="Click to edit"
+          >
+            <MarkdownRenderer content={task.instructions} />
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={() => onGenerateInstructions(task)}
-            disabled={disabled || generatingInstructions === task.taskId}
-            className="px-3 py-1.5 text-sm border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50"
-          >
-            {generatingInstructions === task.taskId ? 'Generating…' : '✦ Generate instructions'}
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => onGenerateInstructions(task)}
+              disabled={disabled || generatingInstructions === task.taskId}
+              className="px-3 py-1.5 text-sm border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50"
+            >
+              {generatingInstructions === task.taskId ? 'Generating…' : '✦ Generate instructions'}
+            </button>
+            <button
+              onClick={() => { setEditInstrValue(''); setEditingInstructions(true); }}
+              className="text-xs text-slate-400 hover:text-slate-600 px-2"
+              disabled={disabled}
+            >
+              Write manually
+            </button>
+          </div>
         )}
       </div>
 
@@ -204,7 +461,7 @@ function PanelContent({ task, subtasks, editingTitle, editTitleValue, titleEditR
 
       {/* Subtasks */}
       {subtasks.length > 0 && (
-        <div>
+        <div className="mb-4">
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Subtasks</p>
           <ul className="space-y-2">
             {subtasks.map((st) => (
@@ -214,14 +471,14 @@ function PanelContent({ task, subtasks, editingTitle, editTitleValue, titleEditR
                   <select
                     value={st.status}
                     onChange={(e) =>
-                      onSubtaskStatusChange(task.taskId, st.taskId, e.target.value as Task['status'])
+                      onSubtaskStatusChange(task.taskId, st.taskId, e.target.value)
                     }
                     className="text-xs border border-slate-300 rounded px-1.5 py-0.5 flex-shrink-0"
                     disabled={disabled}
                   >
-                    <option value="todo">To do</option>
-                    <option value="in_progress">In progress</option>
-                    <option value="done">Done</option>
+                    {statuses.map((s) => (
+                      <option key={s} value={s}>{statusLabel(s)}</option>
+                    ))}
                   </select>
                 </div>
                 {st.description && (
@@ -236,6 +493,43 @@ function PanelContent({ task, subtasks, editingTitle, editTitleValue, titleEditR
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* Comments */}
+      <div className="mb-4">
+        <CommentSection
+          comments={comments}
+          currentUserId={currentUserId}
+          isAdmin={isAdmin}
+          orgUsers={orgUsers}
+          onCreateComment={onCreateComment}
+          onUpdateComment={onUpdateComment}
+          onDeleteComment={onDeleteComment}
+        />
+      </div>
+
+      {/* Activity */}
+      <div>
+        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Activity</p>
+        <ActivityFeed activities={activities} />
+      </div>
+
+      {/* Archive / Unarchive */}
+      {onArchiveTask && (
+        <div className="mt-6 pt-4 border-t border-slate-200">
+          <button
+            type="button"
+            onClick={() => onArchiveTask(task.taskId, !task.archived)}
+            disabled={disabled}
+            className={`text-sm px-3 py-1.5 rounded border ${
+              task.archived
+                ? 'text-slate-600 border-slate-300 hover:bg-slate-50'
+                : 'text-red-600 border-red-200 hover:bg-red-50'
+            } disabled:opacity-50`}
+          >
+            {task.archived ? 'Unarchive task' : 'Archive task'}
+          </button>
         </div>
       )}
     </div>

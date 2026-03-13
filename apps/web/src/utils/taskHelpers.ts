@@ -1,7 +1,14 @@
 import type { Task } from '../types';
 
+export function statusLabel(status: string): string {
+  return status
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
 export const TASK_FIELDS = `
-  taskId title description instructions suggestedTools estimatedHours priority dependsOn status projectId parentTaskId createdAt sprintId sprintColumn assigneeId archived position dueDate
+  taskId title description instructions suggestedTools estimatedHours priority dependsOn status projectId parentTaskId createdAt sprintId sprintColumn assigneeId archived position dueDate labels { labelId name color }
 `;
 
 export const STATUS_TO_COLUMN: Record<string, string> = {

@@ -16,6 +16,7 @@ model Org {
   projects        Project[]
   sprints         Sprint[]
   invites         OrgInvite[]
+  labels          Label[]
 
   @@map("orgs")
 }
@@ -32,6 +33,9 @@ model User {
   resetTokenExpiry    DateTime? @map("reset_token_expiry")
   org                 Org?      @relation(fields: [orgId], references: [orgId])
   assignedTasks       Task[]    @relation("TaskAssignee")
+  comments            Comment[] @relation("UserComments")
+  activities          Activity[] @relation("UserActivities")
+  notifications       Notification[] @relation("UserNotifications")
 
   @@map("users")
 }
@@ -58,6 +62,7 @@ model Project {
   name        String
   description String?
   prompt      String?
+  statuses    String   @default("[\"todo\",\"in_progress\",\"done\"]")
   createdAt   DateTime @default(now()) @map("created_at")
   archived    Boolean  @default(false)
   org         Org      @relation(fields: [orgId], references: [orgId])
@@ -112,6 +117,8 @@ model Task {
   subtasks       Task[]   @relation("TaskSubtasks")
   sprint         Sprint?  @relation(fields: [sprintId], references: [sprintId])
   assignee       User?    @relation("TaskAssignee", fields: [assigneeId], references: [userId])
+  comments       Comment[]
+  labels         TaskLabel[]
 
   @@index([projectId])
   @@index([parentTaskId])
@@ -120,4 +127,84 @@ model Task {
   @@index([orgId])
   @@index([projectId, sprintId, position])
   @@map("tasks")
+}
+
+model Comment {
+  commentId       String    @id @default(uuid()) @map("comment_id")
+  taskId          String    @map("task_id")
+  userId          String    @map("user_id")
+  parentCommentId String?   @map("parent_comment_id")
+  content         String
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  task            Task      @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
+  user            User      @relation("UserComments", fields: [userId], references: [userId])
+  parentComment   Comment?  @relation("CommentThread", fields: [parentCommentId], references: [commentId])
+  replies         Comment[] @relation("CommentThread")
+
+  @@index([taskId])
+  @@index([parentCommentId])
+  @@map("comments")
+}
+
+model Activity {
+  activityId String   @id @default(uuid()) @map("activity_id")
+  orgId      String   @map("org_id")
+  projectId  String?  @map("project_id")
+  taskId     String?  @map("task_id")
+  sprintId   String?  @map("sprint_id")
+  userId     String   @map("user_id")
+  action     String
+  field      String?
+  oldValue   String?  @map("old_value")
+  newValue   String?  @map("new_value")
+  createdAt  DateTime @default(now()) @map("created_at")
+  user       User     @relation("UserActivities", fields: [userId], references: [userId])
+
+  @@index([projectId])
+  @@index([taskId])
+  @@index([orgId, createdAt])
+  @@map("activities")
+}
+
+model Label {
+  labelId   String      @id @default(uuid()) @map("label_id")
+  orgId     String      @map("org_id")
+  name      String
+  color     String      @default("#6b7280")
+  createdAt DateTime    @default(now()) @map("created_at")
+  org       Org         @relation(fields: [orgId], references: [orgId])
+  tasks     TaskLabel[]
+  @@unique([orgId, name])
+  @@index([orgId])
+  @@map("labels")
+}
+
+model TaskLabel {
+  taskId    String   @map("task_id")
+  labelId   String   @map("label_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  task      Task     @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
+  label     Label    @relation(fields: [labelId], references: [labelId], onDelete: Cascade)
+  @@id([taskId, labelId])
+  @@index([labelId])
+  @@map("task_labels")
+}
+
+model Notification {
+  notificationId   String   @id @default(uuid()) @map("notification_id")
+  orgId            String   @map("org_id")
+  userId           String   @map("user_id")
+  type             String
+  title            String
+  body             String?
+  linkUrl          String?  @map("link_url")
+  relatedTaskId    String?  @map("related_task_id")
+  relatedProjectId String?  @map("related_project_id")
+  isRead           Boolean  @default(false) @map("is_read")
+  createdAt        DateTime @default(now()) @map("created_at")
+  user             User     @relation("UserNotifications", fields: [userId], references: [userId])
+  @@index([userId, isRead, createdAt])
+  @@index([orgId])
+  @@map("notifications")
 }

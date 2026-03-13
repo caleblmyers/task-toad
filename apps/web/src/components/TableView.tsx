@@ -1,0 +1,195 @@
+import { useState } from 'react';
+import type { Task, Sprint, OrgUser } from '../types';
+import { statusLabel } from '../utils/taskHelpers';
+
+type SortField = 'title' | 'status' | 'priority' | 'assignee' | 'dueDate' | 'estimatedHours' | 'sprint';
+type SortDir = 'asc' | 'desc';
+
+const priorityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+
+interface TableViewProps {
+  tasks: Task[];
+  sprints: Sprint[];
+  orgUsers: OrgUser[];
+  selectedTask: Task | null;
+  selectedTaskIds: Set<string>;
+  statuses: string[];
+  onSelectTask: (task: Task) => void;
+  onToggleTaskId: (taskId: string) => void;
+  onToggleAll: (taskIds: string[]) => void;
+  onStatusChange: (taskId: string, status: string) => void;
+  onAssignUser: (taskId: string, assigneeId: string | null) => void;
+  onDueDateChange: (taskId: string, dueDate: string | null) => void;
+  onAssignSprint: (taskId: string, sprintId: string | null) => void;
+}
+
+export default function TableView({
+  tasks, sprints, orgUsers, selectedTask, selectedTaskIds, statuses,
+  onSelectTask, onToggleTaskId, onToggleAll,
+  onStatusChange, onAssignUser, onDueDateChange, onAssignSprint,
+}: TableViewProps) {
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const showCheckboxes = selectedTaskIds.size > 0;
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      if (sortDir === 'asc') setSortDir('desc');
+      else if (sortDir === 'desc') { setSortField(null); setSortDir('asc'); }
+    } else {
+      setSortField(field);
+      setSortDir('asc');
+    }
+  };
+
+  const sortIndicator = (field: SortField) => {
+    if (sortField !== field) return '';
+    return sortDir === 'asc' ? ' \u2191' : ' \u2193';
+  };
+
+  const sorted = [...tasks].sort((a, b) => {
+    if (!sortField) return 0;
+    const dir = sortDir === 'asc' ? 1 : -1;
+    switch (sortField) {
+      case 'title': return a.title.localeCompare(b.title) * dir;
+      case 'status': return a.status.localeCompare(b.status) * dir;
+      case 'priority': return ((priorityOrder[a.priority] ?? 2) - (priorityOrder[b.priority] ?? 2)) * dir;
+      case 'assignee': return ((a.assigneeId ?? '') .localeCompare(b.assigneeId ?? '')) * dir;
+      case 'dueDate': return ((a.dueDate ?? '').localeCompare(b.dueDate ?? '')) * dir;
+      case 'estimatedHours': return ((a.estimatedHours ?? 0) - (b.estimatedHours ?? 0)) * dir;
+      case 'sprint': return ((a.sprintId ?? '').localeCompare(b.sprintId ?? '')) * dir;
+      default: return 0;
+    }
+  });
+
+  const allIds = tasks.map((t) => t.taskId);
+  const allChecked = allIds.length > 0 && allIds.every((id) => selectedTaskIds.has(id));
+
+  const thClass = 'px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wide cursor-pointer hover:text-slate-700 select-none whitespace-nowrap';
+  const tdClass = 'px-3 py-2 text-sm text-slate-700 whitespace-nowrap';
+
+  return (
+    <div className="flex-1 overflow-auto px-6 py-4">
+      <div className="max-w-6xl mx-auto">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="border-b border-slate-200">
+              <th className="px-3 py-2 w-8">
+                <input
+                  type="checkbox"
+                  checked={allChecked}
+                  onChange={() => onToggleAll(allIds)}
+                  className={`w-3.5 h-3.5 rounded border-slate-300 text-slate-600 cursor-pointer ${showCheckboxes ? 'opacity-100' : 'opacity-0 hover:opacity-100'} transition-opacity`}
+                />
+              </th>
+              <th className={thClass} onClick={() => handleSort('title')}>Title{sortIndicator('title')}</th>
+              <th className={thClass} onClick={() => handleSort('status')}>Status{sortIndicator('status')}</th>
+              <th className={thClass} onClick={() => handleSort('priority')}>Priority{sortIndicator('priority')}</th>
+              <th className={thClass} onClick={() => handleSort('assignee')}>Assignee{sortIndicator('assignee')}</th>
+              <th className={thClass} onClick={() => handleSort('dueDate')}>Due Date{sortIndicator('dueDate')}</th>
+              <th className={thClass} onClick={() => handleSort('estimatedHours')}>Estimate{sortIndicator('estimatedHours')}</th>
+              <th className={thClass} onClick={() => handleSort('sprint')}>Sprint{sortIndicator('sprint')}</th>
+              <th className={thClass}>Labels</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((task) => {
+              const isSelected = selectedTask?.taskId === task.taskId;
+              return (
+                <tr
+                  key={task.taskId}
+                  className={`border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50' : ''} ${task.archived ? 'opacity-50' : ''}`}
+                  onClick={() => onSelectTask(task)}
+                >
+                  <td className="px-3 py-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedTaskIds.has(task.taskId)}
+                      onChange={(e) => { e.stopPropagation(); onToggleTaskId(task.taskId); }}
+                      onClick={(e) => e.stopPropagation()}
+                      className={`w-3.5 h-3.5 rounded border-slate-300 text-slate-600 cursor-pointer ${showCheckboxes ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}
+                    />
+                  </td>
+                  <td className={`${tdClass} font-medium max-w-xs truncate`}>{task.title}</td>
+                  <td className={tdClass} onClick={(e) => e.stopPropagation()}>
+                    <select
+                      value={task.status}
+                      onChange={(e) => onStatusChange(task.taskId, e.target.value)}
+                      className="text-xs border border-slate-200 rounded px-1.5 py-0.5 bg-white"
+                    >
+                      {statuses.map((s) => (
+                        <option key={s} value={s}>{statusLabel(s)}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className={tdClass}>
+                    <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                      task.priority === 'critical' ? 'bg-red-100 text-red-700' :
+                      task.priority === 'high' ? 'bg-orange-100 text-orange-700' :
+                      task.priority === 'low' ? 'bg-slate-100 text-slate-500' :
+                      'bg-blue-100 text-blue-700'
+                    }`}>
+                      {task.priority}
+                    </span>
+                  </td>
+                  <td className={tdClass} onClick={(e) => e.stopPropagation()}>
+                    <select
+                      value={task.assigneeId ?? ''}
+                      onChange={(e) => onAssignUser(task.taskId, e.target.value || null)}
+                      className="text-xs border border-slate-200 rounded px-1.5 py-0.5 bg-white max-w-[120px]"
+                    >
+                      <option value="">—</option>
+                      {orgUsers.map((u) => (
+                        <option key={u.userId} value={u.userId}>{u.email}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className={tdClass} onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="date"
+                      value={task.dueDate ?? ''}
+                      onChange={(e) => onDueDateChange(task.taskId, e.target.value || null)}
+                      className="text-xs border border-slate-200 rounded px-1.5 py-0.5 bg-white"
+                    />
+                  </td>
+                  <td className={tdClass}>
+                    {task.estimatedHours != null ? `${task.estimatedHours}h` : '—'}
+                  </td>
+                  <td className={tdClass} onClick={(e) => e.stopPropagation()}>
+                    <select
+                      value={task.sprintId ?? ''}
+                      onChange={(e) => onAssignSprint(task.taskId, e.target.value || null)}
+                      className="text-xs border border-slate-200 rounded px-1.5 py-0.5 bg-white max-w-[120px]"
+                    >
+                      <option value="">Backlog</option>
+                      {sprints.filter((s) => !s.closedAt).map((s) => (
+                        <option key={s.sprintId} value={s.sprintId}>{s.name}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className={tdClass}>
+                    <div className="flex items-center gap-0.5">
+                      {(task.labels ?? []).slice(0, 3).map((l) => (
+                        <span
+                          key={l.labelId}
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: l.color }}
+                          title={l.name}
+                        />
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+            {sorted.length === 0 && (
+              <tr>
+                <td colSpan={9} className="px-3 py-8 text-center text-sm text-slate-400">No tasks to display</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

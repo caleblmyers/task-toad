@@ -74,6 +74,19 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
                       {task.description && (
                         <p className="text-xs text-slate-500 mt-1 line-clamp-2">{task.description}</p>
                       )}
+                      {task.labels && task.labels.length > 0 && (
+                        <div className="flex items-center gap-1 mt-1.5">
+                          {task.labels.slice(0, 4).map((l) => (
+                            <span
+                              key={l.labelId}
+                              className="text-[10px] px-1.5 py-0 rounded-full"
+                              style={{ backgroundColor: l.color + '20', color: l.color }}
+                            >
+                              {l.name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <div className="flex items-center justify-between mt-2">
                         <span className={`text-xs px-1.5 py-0.5 rounded ${style.pillClass}`}>{col}</span>
                         {subtaskCount > 0 && (

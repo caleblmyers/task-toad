@@ -4,10 +4,17 @@ import { useProjectData } from '../hooks/useProjectData';
 import { useTaskFiltering } from '../hooks/useTaskFiltering';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useToast } from '../hooks/useToast';
+import { useAuth } from '../auth/context';
+import { gql } from '../api/client';
+import type { Activity } from '../types';
 import KanbanBoard from '../components/KanbanBoard';
 import TaskDetailPanel from '../components/TaskDetailPanel';
 import TaskPlanApprovalDialog from '../components/TaskPlanApprovalDialog';
 import BacklogView from '../components/BacklogView';
+import TableView from '../components/TableView';
+import CalendarView from '../components/CalendarView';
+import BulkActionBar from '../components/BulkActionBar';
+import ProjectDashboard from '../components/ProjectDashboard';
 import SprintCreateModal from '../components/SprintCreateModal';
 import SprintPlanModal from '../components/SprintPlanModal';
 import CloseSprintModal from '../components/CloseSprintModal';
@@ -16,7 +23,8 @@ import SearchInput from '../components/shared/SearchInput';
 import FilterBar from '../components/shared/FilterBar';
 import ToastContainer from '../components/shared/ToastContainer';
 import KeyboardShortcutHelp from '../components/shared/KeyboardShortcutHelp';
-import { IconList, IconBoard, IconClose, IconPlus, IconRefresh, IconSummary, IconFilter, IconKeyboard } from '../components/shared/Icons';
+import { IconList, IconBoard, IconTable, IconCalendar, IconClose, IconPlus, IconRefresh, IconSummary, IconFilter, IconKeyboard } from '../components/shared/Icons';
+import { statusLabel } from '../utils/taskHelpers';
 
 const activeClass = 'px-3 py-1 text-sm rounded-md bg-white text-slate-800 font-medium shadow-sm';
 const inactiveClass = 'px-3 py-1 text-sm rounded-md text-slate-500 hover:text-slate-700';
@@ -25,9 +33,15 @@ export default function ProjectDetail() {
   const d = useProjectData();
   const filtering = useTaskFiltering(d.rootTasks);
   const { toasts, addToast, removeToast } = useToast();
+  const { user } = useAuth();
   const searchRef = useRef<HTMLInputElement>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
+  const [editingProjectName, setEditingProjectName] = useState(false);
+  const [editProjectNameValue, setEditProjectNameValue] = useState('');
+  const [showStatusEditor, setShowStatusEditor] = useState(false);
+  const [newStatusValue, setNewStatusValue] = useState('');
+  const [projectActivities, setProjectActivities] = useState<Activity[]>([]);
 
   useKeyboardShortcuts({
     tasks: filtering.filteredTasks,
@@ -40,10 +54,24 @@ export default function ProjectDetail() {
     enabled: !d.isGenerating,
   });
 
+  // Load project-level activities when switching to dashboard
+  const loadProjectActivities = async () => {
+    if (!d.projectId) return;
+    try {
+      const data = await gql<{ activities: Activity[] }>(
+        `query Activities($projectId: ID!) { activities(projectId: $projectId, limit: 50) { activityId projectId taskId sprintId userId userEmail action field oldValue newValue createdAt } }`,
+        { projectId: d.projectId }
+      );
+      setProjectActivities(data.activities);
+    } catch {
+      // ignore
+    }
+  };
+
   // Wrap handlers to show toasts on success
-  const handleStatusChange = async (taskId: string, status: 'todo' | 'in_progress' | 'done') => {
+  const handleStatusChange = async (taskId: string, status: string) => {
     await d.handleStatusChange(taskId, status);
-    addToast('success', `Status updated to ${status.replace('_', ' ')}`);
+    addToast('success', `Status updated to ${statusLabel(status)}`);
   };
   const handleAssignUser = async (taskId: string, assigneeId: string | null) => {
     await d.handleAssignUser(taskId, assigneeId);
@@ -58,6 +86,54 @@ export default function ProjectDetail() {
     addToast('success', sprintId ? 'Moved to sprint' : 'Moved to backlog');
   };
 
+  const handleProjectNameSave = async () => {
+    if (!editProjectNameValue.trim()) return;
+    setEditingProjectName(false);
+    await d.handleUpdateProject({ name: editProjectNameValue });
+    addToast('success', 'Project name updated');
+  };
+
+  const handleToggleTaskId = (taskId: string) => {
+    d.setSelectedTaskIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId); else next.add(taskId);
+      return next;
+    });
+  };
+
+  const handleToggleAll = (taskIds: string[]) => {
+    d.setSelectedTaskIds((prev) => {
+      const allSelected = taskIds.every((id) => prev.has(id));
+      const next = new Set(prev);
+      if (allSelected) {
+        taskIds.forEach((id) => next.delete(id));
+      } else {
+        taskIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const handleBulkUpdate = async (updates: { status?: string; assigneeId?: string | null; sprintId?: string | null; archived?: boolean }) => {
+    const ids = Array.from(d.selectedTaskIds);
+    await d.handleBulkUpdate(ids, updates);
+    addToast('success', `Updated ${ids.length} tasks`);
+  };
+
+  const handleAddStatus = () => {
+    const slug = newStatusValue.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    if (!slug || d.projectStatuses.includes(slug)) return;
+    const updated = [...d.projectStatuses, slug];
+    d.handleUpdateProject({ statuses: JSON.stringify(updated) });
+    setNewStatusValue('');
+  };
+
+  const handleRemoveStatus = (status: string) => {
+    if (d.projectStatuses.length <= 1) return;
+    const updated = d.projectStatuses.filter((s) => s !== status);
+    d.handleUpdateProject({ statuses: JSON.stringify(updated) });
+  };
+
   if (!d.projectId) return null;
 
   const detailPanelProps = {
@@ -67,6 +143,12 @@ export default function ProjectDetail() {
     generatingInstructions: d.generatingInstructions,
     sprints: d.sprints,
     orgUsers: d.orgUsers,
+    statuses: d.projectStatuses,
+    allTasks: d.rootTasks,
+    comments: d.selectedTask ? (d.comments[d.selectedTask.taskId] ?? []) : [],
+    activities: d.selectedTask ? (d.taskActivities[d.selectedTask.taskId] ?? []) : [],
+    currentUserId: user?.userId ?? '',
+    isAdmin: user?.role === 'org:admin',
     disabled: d.isGenerating,
     onStartEditTitle: d.startEditTitle,
     onTitleChange: d.setEditTitleValue,
@@ -81,6 +163,23 @@ export default function ProjectDetail() {
     onAssignSprint: handleAssignSprint,
     onAssignUser: handleAssignUser,
     onDueDateChange: handleDueDateChange,
+    onUpdateDependencies: d.handleUpdateDependencies,
+    onCreateComment: async (content: string, parentId?: string) => {
+      if (d.selectedTask) await d.handleCreateComment(d.selectedTask.taskId, content, parentId);
+    },
+    onUpdateComment: d.handleUpdateComment,
+    onDeleteComment: async (commentId: string) => {
+      if (d.selectedTask) await d.handleDeleteComment(commentId, d.selectedTask.taskId);
+    },
+    onUpdateTask: d.handleUpdateTask,
+    labels: d.labels,
+    onAddTaskLabel: d.handleAddTaskLabel,
+    onRemoveTaskLabel: d.handleRemoveTaskLabel,
+    onCreateLabel: d.handleCreateLabel,
+    onArchiveTask: async (taskId: string, archived: boolean) => {
+      await d.handleArchiveTask(taskId, archived);
+      addToast('success', archived ? 'Task archived' : 'Task unarchived');
+    },
   };
 
   const viewToggle = (
@@ -90,6 +189,15 @@ export default function ProjectDetail() {
       </button>
       <button onClick={() => d.switchView('board')} className={d.view === 'board' ? activeClass : inactiveClass} disabled={d.isGenerating}>
         <span className="flex items-center gap-1"><IconBoard className="w-3.5 h-3.5" /> Board</span>
+      </button>
+      <button onClick={() => d.switchView('table')} className={d.view === 'table' ? activeClass : inactiveClass} disabled={d.isGenerating}>
+        <span className="flex items-center gap-1"><IconTable className="w-3.5 h-3.5" /> Table</span>
+      </button>
+      <button onClick={() => d.switchView('calendar')} className={d.view === 'calendar' ? activeClass : inactiveClass} disabled={d.isGenerating}>
+        <span className="flex items-center gap-1"><IconCalendar className="w-3.5 h-3.5" /> Calendar</span>
+      </button>
+      <button onClick={() => { d.switchView('dashboard'); loadProjectActivities(); }} className={d.view === 'dashboard' ? activeClass : inactiveClass} disabled={d.isGenerating}>
+        <span className="flex items-center gap-1">📊 Dashboard</span>
       </button>
     </div>
   );
@@ -103,7 +211,36 @@ export default function ProjectDetail() {
             ← Projects
           </Link>
           <span className="text-slate-300">/</span>
-          <h1 className="text-sm font-semibold text-slate-800">Tasks</h1>
+          {editingProjectName ? (
+            <input
+              type="text"
+              value={editProjectNameValue}
+              onChange={(e) => setEditProjectNameValue(e.target.value)}
+              onBlur={handleProjectNameSave}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleProjectNameSave(); if (e.key === 'Escape') setEditingProjectName(false); }}
+              className="text-sm font-semibold text-slate-800 border-b-2 border-slate-400 focus:outline-none bg-transparent w-48"
+              autoFocus
+            />
+          ) : (
+            <h1
+              className="text-sm font-semibold text-slate-800 cursor-text hover:underline decoration-dashed"
+              onClick={() => {
+                setEditProjectNameValue(d.project?.name ?? '');
+                setEditingProjectName(true);
+              }}
+              title="Click to edit project name"
+            >
+              {d.project?.name ?? 'Tasks'}
+            </h1>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowStatusEditor((v) => !v)}
+            className="text-xs text-slate-400 hover:text-slate-600 px-1"
+            title="Manage statuses"
+          >
+            ⚙
+          </button>
           {viewToggle}
           <SearchInput
             ref={searchRef}
@@ -160,6 +297,32 @@ export default function ProjectDetail() {
         </div>
       </div>
 
+      {/* Status editor */}
+      {showStatusEditor && (
+        <div className="px-6 py-2 bg-slate-50 border-b border-slate-100 flex-shrink-0 animate-fade-in">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Statuses:</span>
+            {d.projectStatuses.map((s) => (
+              <span key={s} className="inline-flex items-center gap-1 text-xs bg-white border border-slate-200 px-2 py-0.5 rounded">
+                {statusLabel(s)}
+                {d.projectStatuses.length > 1 && (
+                  <button onClick={() => handleRemoveStatus(s)} className="text-slate-400 hover:text-red-500">✕</button>
+                )}
+              </span>
+            ))}
+            <input
+              type="text"
+              value={newStatusValue}
+              onChange={(e) => setNewStatusValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAddStatus(); }}
+              placeholder="Add status…"
+              className="text-xs border border-slate-300 rounded px-2 py-0.5 w-28 focus:outline-none focus:ring-1 focus:ring-slate-400"
+            />
+            <button onClick={handleAddStatus} className="text-xs text-slate-500 hover:text-slate-700">Add</button>
+          </div>
+        </div>
+      )}
+
       {/* Filter bar */}
       {showFilters && (
         <div className="px-6 py-2 bg-slate-50 border-b border-slate-100 flex-shrink-0 animate-fade-in">
@@ -168,7 +331,11 @@ export default function ProjectDetail() {
             priorityFilter={filtering.priorityFilter}
             assigneeFilter={filtering.assigneeFilter}
             orgUsers={d.orgUsers}
-            onStatusChange={(v) => filtering.setStatusFilter(v as 'todo' | 'in_progress' | 'done' | 'all')}
+            statuses={d.projectStatuses}
+            labels={d.labels}
+            labelFilter={filtering.labelFilter}
+            onLabelChange={filtering.setLabelFilter}
+            onStatusChange={filtering.setStatusFilter}
             onPriorityChange={filtering.setPriorityFilter}
             onAssigneeChange={filtering.setAssigneeFilter}
             onClear={filtering.clearFilters}
@@ -210,7 +377,7 @@ export default function ProjectDetail() {
 
       {/* Main content row */}
       <div className="flex flex-1 min-h-0">
-        {/* Left: board / backlog / states */}
+        {/* Left: board / backlog / dashboard / states */}
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
           {d.summary ? (
             <div className="flex-1 flex items-center justify-center px-8">
@@ -224,6 +391,14 @@ export default function ProjectDetail() {
                 <p className="text-slate-700 leading-relaxed">{d.summary}</p>
               </div>
             </div>
+          ) : d.view === 'dashboard' ? (
+            <ProjectDashboard
+              stats={d.dashboardStats}
+              activities={projectActivities}
+              loading={!d.dashboardStats}
+              projectId={d.projectId!}
+              sprints={d.sprints}
+            />
           ) : d.loading ? (
             d.view === 'board' ? <KanbanBoardSkeleton /> : <TaskListSkeleton count={6} />
           ) : d.view === 'backlog' ? (
@@ -232,7 +407,10 @@ export default function ProjectDetail() {
               sprints={d.sprints}
               orgUsers={d.orgUsers}
               selectedTask={d.selectedTask}
+              selectedTaskIds={d.selectedTaskIds}
               onSelectTask={d.selectTask}
+              onToggleTaskId={handleToggleTaskId}
+              onToggleAll={handleToggleAll}
               onCreateSprint={() => d.setShowSprintModal(true)}
               onEditSprint={(sprint) => d.setEditingSprint(sprint)}
               onDeleteSprint={d.handleDeleteSprint}
@@ -243,6 +421,30 @@ export default function ProjectDetail() {
               onReorderTask={d.handleReorderTask}
               hasMore={d.hasMore}
               onLoadMore={d.loadMoreTasks}
+              showArchived={filtering.showArchived}
+              onToggleShowArchived={() => filtering.setShowArchived(!filtering.showArchived)}
+            />
+          ) : d.view === 'calendar' ? (
+            <CalendarView
+              tasks={filtering.filteredTasks}
+              selectedTask={d.selectedTask}
+              onSelectTask={d.selectTask}
+            />
+          ) : d.view === 'table' ? (
+            <TableView
+              tasks={filtering.filteredTasks}
+              sprints={d.sprints}
+              orgUsers={d.orgUsers}
+              selectedTask={d.selectedTask}
+              selectedTaskIds={d.selectedTaskIds}
+              statuses={d.projectStatuses}
+              onSelectTask={d.selectTask}
+              onToggleTaskId={handleToggleTaskId}
+              onToggleAll={handleToggleAll}
+              onStatusChange={handleStatusChange}
+              onAssignUser={handleAssignUser}
+              onDueDateChange={handleDueDateChange}
+              onAssignSprint={handleAssignSprint}
             />
           ) : d.activeSprint ? (
             <div className="flex-1 overflow-x-auto overflow-y-hidden px-6 py-4">
@@ -285,6 +487,16 @@ export default function ProjectDetail() {
           </div>
         )}
       </div>
+
+      {/* Bulk action bar */}
+      <BulkActionBar
+        selectedCount={d.selectedTaskIds.size}
+        statuses={d.projectStatuses}
+        sprints={d.sprints}
+        orgUsers={d.orgUsers}
+        onBulkUpdate={handleBulkUpdate}
+        onClearSelection={() => d.setSelectedTaskIds(new Set())}
+      />
 
       {/* Sprint create modal */}
       {d.showSprintModal && d.projectId && (
