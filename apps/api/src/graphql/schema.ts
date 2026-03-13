@@ -13,7 +13,7 @@ import {
   generateTaskInstructions as aiGenerateTaskInstructions,
   summarizeProject as aiSummarizeProject,
   planSprints as aiPlanSprints,
-} from './ai.js';
+} from '../ai/index.js';
 
 function requireAuth(context: Context) {
   if (!context.user) {
@@ -1163,7 +1163,7 @@ export const schema = createSchema<Context>({
         }
         const tasks = await context.prisma.task.findMany({
           where: { projectId: args.projectId, parentTaskId: null },
-          select: { title: true, description: true, status: true },
+          select: { title: true, status: true },
           orderBy: { createdAt: 'asc' },
         });
         if (tasks.length === 0) {
