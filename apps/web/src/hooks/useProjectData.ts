@@ -84,6 +84,7 @@ export interface ProjectData {
   handleUpdateDependencies: (taskId: string, dependsOnIds: string[]) => Promise<void>;
   handleBulkUpdate: (taskIds: string[], updates: { status?: string; assigneeId?: string | null; sprintId?: string | null; archived?: boolean }) => Promise<void>;
   handleArchiveTask: (taskId: string, archived: boolean) => Promise<void>;
+  handleCreateSubtask: (parentTaskId: string, title: string) => Promise<void>;
   handleCreateLabel: (name: string, color: string) => Promise<Label | null>;
   handleDeleteLabel: (labelId: string) => Promise<void>;
   handleAddTaskLabel: (taskId: string, labelId: string) => Promise<void>;
@@ -707,6 +708,23 @@ export function useProjectData(): ProjectData {
     }
   };
 
+  const handleCreateSubtask = async (parentTaskId: string, title: string) => {
+    try {
+      const data = await gql<{ createSubtask: Task }>(
+        `mutation CreateSubtask($parentTaskId: ID!, $title: String!) {
+          createSubtask(parentTaskId: $parentTaskId, title: $title) { ${TASK_FIELDS} }
+        }`,
+        { parentTaskId, title }
+      );
+      setSubtasks((prev) => ({
+        ...prev,
+        [parentTaskId]: [...(prev[parentTaskId] ?? []), data.createSubtask],
+      }));
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Failed to create subtask');
+    }
+  };
+
   // --- Labels ---
 
   const handleCreateLabel = async (name: string, color: string): Promise<Label | null> => {
@@ -1079,7 +1097,7 @@ export function useProjectData(): ProjectData {
     handleSprintClosed, handleSprintUpdated, handleDeleteSprint,
     openPreview, handleCommitPlan, handleSummarize, handleGenerateInstructions, handleGenerateCode, handleCreatePR,
     handleAddTask, startEditTitle, handleTitleSave, handleUpdateTask, switchView,
-    handleUpdateProject, handleUpdateDependencies, handleBulkUpdate, handleArchiveTask,
+    handleUpdateProject, handleUpdateDependencies, handleBulkUpdate, handleArchiveTask, handleCreateSubtask,
     handleCreateLabel, handleDeleteLabel, handleAddTaskLabel, handleRemoveTaskLabel,
     handleCreateComment, handleUpdateComment, handleDeleteComment,
     loadDashboardStats,

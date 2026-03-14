@@ -101,6 +101,7 @@ export interface Task {
   priority: string;
   dependsOn?: string | null;
   status: string;
+  taskType: string;
   projectId: string;
   parentTaskId?: string | null;
   createdAt: string;
@@ -115,6 +116,8 @@ export interface Task {
   githubIssueUrl?:    string | null;
   pullRequests?:      TaskPullRequest[];
   commits?:           TaskCommit[];
+  children?:          Task[];
+  progress?:          { total: number; completed: number; percentage: number };
 }
 
 export interface TaskCommit {

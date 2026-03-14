@@ -8,7 +8,7 @@ export function statusLabel(status: string): string {
 }
 
 export const TASK_FIELDS = `
-  taskId title description instructions suggestedTools estimatedHours storyPoints priority dependsOn status projectId parentTaskId createdAt sprintId sprintColumn assigneeId archived position dueDate labels { labelId name color } githubIssueNumber githubIssueUrl pullRequests { id prNumber prUrl prTitle state } commits { id sha message author url createdAt }
+  taskId title description instructions suggestedTools estimatedHours storyPoints priority dependsOn status taskType projectId parentTaskId createdAt sprintId sprintColumn assigneeId archived position dueDate labels { labelId name color } githubIssueNumber githubIssueUrl pullRequests { id prNumber prUrl prTitle state } commits { id sha message author url createdAt }
 `;
 
 export const STATUS_TO_COLUMN: Record<string, string> = {

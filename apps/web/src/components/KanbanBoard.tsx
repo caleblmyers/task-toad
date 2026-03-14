@@ -66,11 +66,24 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
                       draggable
                       onDragStart={() => { draggedId.current = task.taskId; }}
                       onClick={() => onSelectTask(task)}
-                      className={`bg-white rounded-lg p-3 shadow-sm border border-slate-200 border-l-4 ${style.barColor}
+                      className={`bg-white rounded-lg p-3 shadow-sm border border-slate-200 border-l-4 ${
+                        task.taskType === 'epic' ? 'border-l-purple-500' :
+                        task.taskType === 'story' ? 'border-l-blue-500' :
+                        style.barColor
+                      }
                         cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow duration-150
                         ${isSelected ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
                     >
-                      <p className="text-sm font-medium text-slate-800 leading-snug line-clamp-2">{task.title}</p>
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        {task.taskType !== 'task' && (
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                            task.taskType === 'epic' ? 'bg-purple-500' :
+                            task.taskType === 'story' ? 'bg-blue-500' :
+                            'bg-slate-400'
+                          }`} title={task.taskType} />
+                        )}
+                        <p className="text-sm font-medium text-slate-800 leading-snug line-clamp-2">{task.title}</p>
+                      </div>
                       {task.description && (
                         <p className="text-xs text-slate-500 mt-1 line-clamp-2">{task.description}</p>
                       )}

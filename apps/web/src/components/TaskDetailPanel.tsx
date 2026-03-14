@@ -67,6 +67,7 @@ export interface TaskDetailPanelProps {
   onAddTaskLabel?: (taskId: string, labelId: string) => Promise<void>;
   onRemoveTaskLabel?: (taskId: string, labelId: string) => Promise<void>;
   onCreateLabel?: (name: string, color: string) => Promise<Label | null>;
+  onCreateSubtask?: (parentTaskId: string, title: string) => Promise<void>;
   onClose?: () => void;
   isDrawer?: boolean;
 }
@@ -93,6 +94,7 @@ function PanelContent({
   onStatusChange, onSubtaskStatusChange, onGenerateInstructions, onGenerateCode, generatingCode,
   onAssignSprint, onAssignUser, onDueDateChange, onUpdateDependencies,
   onCreateComment, onUpdateComment, onDeleteComment, onUpdateTask, onArchiveTask,
+  onCreateSubtask,
 }: Omit<TaskDetailPanelProps, 'onClose' | 'isDrawer'>) {
   const tools = parseTools(task.suggestedTools);
   const depIds = parseDependsOn(task.dependsOn);
@@ -106,6 +108,8 @@ function PanelContent({
   const [editingInstructions, setEditingInstructions] = useState(false);
   const [editInstrValue, setEditInstrValue] = useState('');
   const [syncingGitHub, setSyncingGitHub] = useState(false);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+  const [showSubtaskForm, setShowSubtaskForm] = useState(false);
 
   const availableTasks = allTasks.filter(
     (t) => t.taskId !== task.taskId && !t.parentTaskId && !depIds.includes(t.taskId)
@@ -139,6 +143,28 @@ function PanelContent({
           </h2>
         )}
       </div>
+
+      {/* Task Type Badge */}
+      {task.taskType && task.taskType !== 'task' && (
+        <div className="mb-3">
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+            task.taskType === 'epic' ? 'bg-purple-100 text-purple-700' :
+            task.taskType === 'story' ? 'bg-blue-100 text-blue-700' :
+            task.taskType === 'subtask' ? 'bg-slate-100 text-slate-600' :
+            'bg-slate-100 text-slate-600'
+          }`}>
+            {task.taskType.charAt(0).toUpperCase() + task.taskType.slice(1)}
+          </span>
+          {task.parentTaskId && (() => {
+            const parentTask = allTasks.find((t) => t.taskId === task.parentTaskId);
+            return parentTask ? (
+              <span className="ml-2 text-xs text-slate-500">
+                Parent: {parentTask.title}
+              </span>
+            ) : null;
+          })()}
+        </div>
+      )}
 
       {/* Status */}
       <div className="mb-4">
@@ -587,15 +613,39 @@ function PanelContent({
         </div>
       )}
 
-      {/* Subtasks */}
-      {subtasks.length > 0 && (
+      {/* Subtasks / Children */}
+      {(subtasks.length > 0 || (task.taskType === 'epic' || task.taskType === 'story') && onCreateSubtask) && (
         <div className="mb-4">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Subtasks</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+              {task.taskType === 'epic' ? 'Stories / Children' : 'Subtasks'}
+            </p>
+            {task.progress && task.progress.total > 0 && (
+              <span className="text-xs text-slate-400">
+                {task.progress.completed}/{task.progress.total} done
+              </span>
+            )}
+          </div>
+          {task.progress && task.progress.total > 0 && (
+            <div className="w-full bg-slate-200 rounded-full h-1.5 mb-2">
+              <div
+                className="bg-green-500 rounded-full h-1.5 transition-all"
+                style={{ width: `${task.progress.percentage}%` }}
+              />
+            </div>
+          )}
           <ul className="space-y-2">
             {subtasks.map((st) => (
               <li key={st.taskId} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-medium text-slate-800">{st.title}</p>
+                  <div className="flex items-center gap-1.5">
+                    {st.taskType && st.taskType !== 'task' && (
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                        st.taskType === 'story' ? 'bg-blue-500' : 'bg-slate-400'
+                      }`} />
+                    )}
+                    <p className="text-sm font-medium text-slate-800">{st.title}</p>
+                  </div>
                   <select
                     value={st.status}
                     onChange={(e) =>
@@ -621,6 +671,39 @@ function PanelContent({
               </li>
             ))}
           </ul>
+          {onCreateSubtask && (task.taskType === 'epic' || task.taskType === 'story') && (
+            showSubtaskForm ? (
+              <form
+                className="flex gap-2 mt-2"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!newSubtaskTitle.trim()) return;
+                  await onCreateSubtask(task.taskId, newSubtaskTitle.trim());
+                  setNewSubtaskTitle('');
+                  setShowSubtaskForm(false);
+                }}
+              >
+                <input
+                  type="text"
+                  value={newSubtaskTitle}
+                  onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                  placeholder={task.taskType === 'epic' ? 'New story title…' : 'New subtask title…'}
+                  className="flex-1 text-sm border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                  autoFocus
+                />
+                <button type="submit" className="text-sm px-3 py-1 bg-slate-700 text-white rounded hover:bg-slate-600">Add</button>
+                <button type="button" onClick={() => setShowSubtaskForm(false)} className="text-xs text-slate-400 hover:text-slate-600">Cancel</button>
+              </form>
+            ) : (
+              <button
+                onClick={() => setShowSubtaskForm(true)}
+                className="text-xs text-slate-500 hover:text-slate-700 mt-2"
+                disabled={disabled}
+              >
+                + Add {task.taskType === 'epic' ? 'story' : 'subtask'}
+              </button>
+            )
+          )}
         </div>
       )}
 

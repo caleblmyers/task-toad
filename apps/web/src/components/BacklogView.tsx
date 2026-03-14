@@ -47,6 +47,12 @@ function parseDepsCount(raw?: string | null): number {
   try { return (JSON.parse(raw) as string[]).length; } catch { return 0; }
 }
 
+const taskTypeDot: Record<string, string> = {
+  epic: 'bg-purple-500',
+  story: 'bg-blue-500',
+  subtask: 'bg-slate-400',
+};
+
 interface BacklogViewProps {
   projectId: string;
   tasks: Task[];
@@ -122,7 +128,10 @@ function TaskRow({
           showCheckboxes ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
         } transition-opacity`}
       />
-      <span className="flex-1 text-sm text-slate-800 leading-snug">{task.title}</span>
+      {task.taskType && task.taskType !== 'task' && (
+        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${taskTypeDot[task.taskType] ?? ''}`} title={task.taskType} />
+      )}
+      <span className={`flex-1 text-sm leading-snug ${task.taskType === 'epic' ? 'font-semibold text-slate-900' : 'text-slate-800'}`}>{task.title}</span>
       <div className="flex items-center gap-1.5 flex-shrink-0">
         {depCount > 0 && (
           <span className="text-xs text-slate-400" title={`${depCount} dependenc${depCount === 1 ? 'y' : 'ies'}`}>
