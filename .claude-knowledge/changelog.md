@@ -6,6 +6,30 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-14
 
+### Wave 1: S1 + I1 + I3 (3 workers, 9 tasks)
+
+**S1 — Core PM Foundation:**
+- Epics / task hierarchy with taskType field (epic → story → task → subtask)
+- createSubtask mutation with auto type inference, Task.children + Task.progress field resolvers
+- Epic grouping in BacklogView with expand/collapse and progress bars
+- Task type badges (purple=epic, blue=story) on KanbanBoard and TaskDetailPanel
+- Sprint goal field on Sprint model + SprintCreateModal UI
+- Story points on Task model + TaskDetailPanel input + BacklogView display
+- Sprint velocity now tracks both hours and points
+
+**I1 — AI Pipeline Polish:**
+- AI-generated commit messages (conventional commits format) with graceful fallback
+- AI-enriched PR descriptions (summary, changes, testing sections)
+- Multi-file context injection — fetches project file tree from GitHub for code gen prompts
+- Pre-flight cost estimation display in CodePreviewModal
+
+**I3 — Infrastructure:**
+- GitHub Actions CI workflow (lint, typecheck, build on push/PR)
+- Deploy workflow (placeholder, builds successfully)
+- Multi-stage Dockerfile for API
+- Railway deployment config with auto-migration
+- DEPLOY.md documentation
+
 ### Swarm: Code generation pipeline + AI UX (Groups A, B)
 
 Second swarm run — 3 workers, 5 tasks.

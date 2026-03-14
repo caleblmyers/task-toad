@@ -28,9 +28,9 @@ Each **wave** = 1 schema set + N independent sets running in parallel.
 ### S1 (Priority 1): Core PM Foundation
 **Touches:** `schema.prisma`, `schema.ts`, `resolvers/task.ts`, `resolvers/sprint.ts`, `TaskDetailPanel.tsx`, `useProjectData.ts`
 
-- [ ] Epics / task hierarchy — multi-level grouping beyond parent → subtask (epic → story → subtask), epic progress tracking, epic board view
-- [ ] Sprint goal — text field on Sprint model describing the sprint's focus/objective
-- [ ] Story points estimation — alternative to `estimatedHours`, team velocity tracking based on points per sprint
+- [x] Epics / task hierarchy — multi-level grouping beyond parent → subtask (epic → story → subtask), epic progress tracking, epic board view
+- [x] Sprint goal — text field on Sprint model describing the sprint's focus/objective
+- [x] Story points estimation — alternative to `estimatedHours`, team velocity tracking based on points per sprint
 
 ### S2 (Priority 2): AI Persistence & Cost Control
 **Touches:** `schema.prisma`, `schema.ts`, `resolvers/ai.ts`, `ai/*`, new frontend components
@@ -102,10 +102,10 @@ Each **wave** = 1 schema set + N independent sets running in parallel.
 ### I1 (Priority 1): AI Pipeline Polish
 **Touches:** `ai/*`, `promptBuilder.ts`, `githubService.ts` — no schema changes needed
 
-- [ ] AI commit message generation — enhance PR commit messages with AI-generated context instead of generic "AI: implement task X"
-- [ ] PR description enrichment — AI generates rich PR body with what changed, why, testing suggestions, related tasks
-- [ ] Multi-file context injection — feed existing project files into code gen prompt via GitHub file fetch for higher-quality output
-- [ ] AI code gen cost estimation (pre-flight) — use existing `tokenEstimator` + `estimatedTokensUsed` field to show cost before generating
+- [x] AI commit message generation — enhance PR commit messages with AI-generated context instead of generic "AI: implement task X"
+- [x] PR description enrichment — AI generates rich PR body with what changed, why, testing suggestions, related tasks
+- [x] Multi-file context injection — feed existing project files into code gen prompt via GitHub file fetch for higher-quality output
+- [x] AI code gen cost estimation (pre-flight) — use existing `tokenEstimator` + `estimatedTokensUsed` field to show cost before generating
 
 ### I2 (Priority 1): Code Gen UX
 **Touches:** `CodePreviewModal.tsx`, `TaskPlanApprovalDialog.tsx`, `useProjectData.ts`, `promptBuilder.ts` — no schema changes
@@ -116,8 +116,8 @@ Each **wave** = 1 schema set + N independent sets running in parallel.
 ### I3 (Priority 2): Infrastructure
 **Touches:** new config files only — fully independent
 
-- [ ] CI/CD pipeline (GitHub Actions)
-- [ ] Production deployment (Railway, Render, or Fly.io)
+- [x] CI/CD pipeline (GitHub Actions)
+- [x] Production deployment (Railway, Render, or Fly.io)
 
 ### I4 (Priority 2): Frontend Views (no backend changes)
 **Touches:** new `apps/web/src/components/` files, `ProjectDetail.tsx` — uses existing queries/data
