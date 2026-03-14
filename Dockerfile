@@ -11,7 +11,7 @@ RUN pnpm install --frozen-lockfile --prod=false
 FROM deps AS api-build
 COPY apps/api/ apps/api/
 COPY tsconfig.base.json ./
-RUN pnpm --filter api build
+RUN cd apps/api && npx prisma generate && cd ../.. && pnpm --filter api build
 
 FROM deps AS web-build
 COPY apps/web/ apps/web/
