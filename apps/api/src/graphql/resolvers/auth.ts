@@ -1,0 +1,276 @@
+import { GraphQLError } from 'graphql';
+import bcrypt from 'bcryptjs';
+import { SignJWT } from 'jose';
+import { JWT_SECRET, type Context } from '../context.js';
+import { generateToken } from '../../utils/token.js';
+import { sendEmail, verifyEmailText, resetPasswordText, inviteText } from '../../utils/email.js';
+import { decryptApiKey } from '../../utils/encryption.js';
+
+// ── Shared auth helpers (imported by other resolver modules) ──
+
+export function requireAuth(context: Context) {
+  if (!context.user) {
+    throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
+  }
+  return context.user;
+}
+
+export function requireOrg(context: Context) {
+  const user = requireAuth(context);
+  if (!user.orgId) {
+    throw new GraphQLError('No organization; create one first', { extensions: { code: 'FORBIDDEN' } });
+  }
+  return user as typeof user & { orgId: string };
+}
+
+export async function requireProjectAccess(context: Context, projectId: string) {
+  const user = requireOrg(context);
+  const project = await context.prisma.project.findFirst({
+    where: { projectId, orgId: user.orgId },
+  });
+  if (!project) {
+    throw new GraphQLError('Project not found', { extensions: { code: 'NOT_FOUND' } });
+  }
+  return { user, project };
+}
+
+export function requireApiKey(context: Context): string {
+  requireOrg(context);
+  const encrypted = context.org?.anthropicApiKeyEncrypted;
+  if (!encrypted) {
+    throw new GraphQLError('No Anthropic API key configured. Add one in Settings.', {
+      extensions: { code: 'API_KEY_MISSING' },
+    });
+  }
+  try {
+    return decryptApiKey(encrypted);
+  } catch {
+    throw new GraphQLError('Failed to decrypt API key. Re-enter your key in Settings.', {
+      extensions: { code: 'API_KEY_DECRYPT_FAILED' },
+    });
+  }
+}
+
+// ── Auth queries ──
+
+export const authQueries = {
+  me: (_parent: unknown, _args: unknown, context: Context) => {
+    return context.user;
+  },
+};
+
+// ── Auth mutations ──
+
+export const authMutations = {
+  signup: async (_parent: unknown, args: { email: string; password: string }, context: Context) => {
+    if (args.password.length < 8) {
+      throw new GraphQLError('Password must be at least 8 characters');
+    }
+    const existing = await context.prisma.user.findUnique({ where: { email: args.email } });
+    if (existing) throw new GraphQLError('Email already in use');
+    const passwordHash = await bcrypt.hash(args.password, 10);
+    const verificationToken = generateToken();
+    await context.prisma.user.create({
+      data: { email: args.email, passwordHash, verificationToken },
+    });
+    await sendEmail(
+      args.email,
+      'Verify your TaskToad account',
+      verifyEmailText(verificationToken)
+    );
+    return true;
+  },
+
+  login: async (_parent: unknown, args: { email: string; password: string }, context: Context) => {
+    const user = await context.prisma.user.findUnique({ where: { email: args.email } });
+    if (!user) throw new GraphQLError('Invalid email or password');
+    const valid = await bcrypt.compare(args.password, user.passwordHash);
+    if (!valid) throw new GraphQLError('Invalid email or password');
+    const token = await new SignJWT({ sub: user.userId, email: user.email })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setExpirationTime('7d')
+      .sign(JWT_SECRET);
+    return { token };
+  },
+
+  sendVerificationEmail: async (_parent: unknown, _args: unknown, context: Context) => {
+    const user = requireAuth(context);
+    const dbUser = await context.prisma.user.findUnique({ where: { userId: user.userId } });
+    if (!dbUser) throw new GraphQLError('User not found');
+    if (dbUser.emailVerifiedAt) return true;
+    const verificationToken = generateToken();
+    await context.prisma.user.update({
+      where: { userId: user.userId },
+      data: { verificationToken },
+    });
+    await sendEmail(
+      dbUser.email,
+      'Verify your TaskToad account',
+      verifyEmailText(verificationToken)
+    );
+    return true;
+  },
+
+  verifyEmail: async (_parent: unknown, args: { token: string }, context: Context) => {
+    const user = await context.prisma.user.findUnique({
+      where: { verificationToken: args.token },
+    });
+    if (!user) throw new GraphQLError('Invalid or expired verification token');
+    await context.prisma.user.update({
+      where: { userId: user.userId },
+      data: { emailVerifiedAt: new Date(), verificationToken: null },
+    });
+    return true;
+  },
+
+  requestPasswordReset: async (_parent: unknown, args: { email: string }, context: Context) => {
+    const user = await context.prisma.user.findUnique({ where: { email: args.email } });
+    if (!user) return true; // silent - no enumeration
+    const resetToken = generateToken();
+    const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    await context.prisma.user.update({
+      where: { userId: user.userId },
+      data: { resetToken, resetTokenExpiry },
+    });
+    await sendEmail(
+      user.email,
+      'Reset your TaskToad password',
+      resetPasswordText(resetToken)
+    );
+    return true;
+  },
+
+  resetPassword: async (_parent: unknown, args: { token: string; newPassword: string }, context: Context) => {
+    if (args.newPassword.length < 8) {
+      throw new GraphQLError('Password must be at least 8 characters');
+    }
+    const user = await context.prisma.user.findFirst({
+      where: {
+        resetToken: args.token,
+        resetTokenExpiry: { gt: new Date() },
+      },
+    });
+    if (!user) throw new GraphQLError('Invalid or expired reset token');
+    const passwordHash = await bcrypt.hash(args.newPassword, 10);
+    await context.prisma.user.update({
+      where: { userId: user.userId },
+      data: { passwordHash, resetToken: null, resetTokenExpiry: null },
+    });
+    return true;
+  },
+
+  inviteOrgMember: async (_parent: unknown, args: { email: string; role?: string | null }, context: Context) => {
+    const user = requireOrg(context);
+    if (user.role !== 'org:admin') {
+      throw new GraphQLError('Admin role required', { extensions: { code: 'FORBIDDEN' } });
+    }
+    const existingUser = await context.prisma.user.findUnique({ where: { email: args.email } });
+    if (existingUser?.orgId) {
+      throw new GraphQLError('This email already belongs to an org member');
+    }
+    const token = generateToken();
+    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
+    const role = args.role ?? 'org:member';
+    await context.prisma.orgInvite.upsert({
+      where: { token },
+      update: {},
+      create: {
+        orgId: user.orgId,
+        email: args.email,
+        token,
+        role,
+        expiresAt,
+      },
+    });
+    // If a prior invite exists for this email+org, replace it
+    await context.prisma.orgInvite.deleteMany({
+      where: {
+        orgId: user.orgId,
+        email: args.email,
+        acceptedAt: null,
+        token: { not: token },
+      },
+    });
+    const org = await context.prisma.org.findUnique({ where: { orgId: user.orgId } });
+    await sendEmail(
+      args.email,
+      `You're invited to join ${org?.name ?? 'TaskToad'}`,
+      inviteText(org?.name ?? 'TaskToad', token)
+    );
+    return true;
+  },
+
+  acceptInvite: async (_parent: unknown, args: { token: string; password?: string | null }, context: Context) => {
+    const invite = await context.prisma.orgInvite.findUnique({ where: { token: args.token } });
+    if (!invite || invite.acceptedAt || invite.expiresAt < new Date()) {
+      throw new GraphQLError('Invalid or expired invite');
+    }
+    let userId: string;
+    const existingUser = await context.prisma.user.findUnique({ where: { email: invite.email } });
+    if (existingUser) {
+      if (existingUser.orgId) {
+        throw new GraphQLError('Email already belongs to an org member');
+      }
+      await context.prisma.user.update({
+        where: { userId: existingUser.userId },
+        data: { orgId: invite.orgId, role: invite.role, emailVerifiedAt: new Date() },
+      });
+      userId = existingUser.userId;
+    } else {
+      if (!args.password || args.password.length < 8) {
+        throw new GraphQLError('Password must be at least 8 characters');
+      }
+      const passwordHash = await bcrypt.hash(args.password, 10);
+      const newUser = await context.prisma.user.create({
+        data: {
+          email: invite.email,
+          passwordHash,
+          orgId: invite.orgId,
+          role: invite.role,
+          emailVerifiedAt: new Date(),
+        },
+      });
+      userId = newUser.userId;
+    }
+    await context.prisma.orgInvite.update({
+      where: { inviteId: invite.inviteId },
+      data: { acceptedAt: new Date() },
+    });
+    const updatedUser = await context.prisma.user.findUnique({ where: { userId } });
+    if (!updatedUser) throw new GraphQLError('User not found');
+    const token = await new SignJWT({ sub: updatedUser.userId, email: updatedUser.email })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setExpirationTime('7d')
+      .sign(JWT_SECRET);
+    return { token };
+  },
+
+  revokeInvite: async (_parent: unknown, args: { inviteId: string }, context: Context) => {
+    const user = requireOrg(context);
+    if (user.role !== 'org:admin') {
+      throw new GraphQLError('Admin role required', { extensions: { code: 'FORBIDDEN' } });
+    }
+    const invite = await context.prisma.orgInvite.findUnique({ where: { inviteId: args.inviteId } });
+    if (!invite || invite.orgId !== user.orgId) {
+      throw new GraphQLError('Invite not found', { extensions: { code: 'NOT_FOUND' } });
+    }
+    await context.prisma.orgInvite.delete({ where: { inviteId: args.inviteId } });
+    return true;
+  },
+};
+
+// ── Auth field resolvers ──
+
+export const authFieldResolvers = {
+  User: {
+    emailVerifiedAt: (parent: { emailVerifiedAt: Date | null }) =>
+      parent.emailVerifiedAt ? parent.emailVerifiedAt.toISOString() : null,
+  },
+
+  OrgInvite: {
+    expiresAt: (parent: { expiresAt: Date }) => parent.expiresAt.toISOString(),
+    createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
+    acceptedAt: (parent: { acceptedAt: Date | null }) =>
+      parent.acceptedAt ? parent.acceptedAt.toISOString() : null,
+  },
+};

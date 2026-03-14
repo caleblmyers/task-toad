@@ -1,0 +1,79 @@
+import { GraphQLError } from 'graphql';
+import type { Context } from '../context.js';
+import { encryptApiKey, decryptApiKey } from '../../utils/encryption.js';
+import { requireAuth, requireOrg } from './auth.js';
+
+// ── Org queries ──
+
+export const orgQueries = {
+  org: (_parent: unknown, _args: unknown, context: Context) => {
+    requireOrg(context);
+    return context.org;
+  },
+
+  orgUsers: async (_parent: unknown, _args: unknown, context: Context) => {
+    const user = requireOrg(context);
+    return context.prisma.user.findMany({
+      where: { orgId: user.orgId },
+      select: { userId: true, email: true, role: true },
+    });
+  },
+
+  orgInvites: async (_parent: unknown, _args: unknown, context: Context) => {
+    const user = requireOrg(context);
+    if (user.role !== 'org:admin') {
+      throw new GraphQLError('Admin role required', { extensions: { code: 'FORBIDDEN' } });
+    }
+    return context.prisma.orgInvite.findMany({
+      where: { orgId: user.orgId, acceptedAt: null },
+      orderBy: { createdAt: 'desc' },
+    });
+  },
+};
+
+// ── Org mutations ──
+
+export const orgMutations = {
+  createOrg: async (_parent: unknown, args: { name: string; apiKey?: string | null }, context: Context) => {
+    const user = requireAuth(context);
+    const org = await context.prisma.org.create({
+      data: {
+        name: args.name,
+        ...(args.apiKey ? { anthropicApiKeyEncrypted: encryptApiKey(args.apiKey) } : {}),
+      },
+    });
+    await context.prisma.user.update({
+      where: { userId: user.userId },
+      data: { orgId: org.orgId, role: 'org:admin' },
+    });
+    return org;
+  },
+
+  setOrgApiKey: async (_parent: unknown, args: { apiKey: string }, context: Context) => {
+    const user = requireOrg(context);
+    if (user.role !== 'org:admin') {
+      throw new GraphQLError('Admin role required', { extensions: { code: 'FORBIDDEN' } });
+    }
+    return context.prisma.org.update({
+      where: { orgId: user.orgId },
+      data: { anthropicApiKeyEncrypted: encryptApiKey(args.apiKey) },
+    });
+  },
+};
+
+// ── Org field resolvers ──
+
+export const orgFieldResolvers = {
+  Org: {
+    hasApiKey: (parent: { anthropicApiKeyEncrypted?: string | null }) => !!parent.anthropicApiKeyEncrypted,
+    apiKeyHint: (parent: { anthropicApiKeyEncrypted?: string | null }) => {
+      if (!parent.anthropicApiKeyEncrypted) return null;
+      try {
+        const plaintext = decryptApiKey(parent.anthropicApiKeyEncrypted);
+        return `...${plaintext.slice(-4)}`;
+      } catch {
+        return null;
+      }
+    },
+  },
+};
