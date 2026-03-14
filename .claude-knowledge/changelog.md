@@ -6,6 +6,41 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-14
 
+### Production Deployment
+
+- Deployed to Railway (Hobby plan): single service serving both API + web frontend
+- Dockerfile: multi-stage build with OpenSSL for Prisma, ESM `__dirname` fix
+- API serves Vite build as static files in production (no separate web service needed)
+- Railway auto-deploys, auto-migrates via `prisma migrate deploy` in startCommand
+- Fixed: Prisma generate must run before tsc in Docker, `cd` not available in slim containers
+- Manually linked GitHub App installation in prod DB (owner redirect limitation)
+- Skipped email verification redirect for MVP (SMTP not configured)
+- Production URL: `https://tasktoad-api-production.up.railway.app`
+
+### "In Review" Status + PR Lifecycle
+
+- Added `in_review` as default status and "In Review" as default kanban column
+- Auto-move task to `in_review` when PR is created via `createPullRequestFromTask`
+- Auto-move task to `done` when PR receives approved review via `pull_request_review` webhook
+- Swapped column colors: In Review = purple, Done = green
+
+### GitHub Integration Fixes
+
+- Fixed webhook signature verification: `express.raw()` before `express.json()`
+- Fixed PKCS#1 → PKCS#8 key conversion for jose (GitHub generates PKCS#1 keys)
+- Base64-encoded private key in `.env` (multi-line PEM not supported by Node env loading)
+- GitHub App transferred to `tasktoad` org
+- Popup-based GitHub App installation flow
+
+### Swarm System v2
+
+- Restructured todos from 15 file-based groups into 18 parallel-optimized Task Sets
+- Schema sets (S1-S10) run one at a time; Independent sets (I1-I8) run freely in parallel
+- Planner auto-selects work by priority (no manual set specification needed)
+- Added `task-update.sh` and `merge-worker.sh` helper scripts
+- Workers loop until all tasks merged, auto-rebase, self-fix on review feedback
+- Added `.claude/settings.json` with project-level permissions (auto-allow safe commands)
+
 ### Wave 2: S2 + I2 + I4 (3 workers, 8 tasks)
 
 **S2 — AI Persistence & Cost Control:**
