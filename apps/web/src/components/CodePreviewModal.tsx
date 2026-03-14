@@ -46,7 +46,7 @@ export default function CodePreviewModal({
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-lg font-semibold text-slate-800">Generated Code</h2>
             <span className="text-xs text-slate-400">
-              Estimated tokens: {estimatedTokensUsed.toLocaleString()}
+              Tokens: {estimatedTokensUsed.toLocaleString()} · Cost: ~${(estimatedTokensUsed * 0.000005).toFixed(4)}
             </span>
           </div>
           <p className="text-sm text-slate-600">{summary}</p>
