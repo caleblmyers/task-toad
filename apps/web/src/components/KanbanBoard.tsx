@@ -2,11 +2,11 @@ import { useRef } from 'react';
 import type { Task } from '../types';
 
 const COLUMN_ACCENTS = [
-  { accent: 'border-t-slate-400', barColor: 'border-l-slate-300', pillClass: 'bg-slate-100 text-slate-500' },
-  { accent: 'border-t-blue-500',  barColor: 'border-l-blue-400',  pillClass: 'bg-blue-100 text-blue-700' },
-  { accent: 'border-t-green-500', barColor: 'border-l-green-400', pillClass: 'bg-green-100 text-green-700' },
-  { accent: 'border-t-purple-500',barColor: 'border-l-purple-400',pillClass: 'bg-purple-100 text-purple-700' },
-  { accent: 'border-t-orange-500',barColor: 'border-l-orange-400',pillClass: 'bg-orange-100 text-orange-700' },
+  { accent: 'border-t-slate-400',  barColor: 'border-l-slate-300',  pillClass: 'bg-slate-100 text-slate-500' },
+  { accent: 'border-t-blue-500',   barColor: 'border-l-blue-400',   pillClass: 'bg-blue-100 text-blue-700' },
+  { accent: 'border-t-purple-500', barColor: 'border-l-purple-400', pillClass: 'bg-purple-100 text-purple-700' },
+  { accent: 'border-t-green-500',  barColor: 'border-l-green-400',  pillClass: 'bg-green-100 text-green-700' },
+  { accent: 'border-t-orange-500', barColor: 'border-l-orange-400', pillClass: 'bg-orange-100 text-orange-700' },
 ];
 
 interface KanbanBoardProps {
