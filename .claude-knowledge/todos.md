@@ -132,7 +132,8 @@ Each **wave** = 1 schema set + N independent sets running in parallel.
 - [ ] Bug report → Task — AI parses bug report into structured task _(reuse existing `extractTasksFromNotes` mutation)_
 - [ ] Sprint transition analyzer — AI analyzes backlog on sprint close
 - [ ] PRD → Task breakdown — AI breaks PRD into epics/tasks
-- [ ] GitHub repo → Project bootstrap — AI analyzes repo to generate project
+- [ ] GitHub repo → Project bootstrap — import existing repo, AI analyzes codebase structure (files, languages, README, package.json) to auto-generate project with initial task breakdown
+- [ ] Repo ↔ Task drift analysis — for projects with a linked repo, AI compares current repo state (recent commits, open PRs, file changes) against the task set to flag outdated tasks, suggest new tasks for untracked work, and identify completed tasks that haven't been marked done
 - [ ] Contextual project chat — NL Q&A grounded in live project data
 - [ ] Historical summary analysis — trend analysis over persisted reports _(depends on: S2 Persisted reports)_
 - [ ] Batch code generation — generate code for multiple related tasks in one PR _(depends on: S1 Epics)_
