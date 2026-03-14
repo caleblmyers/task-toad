@@ -1,0 +1,13 @@
+[build]
+builder = "nixpacks"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter api build && cd apps/api && npx prisma generate"
+
+[deploy]
+startCommand = "cd apps/api && npx prisma migrate deploy && node dist/index.js"
+healthcheckPath = "/graphql"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+[service]
+internalPort = 3001
