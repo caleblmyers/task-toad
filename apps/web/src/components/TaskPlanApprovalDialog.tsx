@@ -158,6 +158,12 @@ export default function TaskPlanApprovalDialog({
 }: TaskPlanApprovalDialogProps) {
   const [selected, setSelected] = useState<Set<string>>(() => new Set(tasks.map((t) => t.title)));
   const [context, setContext] = useState('');
+  const [rejectionCount, setRejectionCount] = useState(0);
+  const [showContextInput, setShowContextInput] = useState(false);
+  const MAX_REJECTIONS = 3;
+  const [refinements, setRefinements] = useState<string[]>([]);
+  const [refinementText, setRefinementText] = useState('');
+  const [refineOpen, setRefineOpen] = useState(false);
 
   // Sync selection when tasks list changes (redo/add-more)
   const prevTitles = tasks.map((t) => t.title).join('|');
@@ -165,6 +171,11 @@ export default function TaskPlanApprovalDialog({
   if (prevTitles !== lastTitles) {
     setLastTitles(prevTitles);
     setSelected(new Set(tasks.map((t) => t.title)));
+    setRejectionCount(0);
+    setShowContextInput(false);
+    setRefinements([]);
+    setRefinementText('');
+    setRefineOpen(false);
   }
 
   const toggleTask = (title: string) => {
@@ -180,13 +191,43 @@ export default function TaskPlanApprovalDialog({
   const selectedCount = selectedTasks.length;
 
   const handleRedo = () => {
+    const nextCount = rejectionCount + 1;
+    setRejectionCount(nextCount);
+    if (nextCount >= MAX_REJECTIONS) {
+      setShowContextInput(true);
+      return;
+    }
     onRedo(context);
     setContext('');
   };
 
-  const handleAddMore = () => {
-    onAddMore(context);
+  const buildRefinementContext = (baseContext: string, extraRefinements: string[] = refinements): string => {
+    if (extraRefinements.length === 0) return baseContext;
+    const history = extraRefinements.map((r, i) => `Refinement ${i + 1}: ${r}`).join('\n');
+    return baseContext ? `${baseContext}\n\n${history}` : history;
+  };
+
+  const handleRetryWithContext = () => {
+    onRedo(buildRefinementContext(context));
     setContext('');
+    setRejectionCount(0);
+    setShowContextInput(false);
+    setRefinements([]);
+  };
+
+  const handleAddMore = () => {
+    onAddMore(buildRefinementContext(context));
+    setContext('');
+  };
+
+  const handleRefineAndRegenerate = () => {
+    if (!refinementText.trim()) return;
+    const updatedRefinements = [...refinements, refinementText.trim()];
+    setRefinements(updatedRefinements);
+    const combinedContext = buildRefinementContext(context, updatedRefinements);
+    onRedo(combinedContext);
+    setRefinementText('');
+    setRefineOpen(false);
   };
 
   return (
@@ -228,39 +269,111 @@ export default function TaskPlanApprovalDialog({
                 onToggle={() => toggleTask(task.title)}
               />
             ))}
+
+            {/* Refine section */}
+            <div className="border border-slate-200 rounded-lg">
+              <button
+                type="button"
+                onClick={() => setRefineOpen(!refineOpen)}
+                className="w-full flex items-center justify-between px-3 py-2 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-50 rounded-lg"
+              >
+                <span className="flex items-center gap-1.5">
+                  <span>{refineOpen ? '▾' : '▸'}</span>
+                  <span>Refine</span>
+                  {refinements.length > 0 && (
+                    <span className="text-xs bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-full font-medium">
+                      {refinements.length}
+                    </span>
+                  )}
+                </span>
+              </button>
+              {refineOpen && (
+                <div className="px-3 pb-3 space-y-2">
+                  <textarea
+                    value={refinementText}
+                    onChange={(e) => setRefinementText(e.target.value)}
+                    placeholder="e.g. Split the auth task into smaller pieces, add a testing task..."
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400 resize-none"
+                    rows={2}
+                  />
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleRefineAndRegenerate}
+                      disabled={!refinementText.trim()}
+                      className="px-3 py-1.5 text-sm bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Regenerate with feedback
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
         {/* Footer */}
         <div className="p-4 border-t border-slate-200 space-y-3">
           {/* Refine controls */}
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={context}
-              onChange={(e) => setContext(e.target.value)}
-              placeholder="Add context to redo or add more tasks…"
-              className="flex-1 px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:bg-slate-50 disabled:text-slate-400"
-              disabled={loading}
-              onKeyDown={(e) => { if (e.key === 'Enter' && e.metaKey && !loading) handleRedo(); }}
-            />
-            <button
-              type="button"
-              onClick={handleRedo}
-              disabled={loading}
-              className="px-3 py-1.5 text-sm border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-            >
-              ↺ Redo
-            </button>
-            <button
-              type="button"
-              onClick={handleAddMore}
-              disabled={loading}
-              className="px-3 py-1.5 text-sm border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-            >
-              + Add more
-            </button>
-          </div>
+          {showContextInput ? (
+            <div className="space-y-2">
+              <p className="text-sm text-slate-600">
+                You've rejected multiple plans. Try providing more specific context to get better results.
+              </p>
+              <textarea
+                value={context}
+                onChange={(e) => setContext(e.target.value)}
+                placeholder="Describe what you're looking for in more detail…"
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400 resize-none"
+                rows={3}
+              />
+              <div className="flex gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRetryWithContext}
+                  disabled={!context.trim()}
+                  className="px-4 py-1.5 text-sm bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Try with context →
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={context}
+                onChange={(e) => setContext(e.target.value)}
+                placeholder="Add context to redo or add more tasks…"
+                className="flex-1 px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:bg-slate-50 disabled:text-slate-400"
+                disabled={loading}
+                onKeyDown={(e) => { if (e.key === 'Enter' && e.metaKey && !loading) handleRedo(); }}
+              />
+              <button
+                type="button"
+                onClick={handleRedo}
+                disabled={loading}
+                className="px-3 py-1.5 text-sm border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                ↺ Redo
+              </button>
+              <button
+                type="button"
+                onClick={handleAddMore}
+                disabled={loading}
+                className="px-3 py-1.5 text-sm border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                + Add more
+              </button>
+            </div>
+          )}
 
           {/* Action row */}
           <div className="flex items-center justify-between">
