@@ -362,6 +362,43 @@ Extract 0-15 tasks. Only include clear, actionable items — not discussion poin
   };
 }
 
+export function buildGenerateCodePrompt(data: {
+  taskTitle: string;
+  taskDescription: string;
+  taskInstructions: string;
+  projectName: string;
+  projectDescription: string;
+  existingFiles?: string[];
+}): Prompt {
+  const cappedFiles = (data.existingFiles ?? []).slice(0, 30);
+  const filesLine =
+    cappedFiles.length > 0
+      ? `\nExisting project files:\n${cappedFiles.join('\n')}`
+      : '';
+
+  return {
+    systemPrompt: SYSTEM_JSON,
+    userPrompt: `Generate code files to implement this task.
+
+Task: ${userInput('title', data.taskTitle)}
+Description: ${userInput('description', truncate(data.taskDescription, 400))}
+Instructions: ${userInput('instructions', truncate(data.taskInstructions, 800))}
+Project: ${userInput('project', data.projectName)}
+${data.projectDescription ? `Project description: ${userInput('projectDescription', truncate(data.projectDescription, 400))}\n` : ''}${filesLine}
+
+Return JSON:
+{
+  "files": [{ "path": string, "content": string, "language": string, "description": string }],
+  "summary": string,
+  "estimatedTokensUsed": number
+}
+Generate 1–6 files. Each file should be complete and runnable.
+Use appropriate file paths relative to the project root.
+Prefer small, focused files over large monolithic ones.
+Keep total output concise — avoid generating files not directly needed for the task.`,
+  };
+}
+
 export function buildGenerateTaskInstructionsPrompt(
   taskTitle: string,
   taskDescription: string,

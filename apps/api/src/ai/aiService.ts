@@ -13,8 +13,9 @@ import {
   SprintReportSchema,
   HealthAnalysisSchema,
   MeetingNotesExtractionSchema,
+  CodeGenerationSchema,
 } from './aiTypes.js';
-import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction } from './aiTypes.js';
+import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration } from './aiTypes.js';
 import { FEATURE_CONFIG } from './aiConfig.js';
 import { callAI } from './aiClient.js';
 import { parseJSON } from './responseParser.js';
@@ -25,6 +26,7 @@ import {
   buildSummarizeProjectPrompt,
   buildPlanSprintsPrompt,
   buildGenerateTaskInstructionsPrompt,
+  buildGenerateCodePrompt,
   buildStandupPrompt,
   buildSprintReportPrompt,
   buildHealthAnalysisPrompt,
@@ -216,4 +218,20 @@ export async function extractTasksFromNotes(
 ): Promise<MeetingNotesExtraction> {
   const p = buildMeetingNotesPrompt(notes, projectName, teamMembers);
   return callAndParse(apiKey, 'extractTasksFromNotes', p, MeetingNotesExtractionSchema);
+}
+
+export async function generateCode(
+  apiKey: string,
+  taskTitle: string,
+  taskDescription: string,
+  taskInstructions: string,
+  projectName: string,
+  projectDescription: string,
+  existingFiles?: string[]
+): Promise<CodeGeneration> {
+  const p = buildGenerateCodePrompt({
+    taskTitle, taskDescription, taskInstructions,
+    projectName, projectDescription, existingFiles,
+  });
+  return callAndParse(apiKey, 'generateCode', p, CodeGenerationSchema);
 }

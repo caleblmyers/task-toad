@@ -107,6 +107,22 @@ export const MeetingNotesExtractionSchema = z.object({
 
 export type MeetingNotesExtraction = z.infer<typeof MeetingNotesExtractionSchema>;
 
+export const GeneratedFileSchema = z.object({
+  path: z.string(),
+  content: z.string(),
+  language: z.string().optional().default(''),
+  description: z.string().optional().default(''),
+});
+
+export const CodeGenerationSchema = z.object({
+  files: z.array(GeneratedFileSchema),
+  summary: z.string(),
+  estimatedTokensUsed: z.number().optional().default(0),
+});
+
+export type GeneratedFile = z.infer<typeof GeneratedFileSchema>;
+export type CodeGeneration = z.infer<typeof CodeGenerationSchema>;
+
 // ---------------------------------------------------------------------------
 // AI subsystem internal types
 // ---------------------------------------------------------------------------
@@ -121,7 +137,8 @@ export type AIFeature =
   | 'generateStandupReport'
   | 'generateSprintReport'
   | 'analyzeProjectHealth'
-  | 'extractTasksFromNotes';
+  | 'extractTasksFromNotes'
+  | 'generateCode';
 
 export interface AIUsage {
   inputTokens: number;

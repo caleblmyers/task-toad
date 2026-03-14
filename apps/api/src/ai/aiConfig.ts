@@ -28,6 +28,7 @@ export const FEATURE_CONFIG: Record<AIFeature, FeatureConfig> = {
   generateSprintReport:     { maxTokens: 2048, cacheTTLMs: 0,       retryOnValidationFailure: true },
   analyzeProjectHealth:     { maxTokens: 2048, cacheTTLMs: 300_000, retryOnValidationFailure: true },
   extractTasksFromNotes:    { maxTokens: 4096, cacheTTLMs: 0,       retryOnValidationFailure: true },
+  generateCode:             { maxTokens: 8192, cacheTTLMs: 0,       retryOnValidationFailure: true },
 };
 
 // ---------------------------------------------------------------------------
