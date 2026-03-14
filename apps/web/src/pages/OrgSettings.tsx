@@ -346,28 +346,14 @@ export default function OrgSettings() {
         )}
 
         {GITHUB_APP_SLUG && (
-          <div className="space-y-2">
-            <button
-              type="button"
-              onClick={handleInstallGitHubApp}
-              disabled={linkingInstallation}
-              className="px-4 py-2 bg-slate-800 text-white rounded hover:bg-slate-700 disabled:opacity-50 text-sm"
-            >
-              {installations.length > 0 ? 'Add another installation' : 'Install GitHub App'}
-            </button>
-            <p className="text-xs text-slate-400">
-              App owner? Install from{' '}
-              <a
-                href={`https://github.com/settings/apps/${GITHUB_APP_SLUG}/installations`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-slate-500 underline hover:text-slate-700"
-              >
-                GitHub App settings
-              </a>{' '}
-              instead.
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={handleInstallGitHubApp}
+            disabled={linkingInstallation}
+            className="px-4 py-2 bg-slate-800 text-white rounded hover:bg-slate-700 disabled:opacity-50 text-sm"
+          >
+            {installations.length > 0 ? 'Add another installation' : 'Install GitHub App'}
+          </button>
         )}
       </div>
     </div>
