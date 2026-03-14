@@ -122,8 +122,12 @@ model Task {
   subtasks       Task[]   @relation("TaskSubtasks")
   sprint         Sprint?  @relation(fields: [sprintId], references: [sprintId])
   assignee       User?    @relation("TaskAssignee", fields: [assigneeId], references: [userId])
+  githubIssueNumber Int?    @map("github_issue_number")
+  githubIssueNodeId  String? @map("github_issue_node_id")
   comments       Comment[]
   labels         TaskLabel[]
+  pullRequests   GitHubPullRequestLink[]
+  commits        GitHubCommitLink[]
 
   @@index([projectId])
   @@index([parentTaskId])
@@ -205,6 +209,35 @@ model GitHubInstallation {
 
   @@index([orgId])
   @@map("github_installations")
+}
+
+model GitHubCommitLink {
+  id        String   @id @default(cuid())
+  taskId    String   @map("task_id")
+  task      Task     @relation(fields: [taskId], references: [taskId])
+  sha       String
+  message   String
+  author    String
+  url       String
+  createdAt DateTime @default(now())
+  @@index([taskId])
+  @@unique([sha, taskId])
+  @@map("github_commit_links")
+}
+
+model GitHubPullRequestLink {
+  id        String   @id @default(cuid())
+  taskId    String   @map("task_id")
+  task      Task     @relation(fields: [taskId], references: [taskId])
+  prNodeId  String   @map("pr_node_id")
+  prNumber  Int      @map("pr_number")
+  prUrl     String   @map("pr_url")
+  prTitle   String   @map("pr_title")
+  state     String   @default("OPEN")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([taskId])
+  @@map("github_pull_request_links")
 }
 
 model Notification {

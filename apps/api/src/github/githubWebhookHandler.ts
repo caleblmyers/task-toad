@@ -11,6 +11,7 @@ import { PrismaClient } from '@prisma/client';
 import type { GitHubWebhookEvent } from './githubTypes.js';
 import { clearInstallationToken } from './githubAppAuth.js';
 import { logInstallation, logWebhookReceived, logApiError } from './githubLogger.js';
+import { linkCommitsToTasks } from './githubTaskLinker.js';
 
 const prisma = new PrismaClient();
 
@@ -66,11 +67,14 @@ export async function handleGitHubWebhook(req: Request, res: Response): Promise<
       case 'installation_repositories':
         await handleInstallationRepositoriesEvent(payload);
         break;
+      case 'issues':
+        await handleIssuesEvent(payload);
+        break;
       case 'pull_request':
-        handlePullRequestEvent(payload);
+        await handlePullRequestEvent(payload);
         break;
       case 'push':
-        handlePushEvent(payload);
+        await handlePushEvent(payload);
         break;
       default:
         // Acknowledge unknown events without error
@@ -143,11 +147,78 @@ async function handleInstallationRepositoriesEvent(payload: GitHubWebhookEvent):
   }
 }
 
-// Placeholder handlers for future features (PR status sync, push-triggered reviews)
-function handlePullRequestEvent(_payload: GitHubWebhookEvent): void {
-  // Future: sync PR status with task status
+async function handleIssuesEvent(payload: GitHubWebhookEvent): Promise<void> {
+  if (!payload.issue) return;
+  const issueNodeId = payload.issue.node_id;
+  if (!issueNodeId) return;
+
+  const task = await prisma.task.findFirst({
+    where: { githubIssueNodeId: issueNodeId },
+  });
+  if (!task) return;
+
+  switch (payload.action) {
+    case 'closed':
+      await prisma.task.update({ where: { taskId: task.taskId }, data: { status: 'done' } });
+      break;
+    case 'reopened':
+      await prisma.task.update({ where: { taskId: task.taskId }, data: { status: 'todo' } });
+      break;
+    default:
+      break;
+  }
 }
 
-function handlePushEvent(_payload: GitHubWebhookEvent): void {
-  // Future: trigger AI code reviews on push
+async function handlePullRequestEvent(payload: GitHubWebhookEvent): Promise<void> {
+  if (!payload.pull_request) return;
+  const prNodeId = payload.pull_request.node_id;
+  if (!prNodeId) return;
+
+  const link = await prisma.gitHubPullRequestLink.findFirst({ where: { prNodeId } });
+  if (!link) return;
+
+  switch (payload.action) {
+    case 'closed': {
+      const newState = payload.pull_request.merged ? 'MERGED' : 'CLOSED';
+      await prisma.gitHubPullRequestLink.update({ where: { id: link.id }, data: { state: newState } });
+      if (payload.pull_request.merged) {
+        await prisma.task.update({ where: { taskId: link.taskId }, data: { status: 'done' } });
+      }
+      break;
+    }
+    case 'reopened':
+      await prisma.gitHubPullRequestLink.update({ where: { id: link.id }, data: { state: 'OPEN' } });
+      break;
+    default:
+      break;
+  }
+}
+
+async function handlePushEvent(payload: GitHubWebhookEvent): Promise<void> {
+  if (!payload.repository || !payload.commits || payload.commits.length === 0) return;
+
+  const owner = payload.repository.owner?.login ?? payload.repository.owner?.name;
+  const repoName = payload.repository.name;
+  if (!owner || !repoName) return;
+
+  const project = await prisma.project.findFirst({
+    where: { githubRepositoryOwner: owner, githubRepositoryName: repoName },
+    select: { projectId: true },
+  });
+  if (!project) return;
+
+  const branchRef = payload.ref ?? '';
+  const branchName = branchRef.replace('refs/heads/', '');
+
+  const commits = payload.commits.map((c) => ({
+    sha: c.id,
+    message: c.message,
+    author: c.author?.username ?? c.author?.name ?? 'unknown',
+    url: c.url,
+  }));
+
+  const linked = await linkCommitsToTasks(project.projectId, commits, branchName);
+  if (linked > 0) {
+    logWebhookReceived('push', `linked ${linked} commits`, undefined);
+  }
 }

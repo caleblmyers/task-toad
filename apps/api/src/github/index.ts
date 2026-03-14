@@ -20,6 +20,12 @@ export { createBranch, commitFiles } from './githubCommitService.js';
 // Pull requests
 export { createPullRequest } from './githubPullRequestService.js';
 
+// Issues
+export { createGitHubIssue, updateGitHubIssueState, getGitHubIssue } from './githubIssueService.js';
+
+// Task linking
+export { extractTaskIds, linkCommitsToTasks } from './githubTaskLinker.js';
+
 // Orchestration
 export { createPullRequestFromTask } from './githubService.js';
 

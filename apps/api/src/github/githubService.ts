@@ -100,6 +100,18 @@ export async function createPullRequestFromTask(
       body: prBody,
     });
 
+    // Create PR link record
+    await prisma.gitHubPullRequestLink.create({
+      data: {
+        taskId,
+        prNodeId: result.pullRequestId,
+        prNumber: result.number,
+        prUrl: result.url,
+        prTitle: result.title,
+        state: 'OPEN',
+      },
+    });
+
     return result;
   } catch (error) {
     logApiError('createPullRequestFromTask', error, { projectId, taskId });

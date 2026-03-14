@@ -110,6 +110,27 @@ export interface Task {
   position?:     number | null;
   dueDate?:      string | null;
   labels?:       Label[];
+  githubIssueNumber?: number | null;
+  githubIssueUrl?:    string | null;
+  pullRequests?:      TaskPullRequest[];
+  commits?:           TaskCommit[];
+}
+
+export interface TaskCommit {
+  id: string;
+  sha: string;
+  message: string;
+  author: string;
+  url: string;
+  createdAt: string;
+}
+
+export interface TaskPullRequest {
+  id: string;
+  prNumber: number;
+  prUrl: string;
+  prTitle: string;
+  state: string;
 }
 
 export interface TaskConnection {

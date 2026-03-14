@@ -6,8 +6,10 @@ import {
   createRepoForProject,
   createPullRequestFromTask,
   listInstallationRepos,
+  createGitHubIssue,
+  updateGitHubIssueState,
 } from '../../github/index.js';
-import { NotFoundError, AuthorizationError } from '../errors.js';
+import { NotFoundError, AuthorizationError, ValidationError } from '../errors.js';
 import { requireOrg, requireProjectAccess } from './auth.js';
 
 // ── GitHub queries ──
@@ -92,6 +94,41 @@ export const githubMutations = {
       projectId: args.projectId,
       taskId: args.taskId,
       files: args.files,
+    });
+  },
+
+  syncTaskToGitHub: async (_parent: unknown, args: { taskId: string }, context: Context) => {
+    const user = requireOrg(context);
+    const task = await context.prisma.task.findFirst({
+      where: { taskId: args.taskId, orgId: user.orgId },
+    });
+    if (!task) throw new NotFoundError('Task not found');
+
+    const project = await context.prisma.project.findUnique({
+      where: { projectId: task.projectId },
+      select: { githubRepositoryOwner: true, githubRepositoryName: true, githubInstallationId: true },
+    });
+    if (!project?.githubInstallationId || !project?.githubRepositoryOwner || !project?.githubRepositoryName) {
+      throw new ValidationError('Project has no linked GitHub repository');
+    }
+
+    if (task.githubIssueNodeId) {
+      const newState = task.status === 'done' ? 'CLOSED' as const : 'OPEN' as const;
+      await updateGitHubIssueState(project.githubInstallationId, task.githubIssueNodeId, newState);
+      return task;
+    }
+
+    const result = await createGitHubIssue(
+      project.githubInstallationId,
+      project.githubRepositoryOwner,
+      project.githubRepositoryName,
+      task.title,
+      task.description || ''
+    );
+
+    return context.prisma.task.update({
+      where: { taskId: args.taskId },
+      data: { githubIssueNumber: result.number, githubIssueNodeId: result.nodeId },
     });
   },
 };

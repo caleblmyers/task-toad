@@ -63,6 +63,31 @@ export interface GitHubWebhookEvent {
   };
   repositories_added?: Array<{ full_name: string }>;
   repositories_removed?: Array<{ full_name: string }>;
+  issue?: {
+    node_id: string;
+    number: number;
+    title: string;
+    state: string;
+  };
+  pull_request?: {
+    node_id: string;
+    number: number;
+    title: string;
+    state: string;
+    merged: boolean;
+    html_url: string;
+  };
+  ref?: string;
+  repository?: {
+    name: string;
+    owner: { login?: string; name?: string };
+  };
+  commits?: Array<{
+    id: string;
+    message: string;
+    url: string;
+    author: { username?: string; name?: string };
+  }>;
   sender?: { login: string };
 }
 

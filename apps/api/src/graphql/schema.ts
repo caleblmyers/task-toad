@@ -62,6 +62,10 @@ export const schema = createSchema<Context>({
       position: Float
       dueDate: String
       labels: [Label!]!
+      githubIssueNumber: Int
+      githubIssueUrl: String
+      pullRequests: [TaskPullRequest!]!
+      commits: [TaskCommit!]!
     }
 
     type TaskConnection {
@@ -266,6 +270,23 @@ export const schema = createSchema<Context>({
       defaultBranch: String!
     }
 
+    type TaskCommit {
+      id: ID!
+      sha: String!
+      message: String!
+      author: String!
+      url: String!
+      createdAt: String!
+    }
+
+    type TaskPullRequest {
+      id: ID!
+      prNumber: Int!
+      prUrl: String!
+      prTitle: String!
+      state: String!
+    }
+
     type GitHubPullRequest {
       pullRequestId: ID!
       number: Int!
@@ -361,6 +382,7 @@ export const schema = createSchema<Context>({
       disconnectGitHubRepo(projectId: ID!): Boolean!
       createGitHubRepo(projectId: ID!, installationId: ID!, ownerLogin: String!): GitHubRepoLink!
       createPullRequestFromTask(projectId: ID!, taskId: ID!, files: [GitHubFileInput!]!): GitHubPullRequest!
+      syncTaskToGitHub(taskId: ID!): Task!
     }
 
     input GitHubFileInput {

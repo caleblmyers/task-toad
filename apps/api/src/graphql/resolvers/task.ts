@@ -341,5 +341,32 @@ export const taskFieldResolvers = {
       });
       return taskLabels.map((tl: typeof taskLabels[number]) => tl.label);
     },
+    githubIssueUrl: async (parent: { taskId: string; githubIssueNumber?: number | null }, _args: unknown, context: Context) => {
+      if (!parent.githubIssueNumber) return null;
+      const task = await context.prisma.task.findUnique({
+        where: { taskId: parent.taskId },
+        select: { projectId: true },
+      });
+      if (!task) return null;
+      const project = await context.prisma.project.findUnique({
+        where: { projectId: task.projectId },
+        select: { githubRepositoryOwner: true, githubRepositoryName: true },
+      });
+      if (!project?.githubRepositoryOwner || !project?.githubRepositoryName) return null;
+      return `https://github.com/${project.githubRepositoryOwner}/${project.githubRepositoryName}/issues/${parent.githubIssueNumber}`;
+    },
+    pullRequests: async (parent: { taskId: string }, _args: unknown, context: Context) => {
+      return context.prisma.gitHubPullRequestLink.findMany({
+        where: { taskId: parent.taskId },
+        orderBy: { createdAt: 'desc' },
+      });
+    },
+    commits: async (parent: { taskId: string }, _args: unknown, context: Context) => {
+      return context.prisma.gitHubCommitLink.findMany({
+        where: { taskId: parent.taskId },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      });
+    },
   },
 };
