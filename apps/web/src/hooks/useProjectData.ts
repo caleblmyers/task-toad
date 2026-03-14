@@ -27,6 +27,13 @@ export interface ProjectData {
   summary: string | null;
   summarizing: boolean;
   generatingInstructions: string | null;
+  generatingCode: string | null;
+  generatedCode: {
+    files: Array<{ path: string; content: string; language: string; description: string }>;
+    summary: string;
+    estimatedTokensUsed: number;
+  } | null;
+  creatingPR: boolean;
   isGenerating: boolean;
   view: 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar';
   editingTitle: boolean;
@@ -66,6 +73,8 @@ export interface ProjectData {
   handleCommitPlan: (selectedTasks: TaskPlanPreview[]) => Promise<void>;
   handleSummarize: () => Promise<void>;
   handleGenerateInstructions: (task: Task) => Promise<void>;
+  handleGenerateCode: (task: Task) => Promise<void>;
+  handleCreatePR: (files: Array<{ path: string; content: string }>) => Promise<void>;
   handleAddTask: (e: React.FormEvent) => Promise<void>;
   startEditTitle: (task: Task) => void;
   handleTitleSave: () => Promise<void>;
@@ -96,6 +105,11 @@ export interface ProjectData {
   setEditingSprint: React.Dispatch<React.SetStateAction<Sprint | null>>;
   setShowSprintPlanModal: React.Dispatch<React.SetStateAction<boolean>>;
   setCloseSprintId: React.Dispatch<React.SetStateAction<string | null>>;
+  setGeneratedCode: React.Dispatch<React.SetStateAction<{
+    files: Array<{ path: string; content: string; language: string; description: string }>;
+    summary: string;
+    estimatedTokensUsed: number;
+  } | null>>;
   setSelectedTaskIds: React.Dispatch<React.SetStateAction<Set<string>>>;
 
   // Computed
@@ -149,6 +163,13 @@ export function useProjectData(): ProjectData {
   const [addErr, setAddErr] = useState<string | null>(null);
 
   const [generatingInstructions, setGeneratingInstructions] = useState<string | null>(null);
+  const [generatingCode, setGeneratingCode] = useState<string | null>(null);
+  const [generatedCode, setGeneratedCode] = useState<{
+    files: Array<{ path: string; content: string; language: string; description: string }>;
+    summary: string;
+    estimatedTokensUsed: number;
+  } | null>(null);
+  const [creatingPR, setCreatingPR] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
   const [summarizing, setSummarizing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -159,7 +180,7 @@ export function useProjectData(): ProjectData {
   const [editTitleValue, setEditTitleValue] = useState('');
 
   const abortRef = useRef<AbortController | null>(null);
-  const isGenerating = previewLoading || summarizing || committing || generatingInstructions !== null;
+  const isGenerating = previewLoading || summarizing || committing || generatingInstructions !== null || generatingCode !== null;
   const isGeneratingRef = useRef(false);
   isGeneratingRef.current = isGenerating;
 
@@ -925,6 +946,44 @@ export function useProjectData(): ProjectData {
     }
   };
 
+  const handleGenerateCode = async (task: Task) => {
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setGeneratingCode(task.taskId);
+    try {
+      const data = await gql<{ generateCodeFromTask: { files: Array<{ path: string; content: string; language: string; description: string }>; summary: string; estimatedTokensUsed: number } }>(
+        `mutation($taskId: ID!) { generateCodeFromTask(taskId: $taskId) { files { path content language description } summary estimatedTokensUsed } }`,
+        { taskId: task.taskId },
+        controller.signal
+      );
+      setGeneratedCode(data.generateCodeFromTask);
+    } catch (err: unknown) {
+      if ((err as Error).name !== 'AbortError') {
+        setErr((err as Error).message || 'Code generation failed');
+      }
+    } finally {
+      setGeneratingCode(null);
+      if (abortRef.current === controller) abortRef.current = null;
+    }
+  };
+
+  const handleCreatePR = async (files: Array<{ path: string; content: string }>) => {
+    if (!selectedTask || !projectId) return;
+    setCreatingPR(true);
+    try {
+      await gql(
+        `mutation($projectId: ID!, $taskId: ID!, $files: [GitHubFileInput!]!) { createPullRequestFromTask(projectId: $projectId, taskId: $taskId, files: $files) { url number } }`,
+        { projectId, taskId: selectedTask.taskId, files }
+      );
+      setErr(null);
+      setGeneratedCode(null);
+    } catch (err: unknown) {
+      setErr((err as Error).message || 'Failed to create PR');
+    } finally {
+      setCreatingPR(false);
+    }
+  };
+
   // --- Non-AI handlers ---
 
   const handleAddTask = async (e: React.FormEvent) => {
@@ -1007,7 +1066,8 @@ export function useProjectData(): ProjectData {
     projectId,
     project, tasks, hasMore, loading, err, selectedTask, subtasks, sprints, orgUsers, labels,
     previewTasks, previewLoading, previewError, committing, summary, summarizing,
-    generatingInstructions, isGenerating, view, editingTitle, editTitleValue,
+    generatingInstructions, generatingCode, generatedCode, creatingPR,
+    isGenerating, view, editingTitle, editTitleValue,
     showAddForm, newTaskTitle, addErr, showSprintModal, editingSprint,
     showSprintPlanModal, closeSprintId, comments, taskActivities, dashboardStats,
     selectedTaskIds, projectStatuses,
@@ -1016,7 +1076,7 @@ export function useProjectData(): ProjectData {
     handleAssignSprint, handleAssignUser, handleDueDateChange, handleReorderTask,
     handleActivateSprint, handleCreateSprint, handleSprintPlanCreated,
     handleSprintClosed, handleSprintUpdated, handleDeleteSprint,
-    openPreview, handleCommitPlan, handleSummarize, handleGenerateInstructions,
+    openPreview, handleCommitPlan, handleSummarize, handleGenerateInstructions, handleGenerateCode, handleCreatePR,
     handleAddTask, startEditTitle, handleTitleSave, handleUpdateTask, switchView,
     handleUpdateProject, handleUpdateDependencies, handleBulkUpdate, handleArchiveTask,
     handleCreateLabel, handleDeleteLabel, handleAddTaskLabel, handleRemoveTaskLabel,
@@ -1025,7 +1085,7 @@ export function useProjectData(): ProjectData {
     setSelectedTask, setErr, setSummary, setPreviewTasks, setPreviewError,
     setShowAddForm, setNewTaskTitle, setEditTitleValue, setEditingTitle,
     setShowSprintModal, setEditingSprint, setShowSprintPlanModal, setCloseSprintId,
-    setSelectedTaskIds,
+    setGeneratedCode, setSelectedTaskIds,
     activeSprint, rootTasks,
     titleEditRef, abortRef,
   };

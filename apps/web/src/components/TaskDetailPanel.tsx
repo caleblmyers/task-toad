@@ -52,6 +52,8 @@ export interface TaskDetailPanelProps {
   onStatusChange: (taskId: string, status: string) => void;
   onSubtaskStatusChange: (parentId: string, taskId: string, status: string) => void;
   onGenerateInstructions: (task: Task) => void;
+  onGenerateCode?: (task: Task) => void;
+  generatingCode?: string | null;
   onAssignSprint: (taskId: string, sprintId: string | null) => void;
   onAssignUser: (taskId: string, assigneeId: string | null) => void;
   onDueDateChange: (taskId: string, dueDate: string | null) => void;
@@ -88,7 +90,7 @@ function PanelContent({
   labels, onAddTaskLabel, onRemoveTaskLabel, onCreateLabel,
   disabled, projectHasRepo, onSyncToGitHub,
   onStartEditTitle, onTitleChange, onTitleSave, onTitleKeyDown,
-  onStatusChange, onSubtaskStatusChange, onGenerateInstructions,
+  onStatusChange, onSubtaskStatusChange, onGenerateInstructions, onGenerateCode, generatingCode,
   onAssignSprint, onAssignUser, onDueDateChange, onUpdateDependencies,
   onCreateComment, onUpdateComment, onDeleteComment, onUpdateTask, onArchiveTask,
 }: Omit<TaskDetailPanelProps, 'onClose' | 'isDrawer'>) {
@@ -532,6 +534,20 @@ function PanelContent({
           </div>
         )}
       </div>
+
+      {/* Generate Code (only when instructions exist) */}
+      {task.instructions && onGenerateCode && (
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => onGenerateCode(task)}
+            disabled={disabled || generatingCode === task.taskId}
+            className="px-3 py-1.5 text-sm border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50"
+          >
+            {generatingCode === task.taskId ? 'Generating code…' : '⌨ Generate code'}
+          </button>
+        </div>
+      )}
 
       {/* Suggested Tools */}
       {tools.length > 0 && (

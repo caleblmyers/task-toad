@@ -15,6 +15,7 @@ import TableView from '../components/TableView';
 import CalendarView from '../components/CalendarView';
 import BulkActionBar from '../components/BulkActionBar';
 import ProjectDashboard from '../components/ProjectDashboard';
+import CodePreviewModal from '../components/CodePreviewModal';
 import SprintCreateModal from '../components/SprintCreateModal';
 import SprintPlanModal from '../components/SprintPlanModal';
 import CloseSprintModal from '../components/CloseSprintModal';
@@ -186,6 +187,8 @@ export default function ProjectDetail() {
     onStatusChange: handleStatusChange,
     onSubtaskStatusChange: d.handleSubtaskStatusChange,
     onGenerateInstructions: d.handleGenerateInstructions,
+    onGenerateCode: d.handleGenerateCode,
+    generatingCode: d.generatingCode,
     onAssignSprint: handleAssignSprint,
     onAssignUser: handleAssignUser,
     onDueDateChange: handleDueDateChange,
@@ -644,6 +647,17 @@ export default function ProjectDetail() {
           onClose={() => setShowGitHubModal(false)}
         />
       )}
+
+      {/* Code preview modal */}
+      <CodePreviewModal
+        isOpen={d.generatedCode !== null}
+        onClose={() => d.setGeneratedCode(null)}
+        files={d.generatedCode?.files ?? []}
+        summary={d.generatedCode?.summary ?? ''}
+        estimatedTokensUsed={d.generatedCode?.estimatedTokensUsed ?? 0}
+        onCreatePR={d.handleCreatePR}
+        isCreatingPR={d.creatingPR}
+      />
 
       {/* Meeting notes dialog */}
       {showMeetingNotes && d.projectId && (
