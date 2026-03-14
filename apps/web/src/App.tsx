@@ -19,7 +19,6 @@ function Protected({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="p-8">Loading...</div>;
   if (!user) return <Navigate to="/login" replace />;
-  if (!user.emailVerifiedAt) return <Navigate to="/verify-email" replace />;
   if (!user.orgId) return <Navigate to="/create-org" replace />;
   return <>{children}</>;
 }
@@ -66,7 +65,6 @@ function ProtectedOrCreateOrg({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="p-8">Loading...</div>;
   if (!user) return <Navigate to="/login" replace />;
-  if (!user.emailVerifiedAt) return <Navigate to="/verify-email" replace />;
   if (user.orgId) return <Navigate to="/app" replace />;
   return <>{children}</>;
 }
