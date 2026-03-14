@@ -1,6 +1,6 @@
 [build]
-builder = "nixpacks"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter api build && cd apps/api && npx prisma generate"
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
 
 [deploy]
 startCommand = "cd apps/api && npx prisma migrate deploy && node dist/index.js"

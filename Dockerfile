@@ -18,14 +18,16 @@ COPY apps/web/ apps/web/
 COPY tsconfig.base.json ./
 RUN pnpm --filter web build
 
+# Production API image — keep all deps (prisma CLI needed for migrate deploy)
 FROM node:22-slim AS api
 RUN corepack enable && corepack prepare pnpm@9 --activate
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --frozen-lockfile
 COPY --from=api-build /app/apps/api/dist apps/api/dist
+COPY --from=api-build /app/node_modules/.prisma node_modules/.prisma
+COPY --from=api-build /app/apps/api/node_modules apps/api/node_modules
 COPY apps/api/prisma apps/api/prisma
-RUN cd apps/api && npx prisma generate
 EXPOSE 3001
 CMD ["node", "apps/api/dist/index.js"]
