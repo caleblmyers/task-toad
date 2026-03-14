@@ -2,6 +2,8 @@
 
 Organized by module touchpoints for parallel development. Items within the same group share files and should NOT be worked on simultaneously. Items in different groups can safely be parallelized — **unless they share a hotspot file** (see Cross-Group Dependencies below).
 
+Completed items (`[x]`) indicate work done locally but not yet pushed. Remove items once pushed to remote.
+
 ---
 
 ## Cross-Group Dependencies
@@ -26,10 +28,6 @@ These shared files create blocking relationships between groups. The planner mus
 **Touches:** `apps/api/src/ai/*`, `apps/api/src/graphql/resolvers/ai.ts`, `apps/api/src/graphql/schema.ts` (typeDefs), new frontend components
 **Blocks / blocked by:** schema.ts shared with C, D, F, H, I, K, M
 
-- [x] Meeting notes → Tasks — paste notes, AI extracts tasks + updates
-- [x] Daily standup report — generate from sprint data
-- [x] Sprint report — auto-generate on sprint close
-- [x] Project health analyzer — AI health score + issue summary
 - [ ] Persisted reports — save reports for historical analytics _(prerequisite for Historical summary analysis)_
 - [ ] Contextual project chat — NL Q&A grounded in live project data
 - [ ] Bug report → Task — AI parses bug report into structured task
@@ -37,13 +35,12 @@ These shared files create blocking relationships between groups. The planner mus
 - [ ] GitHub repo → Project bootstrap — AI analyzes repo to generate project
 - [ ] Historical summary analysis — trend analysis over persisted reports _(depends on: Persisted reports)_
 - [ ] Sprint transition analyzer — AI analyzes backlog on sprint close
-- [x] AI code generation from tasks — AI generates code files from task instructions, preview, then create PR via existing `createPullRequestFromTask` _(core pipeline: aiService + promptBuilder + Zod schema + GraphQL mutation + frontend preview UI)_
-- [ ] Multi-file context injection — feed existing project files (components, types, routes) into code gen prompt for higher-quality output _(depends on: AI code generation, GitHub repo connection)_
-- [ ] Code review feedback loop — AI reads PR review comments and generates fix commits, closing the task → code → PR → review → fix cycle _(depends on: AI code generation)_
-- [ ] AI code gen cost estimation (pre-flight) — estimate token cost from task complexity + instructions length before generating, let user decide _(depends on: AI code generation)_
-- [ ] AI commit message generation — AI generates meaningful commit messages from task context instead of generic "AI: implement task X" _(depends on: AI code generation)_
-- [ ] PR description enrichment — AI generates rich PR body with what changed, why, testing suggestions, related tasks _(depends on: AI code generation)_
-- [ ] Batch code generation — generate code for multiple related tasks (e.g., all subtasks of an epic) in one context, one PR _(depends on: AI code generation, Epics)_
+- [ ] Multi-file context injection — feed existing project files (components, types, routes) into code gen prompt for higher-quality output _(depends on: GitHub repo connection)_
+- [ ] Code review feedback loop — AI reads PR review comments and generates fix commits, closing the task → code → PR → review → fix cycle
+- [ ] AI code gen cost estimation (pre-flight) — estimate token cost from task complexity + instructions length before generating, let user decide
+- [ ] AI commit message generation — AI generates meaningful commit messages from task context instead of generic "AI: implement task X"
+- [ ] PR description enrichment — AI generates rich PR body with what changed, why, testing suggestions, related tasks
+- [ ] Batch code generation — generate code for multiple related tasks (e.g., all subtasks of an epic) in one context, one PR _(depends on: Epics)_
 - [ ] AI task decomposition from GitHub issues — import GitHub issue → AI breaks into TaskToad tasks with instructions _(also touches: Group C GitHub integration)_
 - [ ] AI code review — AI reviews PRs linked to tasks, checks against requirements, flags gaps, suggests improvements _(also touches: Group C GitHub integration)_
 - [ ] Prompt replay / history — save AI prompts + responses per task for debugging, re-running, and cost tracking _(also touches: schema.prisma for persistence)_
@@ -55,9 +52,7 @@ These shared files create blocking relationships between groups. The planner mus
 **Touches:** `apps/web/src/components/TaskPlanApprovalDialog.tsx`, `apps/web/src/hooks/useProjectData.ts` (AI handlers), `apps/api/src/ai/promptBuilder.ts`, `apps/web/src/components/CodePreviewModal.tsx`
 **Blocks / blocked by:** useProjectData shared with E, F
 
-- [x] Graceful rejection handling — stop retrying when all options rejected
-- [x] Iterative generation input — allow refinements during generation
-- [ ] Regenerate single file — in code preview modal, regenerate one file instead of entire set to save tokens _(depends on: AI code generation)_
+- [ ] Regenerate single file — in code preview modal, regenerate one file instead of entire set to save tokens
 - [ ] Code gen templates / style guides — per-project config injected into code gen prompt ("use React functional components", "follow this naming convention") _(overlaps with Project knowledge base)_
 
 > **Note:** The following items also touch `schema.prisma` + `schema.ts` and should be isolated when planned:
@@ -68,12 +63,7 @@ These shared files create blocking relationships between groups. The planner mus
 **Touches:** new backend services, `apps/api/src/graphql/schema.ts` (typeDefs), `apps/api/src/graphql/resolvers/github.ts`, `apps/api/prisma/schema.prisma`, new frontend components, `apps/web/src/pages/OrgSettings.tsx`
 **Blocks / blocked by:** schema.ts shared with A, D, F, H, I, K, M; schema.prisma shared with F, G, H, I, K, M, O
 
-- [x] GitHub App integration — GitHub App auth, webhooks, installation storage
-- [x] GitHub linking UI — OrgSettings installation linking, ProjectDetail repo connection modal
-- [x] GitHub issue sync — create GitHub issues from TaskToad tasks, sync status bidirectionally
-- [x] PR status on tasks — show linked PR status (open/merged/closed) on task cards
-- [x] Auto-link commits — parse branch names to associate commits with tasks
-- [ ] Generated code diff view — show diff against existing repo files (new vs modified) in code preview modal instead of raw files _(depends on: AI code generation, GitHub repo connection)_
+- [ ] Generated code diff view — show diff against existing repo files (new vs modified) in code preview modal instead of raw files _(depends on: GitHub repo connection)_
 - [ ] Slack integration — channel notifications, create tasks from Slack
 - [ ] Webhook support — outgoing webhooks on task events
 - [ ] Public REST/GraphQL API docs — documented API for third-party use
@@ -127,13 +117,6 @@ These shared files create blocking relationships between groups. The planner mus
 **Blocks / blocked by:** schema.ts shared with A, C, D, F, H, K, M; schema.prisma shared with C, F, G, H, K, M, O
 
 - [ ] Automation rules — configurable triggers (e.g. "when Done → notify assignee")
-
-## Group J: API Architecture (Tech Debt) — COMPLETED
-**Touches:** `apps/api/src/graphql/schema.ts`, `apps/api/src/graphql/context.ts`
-
-- [x] Split monolithic schema.ts — break into domain-specific resolver modules (~2000+ lines)
-- [x] Structured error handling — more structured GraphQL errors in resolvers
-- [x] Structured logging (pino) — replace console.error across API
 
 ## Group K: Data Layer (Tech Debt)
 **Touches:** `apps/api/prisma/schema.prisma`, `apps/api/src/graphql/schema.ts` (typeDefs), `apps/api/src/graphql/resolvers/*`
