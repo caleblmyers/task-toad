@@ -87,6 +87,7 @@ Each **wave** = 1 schema set + N independent sets running in parallel.
 ### I5 (Priority 3): New AI Features (no schema changes)
 **Touches:** `ai/*`, `resolvers/ai.ts`, `promptBuilder.ts` — reuse existing mutations/types
 
+- [ ] Deduplicate "add more tasks" — prevent AI task generation from creating tasks that duplicate existing task titles in the project
 - [ ] Bug report → Task — AI parses bug report into structured task _(reuse existing `extractTasksFromNotes` mutation)_
 - [ ] Sprint transition analyzer — AI analyzes backlog on sprint close
 - [ ] PRD → Task breakdown — AI breaks PRD into epics/tasks
