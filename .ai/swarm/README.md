@@ -95,26 +95,24 @@ pending -> in_progress -> completed -> review -> merged
 - **merged**: squash-merged into main locally
 - **blocked**: worker hit an issue (see `reviewNotes`)
 
-## Conflict Management
+## Parallel Execution Model
 
-Tasks are organized into groups (A-L) in `.claude-knowledge/todos.md`. Each group lists which files it touches, plus cross-group blocking relationships.
+Work is organized into **Task Sets** in `.claude-knowledge/todos.md`:
+
+- **Schema sets (S1-S10)** — touch `schema.ts`/`schema.prisma`. Only ONE runs per wave.
+- **Independent sets (I1-I8)** — no shared file conflicts. Run freely in parallel.
+
+Each **wave** = 1 schema set + N independent sets running simultaneously.
 
 ### Assignment Rules
 
-1. **Isolate cross-group blockers** — if a task touches a shared file that other worker sets also need, isolate it (own worker or run first). Do NOT bundle it with unrelated work.
-2. **Bundle safe dependents** — if task B depends only on task A (and no other worker set needs A's changes), A and B can share a worker. Test: "Would any other worker be blocked waiting?" If yes → isolate.
-3. **Independent groups run in parallel** — groups with no shared files run on separate workers simultaneously.
-4. **Workers only touch files in their task's `files` array** — enforced by convention, not tooling.
+1. **One schema set per wave** — never assign two schema sets to separate workers.
+2. **Independent sets run freely** — assign one per remaining worker.
+3. **Self-contained sets** — all tasks in a set go to the same worker. Never split across workers.
+4. **Priority order** — when auto-selecting, pick highest-priority unfinished sets.
+5. **Workers only touch files in their task's `files` array** — enforced by convention.
 
-### Shared file hotspots
-
-| File | Groups |
-|------|--------|
-| `apps/api/src/graphql/schema.ts` (typeDefs) | A, C, D, F, H, I, K |
-| `apps/api/prisma/schema.prisma` | C, F, G, H, I, K |
-| `apps/web/src/hooks/useProjectData.ts` | B, E, F |
-
-See `Cross-Group Dependencies` in `.claude-knowledge/todos.md` for the full blocking matrix.
+See `todos.md` for the full Optimal Wave Plan and priority ordering.
 
 ## Helper Scripts
 
