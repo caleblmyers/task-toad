@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/context';
 import { gql } from '../api/client';
 import type { Org, OrgUser, OrgInvite, GitHubInstallation } from '../types';
+import AIUsageDashboard from '../components/AIUsageDashboard';
 
 const ORG_QUERY = `query GetOrg { org { orgId name hasApiKey apiKeyHint } }`;
 const ORG_USERS_QUERY = `query { orgUsers { userId email role } }`;
@@ -355,6 +356,12 @@ export default function OrgSettings() {
             {installations.length > 0 ? 'Add another installation' : 'Install GitHub App'}
           </button>
         )}
+      </div>
+
+      {/* AI Usage */}
+      <div className="bg-white rounded-lg border border-slate-200 p-6 space-y-6">
+        <h2 className="text-lg font-semibold text-slate-800">AI Usage</h2>
+        <AIUsageDashboard />
       </div>
     </div>
   );

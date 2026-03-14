@@ -195,6 +195,25 @@ export interface Org {
   createdAt: string;
   hasApiKey: boolean;
   apiKeyHint?: string | null;
+  monthlyBudgetCentsUSD?: number | null;
+  budgetAlertThreshold?: number;
+}
+
+export interface AIFeatureUsage {
+  feature: string;
+  calls: number;
+  costUSD: number;
+  avgLatencyMs: number;
+}
+
+export interface AIUsageSummary {
+  totalCostUSD: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCalls: number;
+  byFeature: AIFeatureUsage[];
+  budgetUsedPercent: number | null;
+  budgetLimitCentsUSD: number | null;
 }
 
 export interface ProjectOption {
