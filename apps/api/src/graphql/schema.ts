@@ -282,6 +282,19 @@ export const schema = createSchema<Context>({
       summary: String!
     }
 
+    type GeneratedFile {
+      path: String!
+      content: String!
+      language: String!
+      description: String!
+    }
+
+    type CodeGeneration {
+      files: [GeneratedFile!]!
+      summary: String!
+      estimatedTokensUsed: Int!
+    }
+
     type AuthPayload {
       token: String!
     }
@@ -418,6 +431,7 @@ export const schema = createSchema<Context>({
       commitTaskPlan(projectId: ID!, tasks: [CommitTaskInput!]!, clearExisting: Boolean): [Task!]!
       expandTask(taskId: ID!, context: String): [Task!]!
       generateTaskInstructions(taskId: ID!): Task!
+      generateCodeFromTask(taskId: ID!): CodeGeneration!
       summarizeProject(projectId: ID!): String!
 
       markNotificationRead(notificationId: ID!): Notification!

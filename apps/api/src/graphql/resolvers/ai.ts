@@ -4,6 +4,7 @@ import {
   generateTaskPlan as aiGenerateTaskPlan,
   expandTask as aiExpandTask,
   generateTaskInstructions as aiGenerateTaskInstructions,
+  generateCode as aiGenerateCode,
   summarizeProject as aiSummarizeProject,
   generateStandupReport as aiGenerateStandupReport,
   generateSprintReport as aiGenerateSprintReport,
@@ -304,6 +305,29 @@ export const aiMutations = {
         dependsOn: resolvedDeps.length > 0 ? JSON.stringify(resolvedDeps) : null,
       },
     });
+  },
+
+  generateCodeFromTask: async (_parent: unknown, args: { taskId: string }, context: Context) => {
+    const user = requireOrg(context);
+    const apiKey = requireApiKey(context);
+    const task = await context.prisma.task.findUnique({
+      where: { taskId: args.taskId },
+      include: { project: true },
+    });
+    if (!task || task.orgId !== user.orgId) {
+      throw new NotFoundError('Task not found');
+    }
+    if (!task.instructions) {
+      throw new ValidationError('Task has no instructions. Generate instructions first.');
+    }
+    return aiGenerateCode(
+      apiKey,
+      task.title,
+      task.description ?? '',
+      task.instructions,
+      task.project.name,
+      task.project.description ?? '',
+    );
   },
 
   summarizeProject: async (_parent: unknown, args: { projectId: string }, context: Context) => {
