@@ -15,6 +15,7 @@ const DEFAULT_COLUMNS = ['To Do', 'In Progress', 'In Review', 'Done'];
 export default function SprintCreateModal({ projectId, initialSprint, onCreated, onUpdated, onClose }: SprintCreateModalProps) {
   const isEdit = !!initialSprint;
   const [name, setName] = useState(initialSprint?.name ?? '');
+  const [goal, setGoal] = useState(initialSprint?.goal ?? '');
   const [startDate, setStartDate] = useState(initialSprint?.startDate ?? '');
   const [endDate, setEndDate] = useState(initialSprint?.endDate ?? '');
   const initialColumns = initialSprint ? (() => { try { return JSON.parse(initialSprint.columns) as string[]; } catch { return DEFAULT_COLUMNS; } })() : DEFAULT_COLUMNS;
@@ -33,14 +34,15 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
     try {
       if (isEdit && initialSprint) {
         const data = await gql<{ updateSprint: Sprint }>(
-          `mutation UpdateSprint($sprintId: ID!, $name: String, $columns: String, $startDate: String, $endDate: String) {
-            updateSprint(sprintId: $sprintId, name: $name, columns: $columns, startDate: $startDate, endDate: $endDate) {
-              sprintId projectId name isActive columns startDate endDate createdAt closedAt
+          `mutation UpdateSprint($sprintId: ID!, $name: String, $goal: String, $columns: String, $startDate: String, $endDate: String) {
+            updateSprint(sprintId: $sprintId, name: $name, goal: $goal, columns: $columns, startDate: $startDate, endDate: $endDate) {
+              sprintId projectId name goal isActive columns startDate endDate createdAt closedAt
             }
           }`,
           {
             sprintId: initialSprint.sprintId,
             name: name.trim(),
+            goal: goal.trim() || null,
             columns: JSON.stringify(columns),
             startDate: startDate || null,
             endDate: endDate || null,
@@ -49,14 +51,15 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
         onUpdated?.(data.updateSprint);
       } else {
         const data = await gql<{ createSprint: Sprint }>(
-          `mutation CreateSprint($projectId: ID!, $name: String!, $columns: String, $startDate: String, $endDate: String) {
-            createSprint(projectId: $projectId, name: $name, columns: $columns, startDate: $startDate, endDate: $endDate) {
-              sprintId projectId name isActive columns startDate endDate createdAt closedAt
+          `mutation CreateSprint($projectId: ID!, $name: String!, $goal: String, $columns: String, $startDate: String, $endDate: String) {
+            createSprint(projectId: $projectId, name: $name, goal: $goal, columns: $columns, startDate: $startDate, endDate: $endDate) {
+              sprintId projectId name goal isActive columns startDate endDate createdAt closedAt
             }
           }`,
           {
             projectId,
             name: name.trim(),
+            goal: goal.trim() || null,
             columns: JSON.stringify(columns),
             startDate: startDate || null,
             endDate: endDate || null,
@@ -117,6 +120,17 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
               required
               autoFocus
               className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Sprint Goal (optional)</label>
+            <textarea
+              value={goal}
+              onChange={(e) => setGoal(e.target.value)}
+              placeholder="What is this sprint's objective?"
+              rows={2}
+              className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400 resize-none"
             />
           </div>
 

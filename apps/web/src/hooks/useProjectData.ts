@@ -78,7 +78,7 @@ export interface ProjectData {
   handleAddTask: (e: React.FormEvent) => Promise<void>;
   startEditTitle: (task: Task) => void;
   handleTitleSave: () => Promise<void>;
-  handleUpdateTask: (taskId: string, updates: { description?: string; instructions?: string }) => Promise<void>;
+  handleUpdateTask: (taskId: string, updates: { description?: string; instructions?: string; storyPoints?: number | null }) => Promise<void>;
   switchView: (v: 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar') => void;
   handleUpdateProject: (data: { name?: string; description?: string; statuses?: string }) => Promise<void>;
   handleUpdateDependencies: (taskId: string, dependsOnIds: string[]) => Promise<void>;
@@ -292,7 +292,7 @@ export function useProjectData(): ProjectData {
     if (!projectId) return;
     try {
       const data = await gql<{ sprints: Sprint[] }>(
-        `query Sprints($projectId: ID!) { sprints(projectId: $projectId) { sprintId projectId name isActive columns startDate endDate createdAt closedAt } }`,
+        `query Sprints($projectId: ID!) { sprints(projectId: $projectId) { sprintId projectId name goal isActive columns startDate endDate createdAt closedAt } }`,
         { projectId }
       );
       setSprints(data.sprints);
@@ -1029,11 +1029,12 @@ export function useProjectData(): ProjectData {
     }
   };
 
-  const handleUpdateTask = async (taskId: string, updates: { description?: string; instructions?: string }) => {
+  const handleUpdateTask = async (taskId: string, updates: { description?: string; instructions?: string; storyPoints?: number | null }) => {
     const mutationParts: string[] = ['$taskId: ID!'];
     const vars: Record<string, unknown> = { taskId };
     if (updates.description !== undefined) { mutationParts.push('$description: String'); vars.description = updates.description; }
     if (updates.instructions !== undefined) { mutationParts.push('$instructions: String'); vars.instructions = updates.instructions; }
+    if (updates.storyPoints !== undefined) { mutationParts.push('$storyPoints: Int'); vars.storyPoints = updates.storyPoints; }
 
     const argsPart = Object.keys(updates).map((k) => `${k}: $${k}`).join(', ');
 
