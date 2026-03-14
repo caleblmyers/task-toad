@@ -61,7 +61,7 @@ export interface TaskDetailPanelProps {
   onCreateComment: (content: string, parentCommentId?: string) => Promise<void>;
   onUpdateComment: (commentId: string, content: string) => Promise<void>;
   onDeleteComment: (commentId: string) => Promise<void>;
-  onUpdateTask?: (taskId: string, updates: { description?: string; instructions?: string }) => Promise<void>;
+  onUpdateTask?: (taskId: string, updates: { description?: string; instructions?: string; storyPoints?: number | null }) => Promise<void>;
   onArchiveTask?: (taskId: string, archived: boolean) => Promise<void>;
   labels?: Label[];
   onAddTaskLabel?: (taskId: string, labelId: string) => Promise<void>;
@@ -302,6 +302,26 @@ function PanelContent({
           )}
         </div>
       )}
+
+      {/* Story Points */}
+      <div className="mb-4">
+        <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Story Points</label>
+        <input
+          type="number"
+          min={0}
+          max={100}
+          value={task.storyPoints ?? ''}
+          onChange={(e) => {
+            const val = e.target.value === '' ? null : parseInt(e.target.value, 10);
+            if (onUpdateTask && (val === null || !isNaN(val))) {
+              onUpdateTask(task.taskId, { storyPoints: val });
+            }
+          }}
+          placeholder="—"
+          className="block mt-1 border border-slate-300 rounded px-2 py-1 text-sm w-24"
+          disabled={disabled}
+        />
+      </div>
 
       {/* Labels */}
       {(onAddTaskLabel || (task.labels && task.labels.length > 0)) && (

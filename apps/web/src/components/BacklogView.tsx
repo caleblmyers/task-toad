@@ -154,9 +154,12 @@ function TaskRow({
             )}
           </div>
         )}
-        {task.estimatedHours != null && (
+        {(task.storyPoints != null || task.estimatedHours != null) && (
           <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-            ~{formatHours(task.estimatedHours)}
+            {[
+              task.storyPoints != null ? `${task.storyPoints}pt` : null,
+              task.estimatedHours != null ? `~${formatHours(task.estimatedHours)}` : null,
+            ].filter(Boolean).join(' · ')}
           </span>
         )}
         {task.sprintColumn && (
@@ -362,15 +365,20 @@ export default function BacklogView({
           return (
             <div key={sprint.sprintId} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200">
-                <div className="flex items-center gap-2">
-                  {renderSectionCheckbox(sprintTasks)}
-                  <span className="font-semibold text-slate-800 text-sm">{sprint.name}</span>
-                  <span className="text-xs text-slate-400">({countLabel})</span>
-                  {dateRange && <span className="text-xs text-slate-400">{dateRange}</span>}
-                  {sprint.isActive && (
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
-                      Active
-                    </span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    {renderSectionCheckbox(sprintTasks)}
+                    <span className="font-semibold text-slate-800 text-sm">{sprint.name}</span>
+                    <span className="text-xs text-slate-400">({countLabel})</span>
+                    {dateRange && <span className="text-xs text-slate-400">{dateRange}</span>}
+                    {sprint.isActive && (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  {sprint.goal && (
+                    <p className="text-xs text-slate-500 mt-0.5 ml-6">{sprint.goal}</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2">

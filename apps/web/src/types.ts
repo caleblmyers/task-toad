@@ -97,6 +97,7 @@ export interface Task {
   instructions?: string | null;
   suggestedTools?: string | null;
   estimatedHours?: number | null;
+  storyPoints?: number | null;
   priority: string;
   dependsOn?: string | null;
   status: string;
@@ -143,6 +144,7 @@ export interface Sprint {
   sprintId:  string;
   projectId: string;
   name:      string;
+  goal?:     string | null;
   isActive:  boolean;
   columns:   string;
   startDate: string | null;
