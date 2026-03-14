@@ -37,6 +37,7 @@ These shared files create blocking relationships between groups. The planner mus
 - [ ] GitHub repo → Project bootstrap — AI analyzes repo to generate project
 - [ ] Historical summary analysis — trend analysis over persisted reports _(depends on: Persisted reports)_
 - [ ] Sprint transition analyzer — AI analyzes backlog on sprint close
+- [ ] AI code generation from tasks — AI generates code files from task instructions, preview, then create PR via existing `createPullRequestFromTask` _(core pipeline: aiService + promptBuilder + Zod schema + GraphQL mutation + frontend preview UI)_
 - [ ] AI activity limits — per-user/org rate limits on AI operations
 - [ ] AI usage reporting — dashboard for AI usage metrics
 
