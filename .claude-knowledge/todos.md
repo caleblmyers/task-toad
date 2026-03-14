@@ -7,11 +7,11 @@ Organized by module touchpoints for parallel development. Items within the same 
 ## Group A: AI Subsystem
 **Touches:** `apps/api/src/ai/*`, `apps/api/src/graphql/schema.ts` (AI resolvers), new frontend components
 
-- [ ] Meeting notes → Tasks — paste notes, AI extracts tasks + updates
-- [ ] Daily standup report — generate from sprint data
-- [ ] Sprint report — auto-generate on sprint close
+- [x] Meeting notes → Tasks — paste notes, AI extracts tasks + updates
+- [x] Daily standup report — generate from sprint data
+- [x] Sprint report — auto-generate on sprint close
 - [ ] Persisted reports — save reports for historical analytics _(prerequisite for Historical summary analysis)_
-- [ ] Project health analyzer — AI health score + issue summary
+- [x] Project health analyzer — AI health score + issue summary
 - [ ] Contextual project chat — NL Q&A grounded in live project data
 - [ ] Bug report → Task — AI parses bug report into structured task
 - [ ] PRD → Task breakdown — AI breaks PRD into epics/tasks
@@ -34,9 +34,9 @@ Organized by module touchpoints for parallel development. Items within the same 
 
 - [x] GitHub App integration — GitHub App auth, webhooks, installation storage, repo/branch/commit/PR services
 - [x] GitHub linking UI — OrgSettings installation linking, ProjectDetail repo connection modal
-- [ ] GitHub issue sync — create GitHub issues from TaskToad tasks, sync status bidirectionally
-- [ ] PR status on tasks — show linked PR status (open/merged/closed) on task cards
-- [ ] Auto-link commits — parse branch names to associate commits with tasks
+- [x] GitHub issue sync — create GitHub issues from TaskToad tasks, sync status bidirectionally
+- [x] PR status on tasks — show linked PR status (open/merged/closed) on task cards
+- [x] Auto-link commits — parse branch names to associate commits with tasks
 - [ ] Slack integration — channel notifications, create tasks from Slack
 - [ ] Webhook support — outgoing webhooks on task events
 - [ ] Public REST/GraphQL API docs — documented API for third-party use
@@ -78,9 +78,9 @@ Organized by module touchpoints for parallel development. Items within the same 
 ## Group J: API Architecture (Tech Debt)
 **Touches:** `apps/api/src/graphql/schema.ts`, `apps/api/src/graphql/context.ts`
 
-- [ ] Split monolithic schema.ts — break into domain-specific resolver modules (~2000+ lines)
-- [ ] Structured error handling — more structured GraphQL errors in resolvers
-- [ ] Structured logging (pino) — replace console.error across API
+- [x] Split monolithic schema.ts — break into domain-specific resolver modules (~2000+ lines)
+- [x] Structured error handling — more structured GraphQL errors in resolvers
+- [x] Structured logging (pino) — replace console.error across API
 
 ## Group K: Data Layer (Tech Debt)
 **Touches:** `apps/api/prisma/schema.prisma`, `apps/api/src/graphql/schema.ts`

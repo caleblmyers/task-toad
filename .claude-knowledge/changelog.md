@@ -4,6 +4,30 @@ Summaries of work completed each session. Most recent first.
 
 ---
 
+## 2026-03-14
+
+### Swarm: Groups J, A, C (parallel development)
+
+First swarm run — 3 workers + reviewer, 10 tasks across 3 groups.
+
+**Group J — API Architecture (Tech Debt):**
+- Split monolithic schema.ts (~2000 lines) into 10 domain resolver modules under `resolvers/`
+- Added structured GraphQL error handling (7 error classes + requireAuth/requireAdmin guards)
+- Added structured logging with pino (replaced all console.error/log calls)
+
+**Group A — AI Reports:**
+- Daily standup report — AI generates completed/inProgress/blockers from sprint data
+- Sprint report — AI summary with completion rate, highlights, concerns, recommendations
+- Project health analyzer — AI health score (0-100) with issues, strengths, action items
+- Meeting notes → Tasks — AI extracts tasks from pasted meeting notes
+
+**Group C — GitHub Integration:**
+- GitHub issue sync — create GitHub issues from tasks, bidirectional status sync
+- PR status on tasks — show linked PR status (open/merged/closed) on task cards
+- Auto-link commits — parse branch names to associate commits with tasks
+
+---
+
 ## 2026-03-13
 
 ### Tier 1 & 2 Features (table stakes + standard)
