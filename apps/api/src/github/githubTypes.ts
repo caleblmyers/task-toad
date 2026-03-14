@@ -50,6 +50,7 @@ export interface CreatePullRequestFromTaskInput {
   projectId: string;
   taskId: string;
   files: FileChange[];
+  apiKey?: string;
 }
 
 export interface GitHubWebhookEvent {

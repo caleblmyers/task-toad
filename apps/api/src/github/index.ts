@@ -29,6 +29,10 @@ export { extractTaskIds, linkCommitsToTasks } from './githubTaskLinker.js';
 // Orchestration
 export { createPullRequestFromTask } from './githubService.js';
 
+// File tree
+export { fetchProjectFileTree } from './githubFileService.js';
+export type { ProjectFile } from './githubFileService.js';
+
 // Types
 export type {
   GitHubInstallation,

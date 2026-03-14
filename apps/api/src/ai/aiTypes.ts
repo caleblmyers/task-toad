@@ -138,7 +138,9 @@ export type AIFeature =
   | 'generateSprintReport'
   | 'analyzeProjectHealth'
   | 'extractTasksFromNotes'
-  | 'generateCode';
+  | 'generateCode'
+  | 'generateCommitMessage'
+  | 'enrichPRDescription';
 
 export interface AIUsage {
   inputTokens: number;

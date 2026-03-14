@@ -13,6 +13,7 @@ import {
 } from '../../ai/index.js';
 import { NotFoundError, ValidationError } from '../errors.js';
 import { requireOrg, requireApiKey } from './auth.js';
+import { getProjectRepo, fetchProjectFileTree } from '../../github/index.js';
 
 // ── AI mutations ──
 
@@ -320,6 +321,14 @@ export const aiMutations = {
     if (!task.instructions) {
       throw new ValidationError('Task has no instructions. Generate instructions first.');
     }
+
+    // Fetch project file tree for context if repo is connected
+    let projectFiles: Array<{ path: string; language: string; size: number }> | undefined;
+    const repo = await getProjectRepo(task.projectId);
+    if (repo) {
+      projectFiles = await fetchProjectFileTree(repo).catch(() => undefined);
+    }
+
     return aiGenerateCode(
       apiKey,
       task.title,
@@ -327,6 +336,7 @@ export const aiMutations = {
       task.instructions,
       task.project.name,
       task.project.description ?? '',
+      projectFiles,
     );
   },
 

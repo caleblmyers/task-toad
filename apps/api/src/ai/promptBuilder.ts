@@ -368,12 +368,12 @@ export function buildGenerateCodePrompt(data: {
   taskInstructions: string;
   projectName: string;
   projectDescription: string;
-  existingFiles?: string[];
+  existingFiles?: Array<{ path: string; language: string; size: number }>;
 }): Prompt {
   const cappedFiles = (data.existingFiles ?? []).slice(0, 30);
   const filesLine =
     cappedFiles.length > 0
-      ? `\nExisting project files:\n${cappedFiles.join('\n')}`
+      ? `\nExisting project files (for context — do NOT regenerate these):\n${cappedFiles.map((f) => `- ${f.path} (${f.language}, ${f.size} bytes)`).join('\n')}`
       : '';
 
   return {
@@ -396,6 +396,42 @@ Generate 1–6 files. Each file should be complete and runnable.
 Use appropriate file paths relative to the project root.
 Prefer small, focused files over large monolithic ones.
 Keep total output concise — avoid generating files not directly needed for the task.`,
+  };
+}
+
+export function buildCommitMessagePrompt(data: {
+  taskTitle: string;
+  taskDescription: string;
+  files: Array<{ path: string }>;
+}): Prompt {
+  return {
+    systemPrompt: SYSTEM_PROSE,
+    userPrompt: `Generate a concise git commit message (max 72 chars first line, optional body after blank line) for this task implementation.
+
+Task: ${userInput('title', data.taskTitle)}
+Description: ${userInput('description', truncate(data.taskDescription, MAX_DESCRIPTION_CHARS))}
+Files changed: ${data.files.map((f) => f.path).join(', ')}
+
+Use conventional commits format (feat:, fix:, etc). Return ONLY the commit message text.`,
+  };
+}
+
+export function buildEnrichPRDescriptionPrompt(data: {
+  taskTitle: string;
+  taskDescription: string;
+  taskInstructions: string;
+  files: Array<{ path: string; language: string }>;
+}): Prompt {
+  return {
+    systemPrompt: SYSTEM_PROSE,
+    userPrompt: `Generate a pull request description in markdown for this task.
+
+Task: ${userInput('title', data.taskTitle)}
+Description: ${userInput('description', truncate(data.taskDescription, MAX_PROJECT_DESCRIPTION_CHARS))}
+Instructions: ${userInput('instructions', truncate(data.taskInstructions, 800))}
+Files: ${data.files.map((f) => f.path).join(', ')}
+
+Include: ## Summary (2-3 sentences), ## Changes (bullet list), ## Testing (how to verify). Return ONLY the markdown.`,
   };
 }
 

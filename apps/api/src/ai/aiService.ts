@@ -31,6 +31,8 @@ import {
   buildSprintReportPrompt,
   buildHealthAnalysisPrompt,
   buildMeetingNotesPrompt,
+  buildCommitMessagePrompt,
+  buildEnrichPRDescriptionPrompt,
 } from './promptBuilder.js';
 
 // ---------------------------------------------------------------------------
@@ -227,11 +229,50 @@ export async function generateCode(
   taskInstructions: string,
   projectName: string,
   projectDescription: string,
-  existingFiles?: string[]
+  existingFiles?: Array<{ path: string; language: string; size: number }>
 ): Promise<CodeGeneration> {
   const p = buildGenerateCodePrompt({
     taskTitle, taskDescription, taskInstructions,
     projectName, projectDescription, existingFiles,
   });
   return callAndParse(apiKey, 'generateCode', p, CodeGenerationSchema);
+}
+
+export async function generateCommitMessage(
+  apiKey: string,
+  taskTitle: string,
+  taskDescription: string,
+  files: Array<{ path: string }>
+): Promise<string> {
+  const p = buildCommitMessagePrompt({ taskTitle, taskDescription, files });
+  const config = FEATURE_CONFIG.generateCommitMessage;
+  const result = await callAI({
+    apiKey,
+    systemPrompt: p.systemPrompt,
+    userPrompt: p.userPrompt,
+    maxTokens: config.maxTokens,
+    feature: 'generateCommitMessage',
+    cacheTTLMs: config.cacheTTLMs,
+  });
+  return result.raw.trim();
+}
+
+export async function enrichPRDescription(
+  apiKey: string,
+  taskTitle: string,
+  taskDescription: string,
+  taskInstructions: string,
+  files: Array<{ path: string; language: string }>
+): Promise<string> {
+  const p = buildEnrichPRDescriptionPrompt({ taskTitle, taskDescription, taskInstructions, files });
+  const config = FEATURE_CONFIG.enrichPRDescription;
+  const result = await callAI({
+    apiKey,
+    systemPrompt: p.systemPrompt,
+    userPrompt: p.userPrompt,
+    maxTokens: config.maxTokens,
+    feature: 'enrichPRDescription',
+    cacheTTLMs: config.cacheTTLMs,
+  });
+  return result.raw.trim();
 }

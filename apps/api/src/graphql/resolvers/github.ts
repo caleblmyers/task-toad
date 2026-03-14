@@ -10,7 +10,7 @@ import {
   updateGitHubIssueState,
 } from '../../github/index.js';
 import { NotFoundError, AuthorizationError, ValidationError } from '../errors.js';
-import { requireOrg, requireProjectAccess } from './auth.js';
+import { requireOrg, requireProjectAccess, requireApiKey } from './auth.js';
 
 // ── GitHub queries ──
 
@@ -90,10 +90,17 @@ export const githubMutations = {
     context: Context
   ) => {
     await requireProjectAccess(context, args.projectId);
+    let apiKey: string | undefined;
+    try {
+      apiKey = requireApiKey(context);
+    } catch {
+      // No API key configured — AI enrichment will be skipped
+    }
     const result = await createPullRequestFromTask({
       projectId: args.projectId,
       taskId: args.taskId,
       files: args.files,
+      apiKey,
     });
 
     // Auto-move task to "in_review" status after PR creation

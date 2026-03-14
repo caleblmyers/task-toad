@@ -13,6 +13,8 @@ export {
   generateSprintReport,
   analyzeProjectHealth,
   extractTasksFromNotes,
+  generateCommitMessage,
+  enrichPRDescription,
 } from './aiService.js';
 
 export type {
