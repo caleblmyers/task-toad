@@ -43,6 +43,9 @@ app.use(
   })
 );
 
+// GitHub webhook endpoint needs raw body for signature verification — must be before JSON parser
+app.post('/api/github/webhooks', express.raw({ type: 'application/json' }), handleGitHubWebhook);
+
 // Body size limit
 app.use(express.json({ limit: '1mb' }));
 
@@ -72,8 +75,6 @@ const authLimiter = rateLimit({
 });
 app.use('/graphql', authLimiter);
 
-// GitHub webhook endpoint — must be before the 404 handler
-app.post('/api/github/webhooks', handleGitHubWebhook);
 
 const yoga = createYoga({ schema, context: buildContext, graphqlEndpoint: '/graphql' });
 // graphql-yoga's server adapter is compatible with Express but requires a type cast

@@ -49,14 +49,14 @@ export async function handleGitHubWebhook(req: Request, res: Response): Promise<
     return;
   }
 
-  // Verify HMAC signature
-  const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+  // Verify HMAC signature against raw body (Buffer from express.raw())
+  const rawBody = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
   if (!verifySignature(rawBody, signature)) {
     res.status(401).json({ error: 'Invalid webhook signature' });
     return;
   }
 
-  const payload: GitHubWebhookEvent = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+  const payload: GitHubWebhookEvent = JSON.parse(rawBody);
   logWebhookReceived(event, payload.action, deliveryId);
 
   try {
