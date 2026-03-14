@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { GraphQLError } from 'graphql';
 import type { AIFeature } from './aiTypes.js';
+import { createChildLogger } from '../utils/logger.js';
+
+const log = createChildLogger('ai');
 import {
   ProjectOptionSchema,
   TaskPlanSchema,
@@ -44,7 +47,7 @@ async function callAndParse<T>(
     return parseJSON(result.raw, schema);
   } catch (err) {
     if (config.retryOnValidationFailure && !result.cached) {
-      console.warn(`[AI] Validation failed for ${feature}, retrying once...`);
+      log.warn({ feature }, 'Validation failed, retrying once');
       const retry = await callAI({
         apiKey,
         systemPrompt: prompt.systemPrompt,

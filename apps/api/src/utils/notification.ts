@@ -1,4 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
+import { createChildLogger } from './logger.js';
+
+const log = createChildLogger('notification');
 
 interface CreateNotificationParams {
   orgId: string;
@@ -24,7 +27,7 @@ export function createNotification(prisma: PrismaClient, params: CreateNotificat
       relatedTaskId: params.relatedTaskId ?? null,
       relatedProjectId: params.relatedProjectId ?? null,
     },
-  }).catch(() => {
-    // Silently ignore notification creation failures
+  }).catch((err: unknown) => {
+    log.error({ err, type: params.type }, 'Failed to create notification');
   });
 }

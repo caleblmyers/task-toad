@@ -1,4 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
+import { createChildLogger } from './logger.js';
+
+const log = createChildLogger('activity');
 
 interface LogActivityParams {
   orgId: string;
@@ -26,7 +29,7 @@ export function logActivity(prisma: PrismaClient, params: LogActivityParams): vo
       oldValue: params.oldValue ?? null,
       newValue: params.newValue ?? null,
     },
-  }).catch(() => {
-    // Silently ignore activity logging failures
+  }).catch((err: unknown) => {
+    log.error({ err, action: params.action }, 'Failed to log activity');
   });
 }

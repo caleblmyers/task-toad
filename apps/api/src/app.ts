@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { schema } from './graphql/schema.js';
 import { buildContext } from './graphql/context.js';
 import { handleGitHubWebhook } from './github/index.js';
+import { logger } from './utils/logger.js';
 
 // Validate required environment variables at startup
 const envSchema = z.object({
@@ -24,7 +25,7 @@ const envSchema = z.object({
 const envResult = envSchema.safeParse(process.env);
 if (!envResult.success) {
   const missing = envResult.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`).join('\n');
-  console.error(`Missing or invalid environment variables:\n${missing}\n\nCopy apps/api/.env.example to apps/api/.env and fill in the values.`);
+  logger.fatal({ issues: envResult.error.issues }, `Missing or invalid environment variables:\n${missing}\n\nCopy apps/api/.env.example to apps/api/.env and fill in the values.`);
   process.exit(1);
 }
 
@@ -83,7 +84,7 @@ app.use((_req, res) => {
 });
 
 app.use(((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error(err);
+  logger.error({ err }, 'Unhandled express error');
   res.status(500).json({ error: 'Internal server error' });
 }) as express.ErrorRequestHandler);
 

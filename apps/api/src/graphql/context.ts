@@ -1,5 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import { jwtVerify } from 'jose';
+import { createChildLogger } from '../utils/logger.js';
+
+const log = createChildLogger('auth');
 
 const prisma = new PrismaClient();
 
@@ -48,7 +51,7 @@ export async function buildContext(ctx: { request: Request }): Promise<Context> 
     };
   } catch (err) {
     const code = err instanceof Error ? err.message : 'unknown';
-    console.warn(`[auth] JWT verification failed: ${code}`);
+    log.warn({ code }, 'JWT verification failed');
     return { user: null, org: null, prisma };
   }
 }

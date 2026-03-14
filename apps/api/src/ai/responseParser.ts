@@ -1,5 +1,8 @@
 import { GraphQLError } from 'graphql';
 import type { z } from 'zod';
+import { createChildLogger } from '../utils/logger.js';
+
+const log = createChildLogger('ai');
 
 // ---------------------------------------------------------------------------
 // Response parsing and validation
@@ -16,12 +19,12 @@ export function parseJSON<T>(raw: string, schema: z.ZodType<T>): T {
   try {
     parsed = JSON.parse(stripFences(raw));
   } catch {
-    console.error('[AI] Failed to parse response:', raw.slice(0, 200));
+    log.error({ preview: raw.slice(0, 200) }, 'Failed to parse AI response');
     throw new GraphQLError('Failed to parse AI response');
   }
   const result = schema.safeParse(parsed);
   if (!result.success) {
-    console.error('[AI] Response validation failed:', result.error.issues.slice(0, 3));
+    log.error({ issues: result.error.issues.slice(0, 3) }, 'AI response validation failed');
     throw new GraphQLError('AI response did not match expected format');
   }
   return result.data;

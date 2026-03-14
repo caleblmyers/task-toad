@@ -5,6 +5,9 @@ import { AI_MODEL } from './aiConfig.js';
 import { logAICall } from './aiLogger.js';
 import { aiCache, hashPrompt } from './aiCache.js';
 import { checkPromptSize } from './tokenEstimator.js';
+import { createChildLogger } from '../utils/logger.js';
+
+const log = createChildLogger('ai');
 
 // ---------------------------------------------------------------------------
 // Client cache — reuse Anthropic instances per API key
@@ -49,7 +52,7 @@ function mapAnthropicError(err: unknown): never {
     });
   }
 
-  console.error('[AI] Unexpected error:', err);
+  log.error({ err }, 'Unexpected AI error');
   throw new GraphQLError('AI service error');
 }
 

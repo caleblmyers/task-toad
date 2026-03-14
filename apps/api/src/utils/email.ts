@@ -1,5 +1,7 @@
 import nodemailer from 'nodemailer';
+import { createChildLogger } from './logger.js';
 
+const log = createChildLogger('email');
 const APP_URL = process.env.APP_URL ?? 'http://localhost:5173';
 
 export async function sendEmail(to: string, subject: string, text: string, html?: string): Promise<void> {
@@ -9,8 +11,7 @@ export async function sendEmail(to: string, subject: string, text: string, html?
     // Extract link from text for clean console output
     const linkMatch = text.match(/https?:\/\/\S+/);
     const link = linkMatch ? linkMatch[0] : '';
-    console.log(`[DEV EMAIL] To: ${to} | Subject: ${subject}`);
-    if (link) console.log(`Link: ${link}`);
+    log.info({ to, subject, link }, 'DEV EMAIL');
     return;
   }
 

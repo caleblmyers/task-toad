@@ -1,5 +1,8 @@
 import { GraphQLError } from 'graphql';
 import { CONTEXT_WINDOW } from './aiConfig.js';
+import { createChildLogger } from '../utils/logger.js';
+
+const log = createChildLogger('ai');
 
 // ---------------------------------------------------------------------------
 // Token estimation (chars / 4 heuristic — no external tokenizer needed)
@@ -30,7 +33,7 @@ export function checkPromptSize(
   }
 
   if (totalEstimate > CONTEXT_WINDOW * 0.8) {
-    console.warn(`[AI] Prompt is near context limit: ~${totalEstimate} / ${CONTEXT_WINDOW} tokens`);
+    log.warn({ totalEstimate, contextWindow: CONTEXT_WINDOW }, 'Prompt is near context limit');
   }
 
   return inputEstimate;
