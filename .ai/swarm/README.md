@@ -97,20 +97,24 @@ pending -> in_progress -> completed -> review -> merged
 
 ## Conflict Management
 
-Tasks are organized into groups (A-L) in `.claude-knowledge/todos.md`. Each group lists which files it touches. The key rules:
+Tasks are organized into groups (A-L) in `.claude-knowledge/todos.md`. Each group lists which files it touches, plus cross-group blocking relationships.
 
-1. **All tasks from the same group go to the same worker** — this preserves the conflict-free guarantee within a group.
-2. **Groups that share files are serialized via `dependsOn`** — the planner sets these dependencies.
-3. **Group J (schema split) should run first** — 8 of 12 groups touch `schema.ts`. Splitting it into modules first unblocks true parallelism.
-4. **Workers only touch files in their task's `files` array** — this is enforced by convention, not tooling.
+### Assignment Rules
+
+1. **Isolate cross-group blockers** — if a task touches a shared file that other worker sets also need, isolate it (own worker or run first). Do NOT bundle it with unrelated work.
+2. **Bundle safe dependents** — if task B depends only on task A (and no other worker set needs A's changes), A and B can share a worker. Test: "Would any other worker be blocked waiting?" If yes → isolate.
+3. **Independent groups run in parallel** — groups with no shared files run on separate workers simultaneously.
+4. **Workers only touch files in their task's `files` array** — enforced by convention, not tooling.
 
 ### Shared file hotspots
 
 | File | Groups |
 |------|--------|
-| `apps/api/src/graphql/schema.ts` | A, C, D, F, H, I, J, K |
-| `apps/api/prisma/schema.prisma` | B, C, F, G, H, I |
+| `apps/api/src/graphql/schema.ts` (typeDefs) | A, C, D, F, H, I, K |
+| `apps/api/prisma/schema.prisma` | C, F, G, H, I, K |
 | `apps/web/src/hooks/useProjectData.ts` | B, E, F |
+
+See `Cross-Group Dependencies` in `.claude-knowledge/todos.md` for the full blocking matrix.
 
 ## Helper Scripts
 
