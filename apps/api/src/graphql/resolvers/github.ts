@@ -90,11 +90,19 @@ export const githubMutations = {
     context: Context
   ) => {
     await requireProjectAccess(context, args.projectId);
-    return createPullRequestFromTask({
+    const result = await createPullRequestFromTask({
       projectId: args.projectId,
       taskId: args.taskId,
       files: args.files,
     });
+
+    // Auto-move task to "in_review" status after PR creation
+    await context.prisma.task.update({
+      where: { taskId: args.taskId },
+      data: { status: 'in_review', sprintColumn: 'In Review' },
+    });
+
+    return result;
   },
 
   syncTaskToGitHub: async (_parent: unknown, args: { taskId: string }, context: Context) => {

@@ -62,7 +62,7 @@ model Project {
   name                  String
   description           String?
   prompt                String?
-  statuses              String   @default("[\"todo\",\"in_progress\",\"done\"]")
+  statuses              String   @default("[\"todo\",\"in_progress\",\"in_review\",\"done\"]")
   createdAt             DateTime @default(now()) @map("created_at")
   archived              Boolean  @default(false)
   githubRepositoryId    String?  @map("github_repository_id")
@@ -84,7 +84,7 @@ model Sprint {
   projectId String    @map("project_id")
   name      String
   isActive  Boolean   @default(false) @map("is_active")
-  columns   String    @default("[\"To Do\",\"In Progress\",\"Done\"]")
+  columns   String    @default("[\"To Do\",\"In Progress\",\"In Review\",\"Done\"]")
   startDate String?   @map("start_date")
   endDate   String?   @map("end_date")
   createdAt DateTime  @default(now()) @map("created_at")

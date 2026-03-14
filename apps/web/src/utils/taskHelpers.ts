@@ -14,6 +14,7 @@ export const TASK_FIELDS = `
 export const STATUS_TO_COLUMN: Record<string, string> = {
   todo: 'To Do',
   in_progress: 'In Progress',
+  in_review: 'In Review',
   done: 'Done',
 };
 
@@ -21,6 +22,7 @@ export function columnToStatus(column: string): Task['status'] | null {
   const lower = column.toLowerCase().replace(/[^a-z]/g, '');
   if (lower === 'todo' || lower === 'backlog') return 'todo';
   if (lower === 'inprogress' || lower === 'doing' || lower === 'active') return 'in_progress';
+  if (lower === 'inreview' || lower === 'review' || lower === 'reviewing') return 'in_review';
   if (lower === 'done' || lower === 'complete' || lower === 'completed' || lower === 'closed') return 'done';
   return null;
 }

@@ -77,6 +77,9 @@ export interface GitHubWebhookEvent {
     merged: boolean;
     html_url: string;
   };
+  review?: {
+    state: string; // 'approved' | 'changes_requested' | 'commented' | 'dismissed'
+  };
   ref?: string;
   repository?: {
     name: string;

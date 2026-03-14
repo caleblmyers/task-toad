@@ -10,7 +10,7 @@ interface SprintCreateModalProps {
   onClose: () => void;
 }
 
-const DEFAULT_COLUMNS = ['To Do', 'In Progress', 'Done'];
+const DEFAULT_COLUMNS = ['To Do', 'In Progress', 'In Review', 'Done'];
 
 export default function SprintCreateModal({ projectId, initialSprint, onCreated, onUpdated, onClose }: SprintCreateModalProps) {
   const isEdit = !!initialSprint;

@@ -120,7 +120,7 @@ export const sprintMutations = {
         name: args.name,
         projectId: args.projectId,
         orgId: user.orgId,
-        columns: args.columns ?? '["To Do","In Progress","Done"]',
+        columns: args.columns ?? '["To Do","In Progress","In Review","Done"]',
         startDate: args.startDate ?? null,
         endDate: args.endDate ?? null,
       },
@@ -285,7 +285,7 @@ export const sprintMutations = {
     if (!project || project.orgId !== user.orgId) {
       throw new NotFoundError('Project not found');
     }
-    const defaultColumns = '["To Do","In Progress","Done"]';
+    const defaultColumns = '["To Do","In Progress","In Review","Done"]';
     const firstColumn = 'To Do';
     const created = await Promise.all(
       args.sprints.map(async (sprintInput) => {

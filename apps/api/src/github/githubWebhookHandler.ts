@@ -73,6 +73,9 @@ export async function handleGitHubWebhook(req: Request, res: Response): Promise<
       case 'pull_request':
         await handlePullRequestEvent(payload);
         break;
+      case 'pull_request_review':
+        await handlePullRequestReviewEvent(payload);
+        break;
       case 'push':
         await handlePushEvent(payload);
         break;
@@ -192,6 +195,20 @@ async function handlePullRequestEvent(payload: GitHubWebhookEvent): Promise<void
     default:
       break;
   }
+}
+
+async function handlePullRequestReviewEvent(payload: GitHubWebhookEvent): Promise<void> {
+  if (payload.action !== 'submitted' || !payload.review || !payload.pull_request) return;
+  if (payload.review.state !== 'approved') return;
+
+  const prNodeId = payload.pull_request.node_id;
+  const link = await prisma.gitHubPullRequestLink.findFirst({ where: { prNodeId } });
+  if (!link) return;
+
+  await prisma.task.update({
+    where: { taskId: link.taskId },
+    data: { status: 'done', sprintColumn: 'Done' },
+  });
 }
 
 async function handlePushEvent(payload: GitHubWebhookEvent): Promise<void> {
