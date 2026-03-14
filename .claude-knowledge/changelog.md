@@ -6,6 +6,25 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-14
 
+### Wave 2: S2 + I2 + I4 (3 workers, 8 tasks)
+
+**S2 — AI Persistence & Cost Control:**
+- AIUsageLog model with per-call tracking (feature, tokens, cost, latency)
+- Org budget fields (monthlyBudgetCentsUSD, alertThreshold)
+- aiUsage query with per-feature breakdown and budget usage percentage
+- setAIBudget mutation for org admins
+- Persisted reports model (standup, sprint, health) for historical analysis
+- AI Usage Dashboard in OrgSettings with cost cards, feature table, budget controls
+
+**I2 — Code Gen UX:**
+- Regenerate single file in code preview modal with optional feedback
+- Code gen templates / style guides — per-project localStorage with prompt injection
+
+**I4 — Frontend Views:**
+- Burndown/burnup SVG chart using existing sprintBurndown query
+- DependencyBadge component with hover tooltip and blocked indicators
+- Cross-project search page with debounced input, grouped results
+
 ### Wave 1: S1 + I1 + I3 (3 workers, 9 tasks)
 
 **S1 — Core PM Foundation:**

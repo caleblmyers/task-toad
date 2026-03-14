@@ -25,21 +25,6 @@ Each **wave** = 1 schema set + N independent sets running in parallel.
 
 ## Schema Sets (run one at a time, in priority order)
 
-### S1 (Priority 1): Core PM Foundation
-**Touches:** `schema.prisma`, `schema.ts`, `resolvers/task.ts`, `resolvers/sprint.ts`, `TaskDetailPanel.tsx`, `useProjectData.ts`
-
-- [x] Epics / task hierarchy — multi-level grouping beyond parent → subtask (epic → story → subtask), epic progress tracking, epic board view
-- [x] Sprint goal — text field on Sprint model describing the sprint's focus/objective
-- [x] Story points estimation — alternative to `estimatedHours`, team velocity tracking based on points per sprint
-
-### S2 (Priority 2): AI Persistence & Cost Control
-**Touches:** `schema.prisma`, `schema.ts`, `resolvers/ai.ts`, `ai/*`, new frontend components
-
-- [ ] Persisted reports — save reports for historical analytics _(prerequisite for Historical summary analysis)_
-- [ ] AI cost budget per org — set monthly token budget, track cumulative usage, alert at 80%, hard stop at 100%
-- [ ] AI activity limits — per-user/org rate limits on AI operations
-- [ ] AI usage reporting — dashboard for AI usage metrics
-
 ### S3 (Priority 2): Project Intelligence
 **Touches:** `schema.prisma`, `schema.ts`, `resolvers/ai.ts`, `ai/promptBuilder.ts`, `TaskDetailPanel.tsx`, new settings UI
 
@@ -99,33 +84,6 @@ Each **wave** = 1 schema set + N independent sets running in parallel.
 
 ## Independent Sets (run alongside any schema set)
 
-### I1 (Priority 1): AI Pipeline Polish
-**Touches:** `ai/*`, `promptBuilder.ts`, `githubService.ts` — no schema changes needed
-
-- [x] AI commit message generation — enhance PR commit messages with AI-generated context instead of generic "AI: implement task X"
-- [x] PR description enrichment — AI generates rich PR body with what changed, why, testing suggestions, related tasks
-- [x] Multi-file context injection — feed existing project files into code gen prompt via GitHub file fetch for higher-quality output
-- [x] AI code gen cost estimation (pre-flight) — use existing `tokenEstimator` + `estimatedTokensUsed` field to show cost before generating
-
-### I2 (Priority 1): Code Gen UX
-**Touches:** `CodePreviewModal.tsx`, `TaskPlanApprovalDialog.tsx`, `useProjectData.ts`, `promptBuilder.ts` — no schema changes
-
-- [ ] Regenerate single file — in code preview modal, regenerate one file instead of entire set to save tokens
-- [ ] Code gen templates / style guides — per-project config injected into code gen prompt
-
-### I3 (Priority 2): Infrastructure
-**Touches:** new config files only — fully independent
-
-- [x] CI/CD pipeline (GitHub Actions)
-- [x] Production deployment (Railway, Render, or Fly.io)
-
-### I4 (Priority 2): Frontend Views (no backend changes)
-**Touches:** new `apps/web/src/components/` files, `ProjectDetail.tsx` — uses existing queries/data
-
-- [ ] Burndown / burnup charts — visual sprint progress charts using existing `sprintBurndown` query
-- [ ] Task dependencies visualization — visual arrows/lines showing dependency chains, reads existing `dependsOn` field
-- [ ] Cross-project search — UI for existing `globalSearch` resolver, search across all projects
-
 ### I5 (Priority 3): New AI Features (no schema changes)
 **Touches:** `ai/*`, `resolvers/ai.ts`, `promptBuilder.ts` — reuse existing mutations/types
 
@@ -135,8 +93,8 @@ Each **wave** = 1 schema set + N independent sets running in parallel.
 - [ ] GitHub repo → Project bootstrap — import existing repo, AI analyzes codebase structure (files, languages, README, package.json) to auto-generate project with initial task breakdown
 - [ ] Repo ↔ Task drift analysis — for projects with a linked repo, AI compares current repo state (recent commits, open PRs, file changes) against the task set to flag outdated tasks, suggest new tasks for untracked work, and identify completed tasks that haven't been marked done
 - [ ] Contextual project chat — NL Q&A grounded in live project data
-- [ ] Historical summary analysis — trend analysis over persisted reports _(depends on: S2 Persisted reports)_
-- [ ] Batch code generation — generate code for multiple related tasks in one PR _(depends on: S1 Epics)_
+- [ ] Historical summary analysis — trend analysis over persisted reports
+- [ ] Batch code generation — generate code for multiple related tasks in one PR _(depends on: Epics — completed)_
 - [ ] Prompt replay / history — save AI prompts + responses per task for debugging and cost tracking
 
 > **Note:** Some items above (sprint transition, contextual chat, prompt history) may need new schema.ts queries when planned in detail. If so, the planner should move them to a schema set or batch their schema changes into the same wave's schema set.
@@ -166,8 +124,6 @@ Each **wave** = 1 schema set + N independent sets running in parallel.
 
 | Wave | Worker 1 (schema) | Worker 2 (independent) | Worker 3 (independent) |
 |------|-------------------|----------------------|----------------------|
-| 1 | **S1** Core PM Foundation | **I1** AI Pipeline Polish | **I3** Infrastructure |
-| 2 | **S2** AI Persistence & Costs | **I2** Code Gen UX | **I4** Frontend Views |
 | 3 | **S3** Project Intelligence | **I5** New AI Features | **I6** Data Export |
 | 4 | **S4** GitHub Automation | **I7** Real-time | **I8** Advanced Views |
 | 5 | **S5** Notifications & Email | _(remaining I sets)_ | _(remaining I sets)_ |
