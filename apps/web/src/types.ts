@@ -23,6 +23,33 @@ export interface Project {
   statuses: string;
   createdAt: string;
   archived?: boolean;
+  githubRepositoryName?: string | null;
+  githubRepositoryOwner?: string | null;
+}
+
+export interface GitHubInstallation {
+  installationId: string;
+  accountLogin: string;
+  accountType: string;
+  orgId: string | null;
+  createdAt: string;
+}
+
+export interface GitHubRepoLink {
+  repositoryId: string;
+  repositoryName: string;
+  repositoryOwner: string;
+  installationId: string;
+  defaultBranch: string;
+}
+
+export interface GitHubRepo {
+  id: string;
+  name: string;
+  owner: string;
+  fullName: string;
+  isPrivate: boolean;
+  defaultBranch: string;
 }
 
 export interface Comment {

@@ -57,17 +57,22 @@ model OrgInvite {
 }
 
 model Project {
-  projectId   String   @id @default(uuid()) @map("project_id")
-  orgId       String   @map("org_id")
-  name        String
-  description String?
-  prompt      String?
-  statuses    String   @default("[\"todo\",\"in_progress\",\"done\"]")
-  createdAt   DateTime @default(now()) @map("created_at")
-  archived    Boolean  @default(false)
-  org         Org      @relation(fields: [orgId], references: [orgId])
-  tasks       Task[]
-  sprints     Sprint[]
+  projectId             String   @id @default(uuid()) @map("project_id")
+  orgId                 String   @map("org_id")
+  name                  String
+  description           String?
+  prompt                String?
+  statuses              String   @default("[\"todo\",\"in_progress\",\"done\"]")
+  createdAt             DateTime @default(now()) @map("created_at")
+  archived              Boolean  @default(false)
+  githubRepositoryId    String?  @map("github_repository_id")
+  githubRepositoryName  String?  @map("github_repository_name")
+  githubRepositoryOwner String?  @map("github_repository_owner")
+  githubInstallationId  String?  @map("github_installation_id")
+  githubDefaultBranch   String?  @map("github_default_branch")
+  org                   Org      @relation(fields: [orgId], references: [orgId])
+  tasks                 Task[]
+  sprints               Sprint[]
 
   @@index([orgId])
   @@map("projects")
@@ -189,6 +194,17 @@ model TaskLabel {
   @@id([taskId, labelId])
   @@index([labelId])
   @@map("task_labels")
+}
+
+model GitHubInstallation {
+  installationId String   @id @map("installation_id")
+  accountLogin   String   @map("account_login")
+  accountType    String   @map("account_type")
+  orgId          String?  @map("org_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([orgId])
+  @@map("github_installations")
 }
 
 model Notification {

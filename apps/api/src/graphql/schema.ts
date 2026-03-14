@@ -16,6 +16,14 @@ import {
 } from '../ai/index.js';
 import { logActivity } from '../utils/activity.js';
 import { createNotification } from '../utils/notification.js';
+import {
+  getProjectRepo,
+  connectRepoToProject,
+  disconnectRepo,
+  createRepoForProject,
+  createPullRequestFromTask,
+  listInstallationRepos,
+} from '../github/index.js';
 
 function requireAuth(context: Context) {
   if (!context.user) {
@@ -96,6 +104,8 @@ export const schema = createSchema<Context>({
       createdAt: String!
       orgId: ID!
       archived: Boolean!
+      githubRepositoryName: String
+      githubRepositoryOwner: String
     }
 
     type Task {
@@ -306,6 +316,38 @@ export const schema = createSchema<Context>({
       projects: [Project!]!
     }
 
+    type GitHubInstallation {
+      installationId: ID!
+      accountLogin: String!
+      accountType: String!
+      orgId: ID
+      createdAt: String!
+    }
+
+    type GitHubRepoLink {
+      repositoryId: String!
+      repositoryName: String!
+      repositoryOwner: String!
+      installationId: String!
+      defaultBranch: String!
+    }
+
+    type GitHubPullRequest {
+      pullRequestId: ID!
+      number: Int!
+      url: String!
+      title: String!
+    }
+
+    type GitHubRepo {
+      id: ID!
+      name: String!
+      owner: String!
+      fullName: String!
+      isPrivate: Boolean!
+      defaultBranch: String!
+    }
+
     type Query {
       me: User
       org: Org
@@ -324,6 +366,9 @@ export const schema = createSchema<Context>({
       sprintVelocity(projectId: ID!): [SprintVelocityPoint!]!
       sprintBurndown(sprintId: ID!): SprintBurndownData!
       globalSearch(query: String!, limit: Int): GlobalSearchResult!
+      githubInstallations: [GitHubInstallation!]!
+      githubInstallationRepos(installationId: ID!): [GitHubRepo!]!
+      githubProjectRepo(projectId: ID!): GitHubRepoLink
     }
 
     type Mutation {
@@ -376,6 +421,17 @@ export const schema = createSchema<Context>({
 
       markNotificationRead(notificationId: ID!): Notification!
       markAllNotificationsRead: Boolean!
+
+      linkGitHubInstallation(installationId: ID!): GitHubInstallation!
+      connectGitHubRepo(projectId: ID!, installationId: ID!, owner: String!, name: String!): GitHubRepoLink!
+      disconnectGitHubRepo(projectId: ID!): Boolean!
+      createGitHubRepo(projectId: ID!, installationId: ID!, ownerLogin: String!): GitHubRepoLink!
+      createPullRequestFromTask(projectId: ID!, taskId: ID!, files: [GitHubFileInput!]!): GitHubPullRequest!
+    }
+
+    input GitHubFileInput {
+      path: String!
+      content: String!
     }
   `,
   resolvers: {
@@ -412,6 +468,10 @@ export const schema = createSchema<Context>({
         });
         return taskLabels.map((tl) => tl.label);
       },
+    },
+
+    GitHubInstallation: {
+      createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
     },
 
     Sprint: {
@@ -744,6 +804,31 @@ export const schema = createSchema<Context>({
           projects,
           tasks: tasks.map((t) => ({ task: t, projectName: (t as { project: { name: string } }).project.name })),
         };
+      },
+
+      githubInstallations: async (_parent, _args, context) => {
+        const user = requireOrg(context);
+        return context.prisma.gitHubInstallation.findMany({
+          where: { orgId: user.orgId },
+          orderBy: { createdAt: 'desc' },
+        });
+      },
+
+      githubInstallationRepos: async (_parent, args: { installationId: string }, context) => {
+        const user = requireOrg(context);
+        // Verify the installation belongs to the user's org
+        const installation = await context.prisma.gitHubInstallation.findFirst({
+          where: { installationId: args.installationId, orgId: user.orgId },
+        });
+        if (!installation) {
+          throw new GraphQLError('GitHub installation not found', { extensions: { code: 'NOT_FOUND' } });
+        }
+        return listInstallationRepos(args.installationId);
+      },
+
+      githubProjectRepo: async (_parent, args: { projectId: string }, context) => {
+        await requireProjectAccess(context, args.projectId);
+        return getProjectRepo(args.projectId);
       },
     },
 
@@ -1884,6 +1969,60 @@ export const schema = createSchema<Context>({
           data: { isRead: true },
         });
         return true;
+      },
+
+      linkGitHubInstallation: async (_parent, args: { installationId: string }, context) => {
+        const user = requireOrg(context);
+        if (user.role !== 'org:admin') {
+          throw new GraphQLError('Only org admins can link GitHub installations', { extensions: { code: 'FORBIDDEN' } });
+        }
+        const installation = await context.prisma.gitHubInstallation.findUnique({
+          where: { installationId: args.installationId },
+        });
+        if (!installation) {
+          throw new GraphQLError('GitHub installation not found', { extensions: { code: 'NOT_FOUND' } });
+        }
+        return context.prisma.gitHubInstallation.update({
+          where: { installationId: args.installationId },
+          data: { orgId: user.orgId },
+        });
+      },
+
+      connectGitHubRepo: async (
+        _parent,
+        args: { projectId: string; installationId: string; owner: string; name: string },
+        context
+      ) => {
+        await requireProjectAccess(context, args.projectId);
+        return connectRepoToProject(args.projectId, args.installationId, args.owner, args.name);
+      },
+
+      disconnectGitHubRepo: async (_parent, args: { projectId: string }, context) => {
+        await requireProjectAccess(context, args.projectId);
+        await disconnectRepo(args.projectId);
+        return true;
+      },
+
+      createGitHubRepo: async (
+        _parent,
+        args: { projectId: string; installationId: string; ownerLogin: string },
+        context
+      ) => {
+        await requireProjectAccess(context, args.projectId);
+        return createRepoForProject(args.projectId, args.installationId, args.ownerLogin);
+      },
+
+      createPullRequestFromTask: async (
+        _parent,
+        args: { projectId: string; taskId: string; files: Array<{ path: string; content: string }> },
+        context
+      ) => {
+        await requireProjectAccess(context, args.projectId);
+        return createPullRequestFromTask({
+          projectId: args.projectId,
+          taskId: args.taskId,
+          files: args.files,
+        });
       },
     },
   },

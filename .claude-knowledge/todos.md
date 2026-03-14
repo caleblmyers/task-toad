@@ -30,9 +30,13 @@ Organized by module touchpoints for parallel development. Items within the same 
 - [ ] Project knowledge base — per-project context injected into AI prompts _(also touches: schema.prisma, schema.ts, new settings UI)_
 
 ## Group C: External Integrations
-**Touches:** new backend services, `apps/api/src/graphql/schema.ts` (new resolvers), `apps/api/prisma/schema.prisma` (new models), new frontend components
+**Touches:** new backend services, `apps/api/src/graphql/schema.ts` (new resolvers), `apps/api/prisma/schema.prisma` (new models), new frontend components, `apps/web/src/pages/OrgSettings.tsx`, `apps/web/src/components/GitHubRepoModal.tsx`
 
-- [ ] GitHub integration — link commits/PRs to tasks, auto-update status
+- [x] GitHub App integration — GitHub App auth, webhooks, installation storage, repo/branch/commit/PR services
+- [x] GitHub linking UI — OrgSettings installation linking, ProjectDetail repo connection modal
+- [ ] GitHub issue sync — create GitHub issues from TaskToad tasks, sync status bidirectionally
+- [ ] PR status on tasks — show linked PR status (open/merged/closed) on task cards
+- [ ] Auto-link commits — parse branch names to associate commits with tasks
 - [ ] Slack integration — channel notifications, create tasks from Slack
 - [ ] Webhook support — outgoing webhooks on task events
 - [ ] Public REST/GraphQL API docs — documented API for third-party use

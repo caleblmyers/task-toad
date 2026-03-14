@@ -6,6 +6,7 @@ import { createYoga } from 'graphql-yoga';
 import { z } from 'zod';
 import { schema } from './graphql/schema.js';
 import { buildContext } from './graphql/context.js';
+import { handleGitHubWebhook } from './github/index.js';
 
 // Validate required environment variables at startup
 const envSchema = z.object({
@@ -15,6 +16,9 @@ const envSchema = z.object({
   PORT: z.string().default('3001'),
   NODE_ENV: z.string().default('development'),
   CORS_ORIGINS: z.string().optional(),
+  GITHUB_APP_ID: z.string().optional(),
+  GITHUB_PRIVATE_KEY: z.string().optional(),
+  GITHUB_WEBHOOK_SECRET: z.string().optional(),
 });
 
 const envResult = envSchema.safeParse(process.env);
@@ -66,6 +70,9 @@ const authLimiter = rateLimit({
   },
 });
 app.use('/graphql', authLimiter);
+
+// GitHub webhook endpoint — must be before the 404 handler
+app.post('/api/github/webhooks', handleGitHubWebhook);
 
 const yoga = createYoga({ schema, context: buildContext, graphqlEndpoint: '/graphql' });
 // graphql-yoga's server adapter is compatible with Express but requires a type cast

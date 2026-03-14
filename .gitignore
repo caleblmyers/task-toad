@@ -12,3 +12,6 @@ coverage
 *.tsbuildinfo
 vite.config.js
 vite.config.d.ts
+# Swarm task queue (ephemeral per swarm run)
+.ai/swarm/tasks.json
+.ai/swarm/tasks-*.json

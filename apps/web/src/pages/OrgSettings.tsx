@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/context';
 import { gql } from '../api/client';
-import type { Org, OrgUser, OrgInvite } from '../types';
+import type { Org, OrgUser, OrgInvite, GitHubInstallation } from '../types';
 
 const ORG_QUERY = `query GetOrg { org { orgId name hasApiKey apiKeyHint } }`;
 const ORG_USERS_QUERY = `query { orgUsers { userId email role } }`;
 const ORG_INVITES_QUERY = `query { orgInvites { inviteId email role expiresAt createdAt } }`;
+const GITHUB_INSTALLATIONS_QUERY = `query { githubInstallations { installationId accountLogin accountType orgId createdAt } }`;
+const GITHUB_APP_SLUG = import.meta.env.VITE_GITHUB_APP_SLUG as string | undefined;
 
 export default function OrgSettings() {
   const { user } = useAuth();
@@ -26,6 +28,12 @@ export default function OrgSettings() {
   const [inviteSuccess, setInviteSuccess] = useState(false);
   const [inviteErr, setInviteErr] = useState<string | null>(null);
 
+  // GitHub section state
+  const [installations, setInstallations] = useState<GitHubInstallation[]>([]);
+  const [loadingInstallations, setLoadingInstallations] = useState(true);
+  const [linkErr, setLinkErr] = useState<string | null>(null);
+  const [linkSuccess, setLinkSuccess] = useState(false);
+
   useEffect(() => {
     if (user?.role !== 'org:admin') {
       navigate('/app', { replace: true });
@@ -40,6 +48,37 @@ export default function OrgSettings() {
     gql<{ orgInvites: OrgInvite[] }>(ORG_INVITES_QUERY)
       .then((data) => setInvites(data.orgInvites))
       .catch(() => {/* non-critical */});
+
+    // Load GitHub installations
+    const loadInstallations = () => {
+      setLoadingInstallations(true);
+      gql<{ githubInstallations: GitHubInstallation[] }>(GITHUB_INSTALLATIONS_QUERY)
+        .then((data) => setInstallations(data.githubInstallations))
+        .catch(() => {/* non-critical */})
+        .finally(() => setLoadingInstallations(false));
+    };
+
+    // Handle GitHub App callback — auto-link installation
+    const params = new URLSearchParams(window.location.search);
+    const callbackInstallationId = params.get('installation_id');
+    if (callbackInstallationId) {
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+      gql<{ linkGitHubInstallation: GitHubInstallation }>(
+        `mutation LinkInstallation($installationId: ID!) { linkGitHubInstallation(installationId: $installationId) { installationId accountLogin accountType orgId createdAt } }`,
+        { installationId: callbackInstallationId }
+      )
+        .then(() => {
+          setLinkSuccess(true);
+          loadInstallations();
+        })
+        .catch((e) => {
+          setLinkErr(e instanceof Error ? e.message : 'Failed to link installation');
+          loadInstallations();
+        });
+    } else {
+      loadInstallations();
+    }
   }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -225,6 +264,47 @@ export default function OrgSettings() {
             </button>
           </form>
         </div>
+      </div>
+
+      {/* GitHub */}
+      <div className="bg-white rounded-lg border border-slate-200 p-6 space-y-6">
+        <h2 className="text-lg font-semibold text-slate-800">GitHub</h2>
+
+        {linkErr && <p className="text-sm text-red-600">{linkErr}</p>}
+        {linkSuccess && <p className="text-sm text-green-600">GitHub App linked successfully!</p>}
+
+        {loadingInstallations ? (
+          <p className="text-sm text-slate-500">Loading…</p>
+        ) : installations.length > 0 ? (
+          <div>
+            <p className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-2">Installations</p>
+            <ul className="divide-y divide-slate-100">
+              {installations.map((inst) => (
+                <li key={inst.installationId} className="py-2 flex items-center justify-between text-sm">
+                  <div>
+                    <span className="text-slate-800 font-medium">{inst.accountLogin}</span>
+                    <span className="ml-2 text-slate-500">{inst.accountType}</span>
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                    Connected
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">No GitHub App installed.</p>
+        )}
+
+        {GITHUB_APP_SLUG && (
+          <a
+            href={`https://github.com/apps/${GITHUB_APP_SLUG}/installations/new`}
+            className="inline-block px-4 py-2 bg-slate-800 text-white rounded hover:bg-slate-700 text-sm"
+          >
+            Install GitHub App
+          </a>
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useProjectData } from '../hooks/useProjectData';
 import { useTaskFiltering } from '../hooks/useTaskFiltering';
@@ -6,7 +6,7 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useToast } from '../hooks/useToast';
 import { useAuth } from '../auth/context';
 import { gql } from '../api/client';
-import type { Activity } from '../types';
+import type { Activity, GitHubRepoLink, GitHubInstallation } from '../types';
 import KanbanBoard from '../components/KanbanBoard';
 import TaskDetailPanel from '../components/TaskDetailPanel';
 import TaskPlanApprovalDialog from '../components/TaskPlanApprovalDialog';
@@ -23,7 +23,8 @@ import SearchInput from '../components/shared/SearchInput';
 import FilterBar from '../components/shared/FilterBar';
 import ToastContainer from '../components/shared/ToastContainer';
 import KeyboardShortcutHelp from '../components/shared/KeyboardShortcutHelp';
-import { IconList, IconBoard, IconTable, IconCalendar, IconClose, IconPlus, IconRefresh, IconSummary, IconFilter, IconKeyboard } from '../components/shared/Icons';
+import GitHubRepoModal from '../components/GitHubRepoModal';
+import { IconList, IconBoard, IconTable, IconCalendar, IconClose, IconPlus, IconRefresh, IconSummary, IconFilter, IconKeyboard, IconGitHub } from '../components/shared/Icons';
 import { statusLabel } from '../utils/taskHelpers';
 
 const activeClass = 'px-3 py-1 text-sm rounded-md bg-white text-slate-800 font-medium shadow-sm';
@@ -42,6 +43,9 @@ export default function ProjectDetail() {
   const [showStatusEditor, setShowStatusEditor] = useState(false);
   const [newStatusValue, setNewStatusValue] = useState('');
   const [projectActivities, setProjectActivities] = useState<Activity[]>([]);
+  const [showGitHubModal, setShowGitHubModal] = useState(false);
+  const [gitHubRepo, setGitHubRepo] = useState<GitHubRepoLink | null>(null);
+  const [gitHubInstallations, setGitHubInstallations] = useState<GitHubInstallation[]>([]);
 
   useKeyboardShortcuts({
     tasks: filtering.filteredTasks,
@@ -53,6 +57,22 @@ export default function ProjectDetail() {
     onShowHelp: () => setShowShortcutHelp((v) => !v),
     enabled: !d.isGenerating,
   });
+
+  // Load GitHub repo link + installations
+  useEffect(() => {
+    if (!d.projectId) return;
+    gql<{ githubProjectRepo: GitHubRepoLink | null }>(
+      `query GitHubRepo($projectId: ID!) { githubProjectRepo(projectId: $projectId) { repositoryId repositoryName repositoryOwner installationId defaultBranch } }`,
+      { projectId: d.projectId }
+    )
+      .then((data) => setGitHubRepo(data.githubProjectRepo))
+      .catch(() => {/* non-critical */});
+    gql<{ githubInstallations: GitHubInstallation[] }>(
+      `query { githubInstallations { installationId accountLogin accountType orgId createdAt } }`
+    )
+      .then((data) => setGitHubInstallations(data.githubInstallations))
+      .catch(() => {/* non-critical */});
+  }, [d.projectId]);
 
   // Load project-level activities when switching to dashboard
   const loadProjectActivities = async () => {
@@ -260,6 +280,17 @@ export default function ProjectDetail() {
           </button>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowGitHubModal(true)}
+            className="flex items-center gap-1 text-slate-400 hover:text-slate-600 px-1.5 py-1"
+            title={gitHubRepo ? `${gitHubRepo.repositoryOwner}/${gitHubRepo.repositoryName}` : 'Connect GitHub repo'}
+          >
+            <IconGitHub className="w-4 h-4" />
+            {gitHubRepo && (
+              <span className="text-xs text-slate-500">{gitHubRepo.repositoryOwner}/{gitHubRepo.repositoryName}</span>
+            )}
+          </button>
           <button
             type="button"
             onClick={() => setShowShortcutHelp((v) => !v)}
@@ -556,6 +587,18 @@ export default function ProjectDetail() {
           onRedo={(ctx) => d.openPreview(ctx)}
           onAddMore={(ctx) => d.openPreview(ctx, d.previewTasks!.map((t) => t.title))}
           onCancel={() => { d.setPreviewTasks(null); d.setPreviewError(null); }}
+        />
+      )}
+
+      {/* GitHub repo modal */}
+      {showGitHubModal && d.projectId && (
+        <GitHubRepoModal
+          projectId={d.projectId}
+          installations={gitHubInstallations}
+          currentRepo={gitHubRepo}
+          onConnected={(repo) => { setGitHubRepo(repo); setShowGitHubModal(false); }}
+          onDisconnected={() => { setGitHubRepo(null); setShowGitHubModal(false); }}
+          onClose={() => setShowGitHubModal(false)}
         />
       )}
 
