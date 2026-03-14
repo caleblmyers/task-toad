@@ -3,7 +3,7 @@ import { orgQueries, orgMutations, orgFieldResolvers } from './org.js';
 import { projectQueries, projectMutations } from './project.js';
 import { taskQueries, taskMutations, taskFieldResolvers } from './task.js';
 import { sprintQueries, sprintMutations, sprintFieldResolvers } from './sprint.js';
-import { aiMutations } from './ai.js';
+import { aiMutations, aiQueries } from './ai.js';
 import { githubQueries, githubMutations, githubFieldResolvers } from './github.js';
 import { notificationQueries, notificationMutations, notificationFieldResolvers } from './notification.js';
 import { searchQueries, searchMutations } from './search.js';
@@ -18,6 +18,7 @@ export const resolvers = {
     ...githubQueries,
     ...notificationQueries,
     ...searchQueries,
+    ...aiQueries,
   },
   Mutation: {
     ...authMutations,

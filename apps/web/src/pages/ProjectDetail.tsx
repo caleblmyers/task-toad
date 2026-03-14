@@ -24,6 +24,9 @@ import FilterBar from '../components/shared/FilterBar';
 import ToastContainer from '../components/shared/ToastContainer';
 import KeyboardShortcutHelp from '../components/shared/KeyboardShortcutHelp';
 import GitHubRepoModal from '../components/GitHubRepoModal';
+import StandupReportPanel from '../components/StandupReportPanel';
+import ProjectHealthPanel from '../components/ProjectHealthPanel';
+import MeetingNotesDialog from '../components/MeetingNotesDialog';
 import { IconList, IconBoard, IconTable, IconCalendar, IconClose, IconPlus, IconRefresh, IconSummary, IconFilter, IconKeyboard, IconGitHub } from '../components/shared/Icons';
 import { statusLabel } from '../utils/taskHelpers';
 
@@ -43,6 +46,9 @@ export default function ProjectDetail() {
   const [showStatusEditor, setShowStatusEditor] = useState(false);
   const [newStatusValue, setNewStatusValue] = useState('');
   const [projectActivities, setProjectActivities] = useState<Activity[]>([]);
+  const [showStandup, setShowStandup] = useState(false);
+  const [showHealth, setShowHealth] = useState(false);
+  const [showMeetingNotes, setShowMeetingNotes] = useState(false);
   const [showGitHubModal, setShowGitHubModal] = useState(false);
   const [gitHubRepo, setGitHubRepo] = useState<GitHubRepoLink | null>(null);
   const [gitHubInstallations, setGitHubInstallations] = useState<GitHubInstallation[]>([]);
@@ -325,6 +331,30 @@ export default function ProjectDetail() {
             <IconSummary className="w-3.5 h-3.5" />
             {d.summarizing ? 'Summarizing…' : 'Summarize'}
           </button>
+          <button
+            type="button"
+            onClick={() => { setShowStandup(true); setShowHealth(false); d.setSummary(null); }}
+            disabled={d.isGenerating}
+            className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Standup
+          </button>
+          <button
+            type="button"
+            onClick={() => { setShowHealth(true); setShowStandup(false); d.setSummary(null); }}
+            disabled={d.isGenerating}
+            className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Health
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowMeetingNotes(true)}
+            disabled={d.isGenerating}
+            className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Notes
+          </button>
         </div>
       </div>
 
@@ -410,7 +440,19 @@ export default function ProjectDetail() {
       <div className="flex flex-1 min-h-0">
         {/* Left: board / backlog / dashboard / states */}
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-          {d.summary ? (
+          {showStandup && d.projectId ? (
+            <StandupReportPanel
+              projectId={d.projectId}
+              disabled={d.isGenerating}
+              onClose={() => setShowStandup(false)}
+            />
+          ) : showHealth && d.projectId ? (
+            <ProjectHealthPanel
+              projectId={d.projectId}
+              disabled={d.isGenerating}
+              onClose={() => setShowHealth(false)}
+            />
+          ) : d.summary ? (
             <div className="flex-1 flex items-center justify-center px-8">
               <div className="max-w-lg w-full">
                 <div className="flex items-center justify-between mb-3">
@@ -434,6 +476,7 @@ export default function ProjectDetail() {
             d.view === 'board' ? <KanbanBoardSkeleton /> : <TaskListSkeleton count={6} />
           ) : d.view === 'backlog' ? (
             <BacklogView
+              projectId={d.projectId!}
               tasks={filtering.filteredTasks}
               sprints={d.sprints}
               orgUsers={d.orgUsers}
@@ -599,6 +642,15 @@ export default function ProjectDetail() {
           onConnected={(repo) => { setGitHubRepo(repo); setShowGitHubModal(false); }}
           onDisconnected={() => { setGitHubRepo(null); setShowGitHubModal(false); }}
           onClose={() => setShowGitHubModal(false)}
+        />
+      )}
+
+      {/* Meeting notes dialog */}
+      {showMeetingNotes && d.projectId && (
+        <MeetingNotesDialog
+          projectId={d.projectId}
+          onTasksCreated={() => { d.loadTasks(); setShowMeetingNotes(false); }}
+          onClose={() => setShowMeetingNotes(false)}
         />
       )}
 

@@ -8,6 +8,10 @@ export {
   summarizeProject,
   planSprints,
   generateTaskInstructions,
+  generateStandupReport,
+  generateSprintReport,
+  analyzeProjectHealth,
+  extractTasksFromNotes,
 } from './aiService.js';
 
 export type {
@@ -17,5 +21,9 @@ export type {
   TaskPlan,
   SprintPlan,
   TaskInstructions,
+  StandupReport,
+  SprintReport,
+  HealthAnalysis,
+  MeetingNotesExtraction,
   AIFeature,
 } from './aiTypes.js';

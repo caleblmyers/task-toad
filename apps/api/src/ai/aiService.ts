@@ -9,8 +9,12 @@ import {
   TaskPlanSchema,
   SprintPlanSchema,
   TaskInstructionsSchema,
+  StandupReportSchema,
+  SprintReportSchema,
+  HealthAnalysisSchema,
+  MeetingNotesExtractionSchema,
 } from './aiTypes.js';
-import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions } from './aiTypes.js';
+import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction } from './aiTypes.js';
 import { FEATURE_CONFIG } from './aiConfig.js';
 import { callAI } from './aiClient.js';
 import { parseJSON } from './responseParser.js';
@@ -21,6 +25,10 @@ import {
   buildSummarizeProjectPrompt,
   buildPlanSprintsPrompt,
   buildGenerateTaskInstructionsPrompt,
+  buildStandupPrompt,
+  buildSprintReportPrompt,
+  buildHealthAnalysisPrompt,
+  buildMeetingNotesPrompt,
 } from './promptBuilder.js';
 
 // ---------------------------------------------------------------------------
@@ -151,4 +159,61 @@ export async function generateTaskInstructions(
 ): Promise<TaskInstructions> {
   const p = buildGenerateTaskInstructionsPrompt(taskTitle, taskDescription, projectName, existingTaskTitles);
   return callAndParse(apiKey, 'generateTaskInstructions', p, TaskInstructionsSchema);
+}
+
+export async function generateStandupReport(
+  apiKey: string,
+  data: {
+    projectName: string;
+    sprintName?: string | null;
+    sprintStart?: string | null;
+    sprintEnd?: string | null;
+    completedTasks: string[];
+    inProgressTasks: string[];
+    overdueTasks: string[];
+  }
+): Promise<StandupReport> {
+  const p = buildStandupPrompt(data);
+  return callAndParse(apiKey, 'generateStandupReport', p, StandupReportSchema);
+}
+
+export async function generateSprintReport(
+  apiKey: string,
+  data: {
+    sprintName: string;
+    startDate?: string | null;
+    endDate?: string | null;
+    tasks: { title: string; status: string; priority: string; assigneeEmail?: string | null }[];
+    totalTasks: number;
+    completedTasks: number;
+  }
+): Promise<SprintReport> {
+  const p = buildSprintReportPrompt(data);
+  return callAndParse(apiKey, 'generateSprintReport', p, SprintReportSchema);
+}
+
+export async function analyzeProjectHealth(
+  apiKey: string,
+  data: {
+    projectName: string;
+    totalTasks: number;
+    tasksByStatus: { status: string; count: number }[];
+    overdueCount: number;
+    unassignedCount: number;
+    tasksWithoutDueDate: number;
+    avgTaskAgeInDays: number;
+  }
+): Promise<HealthAnalysis> {
+  const p = buildHealthAnalysisPrompt(data);
+  return callAndParse(apiKey, 'analyzeProjectHealth', p, HealthAnalysisSchema);
+}
+
+export async function extractTasksFromNotes(
+  apiKey: string,
+  notes: string,
+  projectName: string,
+  teamMembers: string[]
+): Promise<MeetingNotesExtraction> {
+  const p = buildMeetingNotesPrompt(notes, projectName, teamMembers);
+  return callAndParse(apiKey, 'extractTasksFromNotes', p, MeetingNotesExtractionSchema);
 }

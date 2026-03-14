@@ -240,6 +240,48 @@ export const schema = createSchema<Context>({
       endDate: String!
     }
 
+    type StandupReport {
+      completed: [String!]!
+      inProgress: [String!]!
+      blockers: [String!]!
+      summary: String!
+    }
+
+    type SprintReportResult {
+      summary: String!
+      completionRate: Float!
+      highlights: [String!]!
+      concerns: [String!]!
+      recommendations: [String!]!
+    }
+
+    type HealthIssue {
+      title: String!
+      severity: String!
+      description: String!
+    }
+
+    type ProjectHealth {
+      healthScore: Int!
+      status: String!
+      issues: [HealthIssue!]!
+      strengths: [String!]!
+      actionItems: [String!]!
+    }
+
+    type ExtractedTask {
+      title: String!
+      description: String
+      assigneeName: String
+      priority: String
+      status: String
+    }
+
+    type MeetingNotesResult {
+      tasks: [ExtractedTask!]!
+      summary: String!
+    }
+
     type AuthPayload {
       token: String!
     }
@@ -324,6 +366,10 @@ export const schema = createSchema<Context>({
       githubInstallations: [GitHubInstallation!]!
       githubInstallationRepos(installationId: ID!): [GitHubRepo!]!
       githubProjectRepo(projectId: ID!): GitHubRepoLink
+      generateStandupReport(projectId: ID!): StandupReport!
+      generateSprintReport(projectId: ID!, sprintId: ID!): SprintReportResult!
+      analyzeProjectHealth(projectId: ID!): ProjectHealth!
+      extractTasksFromNotes(projectId: ID!, notes: String!): MeetingNotesResult!
     }
 
     type Mutation {

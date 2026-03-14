@@ -57,6 +57,56 @@ export type TaskPlan = z.infer<typeof TaskPlanSchema>;
 export type SprintPlan = z.infer<typeof SprintPlanSchema>;
 export type TaskInstructions = z.infer<typeof TaskInstructionsSchema>;
 
+export const StandupReportSchema = z.object({
+  completed: z.array(z.string()),
+  inProgress: z.array(z.string()),
+  blockers: z.array(z.string()),
+  summary: z.string(),
+});
+
+export type StandupReport = z.infer<typeof StandupReportSchema>;
+
+export const SprintReportSchema = z.object({
+  summary: z.string(),
+  completionRate: z.number(),
+  highlights: z.array(z.string()),
+  concerns: z.array(z.string()),
+  recommendations: z.array(z.string()),
+});
+
+export type SprintReport = z.infer<typeof SprintReportSchema>;
+
+export const HealthIssueSchema = z.object({
+  title: z.string(),
+  severity: z.string(),
+  description: z.string(),
+});
+
+export const HealthAnalysisSchema = z.object({
+  healthScore: z.number(),
+  status: z.string(),
+  issues: z.array(HealthIssueSchema),
+  strengths: z.array(z.string()),
+  actionItems: z.array(z.string()),
+});
+
+export type HealthAnalysis = z.infer<typeof HealthAnalysisSchema>;
+
+export const ExtractedTaskSchema = z.object({
+  title: z.string(),
+  description: z.string().optional().default(''),
+  assigneeName: z.string().optional().default(''),
+  priority: z.string().optional().default('medium'),
+  status: z.string().optional().default('todo'),
+});
+
+export const MeetingNotesExtractionSchema = z.object({
+  tasks: z.array(ExtractedTaskSchema),
+  summary: z.string(),
+});
+
+export type MeetingNotesExtraction = z.infer<typeof MeetingNotesExtractionSchema>;
+
 // ---------------------------------------------------------------------------
 // AI subsystem internal types
 // ---------------------------------------------------------------------------
@@ -67,7 +117,11 @@ export type AIFeature =
   | 'expandTask'
   | 'summarizeProject'
   | 'planSprints'
-  | 'generateTaskInstructions';
+  | 'generateTaskInstructions'
+  | 'generateStandupReport'
+  | 'generateSprintReport'
+  | 'analyzeProjectHealth'
+  | 'extractTasksFromNotes';
 
 export interface AIUsage {
   inputTokens: number;

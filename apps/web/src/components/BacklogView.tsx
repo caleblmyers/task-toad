@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import type { Task, Sprint, OrgUser } from '../types';
+import SprintReportPanel from './SprintReportPanel';
 
 const priorityStyles: Record<string, string> = {
   critical: 'bg-red-100 text-red-700',
@@ -47,6 +48,7 @@ function parseDepsCount(raw?: string | null): number {
 }
 
 interface BacklogViewProps {
+  projectId: string;
   tasks: Task[];
   sprints: Sprint[];
   orgUsers: OrgUser[];
@@ -176,6 +178,7 @@ function TaskRow({
 }
 
 export default function BacklogView({
+  projectId,
   tasks,
   sprints,
   orgUsers,
@@ -202,6 +205,8 @@ export default function BacklogView({
   );
   const backlog = sortTasks(tasks.filter((t) => !t.sprintId));
   const showCheckboxes = selectedTaskIds.size > 0;
+
+  const [sprintReportId, setSprintReportId] = useState<string | null>(null);
 
   // DnD state
   const draggedId = useRef<string | null>(null);
@@ -371,6 +376,14 @@ export default function BacklogView({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
+                    onClick={() => setSprintReportId(sprint.sprintId)}
+                    className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1 border border-slate-200 rounded hover:bg-white"
+                    title="Generate sprint report"
+                  >
+                    Report
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => onEditSprint(sprint)}
                     className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1 border border-slate-200 rounded hover:bg-white"
                     title="Edit sprint"
@@ -463,6 +476,19 @@ export default function BacklogView({
           </div>
         )}
       </div>
+
+      {sprintReportId && (() => {
+        const s = sprints.find((sp) => sp.sprintId === sprintReportId);
+        if (!s) return null;
+        return (
+          <SprintReportPanel
+            projectId={projectId}
+            sprintId={s.sprintId}
+            sprintName={s.name}
+            onClose={() => setSprintReportId(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

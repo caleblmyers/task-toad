@@ -191,6 +191,177 @@ Return a JSON array of sprint plans. Name each sprint descriptively based on the
   };
 }
 
+export function buildStandupPrompt(data: {
+  projectName: string;
+  sprintName?: string | null;
+  sprintStart?: string | null;
+  sprintEnd?: string | null;
+  completedTasks: string[];
+  inProgressTasks: string[];
+  overdueTasks: string[];
+}): Prompt {
+  const sprintLine = data.sprintName
+    ? `\nActive sprint: ${userInput('sprint', data.sprintName)}${data.sprintStart ? ` (${data.sprintStart} – ${data.sprintEnd ?? '?'})` : ''}`
+    : '';
+
+  const completed = data.completedTasks.length > 0
+    ? data.completedTasks.map((t) => `- ${t}`).join('\n')
+    : '(none)';
+  const inProgress = data.inProgressTasks.length > 0
+    ? data.inProgressTasks.map((t) => `- ${t}`).join('\n')
+    : '(none)';
+  const overdue = data.overdueTasks.length > 0
+    ? data.overdueTasks.map((t) => `- ${t}`).join('\n')
+    : '(none)';
+
+  return {
+    systemPrompt: SYSTEM_JSON,
+    userPrompt: `Generate a daily standup report for this project.
+
+Project: ${userInput('project', data.projectName)}${sprintLine}
+
+Tasks completed in the last 24 hours:
+<user_input label="completed">
+${completed}
+</user_input>
+
+Tasks currently in progress:
+<user_input label="inProgress">
+${inProgress}
+</user_input>
+
+Overdue / blocked tasks:
+<user_input label="overdue">
+${overdue}
+</user_input>
+
+Return JSON:
+{
+  "completed": string[],   // brief summary of what was done yesterday
+  "inProgress": string[],  // what's being worked on today
+  "blockers": string[],    // risks, blockers, or overdue items
+  "summary": string        // 1-2 sentence overall status
+}
+Keep items concise (one sentence each). If a section has no items, return an empty array.`,
+  };
+}
+
+export function buildSprintReportPrompt(data: {
+  sprintName: string;
+  startDate?: string | null;
+  endDate?: string | null;
+  tasks: { title: string; status: string; priority: string; assigneeEmail?: string | null }[];
+  totalTasks: number;
+  completedTasks: number;
+}): Prompt {
+  const taskLines = data.tasks
+    .map((t) => `- [${t.status}] ${t.title} (${t.priority}${t.assigneeEmail ? `, ${t.assigneeEmail}` : ''})`)
+    .join('\n');
+
+  const dateRange = data.startDate
+    ? ` (${data.startDate}${data.endDate ? ` – ${data.endDate}` : ''})`
+    : '';
+
+  return {
+    systemPrompt: SYSTEM_JSON,
+    userPrompt: `Generate a sprint retrospective report.
+
+Sprint: ${userInput('sprint', data.sprintName)}${dateRange}
+Tasks (${data.totalTasks} total, ${data.completedTasks} completed):
+<user_input label="tasks">
+${taskLines}
+</user_input>
+
+Completion rate: ${data.totalTasks > 0 ? Math.round((data.completedTasks / data.totalTasks) * 100) : 0}%
+
+Return JSON:
+{
+  "summary": string,           // 2-3 sentence overview of the sprint
+  "completionRate": number,    // 0-100 percentage
+  "highlights": string[],      // top achievements (2-4 items)
+  "concerns": string[],        // missed items or risks (0-3 items)
+  "recommendations": string[]  // suggestions for next sprint (2-4 items)
+}`,
+  };
+}
+
+export function buildHealthAnalysisPrompt(data: {
+  projectName: string;
+  totalTasks: number;
+  tasksByStatus: { status: string; count: number }[];
+  overdueCount: number;
+  unassignedCount: number;
+  tasksWithoutDueDate: number;
+  avgTaskAgeInDays: number;
+}): Prompt {
+  const statusLines = data.tasksByStatus
+    .map((s) => `- ${s.status}: ${s.count}`)
+    .join('\n');
+
+  return {
+    systemPrompt: SYSTEM_JSON,
+    userPrompt: `Analyze the health of this project and provide a health score.
+
+Project: ${userInput('project', data.projectName)}
+Total tasks: ${data.totalTasks}
+
+Tasks by status:
+${statusLines}
+
+Overdue tasks: ${data.overdueCount}
+Unassigned tasks: ${data.unassignedCount}
+Tasks without due date: ${data.tasksWithoutDueDate}
+Average age of open tasks: ${data.avgTaskAgeInDays} days
+
+Return JSON:
+{
+  "healthScore": number,     // 0-100
+  "status": string,          // "healthy" | "at-risk" | "critical"
+  "issues": [{ "title": string, "severity": string, "description": string }],  // severity: "high" | "medium" | "low"
+  "strengths": string[],     // 1-3 positive aspects
+  "actionItems": string[]    // 2-4 concrete next steps
+}
+Health score guide: 80-100 = healthy, 50-79 = at-risk, 0-49 = critical.
+Be specific about the project data when describing issues and strengths.`,
+  };
+}
+
+export function buildMeetingNotesPrompt(
+  notes: string,
+  projectName: string,
+  teamMembers: string[]
+): Prompt {
+  const teamLine = teamMembers.length > 0
+    ? `\nTeam members: ${teamMembers.join(', ')}`
+    : '';
+
+  return {
+    systemPrompt: SYSTEM_JSON,
+    userPrompt: `Extract actionable tasks from these meeting notes.
+
+Project: ${userInput('project', projectName)}${teamLine}
+
+Meeting notes:
+<user_input label="notes">
+${notes}
+</user_input>
+
+Identify action items, decisions with follow-ups, and tasks mentioned.
+Return JSON:
+{
+  "tasks": [{
+    "title": string,          // short action phrase
+    "description": string,    // 1-2 sentences of context (optional, default "")
+    "assigneeName": string,   // name/email if mentioned (optional, default "")
+    "priority": string,       // "low" | "medium" | "high" | "critical" (optional, default "medium")
+    "status": string          // "todo" | "in_progress" (optional, default "todo")
+  }],
+  "summary": string           // 1-2 sentence summary of the meeting
+}
+Extract 0-15 tasks. Only include clear, actionable items — not discussion points or FYIs.`,
+  };
+}
+
 export function buildGenerateTaskInstructionsPrompt(
   taskTitle: string,
   taskDescription: string,

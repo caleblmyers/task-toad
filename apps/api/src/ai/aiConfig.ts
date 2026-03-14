@@ -24,6 +24,10 @@ export const FEATURE_CONFIG: Record<AIFeature, FeatureConfig> = {
   summarizeProject:         { maxTokens: 512,  cacheTTLMs: 300_000, retryOnValidationFailure: false },
   planSprints:              { maxTokens: 2048, cacheTTLMs: 0,       retryOnValidationFailure: true },
   generateTaskInstructions: { maxTokens: 2048, cacheTTLMs: 0,       retryOnValidationFailure: true },
+  generateStandupReport:    { maxTokens: 1024, cacheTTLMs: 300_000, retryOnValidationFailure: true },
+  generateSprintReport:     { maxTokens: 2048, cacheTTLMs: 0,       retryOnValidationFailure: true },
+  analyzeProjectHealth:     { maxTokens: 2048, cacheTTLMs: 300_000, retryOnValidationFailure: true },
+  extractTasksFromNotes:    { maxTokens: 4096, cacheTTLMs: 0,       retryOnValidationFailure: true },
 };
 
 // ---------------------------------------------------------------------------

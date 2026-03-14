@@ -5,6 +5,10 @@ import {
   expandTask as aiExpandTask,
   generateTaskInstructions as aiGenerateTaskInstructions,
   summarizeProject as aiSummarizeProject,
+  generateStandupReport as aiGenerateStandupReport,
+  generateSprintReport as aiGenerateSprintReport,
+  analyzeProjectHealth as aiAnalyzeProjectHealth,
+  extractTasksFromNotes as aiExtractTasksFromNotes,
 } from '../../ai/index.js';
 import { NotFoundError, ValidationError } from '../errors.js';
 import { requireOrg, requireApiKey } from './auth.js';
@@ -320,5 +324,179 @@ export const aiMutations = {
       throw new ValidationError('No tasks to summarize. Generate a task plan first.');
     }
     return aiSummarizeProject(apiKey, project.name, project.description ?? '', tasks);
+  },
+};
+
+// ── AI queries ──
+
+export const aiQueries = {
+  generateStandupReport: async (_parent: unknown, args: { projectId: string }, context: Context) => {
+    const user = requireOrg(context);
+    const apiKey = requireApiKey(context);
+    const project = await context.prisma.project.findFirst({
+      where: { projectId: args.projectId, orgId: user.orgId },
+    });
+    if (!project) {
+      throw new NotFoundError('Project not found');
+    }
+
+    // Find tasks completed in the last 24 hours via activity log
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentDoneActivities = await context.prisma.activity.findMany({
+      where: {
+        projectId: args.projectId,
+        field: 'status',
+        newValue: 'done',
+        createdAt: { gte: oneDayAgo },
+        taskId: { not: null },
+      },
+      select: { taskId: true },
+    });
+    const doneTaskIds = [...new Set(recentDoneActivities.map((a) => a.taskId!))];
+    const completedTasks = doneTaskIds.length > 0
+      ? await context.prisma.task.findMany({
+          where: { taskId: { in: doneTaskIds }, parentTaskId: null },
+          select: { title: true },
+        })
+      : [];
+
+    const inProgressTasks = await context.prisma.task.findMany({
+      where: { projectId: args.projectId, parentTaskId: null, status: 'in_progress' },
+      select: { title: true },
+    });
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const overdueTasks = await context.prisma.task.findMany({
+      where: {
+        projectId: args.projectId,
+        parentTaskId: null,
+        status: { not: 'done' },
+        dueDate: { lt: todayStr, not: null },
+      },
+      select: { title: true },
+    });
+
+    const activeSprint = await context.prisma.sprint.findFirst({
+      where: { projectId: args.projectId, isActive: true },
+    });
+
+    return aiGenerateStandupReport(apiKey, {
+      projectName: project.name,
+      sprintName: activeSprint?.name ?? null,
+      sprintStart: activeSprint?.startDate ?? null,
+      sprintEnd: activeSprint?.endDate ?? null,
+      completedTasks: completedTasks.map((t) => t.title),
+      inProgressTasks: inProgressTasks.map((t) => t.title),
+      overdueTasks: overdueTasks.map((t) => t.title),
+    });
+  },
+
+  generateSprintReport: async (_parent: unknown, args: { projectId: string; sprintId: string }, context: Context) => {
+    const user = requireOrg(context);
+    const apiKey = requireApiKey(context);
+    const project = await context.prisma.project.findFirst({
+      where: { projectId: args.projectId, orgId: user.orgId },
+    });
+    if (!project) {
+      throw new NotFoundError('Project not found');
+    }
+    const sprint = await context.prisma.sprint.findFirst({
+      where: { sprintId: args.sprintId, projectId: args.projectId },
+    });
+    if (!sprint) {
+      throw new NotFoundError('Sprint not found');
+    }
+
+    const sprintTasks = await context.prisma.task.findMany({
+      where: { sprintId: args.sprintId, parentTaskId: null },
+      include: { assignee: { select: { email: true } } },
+    });
+
+    const totalTasks = sprintTasks.length;
+    const completedCount = sprintTasks.filter((t) => t.status === 'done').length;
+
+    return aiGenerateSprintReport(apiKey, {
+      sprintName: sprint.name,
+      startDate: sprint.startDate,
+      endDate: sprint.endDate,
+      tasks: sprintTasks.map((t) => ({
+        title: t.title,
+        status: t.status,
+        priority: t.priority,
+        assigneeEmail: t.assignee?.email ?? null,
+      })),
+      totalTasks,
+      completedTasks: completedCount,
+    });
+  },
+
+  analyzeProjectHealth: async (_parent: unknown, args: { projectId: string }, context: Context) => {
+    const user = requireOrg(context);
+    const apiKey = requireApiKey(context);
+    const project = await context.prisma.project.findFirst({
+      where: { projectId: args.projectId, orgId: user.orgId },
+    });
+    if (!project) {
+      throw new NotFoundError('Project not found');
+    }
+
+    const allTasks = await context.prisma.task.findMany({
+      where: { projectId: args.projectId, parentTaskId: null, archived: false },
+      select: { status: true, assigneeId: true, dueDate: true, createdAt: true },
+    });
+
+    const totalTasks = allTasks.length;
+    if (totalTasks === 0) {
+      throw new ValidationError('No tasks to analyze. Create some tasks first.');
+    }
+
+    const statusCounts: Record<string, number> = {};
+    for (const t of allTasks) {
+      statusCounts[t.status] = (statusCounts[t.status] ?? 0) + 1;
+    }
+    const tasksByStatus = Object.entries(statusCounts).map(([status, count]) => ({ status, count }));
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const overdueCount = allTasks.filter(
+      (t) => t.dueDate && t.dueDate < todayStr && t.status !== 'done'
+    ).length;
+
+    const unassignedCount = allTasks.filter((t) => !t.assigneeId && t.status !== 'done').length;
+    const tasksWithoutDueDate = allTasks.filter((t) => !t.dueDate && t.status !== 'done').length;
+
+    const now = Date.now();
+    const openTasks = allTasks.filter((t) => t.status !== 'done');
+    const avgTaskAgeInDays = openTasks.length > 0
+      ? Math.round(openTasks.reduce((sum, t) => sum + (now - t.createdAt.getTime()) / (1000 * 60 * 60 * 24), 0) / openTasks.length)
+      : 0;
+
+    return aiAnalyzeProjectHealth(apiKey, {
+      projectName: project.name,
+      totalTasks,
+      tasksByStatus,
+      overdueCount,
+      unassignedCount,
+      tasksWithoutDueDate,
+      avgTaskAgeInDays,
+    });
+  },
+
+  extractTasksFromNotes: async (_parent: unknown, args: { projectId: string; notes: string }, context: Context) => {
+    const user = requireOrg(context);
+    const apiKey = requireApiKey(context);
+    const project = await context.prisma.project.findFirst({
+      where: { projectId: args.projectId, orgId: user.orgId },
+    });
+    if (!project) {
+      throw new NotFoundError('Project not found');
+    }
+
+    const orgUsers = await context.prisma.user.findMany({
+      where: { orgId: user.orgId },
+      select: { email: true },
+    });
+    const teamMembers = orgUsers.map((u) => u.email);
+
+    return aiExtractTasksFromNotes(apiKey, args.notes, project.name, teamMembers);
   },
 };
