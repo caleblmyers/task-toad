@@ -369,12 +369,17 @@ export function buildGenerateCodePrompt(data: {
   projectName: string;
   projectDescription: string;
   existingFiles?: Array<{ path: string; language: string; size: number }>;
+  styleGuide?: string | null;
 }): Prompt {
   const cappedFiles = (data.existingFiles ?? []).slice(0, 30);
   const filesLine =
     cappedFiles.length > 0
       ? `\nExisting project files (for context — do NOT regenerate these):\n${cappedFiles.map((f) => `- ${f.path} (${f.language}, ${f.size} bytes)`).join('\n')}`
       : '';
+
+  const styleGuideLine = data.styleGuide
+    ? `\nFollow these project coding conventions:\n${userInput('style_guide', truncate(data.styleGuide, 1000))}`
+    : '';
 
   return {
     systemPrompt: SYSTEM_JSON,
@@ -384,7 +389,7 @@ Task: ${userInput('title', data.taskTitle)}
 Description: ${userInput('description', truncate(data.taskDescription, 400))}
 Instructions: ${userInput('instructions', truncate(data.taskInstructions, 800))}
 Project: ${userInput('project', data.projectName)}
-${data.projectDescription ? `Project description: ${userInput('projectDescription', truncate(data.projectDescription, 400))}\n` : ''}${filesLine}
+${data.projectDescription ? `Project description: ${userInput('projectDescription', truncate(data.projectDescription, 400))}\n` : ''}${filesLine}${styleGuideLine}
 
 Return JSON:
 {
@@ -407,9 +412,14 @@ export function buildRegenerateFilePrompt(data: {
   originalContent: string;
   feedback?: string | null;
   projectName: string;
+  styleGuide?: string | null;
 }): Prompt {
   const feedbackLine = data.feedback
     ? `\nFeedback: ${userInput('feedback', data.feedback)}`
+    : '';
+
+  const styleGuideLine = data.styleGuide
+    ? `\nFollow these project coding conventions:\n${userInput('style_guide', truncate(data.styleGuide, 1000))}`
     : '';
 
   return {
@@ -419,7 +429,7 @@ export function buildRegenerateFilePrompt(data: {
 Task: ${userInput('title', data.taskTitle)}
 Description: ${userInput('description', truncate(data.taskDescription, 400))}
 Instructions: ${userInput('instructions', truncate(data.taskInstructions, 800))}
-Project: ${userInput('project', data.projectName)}${feedbackLine}
+Project: ${userInput('project', data.projectName)}${feedbackLine}${styleGuideLine}
 
 Original content (for reference):
 <user_input label="originalContent">

@@ -970,9 +970,10 @@ export function useProjectData(): ProjectData {
     abortRef.current = controller;
     setGeneratingCode(task.taskId);
     try {
+      const styleGuide = projectId ? localStorage.getItem(`tasktoad-style-guide-${projectId}`) : null;
       const data = await gql<{ generateCodeFromTask: { files: Array<{ path: string; content: string; language: string; description: string }>; summary: string; estimatedTokensUsed: number } }>(
-        `mutation($taskId: ID!) { generateCodeFromTask(taskId: $taskId) { files { path content language description } summary estimatedTokensUsed } }`,
-        { taskId: task.taskId },
+        `mutation($taskId: ID!, $styleGuide: String) { generateCodeFromTask(taskId: $taskId, styleGuide: $styleGuide) { files { path content language description } summary estimatedTokensUsed } }`,
+        { taskId: task.taskId, styleGuide },
         controller.signal
       );
       setGeneratedCode(data.generateCodeFromTask);

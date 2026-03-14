@@ -231,11 +231,12 @@ export async function generateCode(
   taskInstructions: string,
   projectName: string,
   projectDescription: string,
-  existingFiles?: Array<{ path: string; language: string; size: number }>
+  existingFiles?: Array<{ path: string; language: string; size: number }>,
+  styleGuide?: string | null
 ): Promise<CodeGeneration> {
   const p = buildGenerateCodePrompt({
     taskTitle, taskDescription, taskInstructions,
-    projectName, projectDescription, existingFiles,
+    projectName, projectDescription, existingFiles, styleGuide,
   });
   return callAndParse(apiKey, 'generateCode', p, CodeGenerationSchema);
 }

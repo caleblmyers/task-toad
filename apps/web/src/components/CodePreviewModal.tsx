@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface GeneratedFile {
   path: string;
@@ -16,7 +16,10 @@ interface CodePreviewModalProps {
   onCreatePR: (files: Array<{ path: string; content: string }>) => Promise<void>;
   isCreatingPR: boolean;
   onRegenerateFile?: (filePath: string, feedback?: string) => Promise<GeneratedFile | null>;
+  projectId?: string;
 }
+
+const STYLE_GUIDE_KEY_PREFIX = 'tasktoad-style-guide-';
 
 export default function CodePreviewModal({
   isOpen,
@@ -27,13 +30,25 @@ export default function CodePreviewModal({
   onCreatePR,
   isCreatingPR,
   onRegenerateFile,
+  projectId,
 }: CodePreviewModalProps) {
   const [expandedIndex, setExpandedIndex] = useState(0);
   const [regeneratingPath, setRegeneratingPath] = useState<string | null>(null);
   const [feedbackPath, setFeedbackPath] = useState<string | null>(null);
   const [feedbackText, setFeedbackText] = useState('');
+  const [showStyleGuide, setShowStyleGuide] = useState(false);
+  const [styleGuideText, setStyleGuideText] = useState('');
+
+  useEffect(() => {
+    if (isOpen && projectId) {
+      const saved = localStorage.getItem(`${STYLE_GUIDE_KEY_PREFIX}${projectId}`);
+      setStyleGuideText(saved ?? '');
+    }
+  }, [isOpen, projectId]);
 
   if (!isOpen) return null;
+
+  const hasStyleGuide = styleGuideText.trim().length > 0;
 
   const toggleFile = (index: number) => {
     setExpandedIndex(expandedIndex === index ? -1 : index);
@@ -66,6 +81,17 @@ export default function CodePreviewModal({
     }
   };
 
+  const handleStyleGuideBlur = () => {
+    if (projectId) {
+      const trimmed = styleGuideText.trim();
+      if (trimmed) {
+        localStorage.setItem(`${STYLE_GUIDE_KEY_PREFIX}${projectId}`, trimmed);
+      } else {
+        localStorage.removeItem(`${STYLE_GUIDE_KEY_PREFIX}${projectId}`);
+      }
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[85vh] flex flex-col mx-4">
@@ -73,9 +99,16 @@ export default function CodePreviewModal({
         <div className="px-6 py-4 border-b border-slate-200 flex-shrink-0">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-lg font-semibold text-slate-800">Generated Code</h2>
-            <span className="text-xs text-slate-400">
-              Tokens: {estimatedTokensUsed.toLocaleString()} · Cost: ~${(estimatedTokensUsed * 0.000005).toFixed(4)}
-            </span>
+            <div className="flex items-center gap-3">
+              {hasStyleGuide && (
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                  Style guide active
+                </span>
+              )}
+              <span className="text-xs text-slate-400">
+                Tokens: {estimatedTokensUsed.toLocaleString()} · Cost: ~${(estimatedTokensUsed * 0.000005).toFixed(4)}
+              </span>
+            </div>
           </div>
           <p className="text-sm text-slate-600">{summary}</p>
         </div>
@@ -164,6 +197,42 @@ export default function CodePreviewModal({
               </div>
             );
           })}
+
+          {/* Style Guide section */}
+          {projectId && (
+            <div className="border border-slate-200 rounded-lg overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowStyleGuide(!showStyleGuide)}
+                className="w-full text-left px-4 py-3 bg-slate-50 hover:bg-slate-100 flex items-center justify-between gap-2"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-600">Style Guide</span>
+                  {hasStyleGuide && (
+                    <span className="w-2 h-2 bg-blue-500 rounded-full" />
+                  )}
+                </div>
+                <span className="text-slate-400 flex-shrink-0">
+                  {showStyleGuide ? '▾' : '▸'}
+                </span>
+              </button>
+              {showStyleGuide && (
+                <div className="p-4 border-t border-slate-200">
+                  <p className="text-xs text-slate-500 mb-2">
+                    Define coding conventions for this project. These will be included in code generation prompts.
+                  </p>
+                  <textarea
+                    value={styleGuideText}
+                    onChange={(e) => setStyleGuideText(e.target.value)}
+                    onBlur={handleStyleGuideBlur}
+                    placeholder="e.g., Use functional components with hooks. Prefer named exports. Use camelCase for variables..."
+                    className="w-full text-sm px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 resize-y min-h-[80px]"
+                    rows={4}
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer */}

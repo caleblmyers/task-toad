@@ -493,7 +493,7 @@ export const schema = createSchema<Context>({
       saveReport(projectId: ID!, type: String!, title: String!, data: String!, sprintId: ID): Report!
       deleteReport(reportId: ID!): Boolean!
       setAIBudget(monthlyBudgetCentsUSD: Int, alertThreshold: Int): Org!
-      generateCodeFromTask(taskId: ID!): CodeGeneration!
+      generateCodeFromTask(taskId: ID!, styleGuide: String): CodeGeneration!
       regenerateCodeFile(taskId: ID!, filePath: String!, feedback: String): GeneratedFile!
       summarizeProject(projectId: ID!): String!
 

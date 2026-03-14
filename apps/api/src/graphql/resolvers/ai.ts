@@ -367,7 +367,7 @@ export const aiMutations = {
     });
   },
 
-  generateCodeFromTask: async (_parent: unknown, args: { taskId: string }, context: Context) => {
+  generateCodeFromTask: async (_parent: unknown, args: { taskId: string; styleGuide?: string | null }, context: Context) => {
     const user = requireOrg(context);
     const apiKey = requireApiKey(context);
     const task = await context.prisma.task.findUnique({
@@ -396,6 +396,7 @@ export const aiMutations = {
       task.project.name,
       task.project.description ?? '',
       projectFiles,
+      args.styleGuide,
     );
   },
 
