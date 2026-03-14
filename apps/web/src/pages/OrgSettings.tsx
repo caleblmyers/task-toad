@@ -33,6 +33,7 @@ export default function OrgSettings() {
   const [loadingInstallations, setLoadingInstallations] = useState(true);
   const [linkErr, setLinkErr] = useState<string | null>(null);
   const [linkSuccess, setLinkSuccess] = useState(false);
+  const [linkingInstallation, setLinkingInstallation] = useState(false);
 
   useEffect(() => {
     if (user?.role !== 'org:admin') {
@@ -59,27 +60,67 @@ export default function OrgSettings() {
     };
 
     // Handle GitHub App callback — auto-link installation
+    // This runs both in the main window AND in the popup window
     const params = new URLSearchParams(window.location.search);
     const callbackInstallationId = params.get('installation_id');
     if (callbackInstallationId) {
       // Clean URL
       window.history.replaceState({}, '', window.location.pathname);
-      gql<{ linkGitHubInstallation: GitHubInstallation }>(
-        `mutation LinkInstallation($installationId: ID!) { linkGitHubInstallation(installationId: $installationId) { installationId accountLogin accountType orgId createdAt } }`,
-        { installationId: callbackInstallationId }
-      )
-        .then(() => {
-          setLinkSuccess(true);
-          loadInstallations();
-        })
-        .catch((e) => {
-          setLinkErr(e instanceof Error ? e.message : 'Failed to link installation');
-          loadInstallations();
-        });
+
+      // If this is a popup, notify the opener and close
+      if (window.opener) {
+        window.opener.postMessage(
+          { type: 'github-installation', installationId: callbackInstallationId },
+          window.location.origin
+        );
+        window.close();
+        return;
+      }
+
+      // Otherwise handle inline (direct navigation fallback)
+      linkInstallation(callbackInstallationId, loadInstallations);
     } else {
       loadInstallations();
     }
+
+    // Listen for messages from popup window
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === 'github-installation') {
+        linkInstallation(event.data.installationId, loadInstallations);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, [user, navigate]);
+
+  const linkInstallation = (installationId: string, onDone: () => void) => {
+    setLinkingInstallation(true);
+    setLinkErr(null);
+    gql<{ linkGitHubInstallation: GitHubInstallation }>(
+      `mutation LinkInstallation($installationId: ID!) { linkGitHubInstallation(installationId: $installationId) { installationId accountLogin accountType orgId createdAt } }`,
+      { installationId }
+    )
+      .then(() => {
+        setLinkSuccess(true);
+        onDone();
+      })
+      .catch((e) => {
+        setLinkErr(e instanceof Error ? e.message : 'Failed to link installation');
+        onDone();
+      })
+      .finally(() => setLinkingInstallation(false));
+  };
+
+  const handleInstallGitHubApp = () => {
+    if (!GITHUB_APP_SLUG) return;
+    const url = `https://github.com/apps/${GITHUB_APP_SLUG}/installations/new`;
+    const width = 600;
+    const height = 700;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+    window.open(url, 'github-install', `width=${width},height=${height},left=${left},top=${top}`);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -297,13 +338,22 @@ export default function OrgSettings() {
           <p className="text-sm text-slate-500">No GitHub App installed.</p>
         )}
 
+        {linkingInstallation && (
+          <div className="flex items-center gap-2 text-sm text-slate-500">
+            <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" />
+            Linking installation…
+          </div>
+        )}
+
         {GITHUB_APP_SLUG && (
-          <a
-            href={`https://github.com/apps/${GITHUB_APP_SLUG}/installations/new`}
-            className="inline-block px-4 py-2 bg-slate-800 text-white rounded hover:bg-slate-700 text-sm"
+          <button
+            type="button"
+            onClick={handleInstallGitHubApp}
+            disabled={linkingInstallation}
+            className="px-4 py-2 bg-slate-800 text-white rounded hover:bg-slate-700 disabled:opacity-50 text-sm"
           >
-            Install GitHub App
-          </a>
+            {installations.length > 0 ? 'Add another installation' : 'Install GitHub App'}
+          </button>
         )}
       </div>
     </div>
