@@ -6,6 +6,7 @@
  * before expiration.
  */
 
+import { createPrivateKey } from 'node:crypto';
 import { SignJWT, importPKCS8 } from 'jose';
 import type { CachedToken } from './githubTypes.js';
 import { logTokenRefresh, logApiError } from './githubLogger.js';
@@ -19,7 +20,7 @@ function getAppId(): string {
   return appId;
 }
 
-function getPrivateKey(): string {
+function getPrivateKeyPem(): string {
   const key = process.env.GITHUB_PRIVATE_KEY;
   if (!key) throw new Error('GITHUB_PRIVATE_KEY environment variable is required');
   // Support both literal PEM and base64-encoded PEM
@@ -28,11 +29,20 @@ function getPrivateKey(): string {
 }
 
 /**
+ * Convert PEM to PKCS#8 format. GitHub generates PKCS#1 keys
+ * (BEGIN RSA PRIVATE KEY) but jose requires PKCS#8 (BEGIN PRIVATE KEY).
+ */
+function toPKCS8(pem: string): string {
+  if (pem.includes('BEGIN PRIVATE KEY')) return pem; // already PKCS#8
+  return createPrivateKey(pem).export({ type: 'pkcs8', format: 'pem' }) as string;
+}
+
+/**
  * Generate a JWT for the GitHub App. Valid for 10 minutes (GitHub maximum).
  */
 export async function generateAppJWT(): Promise<string> {
   const appId = getAppId();
-  const privateKeyPem = getPrivateKey();
+  const privateKeyPem = toPKCS8(getPrivateKeyPem());
   const privateKey = await importPKCS8(privateKeyPem, 'RS256');
 
   const now = Math.floor(Date.now() / 1000);
