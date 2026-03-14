@@ -1,4 +1,3 @@
-import { GraphQLError } from 'graphql';
 import type { Context } from '../context.js';
 import {
   generateProjectOptions as aiGenerateProjectOptions,
@@ -7,6 +6,7 @@ import {
   generateTaskInstructions as aiGenerateTaskInstructions,
   summarizeProject as aiSummarizeProject,
 } from '../../ai/index.js';
+import { NotFoundError, ValidationError } from '../errors.js';
 import { requireOrg, requireApiKey } from './auth.js';
 
 // ── AI mutations ──
@@ -23,7 +23,6 @@ export const aiMutations = {
     context: Context
   ) => {
     const user = requireOrg(context);
-    // Only create the project — task generation happens via previewTaskPlan + commitTaskPlan
     return context.prisma.project.create({
       data: {
         name: args.title,
@@ -45,7 +44,7 @@ export const aiMutations = {
       where: { projectId: args.projectId },
     });
     if (!project || project.orgId !== user.orgId) {
-      throw new GraphQLError('Project not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('Project not found');
     }
     await context.prisma.task.deleteMany({
       where: { projectId: args.projectId, parentTaskId: null },
@@ -85,7 +84,7 @@ export const aiMutations = {
       where: { projectId: args.projectId },
     });
     if (!project || project.orgId !== user.orgId) {
-      throw new GraphQLError('Project not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('Project not found');
     }
     let fullContext = args.context ?? undefined;
     if (args.appendToTitles && args.appendToTitles.length > 0) {
@@ -134,11 +133,10 @@ export const aiMutations = {
       where: { projectId: args.projectId },
     });
     if (!project || project.orgId !== user.orgId) {
-      throw new GraphQLError('Project not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('Project not found');
     }
 
     if (args.clearExisting) {
-      // Delete subtasks first to avoid FK constraint issues, then parent tasks
       await context.prisma.task.deleteMany({
         where: { projectId: args.projectId, parentTaskId: { not: null } },
       });
@@ -147,7 +145,6 @@ export const aiMutations = {
       });
     }
 
-    // Create all top-level tasks
     const created = await Promise.all(
       args.tasks.map((t) =>
         context.prisma.task.create({
@@ -166,11 +163,9 @@ export const aiMutations = {
       )
     );
 
-    // Build title → taskId map for dependency resolution
     const titleToId = new Map<string, string>();
     created.forEach((task) => titleToId.set(task.title, task.taskId));
 
-    // Update dependsOn with resolved task IDs, and create subtasks
     await Promise.all(
       created.map(async (task, i) => {
         const inputTask = args.tasks[i];
@@ -209,7 +204,6 @@ export const aiMutations = {
       })
     );
 
-    // Return the created top-level tasks with updated dependsOn
     return context.prisma.task.findMany({
       where: { projectId: args.projectId, parentTaskId: null },
       orderBy: { createdAt: 'asc' },
@@ -228,7 +222,7 @@ export const aiMutations = {
       include: { project: true },
     });
     if (!task || task.orgId !== user.orgId) {
-      throw new GraphQLError('Task not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('Task not found');
     }
     await context.prisma.task.deleteMany({ where: { parentTaskId: args.taskId } });
     const subtaskPlans = await aiExpandTask(
@@ -264,7 +258,7 @@ export const aiMutations = {
       include: { project: true },
     });
     if (!task || task.orgId !== user.orgId) {
-      throw new GraphQLError('Task not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('Task not found');
     }
     const siblings = await context.prisma.task.findMany({
       where: { projectId: task.projectId, parentTaskId: null, NOT: { taskId: task.taskId } },
@@ -315,7 +309,7 @@ export const aiMutations = {
       where: { projectId: args.projectId },
     });
     if (!project || project.orgId !== user.orgId) {
-      throw new GraphQLError('Project not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('Project not found');
     }
     const tasks = await context.prisma.task.findMany({
       where: { projectId: args.projectId, parentTaskId: null },
@@ -323,9 +317,7 @@ export const aiMutations = {
       orderBy: { createdAt: 'asc' },
     });
     if (tasks.length === 0) {
-      throw new GraphQLError('No tasks to summarize. Generate a task plan first.', {
-        extensions: { code: 'NO_TASKS' },
-      });
+      throw new ValidationError('No tasks to summarize. Generate a task plan first.');
     }
     return aiSummarizeProject(apiKey, project.name, project.description ?? '', tasks);
   },

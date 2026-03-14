@@ -1,6 +1,6 @@
-import { GraphQLError } from 'graphql';
 import type { Context } from '../context.js';
 import { encryptApiKey, decryptApiKey } from '../../utils/encryption.js';
+import { AuthorizationError } from '../errors.js';
 import { requireAuth, requireOrg } from './auth.js';
 
 // ── Org queries ──
@@ -22,7 +22,7 @@ export const orgQueries = {
   orgInvites: async (_parent: unknown, _args: unknown, context: Context) => {
     const user = requireOrg(context);
     if (user.role !== 'org:admin') {
-      throw new GraphQLError('Admin role required', { extensions: { code: 'FORBIDDEN' } });
+      throw new AuthorizationError('Admin role required');
     }
     return context.prisma.orgInvite.findMany({
       where: { orgId: user.orgId, acceptedAt: null },
@@ -52,7 +52,7 @@ export const orgMutations = {
   setOrgApiKey: async (_parent: unknown, args: { apiKey: string }, context: Context) => {
     const user = requireOrg(context);
     if (user.role !== 'org:admin') {
-      throw new GraphQLError('Admin role required', { extensions: { code: 'FORBIDDEN' } });
+      throw new AuthorizationError('Admin role required');
     }
     return context.prisma.org.update({
       where: { orgId: user.orgId },

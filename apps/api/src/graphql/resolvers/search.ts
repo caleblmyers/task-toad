@@ -1,5 +1,5 @@
-import { GraphQLError } from 'graphql';
 import type { Context } from '../context.js';
+import { NotFoundError, ConflictError } from '../errors.js';
 import { requireOrg } from './auth.js';
 
 // ── Search queries ──
@@ -50,7 +50,7 @@ export const searchMutations = {
       where: { orgId_name: { orgId: user.orgId, name: args.name } },
     });
     if (existing) {
-      throw new GraphQLError('Label already exists', { extensions: { code: 'BAD_USER_INPUT' } });
+      throw new ConflictError('Label already exists');
     }
     return context.prisma.label.create({
       data: {
@@ -65,7 +65,7 @@ export const searchMutations = {
     const user = requireOrg(context);
     const label = await context.prisma.label.findUnique({ where: { labelId: args.labelId } });
     if (!label || label.orgId !== user.orgId) {
-      throw new GraphQLError('Label not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('Label not found');
     }
     await context.prisma.label.delete({ where: { labelId: args.labelId } });
     return true;
@@ -75,11 +75,11 @@ export const searchMutations = {
     const user = requireOrg(context);
     const task = await context.prisma.task.findUnique({ where: { taskId: args.taskId } });
     if (!task || task.orgId !== user.orgId) {
-      throw new GraphQLError('Task not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('Task not found');
     }
     const label = await context.prisma.label.findUnique({ where: { labelId: args.labelId } });
     if (!label || label.orgId !== user.orgId) {
-      throw new GraphQLError('Label not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('Label not found');
     }
     await context.prisma.taskLabel.upsert({
       where: { taskId_labelId: { taskId: args.taskId, labelId: args.labelId } },
@@ -93,7 +93,7 @@ export const searchMutations = {
     const user = requireOrg(context);
     const task = await context.prisma.task.findUnique({ where: { taskId: args.taskId } });
     if (!task || task.orgId !== user.orgId) {
-      throw new GraphQLError('Task not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('Task not found');
     }
     await context.prisma.taskLabel.deleteMany({
       where: { taskId: args.taskId, labelId: args.labelId },

@@ -1,5 +1,5 @@
-import { GraphQLError } from 'graphql';
 import type { Context } from '../context.js';
+import { NotFoundError } from '../errors.js';
 import { requireAuth, requireOrg } from './auth.js';
 
 // ── Notification queries ──
@@ -33,7 +33,7 @@ export const notificationMutations = {
     const user = requireAuth(context);
     const notification = await context.prisma.notification.findUnique({ where: { notificationId: args.notificationId } });
     if (!notification || notification.userId !== user.userId) {
-      throw new GraphQLError('Notification not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('Notification not found');
     }
     return context.prisma.notification.update({
       where: { notificationId: args.notificationId },

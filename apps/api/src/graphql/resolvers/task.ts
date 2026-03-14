@@ -1,7 +1,7 @@
-import { GraphQLError } from 'graphql';
 import type { Context } from '../context.js';
 import { logActivity } from '../../utils/activity.js';
 import { createNotification } from '../../utils/notification.js';
+import { NotFoundError, ValidationError, AuthorizationError } from '../errors.js';
 import { requireAuth, requireOrg, requireProjectAccess } from './auth.js';
 
 // ── Task queries ──
@@ -35,7 +35,7 @@ export const taskQueries = {
     const user = requireOrg(context);
     const task = await context.prisma.task.findUnique({ where: { taskId: args.taskId } });
     if (!task || task.orgId !== user.orgId) {
-      throw new GraphQLError('Task not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('Task not found');
     }
     const comments = await context.prisma.comment.findMany({
       where: { taskId: args.taskId, parentCommentId: null },
@@ -89,12 +89,12 @@ export const taskMutations = {
       where: { projectId: args.projectId },
     });
     if (!project || project.orgId !== user.orgId) {
-      throw new GraphQLError('Project not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('Project not found');
     }
     const status = args.status ?? 'todo';
     const validStatuses = JSON.parse(project.statuses) as string[];
     if (!validStatuses.includes(status)) {
-      throw new GraphQLError(`Invalid status "${status}". Valid: ${validStatuses.join(', ')}`);
+      throw new ValidationError(`Invalid status "${status}". Valid: ${validStatuses.join(', ')}`);
     }
     const maxResult = await context.prisma.task.aggregate({
       where: { projectId: args.projectId, sprintId: null, parentTaskId: null },
@@ -125,12 +125,12 @@ export const taskMutations = {
     const user = requireOrg(context);
     const task = await context.prisma.task.findUnique({ where: { taskId: args.taskId }, include: { project: true } });
     if (!task || task.orgId !== user.orgId) {
-      throw new GraphQLError('Task not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('Task not found');
     }
     if (args.status !== undefined) {
       const validStatuses = JSON.parse(task.project.statuses) as string[];
       if (!validStatuses.includes(args.status)) {
-        throw new GraphQLError(`Invalid status "${args.status}". Valid: ${validStatuses.join(', ')}`);
+        throw new ValidationError(`Invalid status "${args.status}". Valid: ${validStatuses.join(', ')}`);
       }
     }
     const updated = await context.prisma.task.update({
@@ -201,12 +201,11 @@ export const taskMutations = {
     context: Context
   ) => {
     const user = requireOrg(context);
-    // Verify all tasks belong to user's org
     const tasks = await context.prisma.task.findMany({
       where: { taskId: { in: args.taskIds }, orgId: user.orgId },
     });
     if (tasks.length !== args.taskIds.length) {
-      throw new GraphQLError('One or more tasks not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('One or more tasks not found');
     }
     const data: Record<string, unknown> = {};
     if (args.status !== undefined && args.status !== null) data.status = args.status;
@@ -221,7 +220,6 @@ export const taskMutations = {
     const updated = await context.prisma.task.findMany({
       where: { taskId: { in: args.taskIds } },
     });
-    // Log activity for bulk action
     for (const task of tasks) {
       logActivity(context.prisma, {
         orgId: user.orgId, projectId: task.projectId, taskId: task.taskId, userId: user.userId,
@@ -236,12 +234,12 @@ export const taskMutations = {
     const user = requireOrg(context);
     const task = await context.prisma.task.findUnique({ where: { taskId: args.taskId } });
     if (!task || task.orgId !== user.orgId) {
-      throw new GraphQLError('Task not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('Task not found');
     }
     if (args.parentCommentId) {
       const parent = await context.prisma.comment.findUnique({ where: { commentId: args.parentCommentId } });
       if (!parent || parent.taskId !== args.taskId) {
-        throw new GraphQLError('Parent comment not found', { extensions: { code: 'NOT_FOUND' } });
+        throw new NotFoundError('Parent comment not found');
       }
     }
     const comment = await context.prisma.comment.create({
@@ -257,7 +255,6 @@ export const taskMutations = {
       orgId: user.orgId, projectId: task.projectId, taskId: task.taskId, userId: user.userId,
       action: 'comment.created',
     });
-    // Notify task assignee about new comment
     if (task.assigneeId && task.assigneeId !== user.userId) {
       createNotification(context.prisma, {
         orgId: user.orgId,
@@ -270,7 +267,6 @@ export const taskMutations = {
         relatedProjectId: task.projectId,
       });
     }
-    // Extract @mentions and create notifications
     const mentionPattern = /@(\S+@\S+)/g;
     let mentionMatch: RegExpExecArray | null;
     while ((mentionMatch = mentionPattern.exec(args.content)) !== null) {
@@ -303,9 +299,9 @@ export const taskMutations = {
   updateComment: async (_parent: unknown, args: { commentId: string; content: string }, context: Context) => {
     const user = requireAuth(context);
     const comment = await context.prisma.comment.findUnique({ where: { commentId: args.commentId } });
-    if (!comment) throw new GraphQLError('Comment not found', { extensions: { code: 'NOT_FOUND' } });
+    if (!comment) throw new NotFoundError('Comment not found');
     if (comment.userId !== user.userId) {
-      throw new GraphQLError('Not authorized to edit this comment', { extensions: { code: 'FORBIDDEN' } });
+      throw new AuthorizationError('Not authorized to edit this comment');
     }
     const updated = await context.prisma.comment.update({
       where: { commentId: args.commentId },
@@ -324,11 +320,10 @@ export const taskMutations = {
   deleteComment: async (_parent: unknown, args: { commentId: string }, context: Context) => {
     const user = requireOrg(context);
     const comment = await context.prisma.comment.findUnique({ where: { commentId: args.commentId } });
-    if (!comment) throw new GraphQLError('Comment not found', { extensions: { code: 'NOT_FOUND' } });
+    if (!comment) throw new NotFoundError('Comment not found');
     if (comment.userId !== user.userId && user.role !== 'org:admin') {
-      throw new GraphQLError('Not authorized to delete this comment', { extensions: { code: 'FORBIDDEN' } });
+      throw new AuthorizationError('Not authorized to delete this comment');
     }
-    // Delete replies first, then the comment
     await context.prisma.comment.deleteMany({ where: { parentCommentId: args.commentId } });
     await context.prisma.comment.delete({ where: { commentId: args.commentId } });
     return true;

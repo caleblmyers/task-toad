@@ -1,6 +1,6 @@
-import { GraphQLError } from 'graphql';
 import type { Context } from '../context.js';
 import { logActivity } from '../../utils/activity.js';
+import { AuthorizationError, ValidationError } from '../errors.js';
 import { requireOrg, requireProjectAccess } from './auth.js';
 
 // ── Project queries ──
@@ -84,7 +84,7 @@ export const projectMutations = {
   createProject: async (_parent: unknown, args: { name: string }, context: Context) => {
     const user = requireOrg(context);
     if (user.role !== 'org:admin') {
-      throw new GraphQLError('Admin role required', { extensions: { code: 'FORBIDDEN' } });
+      throw new AuthorizationError('Admin role required');
     }
     return context.prisma.project.create({
       data: { name: args.name, orgId: user.orgId },
@@ -98,7 +98,7 @@ export const projectMutations = {
   ) => {
     const user = requireOrg(context);
     if (user.role !== 'org:admin') {
-      throw new GraphQLError('Admin role required', { extensions: { code: 'FORBIDDEN' } });
+      throw new AuthorizationError('Admin role required');
     }
     const { project } = await requireProjectAccess(context, args.projectId);
     if (args.statuses !== undefined && args.statuses !== null) {
@@ -108,7 +108,7 @@ export const projectMutations = {
           throw new Error();
         }
       } catch {
-        throw new GraphQLError('statuses must be a non-empty JSON array of strings');
+        throw new ValidationError('statuses must be a non-empty JSON array of strings');
       }
     }
     const updated = await context.prisma.project.update({
@@ -130,7 +130,7 @@ export const projectMutations = {
   archiveProject: async (_parent: unknown, args: { projectId: string; archived: boolean }, context: Context) => {
     const user = requireOrg(context);
     if (user.role !== 'org:admin') {
-      throw new GraphQLError('Admin role required', { extensions: { code: 'FORBIDDEN' } });
+      throw new AuthorizationError('Admin role required');
     }
     await requireProjectAccess(context, args.projectId);
     const result = await context.prisma.project.update({

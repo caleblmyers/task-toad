@@ -1,9 +1,9 @@
-import { GraphQLError } from 'graphql';
 import type { Context } from '../context.js';
 import {
   planSprints as aiPlanSprints,
 } from '../../ai/index.js';
 import { logActivity } from '../../utils/activity.js';
+import { NotFoundError, ValidationError } from '../errors.js';
 import { requireOrg, requireProjectAccess, requireApiKey } from './auth.js';
 
 // ── Sprint queries ──
@@ -45,10 +45,10 @@ export const sprintQueries = {
     const user = requireOrg(context);
     const sprint = await context.prisma.sprint.findUnique({ where: { sprintId: args.sprintId } });
     if (!sprint || sprint.orgId !== user.orgId) {
-      throw new GraphQLError('Sprint not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('Sprint not found');
     }
     if (!sprint.startDate || !sprint.endDate) {
-      throw new GraphQLError('Sprint must have start and end dates', { extensions: { code: 'BAD_USER_INPUT' } });
+      throw new ValidationError('Sprint must have start and end dates');
     }
 
     const tasks = await context.prisma.task.findMany({
@@ -56,7 +56,6 @@ export const sprintQueries = {
     });
     const totalScope = tasks.length;
 
-    // Get status change activities for these tasks
     const taskIds = tasks.map((t: { taskId: string }) => t.taskId);
     const activities = await context.prisma.activity.findMany({
       where: {
@@ -67,7 +66,6 @@ export const sprintQueries = {
       orderBy: { createdAt: 'asc' },
     });
 
-    // Walk through each day
     const startDate = new Date(sprint.startDate + 'T00:00:00');
     const endDateOrToday = sprint.closedAt
       ? new Date(sprint.endDate + 'T23:59:59')
@@ -80,11 +78,9 @@ export const sprintQueries = {
       const dayStr = d.toISOString().split('T')[0];
       const dayEnd = new Date(dayStr + 'T23:59:59');
 
-      // Count status changes to 'done' by this day
       const completedByDay = activities.filter((a: { newValue: string | null; createdAt: Date }) =>
         a.newValue === 'done' && a.createdAt <= dayEnd
       ).length;
-      // Count status changes from 'done' (uncompleted) by this day
       const uncompletedByDay = activities.filter((a: { oldValue: string | null; createdAt: Date }) =>
         a.oldValue === 'done' && a.createdAt <= dayEnd
       ).length;
@@ -117,7 +113,7 @@ export const sprintMutations = {
     const user = requireOrg(context);
     const project = await context.prisma.project.findUnique({ where: { projectId: args.projectId } });
     if (!project || project.orgId !== user.orgId) {
-      throw new GraphQLError('Project not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('Project not found');
     }
     const sprint = await context.prisma.sprint.create({
       data: {
@@ -140,7 +136,7 @@ export const sprintMutations = {
     const user = requireOrg(context);
     const sprint = await context.prisma.sprint.findUnique({ where: { sprintId: args.sprintId } });
     if (!sprint || sprint.orgId !== user.orgId) {
-      throw new GraphQLError('Sprint not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('Sprint not found');
     }
     if (args.isActive === true) {
       await context.prisma.sprint.updateMany({
@@ -169,7 +165,7 @@ export const sprintMutations = {
     const user = requireOrg(context);
     const sprint = await context.prisma.sprint.findUnique({ where: { sprintId: args.sprintId } });
     if (!sprint || sprint.orgId !== user.orgId) {
-      throw new GraphQLError('Sprint not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('Sprint not found');
     }
     await context.prisma.task.updateMany({
       where: { sprintId: args.sprintId },
@@ -194,7 +190,7 @@ export const sprintMutations = {
     const user = requireOrg(context);
     const sprint = await context.prisma.sprint.findUnique({ where: { sprintId: args.sprintId } });
     if (!sprint || sprint.orgId !== user.orgId) {
-      throw new GraphQLError('Sprint not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('Sprint not found');
     }
 
     for (const item of args.incompleteTaskActions) {
@@ -249,16 +245,14 @@ export const sprintMutations = {
     const apiKey = requireApiKey(context);
     const project = await context.prisma.project.findUnique({ where: { projectId: args.projectId } });
     if (!project || project.orgId !== user.orgId) {
-      throw new GraphQLError('Project not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('Project not found');
     }
     const backlogTasks = await context.prisma.task.findMany({
       where: { projectId: args.projectId, parentTaskId: null, sprintId: null },
       orderBy: { createdAt: 'asc' },
     });
     if (backlogTasks.length === 0) {
-      throw new GraphQLError('No backlog tasks to plan. All tasks are already assigned to sprints.', {
-        extensions: { code: 'NO_BACKLOG_TASKS' },
-      });
+      throw new ValidationError('No backlog tasks to plan. All tasks are already assigned to sprints.');
     }
     const plans = await aiPlanSprints(
       apiKey,
@@ -289,7 +283,7 @@ export const sprintMutations = {
     const user = requireOrg(context);
     const project = await context.prisma.project.findUnique({ where: { projectId: args.projectId } });
     if (!project || project.orgId !== user.orgId) {
-      throw new GraphQLError('Project not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('Project not found');
     }
     const defaultColumns = '["To Do","In Progress","Done"]';
     const firstColumn = 'To Do';

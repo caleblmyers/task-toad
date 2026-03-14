@@ -1,4 +1,3 @@
-import { GraphQLError } from 'graphql';
 import type { Context } from '../context.js';
 import {
   getProjectRepo,
@@ -8,6 +7,7 @@ import {
   createPullRequestFromTask,
   listInstallationRepos,
 } from '../../github/index.js';
+import { NotFoundError, AuthorizationError } from '../errors.js';
 import { requireOrg, requireProjectAccess } from './auth.js';
 
 // ── GitHub queries ──
@@ -23,12 +23,11 @@ export const githubQueries = {
 
   githubInstallationRepos: async (_parent: unknown, args: { installationId: string }, context: Context) => {
     const user = requireOrg(context);
-    // Verify the installation belongs to the user's org
     const installation = await context.prisma.gitHubInstallation.findFirst({
       where: { installationId: args.installationId, orgId: user.orgId },
     });
     if (!installation) {
-      throw new GraphQLError('GitHub installation not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('GitHub installation not found');
     }
     return listInstallationRepos(args.installationId);
   },
@@ -45,13 +44,13 @@ export const githubMutations = {
   linkGitHubInstallation: async (_parent: unknown, args: { installationId: string }, context: Context) => {
     const user = requireOrg(context);
     if (user.role !== 'org:admin') {
-      throw new GraphQLError('Only org admins can link GitHub installations', { extensions: { code: 'FORBIDDEN' } });
+      throw new AuthorizationError('Only org admins can link GitHub installations');
     }
     const installation = await context.prisma.gitHubInstallation.findUnique({
       where: { installationId: args.installationId },
     });
     if (!installation) {
-      throw new GraphQLError('GitHub installation not found', { extensions: { code: 'NOT_FOUND' } });
+      throw new NotFoundError('GitHub installation not found');
     }
     return context.prisma.gitHubInstallation.update({
       where: { installationId: args.installationId },
