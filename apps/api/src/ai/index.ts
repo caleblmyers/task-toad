@@ -18,6 +18,8 @@ export {
   enrichPRDescription,
 } from './aiService.js';
 
+export { logUsageToDB, checkBudget } from './aiUsageTracker.js';
+
 export type {
   ProjectOption,
   ToolSuggestion,

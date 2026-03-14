@@ -12,13 +12,71 @@ import {
   analyzeProjectHealth as aiAnalyzeProjectHealth,
   extractTasksFromNotes as aiExtractTasksFromNotes,
 } from '../../ai/index.js';
-import { NotFoundError, ValidationError } from '../errors.js';
+import { NotFoundError, ValidationError, AuthorizationError } from '../errors.js';
 import { requireOrg, requireApiKey } from './auth.js';
 import { getProjectRepo, fetchProjectFileTree } from '../../github/index.js';
 
 // ── AI mutations ──
 
 export const aiMutations = {
+  saveReport: async (
+    _parent: unknown,
+    args: { projectId: string; type: string; title: string; data: string; sprintId?: string | null },
+    context: Context
+  ) => {
+    const user = requireOrg(context);
+    const project = await context.prisma.project.findFirst({
+      where: { projectId: args.projectId, orgId: user.orgId },
+    });
+    if (!project) {
+      throw new NotFoundError('Project not found');
+    }
+    return context.prisma.report.create({
+      data: {
+        orgId: user.orgId,
+        projectId: args.projectId,
+        sprintId: args.sprintId ?? null,
+        type: args.type,
+        title: args.title,
+        data: args.data,
+        createdBy: user.userId,
+      },
+    });
+  },
+
+  deleteReport: async (_parent: unknown, args: { reportId: string }, context: Context) => {
+    const user = requireOrg(context);
+    const report = await context.prisma.report.findUnique({
+      where: { id: args.reportId },
+    });
+    if (!report || report.orgId !== user.orgId) {
+      throw new NotFoundError('Report not found');
+    }
+    await context.prisma.report.delete({ where: { id: args.reportId } });
+    return true;
+  },
+
+  setAIBudget: async (
+    _parent: unknown,
+    args: { monthlyBudgetCentsUSD?: number | null; alertThreshold?: number | null },
+    context: Context
+  ) => {
+    const user = requireOrg(context);
+    if (user.role !== 'org:admin') {
+      throw new AuthorizationError('Admin role required');
+    }
+    if (args.alertThreshold != null && (args.alertThreshold < 1 || args.alertThreshold > 100)) {
+      throw new ValidationError('Alert threshold must be between 1 and 100');
+    }
+    return context.prisma.org.update({
+      where: { orgId: user.orgId },
+      data: {
+        ...(args.monthlyBudgetCentsUSD !== undefined && { monthlyBudgetCentsUSD: args.monthlyBudgetCentsUSD ?? null }),
+        ...(args.alertThreshold != null && { budgetAlertThreshold: args.alertThreshold }),
+      },
+    });
+  },
+
   generateProjectOptions: async (_parent: unknown, args: { prompt: string }, context: Context) => {
     const apiKey = requireApiKey(context);
     return aiGenerateProjectOptions(apiKey, args.prompt);
@@ -394,6 +452,94 @@ export const aiMutations = {
 // ── AI queries ──
 
 export const aiQueries = {
+  reports: async (
+    _parent: unknown,
+    args: { projectId: string; type?: string | null; limit?: number | null },
+    context: Context
+  ) => {
+    const user = requireOrg(context);
+    const project = await context.prisma.project.findFirst({
+      where: { projectId: args.projectId, orgId: user.orgId },
+    });
+    if (!project) {
+      throw new NotFoundError('Project not found');
+    }
+    return context.prisma.report.findMany({
+      where: {
+        projectId: args.projectId,
+        ...(args.type ? { type: args.type } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: args.limit ?? 20,
+    });
+  },
+
+  aiUsage: async (_parent: unknown, args: { days?: number | null }, context: Context) => {
+    const user = requireOrg(context);
+    const days = args.days ?? 30;
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+
+    const logs = await context.prisma.aIUsageLog.findMany({
+      where: { orgId: user.orgId, createdAt: { gte: since } },
+    });
+
+    let totalCostUSD = 0;
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    const featureMap = new Map<string, { calls: number; costUSD: number; totalLatencyMs: number }>();
+
+    for (const log of logs) {
+      totalCostUSD += log.costUSD;
+      totalInputTokens += log.inputTokens;
+      totalOutputTokens += log.outputTokens;
+
+      const entry = featureMap.get(log.feature) ?? { calls: 0, costUSD: 0, totalLatencyMs: 0 };
+      entry.calls += 1;
+      entry.costUSD += log.costUSD;
+      entry.totalLatencyMs += log.latencyMs;
+      featureMap.set(log.feature, entry);
+    }
+
+    const byFeature = Array.from(featureMap.entries())
+      .map(([feature, data]) => ({
+        feature,
+        calls: data.calls,
+        costUSD: data.costUSD,
+        avgLatencyMs: Math.round(data.totalLatencyMs / data.calls),
+      }))
+      .sort((a, b) => b.costUSD - a.costUSD);
+
+    const org = await context.prisma.org.findUnique({
+      where: { orgId: user.orgId },
+      select: { monthlyBudgetCentsUSD: true },
+    });
+
+    let budgetUsedPercent: number | null = null;
+    if (org?.monthlyBudgetCentsUSD) {
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
+      const monthLogs = since <= startOfMonth
+        ? logs.filter((l) => l.createdAt >= startOfMonth)
+        : logs;
+
+      const monthCost = monthLogs.reduce((sum, l) => sum + l.costUSD, 0);
+      budgetUsedPercent = Math.round((monthCost * 100 * 100) / org.monthlyBudgetCentsUSD) / 100;
+    }
+
+    return {
+      totalCostUSD,
+      totalInputTokens,
+      totalOutputTokens,
+      totalCalls: logs.length,
+      byFeature,
+      budgetUsedPercent,
+      budgetLimitCentsUSD: org?.monthlyBudgetCentsUSD ?? null,
+    };
+  },
+
   generateStandupReport: async (_parent: unknown, args: { projectId: string }, context: Context) => {
     const user = requireOrg(context);
     const apiKey = requireApiKey(context);

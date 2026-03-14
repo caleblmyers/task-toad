@@ -27,6 +27,8 @@ export const schema = createSchema<Context>({
       createdAt: String!
       hasApiKey: Boolean!
       apiKeyHint: String
+      monthlyBudgetCentsUSD: Int
+      budgetAlertThreshold: Int!
     }
 
     type Project {
@@ -308,6 +310,46 @@ export const schema = createSchema<Context>({
       estimatedTokensUsed: Int!
     }
 
+    type AIUsageLog {
+      id: ID!
+      feature: String!
+      model: String!
+      inputTokens: Int!
+      outputTokens: Int!
+      costUSD: Float!
+      latencyMs: Int!
+      cached: Boolean!
+      createdAt: String!
+    }
+
+    type AIUsageSummary {
+      totalCostUSD: Float!
+      totalInputTokens: Int!
+      totalOutputTokens: Int!
+      totalCalls: Int!
+      byFeature: [AIFeatureUsage!]!
+      budgetUsedPercent: Float
+      budgetLimitCentsUSD: Int
+    }
+
+    type AIFeatureUsage {
+      feature: String!
+      calls: Int!
+      costUSD: Float!
+      avgLatencyMs: Int!
+    }
+
+    type Report {
+      id: ID!
+      type: String!
+      title: String!
+      data: String!
+      projectId: ID!
+      sprintId: ID
+      createdBy: ID!
+      createdAt: String!
+    }
+
     type AuthPayload {
       token: String!
     }
@@ -393,6 +435,8 @@ export const schema = createSchema<Context>({
       githubInstallations: [GitHubInstallation!]!
       githubInstallationRepos(installationId: ID!): [GitHubRepo!]!
       githubProjectRepo(projectId: ID!): GitHubRepoLink
+      reports(projectId: ID!, type: String, limit: Int): [Report!]!
+      aiUsage(days: Int): AIUsageSummary!
       generateStandupReport(projectId: ID!): StandupReport!
       generateSprintReport(projectId: ID!, sprintId: ID!): SprintReportResult!
       analyzeProjectHealth(projectId: ID!): ProjectHealth!
@@ -446,6 +490,9 @@ export const schema = createSchema<Context>({
       commitTaskPlan(projectId: ID!, tasks: [CommitTaskInput!]!, clearExisting: Boolean): [Task!]!
       expandTask(taskId: ID!, context: String): [Task!]!
       generateTaskInstructions(taskId: ID!): Task!
+      saveReport(projectId: ID!, type: String!, title: String!, data: String!, sprintId: ID): Report!
+      deleteReport(reportId: ID!): Boolean!
+      setAIBudget(monthlyBudgetCentsUSD: Int, alertThreshold: Int): Org!
       generateCodeFromTask(taskId: ID!): CodeGeneration!
       regenerateCodeFile(taskId: ID!, filePath: String!, feedback: String): GeneratedFile!
       summarizeProject(projectId: ID!): String!
