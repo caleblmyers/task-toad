@@ -83,6 +83,7 @@ model Sprint {
   orgId     String    @map("org_id")
   projectId String    @map("project_id")
   name      String
+  goal      String?   @map("goal")
   isActive  Boolean   @default(false) @map("is_active")
   columns   String    @default("[\"To Do\",\"In Progress\",\"In Review\",\"Done\"]")
   startDate String?   @map("start_date")
@@ -107,6 +108,7 @@ model Task {
   instructions   String?
   suggestedTools String?  @map("suggested_tools")
   estimatedHours Float?   @map("estimated_hours")
+  storyPoints    Int?     @map("story_points")
   priority       String   @default("medium")
   dependsOn      String?  @map("depends_on")
   status         String   @default("todo")
