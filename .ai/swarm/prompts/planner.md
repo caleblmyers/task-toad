@@ -30,7 +30,7 @@ The task queue is at `.ai/swarm/tasks.json`. Read it to see the current swarm co
 
 ## Output Format
 
-Update `tasks.json` by reading it, adding your tasks to the `tasks` array, updating `config.groups` with the groups you planned, and writing it back. Use `node -e` for JSON manipulation.
+Update `tasks.json` by reading it, adding your tasks to the `tasks` array, updating `config.groups` with the groups you planned, and writing it back. Write the full updated JSON using the Write tool (or `node -e` if needed). Prefer a single write over multiple small updates.
 
 ## Rules
 

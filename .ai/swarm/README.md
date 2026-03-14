@@ -92,7 +92,7 @@ pending -> in_progress -> completed -> review -> merged
 - **in_progress**: worker is actively implementing
 - **completed**: worker finished, awaiting review
 - **review**: reviewer is checking the work
-- **merged**: PR merged into main
+- **merged**: squash-merged into main locally
 - **blocked**: worker hit an issue (see `reviewNotes`)
 
 ## Conflict Management
@@ -112,7 +112,38 @@ Tasks are organized into groups (A-L) in `.claude-knowledge/todos.md`. Each grou
 | `apps/api/prisma/schema.prisma` | B, C, F, G, H, I |
 | `apps/web/src/hooks/useProjectData.ts` | B, E, F |
 
-## Monitoring & Troubleshooting
+## Helper Scripts
+
+### Task status updates
+
+```bash
+# Claim a task
+bash scripts/swarm/task-update.sh task-001 in_progress --startedAt
+
+# Mark complete
+bash scripts/swarm/task-update.sh task-001 completed --completedAt
+
+# Mark merged
+bash scripts/swarm/task-update.sh task-001 merged --reviewedAt
+
+# Send back for fixes
+bash scripts/swarm/task-update.sh task-001 in_progress --reviewNotes="typecheck fails in auth.ts"
+
+# Mark blocked
+bash scripts/swarm/task-update.sh task-001 blocked --reviewNotes="need file not in list"
+```
+
+### Merge a worker branch
+
+```bash
+# Merge with validation (typecheck)
+bash scripts/swarm/merge-worker.sh swarm/worker-1 --validate
+
+# Merge without validation
+bash scripts/swarm/merge-worker.sh swarm/worker-1
+```
+
+This squash-merges the worker branch into main locally. Run from any directory.
 
 ### View task statuses
 
@@ -120,40 +151,24 @@ Tasks are organized into groups (A-L) in `.claude-knowledge/todos.md`. Each grou
 bash scripts/swarm/status.sh
 ```
 
-### Manually edit tasks.json
-
-The task queue is plain JSON. You can edit it directly:
-
-```bash
-# Reassign a task
-node -e "
-const fs = require('fs');
-const f = '.ai/swarm/tasks.json';
-const d = JSON.parse(fs.readFileSync(f, 'utf8'));
-d.tasks.find(t => t.id === 'task-003').assignee = 'worker-2';
-fs.writeFileSync(f, JSON.stringify(d, null, 2) + '\n');
-"
-```
+## Monitoring & Troubleshooting
 
 ### Worker is stuck
 
 1. Check tasks.json for the task status and any `reviewNotes`
-2. Set the task to `blocked` with a note if needed
+2. Set the task to `blocked`: `bash scripts/swarm/task-update.sh task-XXX blocked --reviewNotes="issue"`
 3. Reassign to a different worker if necessary
 
 ### Add more tasks mid-swarm
 
 Have the planner append new tasks to tasks.json. Use the next sequential task ID.
 
-### Worker needs to rebase after a merge
+## Design Notes
 
-```bash
-cd ~/projects/task-toad-worker-N
-git fetch origin main
-git rebase origin/main
-```
-
-The reviewer will add `reviewNotes` to pending tasks when a rebase is needed.
+- **No remote pushes from workers/reviewer** — only the user pushes from main when ready
+- **Workers loop until done** — workers auto-rebase before each task, self-fix on review feedback, and loop until all their tasks are `merged`
+- **Local merges** — the reviewer squash-merges worker branches into main locally (no PRs)
+- **Helper scripts minimize approvals** — `task-update.sh` and `merge-worker.sh` replace inline `node -e` and cross-directory `git` commands
 
 ## Limitations
 
@@ -161,4 +176,3 @@ The reviewer will add `reviewNotes` to pending tasks when a rebase is needed.
 - **File-based coordination without locking** — works because agents are slow (minutes between writes) and each only modifies its own task status fields
 - **Workers must not touch files outside their task's `files` array** — enforced by convention
 - **One swarm at a time** — single tasks.json file
-- **No automatic rebase** — workers must manually rebase when main moves forward

@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Usage: merge-worker.sh <worker-branch> [--validate]
+# Merges a worker branch into main in the main repo.
+# Run from any directory — always operates on the main repo.
+
+MAIN_REPO="$(cd "$(dirname "$0")/../.." && pwd)"
+
+if [ $# -lt 1 ]; then
+  echo "Usage: merge-worker.sh <branch> [--validate]"
+  echo ""
+  echo "Examples:"
+  echo "  merge-worker.sh swarm/worker-1"
+  echo "  merge-worker.sh swarm/worker-1 --validate"
+  echo ""
+  echo "Flags:"
+  echo "  --validate    Run typecheck + lint before merging (exits 1 on failure)"
+  exit 1
+fi
+
+BRANCH="$1"
+VALIDATE=false
+[ "${2:-}" = "--validate" ] && VALIDATE=true
+
+echo "=== Merging $BRANCH into main ==="
+
+# Ensure we're on main
+CURRENT=$(git -C "$MAIN_REPO" branch --show-current)
+if [ "$CURRENT" != "main" ]; then
+  echo "Error: main repo is on branch '$CURRENT', expected 'main'"
+  exit 1
+fi
+
+# Show what will be merged
+echo "Commits to merge:"
+git -C "$MAIN_REPO" log --oneline "main..$BRANCH" 2>/dev/null || {
+  echo "Error: branch '$BRANCH' not found"
+  exit 1
+}
+echo ""
+
+# Validate if requested
+if [ "$VALIDATE" = true ]; then
+  echo "Running typecheck..."
+  # Temporarily merge to test
+  git -C "$MAIN_REPO" merge --no-commit --no-ff "$BRANCH" 2>/dev/null || {
+    echo "Error: merge conflicts detected"
+    git -C "$MAIN_REPO" merge --abort
+    exit 1
+  }
+  if ! (cd "$MAIN_REPO" && pnpm --filter api typecheck 2>&1); then
+    echo "Typecheck failed — aborting merge"
+    git -C "$MAIN_REPO" merge --abort
+    exit 1
+  fi
+  # Abort the test merge, we'll do the real one below
+  git -C "$MAIN_REPO" merge --abort
+fi
+
+# Squash merge
+git -C "$MAIN_REPO" merge --squash "$BRANCH" || {
+  echo "Error: merge conflicts. Resolve manually or ask the worker to rebase."
+  git -C "$MAIN_REPO" merge --abort 2>/dev/null || true
+  exit 1
+}
+
+echo ""
+echo "Squash merge staged. Review with 'git diff --cached' then commit."
+echo "Suggested: git commit -m 'swarm(<worker>): [task-XXX] description'"

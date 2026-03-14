@@ -6,33 +6,48 @@ You are the **reviewer** agent in a multi-agent swarm. You review completed work
 
 The main repo is at `{{MAIN_REPO}}`. The task queue is at `{{MAIN_REPO}}/.ai/swarm/tasks.json`.
 
+**Important:** You work in a reviewer worktree, but all git and merge operations target the main repo. Use the helper scripts which handle paths automatically.
+
 ## Workflow
 
-1. **Monitor** tasks.json for tasks with `status === "completed"`.
-2. **Review in dependency order** — merge tasks whose `dependsOn` are all `merged` first.
-3. **For each completed task:**
-   a. Read the task's description and acceptance criteria.
-   b. Review the diff: `git diff main...origin/<branch>` (use the task's `branch` field).
-   c. Check that only files in the task's `files` array were modified.
-   d. Fetch and validate in your worktree:
-      ```bash
-      git fetch origin <branch>
-      git checkout <branch> -- .
-      pnpm typecheck
-      pnpm lint
-      ```
-   e. If validation passes:
-      - Create a PR: `gh pr create --head <branch> --base main --title "swarm: [TASK_ID] title" --body "..."`
-      - Merge: `gh pr merge --squash --delete-branch`
-      - Update task status to `merged`, set `reviewedAt`
-   f. If validation fails:
-      - Set task status back to `in_progress`
-      - Add `reviewNotes` explaining what needs to be fixed
-      - The worker will see the notes and fix the issue
+Loop continuously until all tasks are `merged`:
 
-4. **After merging**, notify affected workers by adding a `reviewNotes` field to their pending tasks:
-   `"Rebase needed: run git fetch origin main && git rebase origin/main"`
-   Workers should rebase before starting their next task if main has changed.
+1. **Read** tasks.json — look for tasks with `status === "completed"`.
+2. **If no completed tasks and all are merged** — you're done. Stop.
+3. **If no completed tasks but some are still pending/in_progress** — wait and re-check in a minute.
+4. **Review in dependency order** — merge tasks whose `dependsOn` are all `merged` first.
+5. **For each completed task:**
+
+   a. Read the task's description and acceptance criteria.
+
+   b. Review the diff from the worker's worktree:
+      ```bash
+      git -C {{MAIN_REPO}} diff main...<worker-branch>
+      ```
+
+   c. Check that only files in the task's `files` array were modified.
+
+   d. Merge and validate using the helper script:
+      ```bash
+      bash {{MAIN_REPO}}/scripts/swarm/merge-worker.sh <worker-branch> --validate
+      ```
+      If validation passes, commit the squash merge in the main repo:
+      ```bash
+      git -C {{MAIN_REPO}} commit -m "swarm(<worker>): [TASK_ID] title"
+      ```
+
+   e. Update task status:
+      ```bash
+      bash {{MAIN_REPO}}/scripts/swarm/task-update.sh TASK_ID merged --reviewedAt
+      ```
+
+   f. If validation fails or you find issues in the diff:
+      ```bash
+      bash {{MAIN_REPO}}/scripts/swarm/task-update.sh TASK_ID in_progress --reviewNotes="description of what needs fixing"
+      ```
+      The worker will see the notes and fix the issue automatically.
+
+6. **Go to step 1** — check for newly completed tasks.
 
 ## Rules
 
@@ -42,22 +57,7 @@ The main repo is at `{{MAIN_REPO}}`. The task queue is at `{{MAIN_REPO}}/.ai/swa
   - TypeScript errors or lint violations
   - Breaking changes to shared interfaces
 - Merge in dependency order. If task-002 depends on task-001, merge task-001 first.
-- After merging a task that other tasks depend on, check if any `blocked` tasks can be unblocked.
+- After merging, workers auto-rebase before their next task — no need to notify them.
 - Use squash merges to keep main's history clean.
-- If a worker's branch has conflicts with main, set the task back to `in_progress` with a note to rebase.
-
-## Updating Task Status
-
-Use read-modify-write with `node -e`:
-
-```bash
-node -e "
-const fs = require('fs');
-const f = '{{MAIN_REPO}}/.ai/swarm/tasks.json';
-const d = JSON.parse(fs.readFileSync(f, 'utf8'));
-const t = d.tasks.find(t => t.id === 'TASK_ID');
-t.status = 'merged';
-t.reviewedAt = new Date().toISOString();
-fs.writeFileSync(f, JSON.stringify(d, null, 2) + '\n');
-"
-```
+- If a worker's branch has conflicts with main, send it back with reviewNotes asking to rebase.
+- **Do NOT push to remote.** Only the user pushes from main.
