@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "tasks" ADD COLUMN "task_type" TEXT NOT NULL DEFAULT 'task';

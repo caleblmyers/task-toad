@@ -53,6 +53,7 @@ export const schema = createSchema<Context>({
       priority: String!
       dependsOn: String
       status: String!
+      taskType: String!
       projectId: ID!
       parentTaskId: ID
       createdAt: String!
@@ -67,6 +68,14 @@ export const schema = createSchema<Context>({
       githubIssueUrl: String
       pullRequests: [TaskPullRequest!]!
       commits: [TaskCommit!]!
+      children: [Task!]!
+      progress: TaskProgress
+    }
+
+    type TaskProgress {
+      total: Int!
+      completed: Int!
+      percentage: Float!
     }
 
     type TaskConnection {
@@ -368,6 +377,7 @@ export const schema = createSchema<Context>({
       projects(includeArchived: Boolean): [Project!]!
       project(projectId: ID!): Project
       tasks(projectId: ID!, parentTaskId: ID, limit: Int, offset: Int): TaskConnection!
+      epics(projectId: ID!): [Task!]!
       sprints(projectId: ID!): [Sprint!]!
       orgUsers: [OrgUser!]!
       orgInvites: [OrgInvite!]!
@@ -407,8 +417,9 @@ export const schema = createSchema<Context>({
       createProject(name: String!): Project!
       updateProject(projectId: ID!, name: String, description: String, statuses: String): Project!
       archiveProject(projectId: ID!, archived: Boolean!): Project!
-      createTask(projectId: ID!, title: String!, status: String): Task!
-      updateTask(taskId: ID!, title: String, status: String, description: String, instructions: String, dependsOn: String, sprintId: ID, sprintColumn: String, assigneeId: ID, dueDate: String, position: Float, archived: Boolean, storyPoints: Int): Task!
+      createTask(projectId: ID!, title: String!, status: String, taskType: String): Task!
+      updateTask(taskId: ID!, title: String, status: String, description: String, instructions: String, dependsOn: String, sprintId: ID, sprintColumn: String, assigneeId: ID, dueDate: String, position: Float, archived: Boolean, storyPoints: Int, taskType: String): Task!
+      createSubtask(parentTaskId: ID!, title: String!, taskType: String): Task!
       bulkUpdateTasks(taskIds: [ID!]!, status: String, assigneeId: ID, sprintId: ID, archived: Boolean): [Task!]!
 
       createComment(taskId: ID!, content: String!, parentCommentId: ID): Comment!

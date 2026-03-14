@@ -74,6 +74,14 @@ export const taskQueries = {
       createdAt: a.createdAt.toISOString(),
     }));
   },
+
+  epics: async (_parent: unknown, args: { projectId: string }, context: Context) => {
+    await requireProjectAccess(context, args.projectId);
+    return context.prisma.task.findMany({
+      where: { projectId: args.projectId, taskType: 'epic', parentTaskId: null, archived: false },
+      orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+    });
+  },
 };
 
 // ── Task mutations ──
@@ -81,7 +89,7 @@ export const taskQueries = {
 export const taskMutations = {
   createTask: async (
     _parent: unknown,
-    args: { projectId: string; title: string; status?: string },
+    args: { projectId: string; title: string; status?: string; taskType?: string },
     context: Context
   ) => {
     const user = requireOrg(context);
@@ -96,6 +104,11 @@ export const taskMutations = {
     if (!validStatuses.includes(status)) {
       throw new ValidationError(`Invalid status "${status}". Valid: ${validStatuses.join(', ')}`);
     }
+    const validTaskTypes = ['epic', 'story', 'task', 'subtask'];
+    const taskType = args.taskType ?? 'task';
+    if (!validTaskTypes.includes(taskType)) {
+      throw new ValidationError(`Invalid taskType "${taskType}". Valid: ${validTaskTypes.join(', ')}`);
+    }
     const maxResult = await context.prisma.task.aggregate({
       where: { projectId: args.projectId, sprintId: null, parentTaskId: null },
       _max: { position: true },
@@ -105,6 +118,7 @@ export const taskMutations = {
       data: {
         title: args.title,
         status,
+        taskType,
         projectId: args.projectId,
         orgId: user.orgId,
         position: nextPosition,
@@ -119,7 +133,7 @@ export const taskMutations = {
 
   updateTask: async (
     _parent: unknown,
-    args: { taskId: string; title?: string; status?: string; description?: string; instructions?: string; dependsOn?: string | null; sprintId?: string | null; sprintColumn?: string | null; assigneeId?: string | null; dueDate?: string | null; position?: number | null; archived?: boolean; storyPoints?: number | null },
+    args: { taskId: string; title?: string; status?: string; description?: string; instructions?: string; dependsOn?: string | null; sprintId?: string | null; sprintColumn?: string | null; assigneeId?: string | null; dueDate?: string | null; position?: number | null; archived?: boolean; storyPoints?: number | null; taskType?: string },
     context: Context
   ) => {
     const user = requireOrg(context);
@@ -148,6 +162,7 @@ export const taskMutations = {
         ...(args.position !== undefined ? { position: args.position } : {}),
         ...(args.archived !== undefined ? { archived: args.archived } : {}),
         ...(args.storyPoints !== undefined ? { storyPoints: args.storyPoints } : {}),
+        ...(args.taskType !== undefined ? { taskType: args.taskType } : {}),
       },
     });
     // Log each changed field
@@ -229,6 +244,48 @@ export const taskMutations = {
       });
     }
     return updated;
+  },
+
+  createSubtask: async (
+    _parent: unknown,
+    args: { parentTaskId: string; title: string; taskType?: string },
+    context: Context
+  ) => {
+    const user = requireOrg(context);
+    const parent = await context.prisma.task.findUnique({ where: { taskId: args.parentTaskId } });
+    if (!parent || parent.orgId !== user.orgId) {
+      throw new NotFoundError('Parent task not found');
+    }
+    // Auto-assign taskType based on parent
+    let taskType = args.taskType;
+    if (!taskType) {
+      if (parent.taskType === 'epic') taskType = 'story';
+      else taskType = 'subtask';
+    }
+    const validTaskTypes = ['epic', 'story', 'task', 'subtask'];
+    if (!validTaskTypes.includes(taskType)) {
+      throw new ValidationError(`Invalid taskType "${taskType}". Valid: ${validTaskTypes.join(', ')}`);
+    }
+    const maxResult = await context.prisma.task.aggregate({
+      where: { parentTaskId: args.parentTaskId },
+      _max: { position: true },
+    });
+    const nextPosition = (maxResult._max.position ?? 0) + 1.0;
+    const task = await context.prisma.task.create({
+      data: {
+        title: args.title,
+        taskType,
+        projectId: parent.projectId,
+        orgId: parent.orgId,
+        parentTaskId: args.parentTaskId,
+        position: nextPosition,
+      },
+    });
+    logActivity(context.prisma, {
+      orgId: user.orgId, projectId: parent.projectId, taskId: task.taskId, userId: user.userId,
+      action: 'task.created',
+    });
+    return task;
   },
 
   createComment: async (_parent: unknown, args: { taskId: string; content: string; parentCommentId?: string | null }, context: Context) => {
@@ -368,6 +425,23 @@ export const taskFieldResolvers = {
         orderBy: { createdAt: 'desc' },
         take: 10,
       });
+    },
+    children: async (parent: { taskId: string }, _args: unknown, context: Context) => {
+      return context.prisma.task.findMany({
+        where: { parentTaskId: parent.taskId, archived: false },
+        orderBy: { position: 'asc' },
+      });
+    },
+    progress: async (parent: { taskId: string; taskType: string }, _args: unknown, context: Context) => {
+      if (parent.taskType !== 'epic' && parent.taskType !== 'story') return null;
+      const children = await context.prisma.task.findMany({
+        where: { parentTaskId: parent.taskId, archived: false },
+        select: { status: true },
+      });
+      const total = children.length;
+      if (total === 0) return { total: 0, completed: 0, percentage: 0 };
+      const completed = children.filter((c: { status: string }) => c.status === 'done').length;
+      return { total, completed, percentage: Math.round((completed / total) * 100) };
     },
   },
 };

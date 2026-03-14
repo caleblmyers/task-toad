@@ -112,6 +112,7 @@ model Task {
   priority       String   @default("medium")
   dependsOn      String?  @map("depends_on")
   status         String   @default("todo")
+  taskType       String   @default("task") @map("task_type")
   sprintId       String?  @map("sprint_id")
   sprintColumn   String?  @map("sprint_column")
   assigneeId     String?  @map("assignee_id")
