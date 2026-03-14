@@ -4,6 +4,79 @@ Summaries of work completed each session. Most recent first.
 
 ---
 
+## 2026-03-13
+
+### Tier 1 & 2 Features (table stakes + standard)
+
+Implemented all Tier 1 and Tier 2 features from the PM gap analysis. 31 files changed, ~4,800 lines added.
+
+**Collaboration:**
+- Threaded comments on tasks with edit/delete
+- Activity feed (project-level and per-task)
+- @mentions with autocomplete dropdown
+
+**Views:**
+- Table view with inline editing (status, assignee, due date, sprint)
+- Calendar view (tasks plotted by due date, month navigation)
+- Project dashboard with stats, charts, and activity feed
+
+**Task management:**
+- Bulk actions bar (multi-select → update status/assignee/sprint/archive)
+- Custom statuses per project (add/remove from toolbar)
+- Labels/tags system (create, color-pick, assign to tasks, filter by label)
+- Markdown editor/renderer for task descriptions
+- Task archiving UI with "show archived" toggle
+
+**Reporting:**
+- Burndown/burnup chart (per-sprint, SVG-based)
+- Sprint velocity chart (completed tasks/hours across sprints)
+
+**Navigation:**
+- Global search modal (Cmd+K) — searches tasks and projects across org
+- Notification center in app header (bell icon, unread count, mark-read)
+
+**Backend:**
+- New Prisma models: Comment, Activity, Label, TaskLabel, Notification
+- New migration with all new tables and indexes
+- Activity logging utility, notification creation utility
+- 742 new lines in schema.ts (resolvers for comments, activities, labels, notifications, stats, search, bulk updates)
+
+**Todos reorganization:**
+- Converted from priority tiers to module-based groups (A–L) for parallel development
+- Removed all completed items
+
+### GitHub App Integration
+
+Full GitHub App backend + frontend linking UI. 26 files changed, ~2,000 lines added.
+
+**Backend (`apps/api/src/github/`):**
+- `githubAppAuth.ts` — JWT generation (RS256), installation token caching with 1-min-before-expiry refresh
+- `githubAppClient.ts` — GraphQL client for GitHub API
+- `githubRepositoryService.ts` — connect/disconnect repos, create repos, list installation repos (REST)
+- `githubCommitService.ts` — create branches, commit files via GitHub GraphQL
+- `githubPullRequestService.ts` — create PRs
+- `githubService.ts` — orchestration (create PR from task)
+- `githubWebhookHandler.ts` — handles installation created/deleted events
+- `githubTypes.ts` — shared interfaces
+- `githubLogger.ts` — structured logging
+
+**GraphQL:**
+- Types: `GitHubInstallation`, `GitHubRepoLink`, `GitHubPullRequest`, `GitHubRepo`
+- Queries: `githubInstallations`, `githubInstallationRepos`, `githubProjectRepo`
+- Mutations: `linkGitHubInstallation`, `connectGitHubRepo`, `disconnectGitHubRepo`, `createGitHubRepo`, `createPullRequestFromTask`
+- `githubRepositoryName`/`githubRepositoryOwner` fields on `Project` type
+
+**Frontend:**
+- `OrgSettings.tsx` — GitHub section showing installations with "Connected" badges, auto-links on callback redirect (`?installation_id=`), "Install GitHub App" button
+- `GitHubRepoModal.tsx` — two-state modal (connected: show repo + disconnect; not connected: installation dropdown → repo list with filter → connect)
+- `ProjectDetail.tsx` — GitHub icon button in toolbar showing `owner/repo` label, opens modal
+- `IconGitHub` component added to shared Icons
+
+**Prisma:**
+- `GitHubInstallation` model + GitHub fields on `Project` (repositoryId, name, owner, installationId, defaultBranch)
+
+---
+
 ## 2026-03-12 (Session 2)
 
 ### PM Platform Gap Analysis & Todo Overhaul
