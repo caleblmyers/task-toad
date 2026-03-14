@@ -119,7 +119,7 @@ export const taskMutations = {
 
   updateTask: async (
     _parent: unknown,
-    args: { taskId: string; title?: string; status?: string; description?: string; instructions?: string; dependsOn?: string | null; sprintId?: string | null; sprintColumn?: string | null; assigneeId?: string | null; dueDate?: string | null; position?: number | null; archived?: boolean },
+    args: { taskId: string; title?: string; status?: string; description?: string; instructions?: string; dependsOn?: string | null; sprintId?: string | null; sprintColumn?: string | null; assigneeId?: string | null; dueDate?: string | null; position?: number | null; archived?: boolean; storyPoints?: number | null },
     context: Context
   ) => {
     const user = requireOrg(context);
@@ -147,6 +147,7 @@ export const taskMutations = {
         ...(args.dueDate !== undefined ? { dueDate: args.dueDate } : {}),
         ...(args.position !== undefined ? { position: args.position } : {}),
         ...(args.archived !== undefined ? { archived: args.archived } : {}),
+        ...(args.storyPoints !== undefined ? { storyPoints: args.storyPoints } : {}),
       },
     });
     // Log each changed field

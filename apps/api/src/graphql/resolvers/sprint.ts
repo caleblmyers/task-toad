@@ -36,6 +36,8 @@ export const sprintQueries = {
         completedHours: doneTasks.reduce((s: number, t: { estimatedHours: number | null }) => s + (t.estimatedHours ?? 0), 0),
         totalTasks: tasks.length,
         totalHours: tasks.reduce((s: number, t: { estimatedHours: number | null }) => s + (t.estimatedHours ?? 0), 0),
+        pointsCompleted: doneTasks.reduce((s: number, t: { storyPoints: number | null }) => s + (t.storyPoints ?? 0), 0),
+        pointsTotal: tasks.reduce((s: number, t: { storyPoints: number | null }) => s + (t.storyPoints ?? 0), 0),
       });
     }
     return results;
@@ -109,7 +111,7 @@ export const sprintQueries = {
 // ── Sprint mutations ──
 
 export const sprintMutations = {
-  createSprint: async (_parent: unknown, args: { projectId: string; name: string; columns?: string | null; startDate?: string | null; endDate?: string | null }, context: Context) => {
+  createSprint: async (_parent: unknown, args: { projectId: string; name: string; goal?: string | null; columns?: string | null; startDate?: string | null; endDate?: string | null }, context: Context) => {
     const user = requireOrg(context);
     const project = await context.prisma.project.findUnique({ where: { projectId: args.projectId } });
     if (!project || project.orgId !== user.orgId) {
@@ -118,6 +120,7 @@ export const sprintMutations = {
     const sprint = await context.prisma.sprint.create({
       data: {
         name: args.name,
+        goal: args.goal ?? null,
         projectId: args.projectId,
         orgId: user.orgId,
         columns: args.columns ?? '["To Do","In Progress","In Review","Done"]',
@@ -132,7 +135,7 @@ export const sprintMutations = {
     return sprint;
   },
 
-  updateSprint: async (_parent: unknown, args: { sprintId: string; name?: string | null; columns?: string | null; isActive?: boolean | null; startDate?: string | null; endDate?: string | null }, context: Context) => {
+  updateSprint: async (_parent: unknown, args: { sprintId: string; name?: string | null; goal?: string | null; columns?: string | null; isActive?: boolean | null; startDate?: string | null; endDate?: string | null }, context: Context) => {
     const user = requireOrg(context);
     const sprint = await context.prisma.sprint.findUnique({ where: { sprintId: args.sprintId } });
     if (!sprint || sprint.orgId !== user.orgId) {
@@ -148,6 +151,7 @@ export const sprintMutations = {
       where: { sprintId: args.sprintId },
       data: {
         ...(args.name !== undefined && args.name !== null ? { name: args.name } : {}),
+        ...(args.goal !== undefined ? { goal: args.goal } : {}),
         ...(args.columns !== undefined && args.columns !== null ? { columns: args.columns } : {}),
         ...(args.isActive !== undefined && args.isActive !== null ? { isActive: args.isActive } : {}),
         ...(args.startDate !== undefined ? { startDate: args.startDate } : {}),

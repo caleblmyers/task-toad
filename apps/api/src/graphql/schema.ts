@@ -49,6 +49,7 @@ export const schema = createSchema<Context>({
       instructions: String
       suggestedTools: String
       estimatedHours: Float
+      storyPoints: Int
       priority: String!
       dependsOn: String
       status: String!
@@ -78,6 +79,7 @@ export const schema = createSchema<Context>({
       sprintId:  ID!
       projectId: ID!
       name:      String!
+      goal:      String
       isActive:  Boolean!
       columns:   String!
       startDate: String
@@ -223,6 +225,8 @@ export const schema = createSchema<Context>({
       completedHours: Float!
       totalTasks: Int!
       totalHours: Float!
+      pointsCompleted: Int!
+      pointsTotal: Int!
     }
 
     type BurndownDay {
@@ -404,7 +408,7 @@ export const schema = createSchema<Context>({
       updateProject(projectId: ID!, name: String, description: String, statuses: String): Project!
       archiveProject(projectId: ID!, archived: Boolean!): Project!
       createTask(projectId: ID!, title: String!, status: String): Task!
-      updateTask(taskId: ID!, title: String, status: String, description: String, instructions: String, dependsOn: String, sprintId: ID, sprintColumn: String, assigneeId: ID, dueDate: String, position: Float, archived: Boolean): Task!
+      updateTask(taskId: ID!, title: String, status: String, description: String, instructions: String, dependsOn: String, sprintId: ID, sprintColumn: String, assigneeId: ID, dueDate: String, position: Float, archived: Boolean, storyPoints: Int): Task!
       bulkUpdateTasks(taskIds: [ID!]!, status: String, assigneeId: ID, sprintId: ID, archived: Boolean): [Task!]!
 
       createComment(taskId: ID!, content: String!, parentCommentId: ID): Comment!
@@ -416,8 +420,8 @@ export const schema = createSchema<Context>({
       addTaskLabel(taskId: ID!, labelId: ID!): Task!
       removeTaskLabel(taskId: ID!, labelId: ID!): Task!
 
-      createSprint(projectId: ID!, name: String!, columns: String, startDate: String, endDate: String): Sprint!
-      updateSprint(sprintId: ID!, name: String, columns: String, isActive: Boolean, startDate: String, endDate: String): Sprint!
+      createSprint(projectId: ID!, name: String!, goal: String, columns: String, startDate: String, endDate: String): Sprint!
+      updateSprint(sprintId: ID!, name: String, goal: String, columns: String, isActive: Boolean, startDate: String, endDate: String): Sprint!
       deleteSprint(sprintId: ID!): Boolean!
       closeSprint(sprintId: ID!, incompleteTaskActions: [IncompleteTaskAction!]!): CloseSprintResult!
 
