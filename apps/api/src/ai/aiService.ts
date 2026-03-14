@@ -14,8 +14,9 @@ import {
   HealthAnalysisSchema,
   MeetingNotesExtractionSchema,
   CodeGenerationSchema,
+  GeneratedFileSchema,
 } from './aiTypes.js';
-import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration } from './aiTypes.js';
+import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile } from './aiTypes.js';
 import { FEATURE_CONFIG } from './aiConfig.js';
 import { callAI } from './aiClient.js';
 import { parseJSON } from './responseParser.js';
@@ -27,6 +28,7 @@ import {
   buildPlanSprintsPrompt,
   buildGenerateTaskInstructionsPrompt,
   buildGenerateCodePrompt,
+  buildRegenerateFilePrompt,
   buildStandupPrompt,
   buildSprintReportPrompt,
   buildHealthAnalysisPrompt,
@@ -236,6 +238,23 @@ export async function generateCode(
     projectName, projectDescription, existingFiles,
   });
   return callAndParse(apiKey, 'generateCode', p, CodeGenerationSchema);
+}
+
+export async function regenerateFile(
+  apiKey: string,
+  taskTitle: string,
+  taskDescription: string,
+  taskInstructions: string,
+  filePath: string,
+  originalContent: string,
+  projectName: string,
+  feedback?: string | null
+): Promise<GeneratedFile> {
+  const p = buildRegenerateFilePrompt({
+    taskTitle, taskDescription, taskInstructions,
+    filePath, originalContent, feedback, projectName,
+  });
+  return callAndParse(apiKey, 'regenerateFile', p, GeneratedFileSchema);
 }
 
 export async function generateCommitMessage(

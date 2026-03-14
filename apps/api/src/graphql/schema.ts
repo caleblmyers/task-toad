@@ -447,6 +447,7 @@ export const schema = createSchema<Context>({
       expandTask(taskId: ID!, context: String): [Task!]!
       generateTaskInstructions(taskId: ID!): Task!
       generateCodeFromTask(taskId: ID!): CodeGeneration!
+      regenerateCodeFile(taskId: ID!, filePath: String!, feedback: String): GeneratedFile!
       summarizeProject(projectId: ID!): String!
 
       markNotificationRead(notificationId: ID!): Notification!

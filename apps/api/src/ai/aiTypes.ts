@@ -140,7 +140,8 @@ export type AIFeature =
   | 'extractTasksFromNotes'
   | 'generateCode'
   | 'generateCommitMessage'
-  | 'enrichPRDescription';
+  | 'enrichPRDescription'
+  | 'regenerateFile';
 
 export interface AIUsage {
   inputTokens: number;

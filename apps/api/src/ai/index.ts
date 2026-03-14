@@ -9,6 +9,7 @@ export {
   planSprints,
   generateTaskInstructions,
   generateCode,
+  regenerateFile,
   generateStandupReport,
   generateSprintReport,
   analyzeProjectHealth,

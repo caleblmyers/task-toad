@@ -399,6 +399,39 @@ Keep total output concise — avoid generating files not directly needed for the
   };
 }
 
+export function buildRegenerateFilePrompt(data: {
+  taskTitle: string;
+  taskDescription: string;
+  taskInstructions: string;
+  filePath: string;
+  originalContent: string;
+  feedback?: string | null;
+  projectName: string;
+}): Prompt {
+  const feedbackLine = data.feedback
+    ? `\nFeedback: ${userInput('feedback', data.feedback)}`
+    : '';
+
+  return {
+    systemPrompt: SYSTEM_JSON,
+    userPrompt: `Regenerate ONLY the file at ${userInput('filePath', data.filePath)} for this task.
+
+Task: ${userInput('title', data.taskTitle)}
+Description: ${userInput('description', truncate(data.taskDescription, 400))}
+Instructions: ${userInput('instructions', truncate(data.taskInstructions, 800))}
+Project: ${userInput('project', data.projectName)}${feedbackLine}
+
+Original content (for reference):
+<user_input label="originalContent">
+${truncate(data.originalContent, 2000)}
+</user_input>
+
+Return JSON:
+{ "path": string, "content": string, "language": string, "description": string }
+Generate a complete, runnable file. Incorporate the feedback if provided.`,
+  };
+}
+
 export function buildCommitMessagePrompt(data: {
   taskTitle: string;
   taskDescription: string;

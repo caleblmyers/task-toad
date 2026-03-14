@@ -74,6 +74,7 @@ export interface ProjectData {
   handleSummarize: () => Promise<void>;
   handleGenerateInstructions: (task: Task) => Promise<void>;
   handleGenerateCode: (task: Task) => Promise<void>;
+  handleRegenerateFile: (taskId: string, filePath: string, feedback?: string) => Promise<{ path: string; content: string; language: string; description: string } | null>;
   handleCreatePR: (files: Array<{ path: string; content: string }>) => Promise<void>;
   handleAddTask: (e: React.FormEvent) => Promise<void>;
   startEditTitle: (task: Task) => void;
@@ -985,6 +986,27 @@ export function useProjectData(): ProjectData {
     }
   };
 
+  const handleRegenerateFile = async (taskId: string, filePath: string, feedback?: string): Promise<{ path: string; content: string; language: string; description: string } | null> => {
+    try {
+      const data = await gql<{ regenerateCodeFile: { path: string; content: string; language: string; description: string } }>(
+        `mutation($taskId: ID!, $filePath: String!, $feedback: String) { regenerateCodeFile(taskId: $taskId, filePath: $filePath, feedback: $feedback) { path content language description } }`,
+        { taskId, filePath, feedback: feedback || null }
+      );
+      const newFile = data.regenerateCodeFile;
+      setGeneratedCode((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          files: prev.files.map((f) => f.path === filePath ? newFile : f),
+        };
+      });
+      return newFile;
+    } catch (err: unknown) {
+      setErr((err as Error).message || 'Failed to regenerate file');
+      return null;
+    }
+  };
+
   const handleCreatePR = async (files: Array<{ path: string; content: string }>) => {
     if (!selectedTask || !projectId) return;
     setCreatingPR(true);
@@ -1095,7 +1117,7 @@ export function useProjectData(): ProjectData {
     handleAssignSprint, handleAssignUser, handleDueDateChange, handleReorderTask,
     handleActivateSprint, handleCreateSprint, handleSprintPlanCreated,
     handleSprintClosed, handleSprintUpdated, handleDeleteSprint,
-    openPreview, handleCommitPlan, handleSummarize, handleGenerateInstructions, handleGenerateCode, handleCreatePR,
+    openPreview, handleCommitPlan, handleSummarize, handleGenerateInstructions, handleGenerateCode, handleRegenerateFile, handleCreatePR,
     handleAddTask, startEditTitle, handleTitleSave, handleUpdateTask, switchView,
     handleUpdateProject, handleUpdateDependencies, handleBulkUpdate, handleArchiveTask, handleCreateSubtask,
     handleCreateLabel, handleDeleteLabel, handleAddTaskLabel, handleRemoveTaskLabel,
