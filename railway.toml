@@ -4,7 +4,7 @@ dockerfilePath = "Dockerfile"
 
 [deploy]
 startCommand = "sh -c 'cd apps/api && npx prisma migrate deploy && node dist/index.js'"
-healthcheckPath = "/graphql"
+healthcheckPath = "/"
 healthcheckTimeout = 30
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3

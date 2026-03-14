@@ -1,3 +1,5 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -80,9 +82,20 @@ const yoga = createYoga({ schema, context: buildContext, graphqlEndpoint: '/grap
 // graphql-yoga's server adapter is compatible with Express but requires a type cast
 app.use('/graphql', yoga as unknown as express.RequestHandler);
 
-app.use((_req, res) => {
-  res.status(404).json({ error: 'Not found' });
-});
+// In production, serve the web frontend as static files
+if (process.env.NODE_ENV === 'production') {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const webDist = path.resolve(__dirname, '../../web/dist');
+  app.use(express.static(webDist));
+  // SPA fallback — serve index.html for non-API routes
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(webDist, 'index.html'));
+  });
+} else {
+  app.use((_req, res) => {
+    res.status(404).json({ error: 'Not found' });
+  });
+}
 
 app.use(((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   logger.error({ err }, 'Unhandled express error');
