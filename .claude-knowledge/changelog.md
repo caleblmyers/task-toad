@@ -6,6 +6,40 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-14
 
+### Swarm: Code generation pipeline + AI UX (Groups A, B)
+
+Second swarm run — 3 workers, 5 tasks.
+
+**Group A — AI Code Generation Pipeline:**
+- Backend: `generateCode` in aiService + Zod schema + promptBuilder + aiConfig (8192 max tokens)
+- GraphQL: `generateCodeFromTask` mutation with `GeneratedFile` and `CodeGeneration` types
+- Frontend: `CodePreviewModal` with collapsible file previews, token cost display, "Create PR" button
+- Full flow working: Task → Generate Instructions → Generate Code → Preview → Create PR on GitHub
+
+**Group B — AI Generation UX:**
+- Graceful rejection handling — after 3 rejections, shows context input for better results
+- Iterative generation input — collapsible "Refine" section with refinement history
+
+### GitHub integration fixes
+
+- Fixed webhook signature verification: `express.json()` was parsing body before webhook route, breaking HMAC
+- Fixed PKCS#1 → PKCS#8 key conversion for `jose` (GitHub generates PKCS#1 keys)
+- Base64-encoded private key in `.env` (multi-line PEM not supported by Node env loading)
+- GitHub App transferred to `tasktoad` org
+- Popup-based GitHub App installation flow (replaces full-page navigation)
+
+### Swarm improvements
+
+- Added `task-update.sh` and `merge-worker.sh` helper scripts (reduces manual approvals)
+- Workers now loop until all tasks merged, auto-rebase, self-fix on review feedback
+- No remote pushes from workers/reviewer — only user pushes from main
+- Added cross-group blocker isolation rules to planner
+
+### Todos expansion
+
+- Added 25 new feature items across PM parity gaps and AI pipeline enhancements
+- New groups: M (User & Profile), N (Real-time), O (Data Portability)
+
 ### Swarm: Groups J, A, C (parallel development)
 
 First swarm run — 3 workers + reviewer, 10 tasks across 3 groups.

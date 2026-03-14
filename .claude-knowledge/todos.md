@@ -37,7 +37,7 @@ These shared files create blocking relationships between groups. The planner mus
 - [ ] GitHub repo → Project bootstrap — AI analyzes repo to generate project
 - [ ] Historical summary analysis — trend analysis over persisted reports _(depends on: Persisted reports)_
 - [ ] Sprint transition analyzer — AI analyzes backlog on sprint close
-- [ ] AI code generation from tasks — AI generates code files from task instructions, preview, then create PR via existing `createPullRequestFromTask` _(core pipeline: aiService + promptBuilder + Zod schema + GraphQL mutation + frontend preview UI)_
+- [x] AI code generation from tasks — AI generates code files from task instructions, preview, then create PR via existing `createPullRequestFromTask` _(core pipeline: aiService + promptBuilder + Zod schema + GraphQL mutation + frontend preview UI)_
 - [ ] Multi-file context injection — feed existing project files (components, types, routes) into code gen prompt for higher-quality output _(depends on: AI code generation, GitHub repo connection)_
 - [ ] Code review feedback loop — AI reads PR review comments and generates fix commits, closing the task → code → PR → review → fix cycle _(depends on: AI code generation)_
 - [ ] AI code gen cost estimation (pre-flight) — estimate token cost from task complexity + instructions length before generating, let user decide _(depends on: AI code generation)_
@@ -55,8 +55,8 @@ These shared files create blocking relationships between groups. The planner mus
 **Touches:** `apps/web/src/components/TaskPlanApprovalDialog.tsx`, `apps/web/src/hooks/useProjectData.ts` (AI handlers), `apps/api/src/ai/promptBuilder.ts`, `apps/web/src/components/CodePreviewModal.tsx`
 **Blocks / blocked by:** useProjectData shared with E, F
 
-- [ ] Graceful rejection handling — stop retrying when all options rejected
-- [ ] Iterative generation input — allow refinements during generation
+- [x] Graceful rejection handling — stop retrying when all options rejected
+- [x] Iterative generation input — allow refinements during generation
 - [ ] Regenerate single file — in code preview modal, regenerate one file instead of entire set to save tokens _(depends on: AI code generation)_
 - [ ] Code gen templates / style guides — per-project config injected into code gen prompt ("use React functional components", "follow this naming convention") _(overlaps with Project knowledge base)_
 

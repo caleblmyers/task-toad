@@ -34,6 +34,24 @@ Running log of errors encountered and their resolutions.
 
 ---
 
+### 2026-03-14 — GitHub App auth fails: PKCS#1 vs PKCS#8 key format
+**Context:** GitHub App integration — listing repos, creating PRs, all token-authenticated operations
+**Error:** `"pkcs8" must be PKCS#8 formatted string` or `error:1E08010C:DECODER routines::unsupported`
+**Cause:** GitHub generates PKCS#1 private keys (`BEGIN RSA PRIVATE KEY`) but `jose`'s `importPKCS8` only accepts PKCS#8 (`BEGIN PRIVATE KEY`). Additionally, multi-line PEM values in `.env` are not parsed correctly by Node/tsx — only the first line is read.
+**Fix:** (1) Added `toPKCS8()` using `crypto.createPrivateKey` to convert PKCS#1 → PKCS#8. (2) Base64-encode the private key in `.env` as a single line — `getPrivateKeyPem()` already decodes base64.
+**Files:** `apps/api/src/github/githubAppAuth.ts`, `apps/api/.env`
+
+---
+
+### 2026-03-14 — GitHub webhook signature verification always fails
+**Context:** GitHub App installed, ngrok tunnel running, webhooks being delivered but no installations appearing in DB
+**Error:** All webhooks return 401 (invalid signature). No `GitHubInstallation` records created.
+**Cause:** `express.json()` middleware was registered globally before the webhook route. By the time `handleGitHubWebhook` ran, `req.body` was a parsed JS object. `JSON.stringify(parsed)` doesn't reproduce the exact bytes GitHub signed (whitespace/key order differ), so HMAC always failed.
+**Fix:** Register the webhook route with `express.raw({ type: 'application/json' })` before the global `express.json()` middleware. Handler receives raw `Buffer`, converts to string for signature verification.
+**Files:** `apps/api/src/app.ts`, `apps/api/src/github/githubWebhookHandler.ts`
+
+---
+
 ### 2026-03-11 — "AI service error" on client
 **Context:** User triggered an AI mutation (generateProjectOptions, generateTaskPlan, etc.)
 **Error:** Client showed generic "AI service error" with no useful detail
