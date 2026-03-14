@@ -442,20 +442,31 @@ function PanelContent({
       {/* Dependencies */}
       <div className="mb-4">
         <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Dependencies</p>
-        <div className="flex flex-wrap gap-1.5 mb-1">
+        <div className="space-y-1 mb-1">
           {depIds.map((id) => {
             const depTask = allTasks.find((t) => t.taskId === id);
+            const dotColor = depTask
+              ? depTask.status === 'done' ? 'bg-green-500'
+              : depTask.status === 'in_progress' ? 'bg-blue-500'
+              : depTask.status === 'in_review' ? 'bg-amber-500'
+              : 'bg-slate-400'
+              : 'bg-slate-300';
             return (
-              <span key={id} className="inline-flex items-center gap-1 text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
-                {depTask?.title ?? id.slice(0, 8)}
+              <div key={id} className="flex items-center gap-2 group">
+                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor}`} />
+                {depTask ? (
+                  <span className="text-xs text-slate-700 truncate">{depTask.title}</span>
+                ) : (
+                  <span className="text-xs font-mono text-slate-400">{id.slice(0, 8)} (unknown)</span>
+                )}
                 <button
                   onClick={() => onUpdateDependencies(task.taskId, depIds.filter((d) => d !== id))}
-                  className="text-slate-400 hover:text-red-500 ml-0.5"
+                  className="text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ml-auto"
                   disabled={disabled}
                 >
-                  ✕
+                  <span className="text-xs">✕</span>
                 </button>
-              </span>
+              </div>
             );
           })}
           {depIds.length === 0 && !showDepPicker && (

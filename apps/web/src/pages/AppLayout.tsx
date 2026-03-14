@@ -58,6 +58,13 @@ export default function AppLayout() {
           <Link to="/app/projects" className="block px-3 py-2 rounded hover:bg-slate-700">
             Projects
           </Link>
+          <Link to="/app/search" className="flex items-center gap-2 px-3 py-2 rounded hover:bg-slate-700 text-sm">
+            <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <circle cx="7" cy="7" r="4.5" />
+              <path d="M10.5 10.5L14 14" strokeLinecap="round" />
+            </svg>
+            Search
+          </Link>
           {user?.role === 'org:admin' && (
             <Link to="/app/settings" className="block px-3 py-2 rounded hover:bg-slate-700">
               Settings
@@ -65,13 +72,13 @@ export default function AppLayout() {
           )}
           <button
             onClick={() => setShowSearch(true)}
-            className="flex items-center gap-2 px-3 py-2 rounded hover:bg-slate-700 w-full text-left text-sm"
+            className="flex items-center gap-2 px-3 py-2 rounded hover:bg-slate-700 w-full text-left text-sm text-slate-400"
           >
             <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
               <circle cx="7" cy="7" r="4.5" />
               <path d="M10.5 10.5L14 14" strokeLinecap="round" />
             </svg>
-            Search
+            Quick Search
             <kbd className="ml-auto text-[10px] text-slate-500 border border-slate-600 rounded px-1">&#8984;K</kbd>
           </button>
         </nav>

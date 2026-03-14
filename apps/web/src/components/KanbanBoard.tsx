@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import type { Task } from '../types';
+import DependencyBadge from './shared/DependencyBadge';
 
 const COLUMN_ACCENTS = [
   { accent: 'border-t-slate-400',  barColor: 'border-l-slate-300',  pillClass: 'bg-slate-100 text-slate-500' },
@@ -60,6 +61,16 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
                 colTasks.map((task) => {
                   const isSelected = selectedTask?.taskId === task.taskId;
                   const subtaskCount = subtasks[task.taskId]?.length ?? 0;
+                  const isBlocked = (() => {
+                    if (!task.dependsOn) return false;
+                    try {
+                      const ids = JSON.parse(task.dependsOn) as string[];
+                      return ids.some((id) => {
+                        const dep = tasks.find((t) => t.taskId === id);
+                        return !dep || dep.status !== 'done';
+                      });
+                    } catch { return false; }
+                  })();
                   return (
                     <div
                       key={task.taskId}
@@ -72,7 +83,8 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
                         style.barColor
                       }
                         cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow duration-150
-                        ${isSelected ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
+                        ${isSelected ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
+                        ${isBlocked ? 'opacity-75' : ''}`}
                     >
                       <div className="flex items-center gap-1.5 mb-0.5">
                         {task.taskType !== 'task' && (
@@ -100,6 +112,10 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
                           ))}
                         </div>
                       )}
+                      <DependencyBadge task={task} allTasks={tasks} onTaskClick={(id) => {
+                        const t = tasks.find((at) => at.taskId === id);
+                        if (t) onSelectTask(t);
+                      }} />
                       <div className="flex items-center justify-between mt-2">
                         <span className={`text-xs px-1.5 py-0.5 rounded ${style.pillClass}`}>{col}</span>
                         {subtaskCount > 0 && (

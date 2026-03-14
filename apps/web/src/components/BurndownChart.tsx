@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { gql } from '../api/client';
 
 interface BurndownDay {
   date: string;
@@ -15,149 +16,225 @@ interface BurndownData {
   endDate: string;
 }
 
-interface BurndownChartProps {
-  data: BurndownData;
+type BurndownChartProps =
+  | { sprintId: string; data?: never }
+  | { sprintId?: never; data: BurndownData };
+
+const QUERY = `query Burndown($sprintId: ID!) {
+  sprintBurndown(sprintId: $sprintId) {
+    days { date remaining completed added }
+    totalScope sprintName startDate endDate
+  }
+}`;
+
+const CHART_H = 250;
+const PAD = { top: 24, right: 16, bottom: 32, left: 40 };
+
+function fmtDate(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00');
+  return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
-export default function BurndownChart({ data }: BurndownChartProps) {
-  const [showBurnup, setShowBurnup] = useState(false);
+export default function BurndownChart(props: BurndownChartProps) {
+  const [fetched, setFetched] = useState<BurndownData | null>(null);
+  const [loading, setLoading] = useState(!props.data);
+  const [error, setError] = useState(false);
+  const [mode, setMode] = useState<'burndown' | 'burnup'>('burndown');
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(500);
 
-  if (data.days.length === 0) {
-    return <p className="text-xs text-slate-400 py-4 text-center">No data available</p>;
+  const sprintId = props.sprintId;
+
+  const fetchData = useCallback(() => {
+    if (!sprintId) return;
+    setLoading(true);
+    setError(false);
+    gql<{ sprintBurndown: BurndownData }>(QUERY, { sprintId })
+      .then((d) => setFetched(d.sprintBurndown))
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  }, [sprintId]);
+
+  useEffect(() => {
+    if (sprintId) fetchData();
+  }, [sprintId, fetchData]);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (w && w > 0) setWidth(w);
+    });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  const data = props.data ?? fetched;
+
+  if (loading) {
+    return (
+      <div ref={containerRef} className="w-full">
+        <div className="bg-slate-100 rounded-lg animate-pulse" style={{ height: CHART_H }} />
+      </div>
+    );
   }
 
-  const maxVal = Math.max(data.totalScope, ...data.days.map((d) => d.remaining), 1);
-  const chartWidth = Math.max(400, data.days.length * 30);
-  const chartHeight = 160;
-  const padLeft = 30;
-  const padRight = 10;
-  const plotWidth = chartWidth - padLeft - padRight;
-
-  const xScale = (i: number) => padLeft + (i / Math.max(data.days.length - 1, 1)) * plotWidth;
-  const yScale = (v: number) => chartHeight - (v / maxVal) * (chartHeight - 10);
-
-  // Ideal burndown line
-  const idealPoints = `${padLeft},${yScale(data.totalScope)} ${padLeft + plotWidth},${yScale(0)}`;
-
-  // Actual line
-  const actualPoints = data.days.map((d, i) =>
-    `${xScale(i)},${yScale(showBurnup ? d.completed : d.remaining)}`
-  ).join(' ');
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1 text-xs text-slate-500">
-            <span className="w-3 h-0.5 bg-slate-300 inline-block" /> Ideal
-          </span>
-          <span className="flex items-center gap-1 text-xs text-slate-500">
-            <span className={`w-3 h-0.5 inline-block ${showBurnup ? 'bg-green-500' : 'bg-blue-500'}`} />
-            {showBurnup ? 'Completed' : 'Remaining'}
-          </span>
-        </div>
+  if (error) {
+    return (
+      <div ref={containerRef} className="w-full flex flex-col items-center justify-center gap-2 py-8 text-sm text-slate-500">
+        <span>Unable to load chart</span>
         <button
-          onClick={() => setShowBurnup((v) => !v)}
-          className="text-xs text-slate-500 hover:text-slate-700 px-2 py-0.5 border border-slate-200 rounded"
+          type="button"
+          onClick={fetchData}
+          className="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 border border-blue-200 rounded"
         >
-          {showBurnup ? 'Burndown' : 'Burnup'}
+          Retry
         </button>
       </div>
-      <div className="overflow-x-auto">
-        <svg
-          width={chartWidth}
-          height={chartHeight + 30}
-          className="text-slate-600"
-          onMouseLeave={() => setHoveredIdx(null)}
-        >
-          {/* Y-axis labels */}
-          <text x={padLeft - 4} y={yScale(maxVal) + 4} textAnchor="end" className="text-[9px] fill-slate-400">{maxVal}</text>
-          <text x={padLeft - 4} y={yScale(0) + 4} textAnchor="end" className="text-[9px] fill-slate-400">0</text>
+    );
+  }
 
-          {/* Grid lines */}
-          {[0.25, 0.5, 0.75].map((pct) => (
-            <line
-              key={pct}
-              x1={padLeft} x2={chartWidth - padRight}
-              y1={yScale(maxVal * pct)} y2={yScale(maxVal * pct)}
-              stroke="#f1f5f9" strokeWidth="1"
-            />
-          ))}
+  if (!data || data.days.length === 0) {
+    return (
+      <div ref={containerRef} className="w-full text-center py-8 text-sm text-slate-400">
+        No burndown data available
+      </div>
+    );
+  }
 
-          {/* Ideal line */}
-          {!showBurnup && (
-            <polyline
-              points={idealPoints}
-              fill="none"
-              stroke="#cbd5e1"
-              strokeWidth="1.5"
-              strokeDasharray="4 4"
-            />
-          )}
+  const { days, totalScope, startDate, endDate } = data;
+  const innerW = width - PAD.left - PAD.right;
+  const innerH = CHART_H - PAD.top - PAD.bottom;
+  const maxY = Math.max(totalScope, ...days.map((d) => Math.max(d.remaining, d.completed)), 1);
 
-          {/* Actual line */}
-          <polyline
-            points={actualPoints}
-            fill="none"
-            stroke={showBurnup ? '#22c55e' : '#3b82f6'}
-            strokeWidth="2"
+  const xScale = (i: number) => PAD.left + (days.length > 1 ? (i / (days.length - 1)) * innerW : innerW / 2);
+  const yScale = (v: number) => PAD.top + innerH - (maxY > 0 ? (v / maxY) * innerH : 0);
+
+  const isBurnup = mode === 'burnup';
+
+  // Ideal line
+  const idealStart = isBurnup ? 0 : totalScope;
+  const idealEnd = isBurnup ? totalScope : 0;
+  const idealLine = `M${PAD.left},${yScale(idealStart)} L${PAD.left + innerW},${yScale(idealEnd)}`;
+
+  // Actual line
+  const points = days.map((d, i) => ({
+    x: xScale(i),
+    y: yScale(isBurnup ? d.completed : d.remaining),
+    value: isBurnup ? d.completed : d.remaining,
+    date: d.date,
+  }));
+  const actualLine = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+
+  // X-axis labels — show ~6 evenly
+  const labelStep = Math.max(1, Math.floor(days.length / 6));
+
+  // Y-axis ticks
+  const yTickCount = 4;
+  const yTicks = Array.from({ length: yTickCount + 1 }, (_, i) => Math.round((maxY / yTickCount) * i));
+
+  return (
+    <div ref={containerRef} className="w-full">
+      <div className="flex items-center justify-between mb-2 px-1">
+        <span className="text-xs text-slate-500 font-medium">
+          {data.sprintName} ({fmtDate(startDate)} - {fmtDate(endDate)})
+        </span>
+        <div className="flex rounded-md border border-slate-200 text-xs overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setMode('burndown')}
+            className={`px-2.5 py-1 ${mode === 'burndown' ? 'bg-slate-700 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+          >
+            Burndown
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('burnup')}
+            className={`px-2.5 py-1 ${mode === 'burnup' ? 'bg-slate-700 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+          >
+            Burnup
+          </button>
+        </div>
+      </div>
+
+      <svg
+        width={width}
+        height={CHART_H}
+        className="select-none"
+        onMouseLeave={() => setHoveredIdx(null)}
+      >
+        {/* Grid lines */}
+        {yTicks.map((v) => (
+          <line key={v} x1={PAD.left} y1={yScale(v)} x2={PAD.left + innerW} y2={yScale(v)} stroke="#e2e8f0" strokeWidth={1} />
+        ))}
+
+        {/* Y-axis labels */}
+        {yTicks.map((v) => (
+          <text key={v} x={PAD.left - 6} y={yScale(v) + 4} textAnchor="end" className="fill-slate-400" fontSize={10}>
+            {v}
+          </text>
+        ))}
+
+        {/* X-axis labels */}
+        {days.map((d, i) => {
+          if (i % labelStep !== 0 && i !== days.length - 1) return null;
+          return (
+            <text key={d.date} x={xScale(i)} y={CHART_H - 8} textAnchor="middle" className="fill-slate-400" fontSize={10}>
+              {fmtDate(d.date)}
+            </text>
+          );
+        })}
+
+        {/* Ideal line */}
+        <path d={idealLine} fill="none" stroke="#cbd5e1" strokeWidth={1.5} strokeDasharray="6 4" />
+
+        {/* Actual line */}
+        <path d={actualLine} fill="none" stroke={isBurnup ? '#22c55e' : '#3b82f6'} strokeWidth={2} strokeLinejoin="round" />
+
+        {/* Data points + hover targets */}
+        {points.map((p, i) => (
+          <circle
+            key={p.date}
+            cx={p.x}
+            cy={p.y}
+            r={hoveredIdx === i ? 5 : 3}
+            fill={isBurnup ? '#22c55e' : '#3b82f6'}
+            stroke="white"
+            strokeWidth={1.5}
+            className="cursor-pointer"
+            onMouseEnter={() => setHoveredIdx(i)}
           />
+        ))}
 
-          {/* Data points */}
-          {data.days.map((d, i) => (
-            <circle
-              key={i}
-              cx={xScale(i)}
-              cy={yScale(showBurnup ? d.completed : d.remaining)}
-              r={hoveredIdx === i ? 4 : 2.5}
-              fill={showBurnup ? '#22c55e' : '#3b82f6'}
-              className="cursor-pointer"
-              onMouseEnter={() => setHoveredIdx(i)}
-            />
-          ))}
-
-          {/* X-axis date labels (every few days) */}
-          {data.days.map((d, i) => {
-            if (data.days.length <= 14 || i % Math.ceil(data.days.length / 7) === 0 || i === data.days.length - 1) {
-              return (
-                <text
-                  key={i}
-                  x={xScale(i)}
-                  y={chartHeight + 14}
-                  textAnchor="middle"
-                  className="text-[9px] fill-slate-400"
-                >
-                  {d.date.slice(5)}
-                </text>
-              );
-            }
-            return null;
-          })}
-
-          {/* Tooltip */}
-          {hoveredIdx !== null && (
+        {/* Tooltip */}
+        {hoveredIdx !== null && (() => {
+          const p = points[hoveredIdx];
+          const labelText = `${fmtDate(p.date)}: ${p.value}`;
+          const boxW = Math.max(70, labelText.length * 7);
+          const tx = Math.min(Math.max(p.x, PAD.left + boxW / 2), PAD.left + innerW - boxW / 2);
+          return (
             <g>
-              <rect
-                x={xScale(hoveredIdx) - 45}
-                y={yScale(showBurnup ? data.days[hoveredIdx].completed : data.days[hoveredIdx].remaining) - 30}
-                width={90}
-                height={22}
-                rx="4"
-                fill="white"
-                stroke="#e2e8f0"
-              />
-              <text
-                x={xScale(hoveredIdx)}
-                y={yScale(showBurnup ? data.days[hoveredIdx].completed : data.days[hoveredIdx].remaining) - 15}
-                textAnchor="middle"
-                className="text-[10px] fill-slate-700 font-medium"
-              >
-                {data.days[hoveredIdx].date}: {showBurnup ? data.days[hoveredIdx].completed : data.days[hoveredIdx].remaining}
+              <line x1={p.x} y1={PAD.top} x2={p.x} y2={PAD.top + innerH} stroke="#94a3b8" strokeWidth={1} strokeDasharray="3 3" />
+              <rect x={tx - boxW / 2} y={p.y - 28} width={boxW} height={20} rx={4} fill="#1e293b" opacity={0.9} />
+              <text x={tx} y={p.y - 14} textAnchor="middle" fill="white" fontSize={11} fontWeight={500}>
+                {labelText}
               </text>
             </g>
-          )}
-        </svg>
+          );
+        })()}
+      </svg>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 px-1 mt-1">
+        <span className="flex items-center gap-1 text-[10px] text-slate-400">
+          <span className="w-3 h-0.5 inline-block border-t border-dashed border-slate-300" /> Ideal
+        </span>
+        <span className="flex items-center gap-1 text-[10px] text-slate-400">
+          <span className={`w-3 h-0.5 inline-block ${isBurnup ? 'bg-green-500' : 'bg-blue-500'}`} />
+          {isBurnup ? 'Completed' : 'Remaining'}
+        </span>
       </div>
     </div>
   );

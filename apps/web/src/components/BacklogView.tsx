@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import type { Task, Sprint, OrgUser } from '../types';
 import SprintReportPanel from './SprintReportPanel';
+import BurndownChart from './BurndownChart';
+import DependencyBadge from './shared/DependencyBadge';
 
 const priorityStyles: Record<string, string> = {
   critical: 'bg-red-100 text-red-700',
@@ -42,10 +44,6 @@ function computeDropIndex(clientY: number, container: HTMLElement): number {
   return rows.length;
 }
 
-function parseDepsCount(raw?: string | null): number {
-  if (!raw) return 0;
-  try { return (JSON.parse(raw) as string[]).length; } catch { return 0; }
-}
 
 const taskTypeDot: Record<string, string> = {
   epic: 'bg-purple-500',
@@ -80,6 +78,7 @@ interface BacklogViewProps {
 function TaskRow({
   task,
   orgUsers,
+  allTasks,
   selectedTask,
   onSelectTask,
   onDragStart,
@@ -89,6 +88,7 @@ function TaskRow({
 }: {
   task: Task;
   orgUsers: OrgUser[];
+  allTasks: Task[];
   selectedTask: Task | null;
   onSelectTask: (task: Task) => void;
   onDragStart: (taskId: string) => void;
@@ -98,7 +98,6 @@ function TaskRow({
 }) {
   const isSelected = selectedTask?.taskId === task.taskId;
   const assignee = orgUsers.find((u) => u.userId === task.assigneeId);
-  const depCount = parseDepsCount(task.dependsOn);
 
   return (
     <div
@@ -133,11 +132,10 @@ function TaskRow({
       )}
       <span className={`flex-1 text-sm leading-snug ${task.taskType === 'epic' ? 'font-semibold text-slate-900' : 'text-slate-800'}`}>{task.title}</span>
       <div className="flex items-center gap-1.5 flex-shrink-0">
-        {depCount > 0 && (
-          <span className="text-xs text-slate-400" title={`${depCount} dependenc${depCount === 1 ? 'y' : 'ies'}`}>
-            🔗{depCount}
-          </span>
-        )}
+        <DependencyBadge task={task} allTasks={allTasks} onTaskClick={(id) => {
+          const t = allTasks.find((at) => at.taskId === id);
+          if (t) onSelectTask(t);
+        }} />
         {task.dueDate && (
           <span className={`text-xs px-1.5 py-0.5 rounded ${dueDateColor(task.dueDate)}`}>
             {task.dueDate}
@@ -219,6 +217,7 @@ export default function BacklogView({
   const showCheckboxes = selectedTaskIds.size > 0;
 
   const [sprintReportId, setSprintReportId] = useState<string | null>(null);
+  const [burndownSprintId, setBurndownSprintId] = useState<string | null>(null);
 
   // DnD state
   const draggedId = useRef<string | null>(null);
@@ -287,6 +286,7 @@ export default function BacklogView({
           <TaskRow
             task={task}
             orgUsers={orgUsers}
+            allTasks={tasks}
             selectedTask={selectedTask}
             onSelectTask={onSelectTask}
             onDragStart={handleDragStart}
@@ -391,6 +391,23 @@ export default function BacklogView({
                   )}
                 </div>
                 <div className="flex items-center gap-2">
+                  {sprint.startDate && sprint.endDate && (
+                    <button
+                      type="button"
+                      onClick={() => setBurndownSprintId(burndownSprintId === sprint.sprintId ? null : sprint.sprintId)}
+                      className={`text-xs px-2 py-1 border rounded ${
+                        burndownSprintId === sprint.sprintId
+                          ? 'text-blue-600 border-blue-300 bg-blue-50'
+                          : 'text-slate-400 hover:text-slate-600 border-slate-200 hover:bg-white'
+                      }`}
+                      title="Toggle burndown chart"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="inline-block">
+                        <path d="M2 14L14 2" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 2" opacity="0.4" />
+                        <polyline points="2,12 5,10 8,8 11,9 14,4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setSprintReportId(sprint.sprintId)}
@@ -441,6 +458,11 @@ export default function BacklogView({
                   )}
                 </div>
               </div>
+              {burndownSprintId === sprint.sprintId && (
+                <div className="px-4 py-3 border-b border-slate-200 bg-white">
+                  <BurndownChart sprintId={sprint.sprintId} />
+                </div>
+              )}
               <div
                 ref={(el) => { if (el) containerRefs.current.set(sprint.sprintId, el); }}
                 className="px-3 py-2 space-y-0 min-h-[2.5rem]"
