@@ -146,6 +146,12 @@ export const GENERATE_CODE_MUTATION = `mutation($taskId: ID!, $styleGuide: Strin
   }
 }`;
 
+export const GENERATE_CODE_FROM_SUBTASK_MUTATION = `mutation GenerateCodeFromSubtask($taskId: ID!, $subtaskId: ID!, $styleGuide: String) {
+  generateCodeFromSubtask(taskId: $taskId, subtaskId: $subtaskId, styleGuide: $styleGuide) {
+    files { path content language description } summary estimatedTokensUsed delegationHint
+  }
+}`;
+
 export const REGENERATE_FILE_MUTATION = `mutation($taskId: ID!, $filePath: String!, $feedback: String) {
   regenerateCodeFile(taskId: $taskId, filePath: $filePath, feedback: $feedback) { path content language description }
 }`;

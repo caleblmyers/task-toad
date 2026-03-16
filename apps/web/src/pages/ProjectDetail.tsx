@@ -942,6 +942,9 @@ export default function ProjectDetail() {
           onCreatePR={d.handleCreatePR}
           isCreatingPR={d.creatingPR}
           delegationHint={d.generatedCode?.delegationHint}
+          subtasks={d.selectedTask ? (d.subtasks[d.selectedTask.taskId] ?? []).map((st) => ({ taskId: st.taskId, title: st.title, description: st.description })) : undefined}
+          parentTaskId={d.selectedTask?.taskId}
+          onGenerateFromSubtask={d.handleGenerateCodeFromSubtask}
         />
       </Suspense>
 

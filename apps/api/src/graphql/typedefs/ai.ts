@@ -158,6 +158,7 @@ export const aiQueryFields = /* GraphQL */ `
 
 export const aiMutationFields = /* GraphQL */ `
   generateCodeFromTask(taskId: ID!, styleGuide: String): CodeGeneration!
+  generateCodeFromSubtask(taskId: ID!, subtaskId: ID!, styleGuide: String): CodeGeneration!
   regenerateCodeFile(taskId: ID!, filePath: String!, feedback: String): GeneratedFile!
   reviewPullRequest(taskId: ID!, prNumber: Int!): CodeReview!
   parseBugReport(projectId: ID!, bugReport: String!): Task!

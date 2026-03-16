@@ -11,6 +11,12 @@ interface GeneratedFile {
   description: string;
 }
 
+interface SubtaskItem {
+  taskId: string;
+  title: string;
+  description?: string | null;
+}
+
 interface CodePreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -23,6 +29,9 @@ interface CodePreviewModalProps {
   projectId?: string;
   hasRepo?: boolean;
   delegationHint?: string | null;
+  subtasks?: SubtaskItem[];
+  parentTaskId?: string;
+  onGenerateFromSubtask?: (taskId: string, subtaskId: string) => Promise<{ files: GeneratedFile[]; summary: string; estimatedTokensUsed: number } | null>;
 }
 
 const STYLE_GUIDE_KEY_PREFIX = 'tasktoad-style-guide-';
@@ -68,9 +77,15 @@ export default function CodePreviewModal({
   projectId,
   hasRepo,
   delegationHint,
+  subtasks,
+  parentTaskId,
+  onGenerateFromSubtask,
 }: CodePreviewModalProps) {
   const [expandedIndex, setExpandedIndex] = useState(0);
   const [regeneratingPath, setRegeneratingPath] = useState<string | null>(null);
+  const [subtaskFiles, setSubtaskFiles] = useState<Map<string, GeneratedFile[]>>(new Map());
+  const [generatingSubtaskId, setGeneratingSubtaskId] = useState<string | null>(null);
+  const [subtaskTokens, setSubtaskTokens] = useState(0);
   const [feedbackPath, setFeedbackPath] = useState<string | null>(null);
   const [feedbackText, setFeedbackText] = useState('');
   const [showStyleGuide, setShowStyleGuide] = useState(false);
@@ -85,6 +100,32 @@ export default function CodePreviewModal({
       setStyleGuideText(saved ?? '');
     }
   }, [isOpen, projectId]);
+
+  const isSubtaskMode = !!(subtasks && subtasks.length > 0 && onGenerateFromSubtask && parentTaskId);
+
+  const allSubtaskFiles = isSubtaskMode
+    ? Array.from(subtaskFiles.entries()).flatMap(([subtaskId, sf]) =>
+        sf.map((f) => ({ ...f, _subtaskId: subtaskId, _subtaskTitle: subtasks!.find((s) => s.taskId === subtaskId)?.title ?? '' }))
+      )
+    : [];
+
+  const handleGenerateSubtask = useCallback(async (subtaskId: string) => {
+    if (!onGenerateFromSubtask || !parentTaskId) return;
+    setGeneratingSubtaskId(subtaskId);
+    try {
+      const result = await onGenerateFromSubtask(parentTaskId, subtaskId);
+      if (result) {
+        setSubtaskFiles((prev) => {
+          const next = new Map(prev);
+          next.set(subtaskId, result.files);
+          return next;
+        });
+        setSubtaskTokens((prev) => prev + result.estimatedTokensUsed);
+      }
+    } finally {
+      setGeneratingSubtaskId(null);
+    }
+  }, [onGenerateFromSubtask, parentTaskId]);
 
   const fetchOriginalContent = useCallback(
     async (filePath: string) => {
@@ -125,7 +166,11 @@ export default function CodePreviewModal({
   };
 
   const handleCreatePR = () => {
-    onCreatePR(files.map(({ path, content }) => ({ path, content })));
+    if (isSubtaskMode && allSubtaskFiles.length > 0) {
+      onCreatePR(allSubtaskFiles.map(({ path, content }) => ({ path, content })));
+    } else {
+      onCreatePR(files.map(({ path, content }) => ({ path, content })));
+    }
   };
 
   const handleRegenerate = async (filePath: string) => {
@@ -224,7 +269,7 @@ export default function CodePreviewModal({
               </span>
             )}
             <span className="text-xs text-slate-400">
-              Tokens: {estimatedTokensUsed.toLocaleString()} · Cost: ~${(estimatedTokensUsed * 0.000005).toFixed(4)}
+              Tokens: {(isSubtaskMode ? subtaskTokens : estimatedTokensUsed).toLocaleString()} · Cost: ~${((isSubtaskMode ? subtaskTokens : estimatedTokensUsed) * 0.000005).toFixed(4)}
             </span>
           </div>
         </div>
@@ -240,10 +285,57 @@ export default function CodePreviewModal({
 
       {/* File list */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
-        {files.map((file, index) => {
+        {/* Subtask generation mode */}
+        {isSubtaskMode && (
+          <div className="border border-slate-200 rounded-lg overflow-hidden mb-4">
+            <div className="px-4 py-3 bg-blue-50 border-b border-slate-200">
+              <h3 className="text-sm font-medium text-slate-700">Generate by Subtask</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Generate code for each subtask individually for better-scoped output.</p>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {subtasks!.map((st) => {
+                const isGenerated = subtaskFiles.has(st.taskId);
+                const isGenerating = generatingSubtaskId === st.taskId;
+                const fileCount = subtaskFiles.get(st.taskId)?.length ?? 0;
+                return (
+                  <div key={st.taskId} className="flex items-center justify-between px-4 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <span className="text-sm text-slate-800 truncate block">{st.title}</span>
+                      {st.description && <span className="text-xs text-slate-500 truncate block">{st.description}</span>}
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                      {isGenerated && (
+                        <span className="text-xs text-green-600">{fileCount} file{fileCount !== 1 ? 's' : ''}</span>
+                      )}
+                      <Button
+                        variant={isGenerated ? 'secondary' : 'primary'}
+                        onClick={() => handleGenerateSubtask(st.taskId)}
+                        loading={isGenerating}
+                        disabled={generatingSubtaskId !== null}
+                        className="text-xs px-3 py-1 rounded"
+                      >
+                        {isGenerating ? 'Generating…' : isGenerated ? 'Regenerate' : 'Generate'}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {allSubtaskFiles.length > 0 && (
+              <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 text-xs text-slate-500">
+                {allSubtaskFiles.length} file{allSubtaskFiles.length !== 1 ? 's' : ''} total · {subtaskTokens.toLocaleString()} tokens
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Generated files — show subtask files in subtask mode, or regular files otherwise */}
+        {(isSubtaskMode ? allSubtaskFiles : files).map((file, index) => {
           const isRegenerating = regeneratingPath === file.path;
+          const subtaskTitle = '_subtaskTitle' in file ? (file as GeneratedFile & { _subtaskTitle: string })._subtaskTitle : null;
+          const fileKey = '_subtaskId' in file ? `${(file as GeneratedFile & { _subtaskId: string })._subtaskId}-${file.path}` : file.path;
           return (
-            <div key={file.path} className={`border border-slate-200 rounded-lg overflow-hidden ${isRegenerating ? 'opacity-60' : ''}`}>
+            <div key={fileKey} className={`border border-slate-200 rounded-lg overflow-hidden ${isRegenerating ? 'opacity-60' : ''}`}>
               <div className="flex items-center bg-slate-50">
                 <button
                   type="button"
@@ -255,6 +347,11 @@ export default function CodePreviewModal({
                     {file.language && (
                       <span className="text-xs bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded flex-shrink-0">
                         {file.language}
+                      </span>
+                    )}
+                    {subtaskTitle && (
+                      <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded flex-shrink-0 truncate max-w-[200px]">
+                        {subtaskTitle}
                       </span>
                     )}
                   </div>
@@ -382,7 +479,12 @@ export default function CodePreviewModal({
         <Button variant="secondary" onClick={onClose} disabled={isCreatingPR} className="rounded-lg">
           Cancel
         </Button>
-        <Button onClick={handleCreatePR} loading={isCreatingPR} className="rounded-lg bg-slate-700 hover:bg-slate-600">
+        <Button
+          onClick={handleCreatePR}
+          loading={isCreatingPR}
+          disabled={isSubtaskMode && allSubtaskFiles.length === 0}
+          className="rounded-lg bg-slate-700 hover:bg-slate-600"
+        >
           {isCreatingPR ? 'Creating PR…' : 'Create Pull Request'}
         </Button>
       </div>

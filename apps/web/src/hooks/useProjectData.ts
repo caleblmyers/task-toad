@@ -80,6 +80,7 @@ export interface ProjectData {
   handleSummarize: () => Promise<void>;
   handleGenerateInstructions: (task: Task) => Promise<void>;
   handleGenerateCode: (task: Task) => Promise<void>;
+  handleGenerateCodeFromSubtask: (taskId: string, subtaskId: string) => Promise<{ files: Array<{ path: string; content: string; language: string; description: string }>; summary: string; estimatedTokensUsed: number; delegationHint?: string | null } | null>;
   handleRegenerateFile: (taskId: string, filePath: string, feedback?: string) => Promise<{ path: string; content: string; language: string; description: string } | null>;
   handleCreatePR: (files: Array<{ path: string; content: string }>) => Promise<void>;
   handleAddTask: (e: React.FormEvent) => Promise<void>;
@@ -369,6 +370,7 @@ export function useProjectData(): ProjectData {
     handleSummarize: ai.handleSummarize,
     handleGenerateInstructions: ai.handleGenerateInstructions,
     handleGenerateCode: ai.handleGenerateCode,
+    handleGenerateCodeFromSubtask: ai.handleGenerateCodeFromSubtask,
     handleRegenerateFile: ai.handleRegenerateFile,
     handleCreatePR: ai.handleCreatePR,
     handleAddTask: taskCrud.handleAddTask,

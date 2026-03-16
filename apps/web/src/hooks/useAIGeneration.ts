@@ -2,7 +2,8 @@ import { useState, useCallback, useRef } from 'react';
 import { gql } from '../api/client';
 import {
   PREVIEW_TASK_PLAN_MUTATION, COMMIT_TASK_PLAN_MUTATION, SUMMARIZE_PROJECT_MUTATION,
-  GENERATE_INSTRUCTIONS_MUTATION, GENERATE_CODE_MUTATION, REGENERATE_FILE_MUTATION,
+  GENERATE_INSTRUCTIONS_MUTATION, GENERATE_CODE_MUTATION, GENERATE_CODE_FROM_SUBTASK_MUTATION,
+  REGENERATE_FILE_MUTATION,
   CREATE_PR_MUTATION, PARSE_BUG_REPORT_MUTATION, PREVIEW_PRD_MUTATION,
   COMMIT_PRD_MUTATION, BOOTSTRAP_REPO_MUTATION,
 } from '../api/queries';
@@ -171,6 +172,21 @@ export function useAIGeneration({
     }
   }, [projectId, setErr]);
 
+  const handleGenerateCodeFromSubtask = useCallback(async (taskId: string, subtaskId: string): Promise<GeneratedCode | null> => {
+    try {
+      const styleGuide = projectId ? localStorage.getItem(`tasktoad-style-guide-${projectId}`) : null;
+      const data = await gql<{ generateCodeFromSubtask: GeneratedCode }>(
+        GENERATE_CODE_FROM_SUBTASK_MUTATION, { taskId, subtaskId, styleGuide },
+      );
+      return data.generateCodeFromSubtask;
+    } catch (err: unknown) {
+      if ((err as Error).name !== 'AbortError') {
+        setErr((err as Error).message || 'Subtask code generation failed');
+      }
+      return null;
+    }
+  }, [projectId, setErr]);
+
   const handleRegenerateFile = useCallback(async (
     taskId: string, filePath: string, feedback?: string,
   ): Promise<{ path: string; content: string; language: string; description: string } | null> => {
@@ -238,7 +254,7 @@ export function useAIGeneration({
     generatedCode, creatingPR, isGenerating,
     abortRef,
     openPreview, handleCommitPlan, handleSummarize,
-    handleGenerateInstructions, handleGenerateCode,
+    handleGenerateInstructions, handleGenerateCode, handleGenerateCodeFromSubtask,
     handleRegenerateFile, handleCreatePR,
     handleParseBugReport, handlePreviewPRD, handleCommitPRD, handleBootstrapFromRepo,
     setPreviewTasks, setPreviewError, setSummary, setGeneratedCode,
