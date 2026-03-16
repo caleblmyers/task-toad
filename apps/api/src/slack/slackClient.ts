@@ -140,6 +140,109 @@ export function formatTaskEvent(event: string, data: Record<string, unknown>): S
   };
 }
 
+const STATUS_EMOJI: Record<string, string> = {
+  todo: '\u2b1c',
+  in_progress: '\ud83d\udfe6',
+  in_review: '\ud83d\udfe1',
+  done: '\u2705',
+};
+
+/**
+ * Format a list of tasks as a Block Kit message for /tasktoad list.
+ */
+export function formatTaskList(
+  tasks: Array<{ title: string; status: string; priority: string | null }>,
+  projectName: string
+): SlackMessage {
+  if (tasks.length === 0) {
+    return {
+      text: 'No tasks assigned to you.',
+      blocks: [
+        {
+          type: 'section',
+          text: { type: 'mrkdwn', text: 'No tasks found in this project.' },
+        },
+      ],
+    };
+  }
+
+  const lines = tasks.map((t) => {
+    const emoji = STATUS_EMOJI[t.status] ?? '\u2b1c';
+    const priority = t.priority ? ` [${t.priority}]` : '';
+    return `${emoji} ${t.title}${priority}`;
+  });
+
+  return {
+    text: `Tasks in ${projectName}`,
+    blocks: [
+      {
+        type: 'header',
+        text: { type: 'plain_text', text: `Tasks — ${projectName}`, emoji: true },
+      },
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text: lines.join('\n') },
+      },
+      {
+        type: 'context',
+        elements: [
+          { type: 'mrkdwn', text: `_Showing ${tasks.length} most recent tasks_` },
+        ],
+      },
+    ],
+  };
+}
+
+/**
+ * Format project status as a Block Kit message for /tasktoad status.
+ */
+export function formatProjectStatus(
+  tasks: Array<{ status: string }>,
+  projectName: string,
+  activeSprintName: string | null
+): SlackMessage {
+  const total = tasks.length;
+  const byStatus: Record<string, number> = {};
+  for (const t of tasks) {
+    byStatus[t.status] = (byStatus[t.status] ?? 0) + 1;
+  }
+
+  const statusLines = Object.entries(byStatus)
+    .map(([status, count]) => `${STATUS_EMOJI[status] ?? '\u2b1c'} *${status}:* ${count}`)
+    .join('\n');
+
+  const fields: Array<{ type: string; text: string }> = [
+    { type: 'mrkdwn', text: `*Total tasks:* ${total}` },
+  ];
+  if (activeSprintName) {
+    fields.push({ type: 'mrkdwn', text: `*Active sprint:* ${activeSprintName}` });
+  }
+
+  return {
+    text: `Project status: ${projectName}`,
+    blocks: [
+      {
+        type: 'header',
+        text: { type: 'plain_text', text: `Status — ${projectName}`, emoji: true },
+      },
+      {
+        type: 'section',
+        fields,
+      },
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text: statusLines || '_No tasks_' },
+      },
+      {
+        type: 'context',
+        elements: [
+          { type: 'mrkdwn', text: '_TaskToad project summary_' },
+        ],
+      },
+    ],
+  };
+}
+
 /**
  * Build a test message for verifying Slack integration.
  */

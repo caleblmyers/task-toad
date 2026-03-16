@@ -161,3 +161,17 @@ export const COMMIT_PRD_MUTATION = `mutation CommitPRD($projectId: ID!, $epics: 
 export const BOOTSTRAP_REPO_MUTATION = `mutation BootstrapFromRepo($projectId: ID!) {
   bootstrapProjectFromRepo(projectId: $projectId) { ${TASK_FIELDS} }
 }`;
+
+// ── Webhook Queries ──
+
+export const WEBHOOK_DELIVERIES_QUERY = `query WebhookDeliveries($endpointId: ID!, $limit: Int) {
+  webhookDeliveries(endpointId: $endpointId, limit: $limit) {
+    id endpointId event status statusCode attemptCount nextRetryAt createdAt completedAt
+  }
+}`;
+
+export const REPLAY_WEBHOOK_DELIVERY_MUTATION = `mutation ReplayWebhookDelivery($deliveryId: ID!) {
+  replayWebhookDelivery(deliveryId: $deliveryId) {
+    id endpointId event status statusCode attemptCount nextRetryAt createdAt completedAt
+  }
+}`;

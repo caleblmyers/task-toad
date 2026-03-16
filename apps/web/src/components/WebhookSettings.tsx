@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
+import { WEBHOOK_DELIVERIES_QUERY, REPLAY_WEBHOOK_DELIVERY_MUTATION } from '../api/queries';
 
 interface WebhookEndpoint {
   id: string;
@@ -12,6 +13,18 @@ interface WebhookEndpoint {
   createdAt: string;
 }
 
+interface WebhookDelivery {
+  id: string;
+  endpointId: string;
+  event: string;
+  status: string;
+  statusCode: number | null;
+  attemptCount: number;
+  nextRetryAt: string | null;
+  createdAt: string;
+  completedAt: string | null;
+}
+
 const SUPPORTED_EVENTS = [
   'task.created',
   'task.updated',
@@ -22,6 +35,13 @@ const SUPPORTED_EVENTS = [
 ];
 
 const WEBHOOKS_QUERY = `query { webhookEndpoints { id url events enabled description lastError lastFiredAt createdAt } }`;
+
+const STATUS_BADGE: Record<string, { bg: string; text: string }> = {
+  success: { bg: 'bg-green-100', text: 'text-green-700' },
+  retrying: { bg: 'bg-amber-100', text: 'text-amber-700' },
+  failed: { bg: 'bg-red-100', text: 'text-red-700' },
+  pending: { bg: 'bg-slate-100', text: 'text-slate-500' },
+};
 
 export default function WebhookSettings() {
   const [endpoints, setEndpoints] = useState<WebhookEndpoint[]>([]);
@@ -39,6 +59,12 @@ export default function WebhookSettings() {
   // Testing state
   const [testingId, setTestingId] = useState<string | null>(null);
 
+  // Delivery history state
+  const [expandedEndpoint, setExpandedEndpoint] = useState<string | null>(null);
+  const [deliveries, setDeliveries] = useState<WebhookDelivery[]>([]);
+  const [deliveriesLoading, setDeliveriesLoading] = useState(false);
+  const [replayingId, setReplayingId] = useState<string | null>(null);
+
   const fetchEndpoints = () => {
     setLoading(true);
     gql<{ webhookEndpoints: WebhookEndpoint[] }>(WEBHOOKS_QUERY)
@@ -50,6 +76,38 @@ export default function WebhookSettings() {
   useEffect(() => {
     fetchEndpoints();
   }, []);
+
+  const fetchDeliveries = (endpointId: string) => {
+    setDeliveriesLoading(true);
+    gql<{ webhookDeliveries: WebhookDelivery[] }>(WEBHOOK_DELIVERIES_QUERY, { endpointId, limit: 20 })
+      .then((data) => setDeliveries(data.webhookDeliveries))
+      .catch((e) => setErr(e instanceof Error ? e.message : 'Failed to load deliveries'))
+      .finally(() => setDeliveriesLoading(false));
+  };
+
+  const handleToggleDeliveries = (endpointId: string) => {
+    if (expandedEndpoint === endpointId) {
+      setExpandedEndpoint(null);
+      setDeliveries([]);
+    } else {
+      setExpandedEndpoint(endpointId);
+      fetchDeliveries(endpointId);
+    }
+  };
+
+  const handleReplay = async (deliveryId: string) => {
+    setReplayingId(deliveryId);
+    try {
+      const data = await gql<{ replayWebhookDelivery: WebhookDelivery }>(REPLAY_WEBHOOK_DELIVERY_MUTATION, { deliveryId });
+      setDeliveries((prev) =>
+        prev.map((d) => (d.id === deliveryId ? data.replayWebhookDelivery : d))
+      );
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Replay failed');
+    } finally {
+      setReplayingId(null);
+    }
+  };
 
   const handleToggleEvent = (event: string) => {
     setFormEvents((prev) =>
@@ -71,9 +129,6 @@ export default function WebhookSettings() {
         }`,
         { url: formUrl.trim(), events: formEvents, description: formDescription.trim() || null }
       );
-      // The secret comes back in the response — but we need to get it from a custom field
-      // Since GraphQL won't return `secret` in the type, we fetch it via a separate approach
-      // Actually, we include it in the mutation response by adding to the selection
       setCreatedSecret(null);
       setEndpoints((prev) => [data.createWebhookEndpoint, ...prev]);
       setFormUrl('');
@@ -136,10 +191,23 @@ export default function WebhookSettings() {
         { id }
       );
       setEndpoints((prev) => prev.filter((ep) => ep.id !== id));
+      if (expandedEndpoint === id) {
+        setExpandedEndpoint(null);
+        setDeliveries([]);
+      }
     } catch (error) {
       setErr(error instanceof Error ? error.message : 'Failed to delete webhook');
     }
   };
+
+  // Compute delivery summary stats for expanded endpoint
+  const deliverySummary = expandedEndpoint
+    ? {
+        success: deliveries.filter((d) => d.status === 'success').length,
+        failed: deliveries.filter((d) => d.status === 'failed').length,
+        lastDelivery: deliveries[0]?.createdAt ?? null,
+      }
+    : null;
 
   if (loading) {
     return <p className="text-sm text-slate-500">Loading webhooks…</p>;
@@ -181,6 +249,7 @@ export default function WebhookSettings() {
         <ul className="divide-y divide-slate-100">
           {endpoints.map((ep) => {
             const events = JSON.parse(ep.events) as string[];
+            const isExpanded = expandedEndpoint === ep.id;
             return (
               <li key={ep.id} className="py-3 space-y-2">
                 <div className="flex items-start justify-between gap-2">
@@ -200,6 +269,16 @@ export default function WebhookSettings() {
                       }`}
                     >
                       {ep.enabled ? 'Active' : 'Disabled'}
+                    </button>
+                    <button
+                      onClick={() => handleToggleDeliveries(ep.id)}
+                      className={`text-xs px-2 py-0.5 rounded ${
+                        isExpanded
+                          ? 'bg-blue-50 text-blue-700'
+                          : 'text-slate-600 hover:text-slate-800'
+                      }`}
+                    >
+                      Deliveries
                     </button>
                     <button
                       onClick={() => handleTest(ep.id)}
@@ -233,6 +312,68 @@ export default function WebhookSettings() {
                   <p className="text-xs text-slate-400">
                     Last fired: {new Date(ep.lastFiredAt).toLocaleString()}
                   </p>
+                )}
+
+                {/* Delivery history panel */}
+                {isExpanded && (
+                  <div className="mt-3 border border-slate-200 rounded p-3 space-y-3">
+                    {deliverySummary && (
+                      <div className="flex gap-4 text-xs text-slate-600">
+                        <span className="text-green-700">
+                          {deliverySummary.success} succeeded
+                        </span>
+                        <span className="text-red-700">
+                          {deliverySummary.failed} failed
+                        </span>
+                        {deliverySummary.lastDelivery && (
+                          <span>
+                            Last: {new Date(deliverySummary.lastDelivery).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {deliveriesLoading ? (
+                      <p className="text-xs text-slate-500">Loading deliveries…</p>
+                    ) : deliveries.length === 0 ? (
+                      <p className="text-xs text-slate-500">No deliveries yet.</p>
+                    ) : (
+                      <ul className="space-y-1.5">
+                        {deliveries.map((d) => {
+                          const badge = STATUS_BADGE[d.status] ?? STATUS_BADGE.pending;
+                          return (
+                            <li
+                              key={d.id}
+                              className="flex items-center gap-2 text-xs"
+                            >
+                              <span className={`px-1.5 py-0.5 rounded ${badge.bg} ${badge.text}`}>
+                                {d.status}
+                              </span>
+                              <span className="text-slate-700">{d.event}</span>
+                              {d.statusCode && (
+                                <span className="text-slate-400">{d.statusCode}</span>
+                              )}
+                              <span className="text-slate-400">
+                                ×{d.attemptCount}
+                              </span>
+                              <span className="text-slate-400 flex-1 text-right">
+                                {new Date(d.createdAt).toLocaleString()}
+                              </span>
+                              {d.status === 'failed' && (
+                                <button
+                                  onClick={() => handleReplay(d.id)}
+                                  disabled={replayingId === d.id}
+                                  className="text-blue-600 hover:text-blue-800 disabled:opacity-50"
+                                >
+                                  {replayingId === d.id ? 'Replaying…' : 'Replay'}
+                                </button>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
                 )}
               </li>
             );

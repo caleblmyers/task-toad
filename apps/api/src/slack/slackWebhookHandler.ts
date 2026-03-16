@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import type { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { createChildLogger } from '../utils/logger.js';
+import { formatTaskList, formatProjectStatus } from './slackClient.js';
 
 const log = createChildLogger('slack-commands');
 const prisma = new PrismaClient();
@@ -108,11 +109,79 @@ export async function handleSlackCommand(req: Request, res: Response): Promise<v
       log.error({ err }, 'Failed to create task from Slack command');
       res.json({ response_type: 'ephemeral', text: 'Failed to create task. Please try again.' });
     }
+  } else if (action === 'list') {
+    try {
+      const integration = await prisma.slackIntegration.findFirst({
+        where: { teamId: team_id, enabled: true },
+      });
+
+      if (!integration) {
+        res.json({ response_type: 'ephemeral', text: 'No TaskToad organization is linked to this Slack workspace.' });
+        return;
+      }
+
+      const project = await prisma.project.findFirst({
+        where: { orgId: integration.orgId, archived: false },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      if (!project) {
+        res.json({ response_type: 'ephemeral', text: 'No active projects found.' });
+        return;
+      }
+
+      const tasks = await prisma.task.findMany({
+        where: { projectId: project.projectId, parentTaskId: null, archived: false },
+        orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+        take: 10,
+      });
+
+      res.json(formatTaskList(tasks, project.name));
+    } catch (err) {
+      log.error({ err }, 'Failed to list tasks from Slack command');
+      res.json({ response_type: 'ephemeral', text: 'Failed to fetch tasks. Please try again.' });
+    }
+  } else if (action === 'status') {
+    try {
+      const integration = await prisma.slackIntegration.findFirst({
+        where: { teamId: team_id, enabled: true },
+      });
+
+      if (!integration) {
+        res.json({ response_type: 'ephemeral', text: 'No TaskToad organization is linked to this Slack workspace.' });
+        return;
+      }
+
+      const project = await prisma.project.findFirst({
+        where: { orgId: integration.orgId, archived: false },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      if (!project) {
+        res.json({ response_type: 'ephemeral', text: 'No active projects found.' });
+        return;
+      }
+
+      const tasks = await prisma.task.findMany({
+        where: { projectId: project.projectId, parentTaskId: null, archived: false },
+      });
+
+      const activeSprint = await prisma.sprint.findFirst({
+        where: { projectId: project.projectId, isActive: true },
+      });
+
+      res.json(formatProjectStatus(tasks, project.name, activeSprint?.name ?? null));
+    } catch (err) {
+      log.error({ err }, 'Failed to get project status from Slack command');
+      res.json({ response_type: 'ephemeral', text: 'Failed to fetch project status. Please try again.' });
+    }
   } else if (action === 'help' || !action) {
     res.json({
       response_type: 'ephemeral',
       text: '*TaskToad Slash Commands*\n' +
         '`/tasktoad create <title>` — Create a new task\n' +
+        '`/tasktoad list` — Show your recent tasks\n' +
+        '`/tasktoad status` — Show project summary\n' +
         '`/tasktoad help` — Show this help message',
     });
   } else {
