@@ -420,10 +420,11 @@ Return JSON:
   "estimatedTokensUsed": number,
   "delegationHint": string | null
 }
-Generate all files needed for the task. Each file should be complete and runnable.
+Generate 1–4 files maximum. Each file should be complete and runnable.
 Use appropriate file paths relative to the project root.
-Prefer small, focused files over large monolithic ones.
-If the task is too large to implement fully within a reasonable number of files, generate the most critical files and set "delegationHint" to a short message suggesting how the remaining work could be split into new tasks (e.g. "Consider creating separate tasks for the test suite and API documentation"). If you can cover everything, omit "delegationHint".`,
+Keep each file under 150 lines — split larger implementations across files.
+Focus on the core implementation. Omit tests, documentation, and config files unless they ARE the task.
+If the task is too large, generate the most critical files and set "delegationHint" to suggest how remaining work could be split (e.g. "Consider separate tasks for tests and docs"). Otherwise omit "delegationHint".`,
   };
 }
 

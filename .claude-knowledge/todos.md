@@ -67,6 +67,7 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 **Touches:** `resolvers/ai.ts`, `apps/web/src/components/`
 
 - [ ] AI auto-review trigger — auto-trigger review when task moves to `in_review` status (currently manual button only)
+- [ ] Subtask-level code generation — generate code per subtask instead of parent task to keep output within token limits; iterate in frontend (CodePreviewModal) or batch via backend
 - [ ] API docs operation descriptions — extract descriptions from SDL comments for each query/mutation (currently shows signature only)
 
 ### D1: Deployment & Observability (Medium Priority)

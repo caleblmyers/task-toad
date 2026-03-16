@@ -156,7 +156,7 @@ app.use(compression());
 app.use(express.json({ limit: '1mb' }));
 
 // SSE endpoint for real-time events — reads token from Authorization header
-app.get('/api/events', async (req, res) => {
+app.get(['/events', '/api/events'], async (req, res) => {
   const token = req.headers.authorization?.replace('Bearer ', '') ?? (req.query.token as string);
   if (!token) { res.status(401).json({ error: 'No token' }); return; }
   try {
@@ -256,7 +256,7 @@ const yoga = createYoga({
   plugins: [
     { onValidate({ addValidationRule }: { addValidationRule: (rule: unknown) => void }) {
       addValidationRule(depthLimitRule(10));
-      addValidationRule(costLimitRule(Number(process.env.MAX_QUERY_COST) || 50000));
+      addValidationRule(costLimitRule(Number(process.env.MAX_QUERY_COST) || 100000));
     } },
     {
       onResultProcess({ result }: { result: { errors?: ReadonlyArray<{ message: string; extensions?: Record<string, unknown> }> } }) {
