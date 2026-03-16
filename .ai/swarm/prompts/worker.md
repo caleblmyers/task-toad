@@ -79,3 +79,27 @@ bash {{MAIN_REPO}}/scripts/swarm/task-update.sh TASK_ID completed --completedAt
 # Mark blocked
 bash {{MAIN_REPO}}/scripts/swarm/task-update.sh TASK_ID blocked --reviewNotes="description of issue"
 ```
+
+## Swarm Process Issues Log
+
+When you encounter issues with the swarm workflow itself (not with the code), log them to `{{MAIN_REPO}}/.ai/swarm/issues.md`. This helps the user improve future swarms.
+
+**Log issues like:**
+- Task description was ambiguous, missing context, or wrong (what was unclear, what would have helped)
+- File list was incomplete — you needed to modify a file not in the `files` array
+- Dependencies were wrong — a task should have depended on another but didn't (or vice versa)
+- Merge conflicts from other workers' changes that required manual resolution
+- Rebase failures or workflow friction (scripts that didn't work, confusing steps)
+- Task was too large or too small for the 30-60 min target
+- Prisma schema changes needed `prisma generate` but task didn't mention it
+- Any pattern you had to figure out that should be documented for future workers
+
+**Format:** Append to the file. Include your worker ID, the task ID, and a brief description.
+```markdown
+### {{WORKER_ID}} — TASK_ID
+**Issue:** description of the problem
+**Impact:** what happened as a result (blocked, wasted time, wrong output)
+**Suggestion:** how to prevent this in future task planning
+```
+
+Do NOT let issue logging block your work — log it quickly and move on.
