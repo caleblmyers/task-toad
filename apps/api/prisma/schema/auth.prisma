@@ -19,6 +19,7 @@ model User {
   displayName  String?  @map("display_name")
   avatarUrl    String?  @map("avatar_url")
   timezone     String?  @default("UTC")
+  projectMemberships ProjectMember[]
   emailNotificationsEnabled Boolean @default(false) @map("email_notifications_enabled")
 
   @@map("users")

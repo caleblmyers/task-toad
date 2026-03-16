@@ -3,6 +3,7 @@ import { logActivity } from '../../utils/activity.js';
 import { createNotification } from '../../utils/notification.js';
 import { NotFoundError, ValidationError, AuthorizationError } from '../errors.js';
 import { requireAuth, requireOrg, requireProjectAccess } from './auth.js';
+import { executeAutomations } from '../../utils/automationEngine.js';
 
 // ── Task queries ──
 
@@ -207,6 +208,17 @@ export const taskMutations = {
         linkUrl: `/app/projects/${task.projectId}`,
         relatedTaskId: task.taskId,
         relatedProjectId: task.projectId,
+      });
+    }
+    // Fire automation rules on status change
+    if (args.status !== undefined && args.status !== task.status) {
+      executeAutomations(context.prisma, {
+        type: 'task.status_changed',
+        projectId: task.projectId,
+        orgId: user.orgId,
+        taskId: task.taskId,
+        userId: user.userId,
+        data: { oldStatus: task.status, newStatus: args.status },
       });
     }
     return updated;

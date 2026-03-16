@@ -12,6 +12,7 @@ import { reportTypeDefs, reportQueryFields, reportMutationFields } from './typed
 import { githubTypeDefs, githubQueryFields, githubMutationFields } from './typedefs/github.js';
 import { aiTypeDefs, aiQueryFields, aiMutationFields } from './typedefs/ai.js';
 import { searchTypeDefs, searchQueryFields } from './typedefs/search.js';
+import { projectRoleTypeDefs, projectRoleQueryFields, projectRoleMutationFields } from './typedefs/projectrole.js';
 
 const typeDefs = /* GraphQL */ `
   ${authTypeDefs}
@@ -25,6 +26,7 @@ const typeDefs = /* GraphQL */ `
   ${githubTypeDefs}
   ${aiTypeDefs}
   ${searchTypeDefs}
+  ${projectRoleTypeDefs}
 
   type Query {
     ${authQueryFields}
@@ -38,6 +40,7 @@ const typeDefs = /* GraphQL */ `
     ${githubQueryFields}
     ${aiQueryFields}
     ${searchQueryFields}
+    ${projectRoleQueryFields}
   }
 
   type Mutation {
@@ -51,6 +54,7 @@ const typeDefs = /* GraphQL */ `
     ${reportMutationFields}
     ${githubMutationFields}
     ${aiMutationFields}
+    ${projectRoleMutationFields}
   }
 `;
 

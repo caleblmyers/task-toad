@@ -17,6 +17,8 @@ model Project {
   tasks                 Task[]
   sprints               Sprint[]
   reports               Report[]
+  members               ProjectMember[]
+  automationRules       AutomationRule[]
 
   @@index([orgId])
   @@map("projects")

@@ -7,6 +7,7 @@ import { aiMutations, aiQueries } from './ai.js';
 import { githubQueries, githubMutations, githubFieldResolvers } from './github.js';
 import { notificationQueries, notificationMutations, notificationFieldResolvers } from './notification.js';
 import { searchQueries, searchMutations } from './search.js';
+import { projectRoleQueries, projectRoleMutations } from './projectrole.js';
 
 export const resolvers = {
   Query: {
@@ -19,6 +20,7 @@ export const resolvers = {
     ...notificationQueries,
     ...searchQueries,
     ...aiQueries,
+    ...projectRoleQueries,
   },
   Mutation: {
     ...authMutations,
@@ -30,6 +32,7 @@ export const resolvers = {
     ...githubMutations,
     ...notificationMutations,
     ...searchMutations,
+    ...projectRoleMutations,
   },
   // Field resolvers
   User: { ...authFieldResolvers.User },

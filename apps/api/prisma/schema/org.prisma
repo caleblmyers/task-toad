@@ -13,6 +13,7 @@ model Org {
   aiUsageLogs     AIUsageLog[]
   reports         Report[]
   notificationPreferences NotificationPreference[]
+  automationRules AutomationRule[]
 
   @@map("orgs")
 }

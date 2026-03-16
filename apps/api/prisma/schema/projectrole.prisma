@@ -1,0 +1,32 @@
+model ProjectMember {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  userId    String   @map("user_id")
+  role      String   @default("editor")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [projectId], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+  @@map("project_members")
+}
+
+model AutomationRule {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  orgId     String   @map("org_id")
+  name      String
+  trigger   String
+  action    String
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [projectId], onDelete: Cascade)
+  org     Org     @relation(fields: [orgId], references: [orgId])
+
+  @@index([projectId, enabled])
+  @@map("automation_rules")
+}
