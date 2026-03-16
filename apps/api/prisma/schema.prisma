@@ -1,6 +1,0 @@
-// Schema has been split into domain-based files in prisma/schema/
-// See prisma/schema/schema.prisma for generator + datasource config
-// and prisma/schema/*.prisma for model definitions.
-//
-// Prisma uses the prismaSchemaFolder preview feature to discover
-// all .prisma files in the schema/ directory.

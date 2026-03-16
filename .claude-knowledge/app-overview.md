@@ -48,11 +48,14 @@ Browser → Vite dev server (localhost:5173)
 
 | Concern | File |
 |---|---|
-| GraphQL schema + resolvers | `apps/api/src/graphql/schema.ts` |
-| AI functions + Zod schemas | `apps/api/src/graphql/ai.ts` |
+| GraphQL schema assembly | `apps/api/src/graphql/schema.ts` |
+| GraphQL typeDefs (domain-split) | `apps/api/src/graphql/typedefs/*.ts` |
+| GraphQL resolvers (domain-split) | `apps/api/src/graphql/resolvers/*.ts` |
+| AI subsystem | `apps/api/src/ai/` (aiService, promptBuilder, aiTypes, etc.) |
 | Auth context (JWT verify) | `apps/api/src/graphql/context.ts` |
 | AES-256-GCM encryption util | `apps/api/src/utils/encryption.ts` |
-| Prisma schema | `apps/api/prisma/schema.prisma` |
+| Prisma schema (domain-split) | `apps/api/prisma/schema/*.prisma` |
+| REST export routes | `apps/api/src/routes/export.ts` |
 | Express app setup (+ helmet/cors/rate-limit) | `apps/api/src/app.ts` |
 | API entry point | `apps/api/src/index.ts` |
 | GQL fetch helper (+ AbortController) | `apps/web/src/api/client.ts` |

@@ -77,11 +77,13 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 
 ### Key Files
 
-- `apps/api/src/graphql/schema.ts` — GraphQL typeDefs + resolvers
-- `apps/api/src/graphql/ai.ts` — AI functions (Anthropic SDK) + Zod response validation
+- `apps/api/src/graphql/schema.ts` — GraphQL schema assembly (imports from `typedefs/`)
+- `apps/api/src/graphql/typedefs/` — Domain-split GraphQL type definitions (auth, org, project, task, sprint, comment, notification, report, github, ai, search)
+- `apps/api/src/graphql/resolvers/` — Domain-split resolvers (matching typedefs structure)
 - `apps/api/src/graphql/context.ts` — `buildContext`, `JWT_SECRET`, `Context` type
 - `apps/api/src/utils/encryption.ts` — AES-256-GCM encryption for API keys
-- `apps/api/prisma/schema.prisma` — Prisma schema (User, Org, Project, Task, Sprint)
+- `apps/api/prisma/schema/` — Domain-split Prisma schema files (auth, org, project, task, sprint, comment, activity, notification, report, github, aiusage)
+- `apps/api/src/routes/export.ts` — REST endpoints for project/activity CSV/JSON export
 - `apps/web/src/api/client.ts` — `gql<T>()` fetch helper with AbortSignal support, `TOKEN_KEY`
 - `apps/web/src/auth/context.tsx` — `AuthProvider`, `useAuth` hook
 - `apps/web/src/hooks/useProjectData.ts` — data fetching, mutations, sprint/task CRUD, AI ops

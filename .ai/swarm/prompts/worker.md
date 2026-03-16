@@ -31,7 +31,22 @@ Loop continuously until all your tasks are `merged`:
    ```
 7. **Implement** the task. Only modify files listed in the task's `files` array.
 8. **Validate** — run `pnpm typecheck` (and `pnpm lint` if applicable). Fix any errors before proceeding.
-9. **Commit** with message format: `swarm({{WORKER_ID}}): [TASK_ID] description`
+9. **Commit** using [Conventional Commits](https://www.conventionalcommits.org/) format:
+   ```
+   <type>(scope): <short description>
+
+   [optional body — what and why, not how]
+
+   Refs: TASK_ID
+   Worker: {{WORKER_ID}}
+   ```
+   Types: `feat` (new feature), `fix` (bug fix), `refactor` (restructure, no behavior change), `chore` (build/config), `docs` (documentation only).
+   Scope: the domain area (e.g., `ai`, `export`, `prisma`, `graphql`, `auth`, `sprint`).
+   Examples:
+   - `feat(export): add REST endpoints for project CSV/JSON download`
+   - `refactor(prisma): split schema into domain-based model files`
+   - `fix(auth): handle expired token edge case in middleware`
+   Keep the subject line under 72 characters. Use imperative mood ("add", not "added").
 10. **Mark complete**:
     ```bash
     bash {{MAIN_REPO}}/scripts/swarm/task-update.sh TASK_ID completed --completedAt

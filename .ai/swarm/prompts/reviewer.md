@@ -25,29 +25,75 @@ Loop continuously until all tasks are `merged`:
       git -C {{MAIN_REPO}} diff main...<worker-branch>
       ```
 
-   c. Check that only files in the task's `files` array were modified.
+   c. **Code review checklist:**
+      - Only files in the task's `files` array were modified
+      - No hardcoded values, secrets, debug code, or `console.log` left in
+      - No TypeScript `any` casts or `@ts-ignore` without justification
+      - No breaking changes to shared interfaces
+      - Commit message follows Conventional Commits format (see below)
 
-   d. Merge and validate using the helper script:
+   d. **Merge and validate** using the helper script:
       ```bash
       bash {{MAIN_REPO}}/scripts/swarm/merge-worker.sh <worker-branch> --validate
       ```
-      If validation passes, commit the squash merge in the main repo:
+      The `--validate` flag runs `pnpm --filter api typecheck` automatically.
+
+   e. **Run full build and deployment checks** after the squash merge is staged:
       ```bash
-      git -C {{MAIN_REPO}} commit -m "swarm(<worker>): [TASK_ID] title"
+      cd {{MAIN_REPO}} && pnpm typecheck
+      cd {{MAIN_REPO}} && pnpm lint
+      cd {{MAIN_REPO}} && pnpm build
+      ```
+      ALL THREE must pass before committing. If any fail, abort the merge (`git -C {{MAIN_REPO}} reset --hard HEAD`) and send the task back to the worker with specific error details.
+
+   f. **Commit** with Conventional Commits format:
+      ```
+      <type>(scope): <short description>
+
+      [body — summarize what was done and why]
+
+      Refs: TASK_ID
+      Worker: <worker-id>
+      ```
+      Types: `feat`, `fix`, `refactor`, `chore`, `docs`.
+      Keep subject line under 72 chars, imperative mood.
+      Example:
+      ```bash
+      git -C {{MAIN_REPO}} commit -m "$(cat <<'EOF'
+      feat(export): add REST endpoints for project CSV/JSON download
+
+      Adds authenticated REST routes for exporting project tasks and activity
+      logs as CSV or JSON file downloads.
+
+      Refs: task-003
+      Worker: worker-3
+      EOF
+      )"
       ```
 
-   e. Update task status:
+   g. Update task status:
       ```bash
       bash {{MAIN_REPO}}/scripts/swarm/task-update.sh TASK_ID merged --reviewedAt
       ```
 
-   f. If validation fails or you find issues in the diff:
+   h. If validation/build fails or you find issues in the diff:
       ```bash
       bash {{MAIN_REPO}}/scripts/swarm/task-update.sh TASK_ID in_progress --reviewNotes="description of what needs fixing"
       ```
       The worker will see the notes and fix the issue automatically.
 
 6. **Go to step 1** — check for newly completed tasks.
+
+## Validation Requirements (CRITICAL)
+
+Before marking ANY task as `merged`, you MUST confirm:
+
+1. **`pnpm typecheck`** — passes for all packages (not just the one the worker touched)
+2. **`pnpm lint`** — no lint errors introduced
+3. **`pnpm build`** — full production build succeeds (this catches import errors, missing exports, etc.)
+4. **Commit format** — follows Conventional Commits (reject if not)
+
+If a worker's code passes typecheck but fails build or lint, send it back. The user will push to remote after you approve — your merge is the final gate.
 
 ## Rules
 
@@ -56,6 +102,7 @@ Loop continuously until all tasks are `merged`:
   - Hardcoded values, secrets, or debug code
   - TypeScript errors or lint violations
   - Breaking changes to shared interfaces
+  - Unused imports or dead code
 - Merge in dependency order. If task-002 depends on task-001, merge task-001 first.
 - After merging, workers auto-rebase before their next task — no need to notify them.
 - Use squash merges to keep main's history clean.
