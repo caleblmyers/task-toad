@@ -173,6 +173,38 @@ export type ReviewFix = z.infer<typeof ReviewFixSchema>;
 // AI subsystem internal types
 // ---------------------------------------------------------------------------
 
+export const BugReportTaskSchema = z.object({
+  title: z.string(),
+  description: z.string().describe('structured: steps to reproduce, expected, actual'),
+  priority: z.enum(['low', 'medium', 'high', 'critical']),
+  suggestedTools: z.array(ToolSuggestionSchema).optional().default([]),
+  acceptanceCriteria: z.string().optional(),
+});
+
+export type BugReportTask = z.infer<typeof BugReportTaskSchema>;
+
+export const PRDTaskSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  priority: z.enum(['low', 'medium', 'high', 'critical']),
+  estimatedHours: z.number().optional(),
+  acceptanceCriteria: z.string().optional(),
+});
+
+export const PRDEpicSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  tasks: z.array(PRDTaskSchema),
+});
+
+export const PRDBreakdownSchema = z.object({
+  epics: z.array(PRDEpicSchema),
+});
+
+export type PRDTask = z.infer<typeof PRDTaskSchema>;
+export type PRDEpic = z.infer<typeof PRDEpicSchema>;
+export type PRDBreakdown = z.infer<typeof PRDBreakdownSchema>;
+
 export type AIFeature =
   | 'generateProjectOptions'
   | 'generateTaskPlan'
@@ -190,7 +222,9 @@ export type AIFeature =
   | 'regenerateFile'
   | 'reviewCode'
   | 'decomposeIssue'
-  | 'generateReviewFix';
+  | 'generateReviewFix'
+  | 'parseBugReport'
+  | 'breakdownPRD';
 
 export interface AIUsage {
   inputTokens: number;

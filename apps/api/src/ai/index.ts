@@ -19,6 +19,8 @@ export {
   reviewCode,
   decomposeIssue,
   generateReviewFix,
+  parseBugReport,
+  breakdownPRD,
 } from './aiService.js';
 
 export { logUsageToDB, checkBudget } from './aiUsageTracker.js';
@@ -39,5 +41,9 @@ export type {
   CodeReview,
   IssueDecomposition,
   ReviewFix,
+  BugReportTask,
+  PRDBreakdown,
+  PRDEpic,
+  PRDTask,
   AIFeature,
 } from './aiTypes.js';

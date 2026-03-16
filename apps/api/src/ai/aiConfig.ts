@@ -35,6 +35,8 @@ export const FEATURE_CONFIG: Record<AIFeature, FeatureConfig> = {
   reviewCode:               { maxTokens: 4096, cacheTTLMs: 0,       retryOnValidationFailure: true },
   decomposeIssue:           { maxTokens: 4096, cacheTTLMs: 0,       retryOnValidationFailure: true },
   generateReviewFix:        { maxTokens: 8192, cacheTTLMs: 0,       retryOnValidationFailure: true },
+  parseBugReport:           { maxTokens: 2048, cacheTTLMs: 0,       retryOnValidationFailure: true },
+  breakdownPRD:             { maxTokens: 4096, cacheTTLMs: 0,       retryOnValidationFailure: true },
 };
 
 // ---------------------------------------------------------------------------

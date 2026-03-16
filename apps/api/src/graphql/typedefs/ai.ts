@@ -54,6 +54,24 @@ export const aiTypeDefs = /* GraphQL */ `
     costUSD: Float!
     avgLatencyMs: Int!
   }
+
+  type PRDTask {
+    title: String!
+    description: String!
+    priority: String!
+    estimatedHours: Float
+    acceptanceCriteria: String
+  }
+
+  type PRDEpic {
+    title: String!
+    description: String!
+    tasks: [PRDTask!]!
+  }
+
+  type PRDBreakdown {
+    epics: [PRDEpic!]!
+  }
 `;
 
 export const aiQueryFields = /* GraphQL */ `
@@ -64,4 +82,7 @@ export const aiMutationFields = /* GraphQL */ `
   generateCodeFromTask(taskId: ID!, styleGuide: String): CodeGeneration!
   regenerateCodeFile(taskId: ID!, filePath: String!, feedback: String): GeneratedFile!
   reviewPullRequest(taskId: ID!, prNumber: Int!): CodeReview!
+  parseBugReport(projectId: ID!, bugReport: String!): Task!
+  previewPRDBreakdown(projectId: ID!, prd: String!): PRDBreakdown!
+  commitPRDBreakdown(projectId: ID!, epics: String!): [Task!]!
 `;

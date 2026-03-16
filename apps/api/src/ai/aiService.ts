@@ -18,8 +18,10 @@ import {
   CodeReviewSchema,
   IssueDecompositionSchema,
   ReviewFixSchema,
+  BugReportTaskSchema,
+  PRDBreakdownSchema,
 } from './aiTypes.js';
-import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix } from './aiTypes.js';
+import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown } from './aiTypes.js';
 import { FEATURE_CONFIG } from './aiConfig.js';
 import { callAI } from './aiClient.js';
 import { parseJSON } from './responseParser.js';
@@ -41,6 +43,8 @@ import {
   buildCodeReviewPrompt,
   buildDecomposeIssuePrompt,
   buildReviewFixPrompt,
+  buildParseBugReportPrompt,
+  buildPRDBreakdownPrompt,
 } from './promptBuilder.js';
 
 // ---------------------------------------------------------------------------
@@ -104,9 +108,10 @@ export async function generateTaskPlan(
   projectDescription: string,
   projectPrompt: string,
   context?: string | null,
-  knowledgeBase?: string | null
+  knowledgeBase?: string | null,
+  existingTaskTitles?: string[]
 ): Promise<TaskPlan[]> {
-  const p = buildTaskPlanPrompt(projectTitle, projectDescription, projectPrompt, context, knowledgeBase);
+  const p = buildTaskPlanPrompt(projectTitle, projectDescription, projectPrompt, context, knowledgeBase, existingTaskTitles);
   const tasks = await callAndParse(apiKey, 'generateTaskPlan', p, z.array(TaskPlanSchema));
   if (tasks.length === 0) {
     throw new GraphQLError('Failed to parse AI response');
@@ -120,9 +125,10 @@ export async function expandTask(
   taskDescription: string,
   projectName: string,
   context?: string | null,
-  knowledgeBase?: string | null
+  knowledgeBase?: string | null,
+  siblingTitles?: string[]
 ): Promise<TaskPlan[]> {
-  const p = buildExpandTaskPrompt(taskTitle, taskDescription, projectName, context, knowledgeBase);
+  const p = buildExpandTaskPrompt(taskTitle, taskDescription, projectName, context, knowledgeBase, siblingTitles);
   const subtasks = await callAndParse(apiKey, 'expandTask', p, z.array(TaskPlanSchema));
   if (subtasks.length === 0) {
     throw new GraphQLError('Failed to parse AI response');
@@ -349,4 +355,20 @@ export async function enrichPRDescription(
     cacheTTLMs: config.cacheTTLMs,
   });
   return result.raw.trim();
+}
+
+export async function parseBugReport(
+  apiKey: string,
+  data: { bugReport: string; projectName: string; projectDescription?: string | null }
+): Promise<BugReportTask> {
+  const p = buildParseBugReportPrompt(data);
+  return callAndParse(apiKey, 'parseBugReport', p, BugReportTaskSchema);
+}
+
+export async function breakdownPRD(
+  apiKey: string,
+  data: { prd: string; projectName: string; projectDescription?: string | null }
+): Promise<PRDBreakdown> {
+  const p = buildPRDBreakdownPrompt(data);
+  return callAndParse(apiKey, 'breakdownPRD', p, PRDBreakdownSchema);
 }

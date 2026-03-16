@@ -30,6 +30,8 @@ import ProjectHealthPanel from '../components/ProjectHealthPanel';
 import MeetingNotesDialog from '../components/MeetingNotesDialog';
 import CSVImportModal from '../components/CSVImportModal';
 import KnowledgeBaseModal from '../components/KnowledgeBaseModal';
+import BugReportModal from '../components/BugReportModal';
+import PRDBreakdownModal from '../components/PRDBreakdownModal';
 import { IconList, IconBoard, IconTable, IconCalendar, IconClose, IconPlus, IconRefresh, IconSummary, IconFilter, IconKeyboard, IconGitHub } from '../components/shared/Icons';
 import { TOKEN_KEY } from '../api/client';
 import { statusLabel } from '../utils/taskHelpers';
@@ -59,6 +61,8 @@ export default function ProjectDetail() {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showCSVImport, setShowCSVImport] = useState(false);
   const [showKnowledgeBase, setShowKnowledgeBase] = useState(false);
+  const [showBugReport, setShowBugReport] = useState(false);
+  const [showPRDBreakdown, setShowPRDBreakdown] = useState(false);
 
   useKeyboardShortcuts({
     tasks: filtering.filteredTasks,
@@ -392,6 +396,22 @@ export default function ProjectDetail() {
             className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Notes
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowBugReport(true)}
+            disabled={d.isGenerating}
+            className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Bug
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowPRDBreakdown(true)}
+            disabled={d.isGenerating}
+            className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            PRD
           </button>
           <div className="relative">
             <button
@@ -752,6 +772,29 @@ export default function ProjectDetail() {
         <CSVImportModal
           onImport={handleCSVImport}
           onClose={() => setShowCSVImport(false)}
+        />
+      )}
+
+      {/* Bug report modal */}
+      {showBugReport && (
+        <BugReportModal
+          onSubmit={async (bugReport) => {
+            await d.handleParseBugReport(bugReport);
+            addToast('success', 'Bug report parsed and task created');
+          }}
+          onClose={() => setShowBugReport(false)}
+        />
+      )}
+
+      {/* PRD breakdown modal */}
+      {showPRDBreakdown && (
+        <PRDBreakdownModal
+          onPreview={d.handlePreviewPRD}
+          onCommit={async (epics) => {
+            await d.handleCommitPRD(epics);
+            addToast('success', 'Tasks created from PRD');
+          }}
+          onClose={() => setShowPRDBreakdown(false)}
         />
       )}
 

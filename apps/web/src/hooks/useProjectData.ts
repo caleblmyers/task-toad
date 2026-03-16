@@ -94,6 +94,9 @@ export interface ProjectData {
   handleCreateComment: (taskId: string, content: string, parentCommentId?: string) => Promise<void>;
   handleUpdateComment: (commentId: string, content: string) => Promise<void>;
   handleDeleteComment: (commentId: string, taskId: string) => Promise<void>;
+  handleParseBugReport: (bugReport: string) => Promise<void>;
+  handlePreviewPRD: (prd: string) => Promise<{ epics: Array<{ title: string; description: string; tasks: Array<{ title: string; description: string; priority: string; estimatedHours?: number | null; acceptanceCriteria?: string | null }> }> }>;
+  handleCommitPRD: (epics: string) => Promise<void>;
   loadDashboardStats: () => Promise<void>;
   setSelectedTask: React.Dispatch<React.SetStateAction<Task | null>>;
   setErr: React.Dispatch<React.SetStateAction<string | null>>;
@@ -837,6 +840,43 @@ export function useProjectData(): ProjectData {
     }
   };
 
+  // --- Bug Report & PRD handlers ---
+
+  const handleParseBugReport = async (bugReport: string) => {
+    if (!projectId) return;
+    const data = await gql<{ parseBugReport: Task }>(
+      `mutation ParseBugReport($projectId: ID!, $bugReport: String!) {
+        parseBugReport(projectId: $projectId, bugReport: $bugReport) { ${TASK_FIELDS} }
+      }`,
+      { projectId, bugReport }
+    );
+    setTasks((prev) => [...prev, data.parseBugReport]);
+  };
+
+  const handlePreviewPRD = async (prd: string) => {
+    if (!projectId) throw new Error('No project');
+    const data = await gql<{ previewPRDBreakdown: { epics: Array<{ title: string; description: string; tasks: Array<{ title: string; description: string; priority: string; estimatedHours?: number | null; acceptanceCriteria?: string | null }> }> } }>(
+      `mutation PreviewPRD($projectId: ID!, $prd: String!) {
+        previewPRDBreakdown(projectId: $projectId, prd: $prd) {
+          epics { title description tasks { title description priority estimatedHours acceptanceCriteria } }
+        }
+      }`,
+      { projectId, prd }
+    );
+    return data.previewPRDBreakdown;
+  };
+
+  const handleCommitPRD = async (epics: string) => {
+    if (!projectId) return;
+    await gql<{ commitPRDBreakdown: Task[] }>(
+      `mutation CommitPRD($projectId: ID!, $epics: String!) {
+        commitPRDBreakdown(projectId: $projectId, epics: $epics) { ${TASK_FIELDS} }
+      }`,
+      { projectId, epics }
+    );
+    await loadTasks();
+  };
+
   // --- AI generation handlers ---
 
   const openPreview = async (context?: string, appendToTitles?: string[]) => {
@@ -1143,6 +1183,7 @@ export function useProjectData(): ProjectData {
     handleUpdateProject, handleUpdateDependencies, handleBulkUpdate, handleArchiveTask, handleBulkCreateTasks, handleCreateSubtask,
     handleCreateLabel, handleDeleteLabel, handleAddTaskLabel, handleRemoveTaskLabel,
     handleCreateComment, handleUpdateComment, handleDeleteComment,
+    handleParseBugReport, handlePreviewPRD, handleCommitPRD,
     loadDashboardStats,
     setSelectedTask, setErr, setSummary, setPreviewTasks, setPreviewError,
     setShowAddForm, setNewTaskTitle, setEditTitleValue, setEditingTitle,

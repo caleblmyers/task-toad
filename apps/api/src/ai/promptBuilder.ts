@@ -75,10 +75,14 @@ export function buildTaskPlanPrompt(
   projectDescription: string,
   projectPrompt: string,
   context?: string | null,
-  knowledgeBase?: string | null
+  knowledgeBase?: string | null,
+  existingTaskTitles?: string[]
 ): Prompt {
   const contextLine = context ? `\nAdditional context: ${userInput('context', context)}` : '';
   const kbLine = knowledgeBase ? `\nProject Knowledge Base (use for context):\n${userInput('knowledge_base', truncate(knowledgeBase, 800))}` : '';
+  const dedupLine = existingTaskTitles && existingTaskTitles.length > 0
+    ? `\nIMPORTANT: Do NOT create tasks with the same or very similar titles as these existing tasks:\n${existingTaskTitles.slice(0, 30).join('\n')}`
+    : '';
   const taskPlanSchema = `
 
 Return a JSON array of 4–8 tasks. Each item:
@@ -107,7 +111,7 @@ List 1–3 tools per task. Be specific (e.g. "Claude Sonnet", "Figma", "Vercel",
 
 Project: ${userInput('title', projectTitle)}
 Description: ${userInput('description', truncate(projectDescription, MAX_PROJECT_DESCRIPTION_CHARS))}
-Original request: ${userInput('prompt', truncate(projectPrompt, MAX_PROJECT_DESCRIPTION_CHARS))}${contextLine}${kbLine}`,
+Original request: ${userInput('prompt', truncate(projectPrompt, MAX_PROJECT_DESCRIPTION_CHARS))}${contextLine}${kbLine}${dedupLine}`,
   };
 }
 
@@ -116,17 +120,21 @@ export function buildExpandTaskPrompt(
   taskDescription: string,
   projectName: string,
   context?: string | null,
-  knowledgeBase?: string | null
+  knowledgeBase?: string | null,
+  siblingTitles?: string[]
 ): Prompt {
   const contextLine = context ? `\nAdditional context: ${userInput('context', context)}` : '';
   const kbLine = knowledgeBase ? `\nProject Knowledge Base (use for context):\n${userInput('knowledge_base', truncate(knowledgeBase, 800))}` : '';
+  const dedupLine = siblingTitles && siblingTitles.length > 0
+    ? `\nIMPORTANT: Do NOT create subtasks with the same or very similar titles as these existing sibling tasks:\n${siblingTitles.slice(0, 30).join('\n')}`
+    : '';
   return {
     systemPrompt: SYSTEM_JSON,
     userPrompt: `Break this task into subtasks.
 
 Task: ${userInput('title', taskTitle)}
 Task description: ${userInput('description', truncate(taskDescription, MAX_DESCRIPTION_CHARS))}
-Project: ${userInput('project', projectName)}${contextLine}${kbLine}
+Project: ${userInput('project', projectName)}${contextLine}${kbLine}${dedupLine}
 
 Return a JSON array of 2–6 subtasks using the same schema:
 {
@@ -653,5 +661,80 @@ Return JSON:
 "estimatedHours" is a realistic work estimate (e.g. 1, 2, 4, 8). "priority" reflects business impact.
 "dependsOn" lists titles from the "Other tasks" list that must be done before this one (empty array if none or no other tasks listed).
 "subtasks" is 2–6 concrete implementation steps.`,
+  };
+}
+
+export function buildParseBugReportPrompt(data: {
+  bugReport: string;
+  projectName: string;
+  projectDescription?: string | null;
+}): Prompt {
+  const descLine = data.projectDescription
+    ? `\nProject description: ${userInput('projectDescription', truncate(data.projectDescription, MAX_PROJECT_DESCRIPTION_CHARS))}`
+    : '';
+
+  return {
+    systemPrompt: SYSTEM_JSON,
+    userPrompt: `Parse this bug report and extract a structured task from it.
+
+Project: ${userInput('project', data.projectName)}${descLine}
+
+Bug report:
+<user_input label="bug_report">
+${truncate(data.bugReport, 2000)}
+</user_input>
+
+Return JSON:
+{
+  "title": string,
+  "description": string,
+  "priority": "low" | "medium" | "high" | "critical",
+  "suggestedTools": [{ "name": string, "category": string, "reason": string }],
+  "acceptanceCriteria": string
+}
+"title" should be a concise bug summary (e.g. "Fix login timeout on slow connections").
+"description" must include structured sections: Steps to Reproduce, Expected Behavior, Actual Behavior.
+"priority" should reflect severity: critical = data loss/crash, high = major feature broken, medium = degraded experience, low = cosmetic/minor.
+"acceptanceCriteria" should describe how to verify the fix is working.`,
+  };
+}
+
+export function buildPRDBreakdownPrompt(data: {
+  prd: string;
+  projectName: string;
+  projectDescription?: string | null;
+}): Prompt {
+  const descLine = data.projectDescription
+    ? `\nProject description: ${userInput('projectDescription', truncate(data.projectDescription, MAX_PROJECT_DESCRIPTION_CHARS))}`
+    : '';
+
+  return {
+    systemPrompt: SYSTEM_JSON,
+    userPrompt: `Break this Product Requirements Document (PRD) into epics, each containing implementation tasks.
+
+Project: ${userInput('project', data.projectName)}${descLine}
+
+PRD:
+<user_input label="prd">
+${truncate(data.prd, 4000)}
+</user_input>
+
+Return JSON:
+{
+  "epics": [{
+    "title": string,
+    "description": string,
+    "tasks": [{
+      "title": string,
+      "description": string,
+      "priority": "low" | "medium" | "high" | "critical",
+      "estimatedHours": number,
+      "acceptanceCriteria": string
+    }]
+  }]
+}
+Group related work into 2-6 epics. Each epic should have 2-8 tasks.
+Tasks should be concrete, actionable implementation items.
+Order epics and tasks by logical implementation sequence.`,
   };
 }

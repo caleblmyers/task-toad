@@ -12,6 +12,8 @@ import {
   analyzeProjectHealth as aiAnalyzeProjectHealth,
   extractTasksFromNotes as aiExtractTasksFromNotes,
   reviewCode as aiReviewCode,
+  parseBugReport as aiParseBugReport,
+  breakdownPRD as aiBreakdownPRD,
 } from '../../ai/index.js';
 import { NotFoundError, ValidationError, AuthorizationError } from '../errors.js';
 import { requireOrg, requireApiKey } from './auth.js';
@@ -112,6 +114,11 @@ export const aiMutations = {
     if (!project || project.orgId !== user.orgId) {
       throw new NotFoundError('Project not found');
     }
+    const existingTasks = await context.prisma.task.findMany({
+      where: { projectId: args.projectId, archived: false },
+      select: { title: true },
+    });
+    const existingTitles = existingTasks.map((t: { title: string }) => t.title);
     await context.prisma.task.deleteMany({
       where: { projectId: args.projectId, parentTaskId: null },
     });
@@ -121,7 +128,8 @@ export const aiMutations = {
       project.description ?? '',
       project.prompt ?? '',
       args.context,
-      project.knowledgeBase
+      project.knowledgeBase,
+      existingTitles
     );
     return Promise.all(
       taskPlans.map((t) =>
@@ -154,20 +162,29 @@ export const aiMutations = {
     if (!project || project.orgId !== user.orgId) {
       throw new NotFoundError('Project not found');
     }
+    const existingTasks = await context.prisma.task.findMany({
+      where: { projectId: args.projectId, archived: false },
+      select: { title: true },
+    });
+    const existingTitles = existingTasks.map((t: { title: string }) => t.title);
     let fullContext = args.context ?? undefined;
     if (args.appendToTitles && args.appendToTitles.length > 0) {
-      const existing = args.appendToTitles.map((t) => `"${t}"`).join(', ');
+      const existing = args.appendToTitles.map((t: string) => `"${t}"`).join(', ');
       fullContext = `These tasks already exist: ${existing}. Generate ONLY additional tasks not already in this list.${args.context ? ` Additional context: ${args.context}` : ''}`;
     }
+    const allExistingTitles = [...existingTitles, ...(args.appendToTitles ?? [])];
     const taskPlans = await aiGenerateTaskPlan(
       apiKey,
       project.name,
       project.description ?? '',
       project.prompt ?? '',
       fullContext,
-      project.knowledgeBase
+      project.knowledgeBase,
+      allExistingTitles
     );
-    return taskPlans.map((t) => ({
+    const existingSet = new Set(allExistingTitles.map((t) => t.trim().toLowerCase()));
+    const dedupedPlans = taskPlans.filter((t) => !existingSet.has(t.title.trim().toLowerCase()));
+    return dedupedPlans.map((t) => ({
       title: t.title,
       description: t.description,
       instructions: t.instructions,
@@ -295,6 +312,10 @@ export const aiMutations = {
     }
     const project = await context.loaders.projectById.load(task.projectId);
     if (!project) throw new NotFoundError('Project not found');
+    const siblings = await context.prisma.task.findMany({
+      where: { projectId: task.projectId, parentTaskId: task.parentTaskId ?? null, NOT: { taskId: task.taskId } },
+      select: { title: true },
+    });
     await context.prisma.task.deleteMany({ where: { parentTaskId: args.taskId } });
     const subtaskPlans = await aiExpandTask(
       apiKey,
@@ -302,7 +323,8 @@ export const aiMutations = {
       task.description ?? '',
       project.name,
       args.context,
-      project.knowledgeBase
+      project.knowledgeBase,
+      siblings.map((s: { title: string }) => s.title)
     );
     return Promise.all(
       subtaskPlans.map((t) =>
@@ -468,6 +490,116 @@ export const aiMutations = {
       diff,
       projectName: project.name,
     });
+  },
+
+  parseBugReport: async (
+    _parent: unknown,
+    args: { projectId: string; bugReport: string },
+    context: Context
+  ) => {
+    const user = requireOrg(context);
+    const apiKey = requireApiKey(context);
+    const project = await context.prisma.project.findFirst({
+      where: { projectId: args.projectId, orgId: user.orgId },
+    });
+    if (!project) {
+      throw new NotFoundError('Project not found');
+    }
+    if (!args.bugReport.trim()) {
+      throw new ValidationError('Bug report text is required');
+    }
+    const result = await aiParseBugReport(apiKey, {
+      bugReport: args.bugReport,
+      projectName: project.name,
+      projectDescription: project.description,
+    });
+    return context.prisma.task.create({
+      data: {
+        title: result.title,
+        description: result.description,
+        priority: result.priority,
+        suggestedTools: JSON.stringify(result.suggestedTools),
+        acceptanceCriteria: result.acceptanceCriteria ?? null,
+        status: 'todo',
+        projectId: args.projectId,
+        orgId: user.orgId,
+      },
+    });
+  },
+
+  previewPRDBreakdown: async (
+    _parent: unknown,
+    args: { projectId: string; prd: string },
+    context: Context
+  ) => {
+    const user = requireOrg(context);
+    const apiKey = requireApiKey(context);
+    const project = await context.prisma.project.findFirst({
+      where: { projectId: args.projectId, orgId: user.orgId },
+    });
+    if (!project) {
+      throw new NotFoundError('Project not found');
+    }
+    if (!args.prd.trim()) {
+      throw new ValidationError('PRD text is required');
+    }
+    return aiBreakdownPRD(apiKey, {
+      prd: args.prd,
+      projectName: project.name,
+      projectDescription: project.description,
+    });
+  },
+
+  commitPRDBreakdown: async (
+    _parent: unknown,
+    args: { projectId: string; epics: string },
+    context: Context
+  ) => {
+    const user = requireOrg(context);
+    const project = await context.prisma.project.findFirst({
+      where: { projectId: args.projectId, orgId: user.orgId },
+    });
+    if (!project) {
+      throw new NotFoundError('Project not found');
+    }
+    let epics: Array<{ title: string; description: string; tasks: Array<{ title: string; description: string; priority: string; estimatedHours?: number; acceptanceCriteria?: string }> }>;
+    try {
+      epics = JSON.parse(args.epics);
+    } catch {
+      throw new ValidationError('Invalid epics JSON');
+    }
+    const allCreated: Array<Record<string, unknown>> = [];
+    for (const epic of epics) {
+      const epicTask = await context.prisma.task.create({
+        data: {
+          title: epic.title,
+          description: epic.description,
+          status: 'todo',
+          projectId: args.projectId,
+          orgId: user.orgId,
+          taskType: 'epic',
+          priority: 'high',
+        },
+      });
+      allCreated.push(epicTask);
+      for (const t of epic.tasks) {
+        const childTask = await context.prisma.task.create({
+          data: {
+            title: t.title,
+            description: t.description,
+            priority: t.priority || 'medium',
+            estimatedHours: t.estimatedHours ?? null,
+            acceptanceCriteria: t.acceptanceCriteria ?? null,
+            status: 'todo',
+            projectId: args.projectId,
+            orgId: user.orgId,
+            parentTaskId: epicTask.taskId,
+          },
+        });
+        allCreated.push(childTask);
+      }
+    }
+    return allCreated;
   },
 
   summarizeProject: async (_parent: unknown, args: { projectId: string }, context: Context) => {
