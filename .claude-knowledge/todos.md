@@ -42,127 +42,61 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 
 ---
 
-## Work Sets
+## Work Sets — Uncompleted
 
 ### P1: Production Hardening (High Priority)
-**Why:** Missing critical production infrastructure — no graceful shutdown, no error tracking, no connection pooling.
-**Touches:** `apps/api/src/index.ts`, `apps/api/src/app.ts`, `apps/api/prisma/schema/`, `apps/web/src/App.tsx`
+**Touches:** `apps/api/src/index.ts`, `apps/api/src/app.ts`, `apps/web/src/App.tsx`
 
-- [x] Graceful shutdown handlers (SIGTERM/SIGINT) — close Prisma, SSE connections, clear intervals on redeploy (Wave 9, 2026-03-16)
 - [ ] Sentry error tracking integration — capture unhandled exceptions, GraphQL errors, and AI failures
-- [x] Prisma connection pooling — documented pool params in .env.example, LOG_LEVEL env var, pino-http structured request logging (Wave 11, 2026-03-16)
-- [x] Health check endpoint — GET /api/health with DB connectivity check, Dockerfile HEALTHCHECK (Wave 11, 2026-03-16)
-- [x] Prometheus metrics endpoint — /api/metrics with request latency histograms, Prisma pool stats, Node.js metrics (Wave 11, 2026-03-16)
-- [x] Environment validation improvements — warn if SMTP not configured in production, validate ANTHROPIC_API_KEY (Wave 9, 2026-03-16)
-- [x] Static asset caching headers — `Cache-Control: max-age=31536000, immutable` for hashed assets, `no-cache` for index.html (Wave 9, 2026-03-16)
-- [x] React Error Boundary — global error boundary at App root with fallback UI (Wave 9, 2026-03-16)
-- [x] Wire up webhook retry processor — `startRetryProcessor()` / `stopRetryProcessor()` called from `index.ts` (Wave 10, 2026-03-16)
-- [x] SSE connection cleanup in graceful shutdown — `closeAllConnections` called in shutdown handler (Wave 10, 2026-03-16)
 
 ### P2: Security Hardening (High Priority)
-**Why:** Several medium-severity security gaps: unbounded GraphQL depth, missing CSRF, bulk mutation auth gaps, SSE token in query string.
-**Touches:** `apps/api/src/graphql/schema.ts`, `apps/api/src/app.ts`, `apps/api/src/utils/sseManager.ts`, `apps/api/src/graphql/resolvers/task.ts`
+**Touches:** `apps/api/src/graphql/schema.ts`, `apps/api/src/app.ts`
 
-- [x] GraphQL query depth limit — custom validation rule limiting depth to 10 (Wave 10, 2026-03-16)
 - [ ] GraphQL query complexity/cost limits — add `costLimit` plugin to prevent expensive queries (depth limit done, complexity not yet)
-- [x] Rate limit SSE connections — per-user concurrent connection limit (max 5), evicts oldest (Wave 10, 2026-03-16)
-- [x] Rate limit export endpoints — 5 exports per 10 min per IP (Wave 10, 2026-03-16)
-- [x] Bulk mutation role checks — `bulkUpdateTasks` verifies per-project access (Wave 10, 2026-03-16)
-- [x] Move SSE token from query string to header — fetch-based SSE client with Authorization header (Wave 10, 2026-03-16)
-- [x] Comment mention regex hardening — tighter email regex, 20-mention cap, batched DB lookups (Wave 10, 2026-03-16)
 
 ### A11: Accessibility Foundation (High Priority)
-**Why:** App fails WCAG 2.1 Level A on multiple criteria — keyboard nav, focus management, ARIA labels, color contrast.
-**Touches:** `apps/web/src/components/` (most component files), `apps/web/src/pages/AppLayout.tsx`
+**Touches:** `apps/web/src/components/`
 
-- [x] Modal accessibility — shared `<Modal>` with focus trap, aria-modal, aria-labelledby, Escape-to-close, focus restore. 19 modals converted (Wave 9, 2026-03-16)
-- [x] ARIA labels on all icon-only buttons — close/clear/dismiss buttons, all 22 SVG icons have aria-hidden (Wave 9, 2026-03-16)
-- [x] Form label associations — htmlFor/id on TaskFieldsPanel, SprintCreateModal, FilterBar, SprintPlanModal; aria-labels on CSVImportModal (Wave 10, 2026-03-16)
-- [x] Screen reader live regions — ToastContainer has aria-live="polite", error toasts use role="alert" (Wave 9, 2026-03-16)
-- [x] Skip-to-content link — sr-only visible on focus, jumps to #main-content (Wave 9, 2026-03-16)
-- [x] Color contrast fixes — text-slate-300/400 → text-slate-500 on light backgrounds in FilterBar, CSVImportModal, SprintPlanModal (Wave 10, 2026-03-16)
 - [ ] Color contrast audit — full WCAG AA 4.5:1 audit of remaining Tailwind color pairings across all components
-- [x] Drag-and-drop keyboard alternative — Enter/Space to enter move mode, arrow keys to move between columns, Escape to exit (Wave 9, 2026-03-16)
-- [x] Backlog keyboard navigation — sprint picker on task rows via M key or button, with aria-live announcements (Wave 10, 2026-03-16)
-- [x] KanbanBoard move mode: Up/Down arrow keys for within-column reordering with announcements (Wave 10, 2026-03-16)
 - [ ] KanbanBoard reorder persistence — Up/Down reorder is local state only; needs a `reorderTask` mutation to persist order to DB
 - [ ] BacklogView sprint picker: close on Escape key and click-outside for better keyboard UX
 
 ### Q1: Code Quality & Testing (Medium Priority)
-**Why:** Zero test coverage, inconsistent error handling, duplicated modal patterns, dead code.
-**Touches:** `apps/web/src/components/`, `apps/web/src/hooks/`, `apps/api/src/graphql/resolvers/`, new `__tests__/` directories
+**Touches:** `apps/web/src/hooks/`, `apps/api/src/graphql/resolvers/`, `__tests__/` directories
 
-- [x] Base Modal component — shared `<Modal>` with focus trap, ARIA, Escape-to-close (completed as part of A11 Wave 9, 2026-03-16)
-- [x] Consistent error handling — NotificationCenter, GlobalSearchModal, FilterBar catch blocks now log errors / show UI feedback instead of silent swallowing (Wave 11, 2026-03-16)
-- [x] Unit test foundation — Vitest setup for both API and web, tests for resolverHelpers (validateStatus, parseInput, sanitizeForPrompt) and useTaskFiltering (search, status, priority, assignee, combined) (Wave 11, 2026-03-16)
-- [x] Integration test foundation — test database setup (tasktoad_test), auth resolver tests for signup/login/createOrg (Wave 13, 2026-03-16)
-- [x] TypeScript strictness (partial) — export.ts `any` types replaced with Prisma-derived types, eslint-disable comments removed (Wave 11, 2026-03-16)
-- [x] Dead code cleanup — AppLayout SSE handler documented with TODO for future event dispatch (Wave 11, 2026-03-16)
-- [x] TypeScript strictness (remaining) — Zod validation for 7 JSON.parse calls, eliminated `as unknown` casts in task/search/export resolvers, shared zodSchemas.ts (Wave 13, 2026-03-16)
 - [ ] TypeScript strictness (final) — remaining `any` types audit; add Zod for suggestedTools and dependsOn JSON parsing in taskHelpers.ts
 - [ ] Expand test coverage — add tests for useTaskCRUD, tokenEstimator, aiService, and resolver integration tests
 - [ ] Integration test CI — tasktoad_test database needs to be created/available in CI; add docker-compose or GitHub Actions step for test DB
 - [ ] Integration test coverage — extend beyond auth to task CRUD, sprint, project resolvers
 
-### W1: Full-Stack Quality Refactor (remaining)
-**Touches:** `resolvers/*`, `typedefs/*`, `ProjectDetail.tsx`
-
-- [x] Fix inconsistent mutation return types — `deleteComment` and `markAllNotificationsRead` return affected objects (Wave 8, 2026-03-16)
-- [x] Add cursor-based pagination — `activities` and `reports` queries with cursor/hasMore/nextCursor (Wave 8, 2026-03-16)
-
 ### W2: Advanced Tasks & Filters
 **Touches:** `prisma/schema/task.prisma`, `typedefs/task.ts`, `resolvers/task.ts`, `TaskDetailPanel.tsx`, `useProjectData.ts`, `useTaskFiltering.ts`, `FilterBar.tsx`
-**Est. time:** 45-60 min
 
-- [x] Custom fields on tasks — 4 field types with CRUD, TaskDetailPanel rendering, FilterBar integration (Wave 8, 2026-03-16)
-- [x] Saved filters / views — save/load/delete filter configurations in FilterBar (Wave 8, 2026-03-16)
-- [x] Multiple assignees — TaskAssignee join table, GraphQL types/resolvers with DataLoader, multi-select assignee picker UI with chips (Wave 11, 2026-03-16)
 - [ ] Recurring tasks — auto-recreate on schedule. Full slice: Prisma fields (recurrenceRule, recurrenceParentId), cron/scheduler utility, creation logic, UI toggle in TaskDetailPanel
 - [ ] File attachments on tasks — upload images/docs/screenshots. Full slice: storage service abstraction (local + S3), Prisma model (Attachment), upload endpoint, TaskDetailPanel attachment section
-- [x] Task templates — TaskTemplate Prisma model, GraphQL CRUD, template picker in ProjectDetail toolbar, Save as Template on task detail, management tab in ProjectSettingsModal (Wave 12, 2026-03-16)
-- [x] JSON string columns → centralized helpers — parseColumns/parseOptions/parseStatuses in jsonHelpers.ts, 10 call sites replaced (Wave 12, 2026-03-16)
 - [ ] Shared types between API and web — evaluate graphql-codegen or shared package for type safety
-- [x] Custom field DataLoader — customFieldValuesByTask DataLoader with batched loading (Wave 11, 2026-03-16)
-- [x] Custom field reordering UI — Up/Down arrow buttons in ProjectSettingsModal with position swap via updateCustomField mutation (Wave 12, 2026-03-16)
-- [x] Custom field NUMBER/DATE filter controls — number input with operator dropdown (=,<,>,<=,>=), date input with operator, numeric/date comparison logic in useTaskFiltering (Wave 11, 2026-03-16)
 
 ### W6: Advanced Views & AI Extras (remaining)
-**Touches:** new `apps/web/src/components/` files, `resolvers/ai.ts`
+**Touches:** `resolvers/ai.ts`, `apps/web/src/components/`
 
-- [x] AI code review UI — AI Review button on tasks with linked PRs, TaskAIReviewSection with approval badge/comments/suggestions, handleReviewPR in useTaskCRUD (Wave 13, 2026-03-16)
-- [x] Public REST/GraphQL API docs — domain-grouped operations, rate limits table, Quick Start curl examples, sidebar TOC, schema download endpoints (/api/docs/schema.graphql, /api/docs/schema.json) (Wave 13, 2026-03-16)
 - [ ] AI auto-review trigger — auto-trigger review when task moves to `in_review` status (currently manual button only)
 - [ ] API docs operation descriptions — extract descriptions from SDL comments for each query/mutation (currently shows signature only)
 
 ### D1: Deployment & Observability (Medium Priority)
-**Why:** No metrics, no APM, no external monitoring. Railway basic healthcheck is the only signal.
 **Touches:** `apps/api/src/app.ts`, `apps/api/src/index.ts`, Railway dashboard config
 
-- [x] Expose Prisma metrics at `/api/metrics` for Prometheus scraping — prom-client with Prisma preview metrics feature (Wave 11, 2026-03-16)
-- [x] Add structured request logging with latency, status code, and resolver name — pino-http middleware with request IDs, GraphQL operation name extraction (Wave 11, 2026-03-16)
-- [x] Health check endpoint — GET /api/health with DB connectivity probe (Wave 11, 2026-03-16)
 - [ ] External uptime monitoring (Uptime Robot or similar)
 - [ ] Railway alerting — configure alerts for restart loops, memory spikes, high CPU
 - [ ] Staging environment — Railway preview deployments from PRs
 - [ ] Database backup strategy — verify Railway PostgreSQL automated backups, document restore procedure
 
 ### I1: Integration Completeness (Medium Priority)
-**Why:** Webhooks lack retry/delivery tracking, Slack only has one command, email has no HTML templates.
-**Touches:** `apps/api/src/utils/webhookDispatcher.ts`, `apps/api/src/slack/`, `apps/api/src/utils/email.ts`, `apps/api/src/github/`
+**Touches:** `apps/api/src/utils/webhookDispatcher.ts`, `apps/api/src/slack/`, `apps/api/src/github/`
 
-- [x] Webhook retry queue — exponential backoff with delivery log table showing status, attempts, next retry (Wave 9, 2026-03-16)
-- [x] Webhook delivery dashboard — UI in OrgSettings showing delivery history per endpoint with success/failure counts (Wave 9, 2026-03-16)
-- [x] Slack command expansion — added `/tasktoad list` and `/tasktoad status` with Block Kit formatting (Wave 9, 2026-03-16)
-- [x] Slack user mapping — SlackUserMapping model, GraphQL CRUD, slash command integration, settings UI (Wave 10, 2026-03-16)
-- [x] Email HTML templates — branded templates for verification, password reset, invite (Wave 9, 2026-03-16)
-- [x] Wire HTML email templates into sendEmail callers — all 4 auth resolver calls now pass HTML templates (Wave 10, 2026-03-16)
-- [x] Slack `/tasktoad list` assignee filtering — shows user-specific tasks when Slack user is mapped (Wave 10, 2026-03-16)
-- [x] Email retry queue — 3 attempts with exponential backoff (1s/5s/15s), logs but doesn't throw (Wave 10, 2026-03-16)
 - [ ] Slack user mapping discovery — `/tasktoad link` self-service command for users to link their own accounts (currently admin-only via UI)
 - [ ] GitHub webhook retry — dead letter queue for failed webhook processing with manual replay
 
 ### F1: Frontend Performance (Low-Medium Priority)
-**Why:** Missing virtualization on long lists, some unnecessary re-renders, JSON.parse in hot loops.
 **Touches:** `apps/web/src/components/`, `apps/api/src/graphql/resolvers/project.ts`
 
 - [ ] Virtualize long lists — use `react-window` or `@tanstack/virtual` for task lists (BacklogView, TableView) and activity feeds when > 100 items
@@ -170,26 +104,12 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 - [ ] Template dropdown click-outside close — ProjectDetail template menu doesn't close on click-outside, only via Close button
 - [ ] Template instructions/acceptanceCriteria in create UI — createTaskTemplate form only has name/description/priority/type but the model supports instructions and acceptanceCriteria fields
 - [ ] Route lazy-load error boundaries — React.lazy chunks can fail to load (network issues); add retry logic or per-route error boundaries with refresh prompt
-- [x] Memoize list item components — TaskRow, CommentItem, ActivityItem wrapped in React.memo with stable callbacks (Wave 12, 2026-03-16)
-- [x] Cache parsed JSON at task level — parseDependsOn utility with Map cache in taskHelpers.ts, used in KanbanBoard and GanttChart (Wave 12, 2026-03-16)
 - [ ] Lazy-load heavy view components — GanttChart, BatchCodeGenModal, DriftAnalysisModal with `React.lazy()` (route-level lazy loading done, but these in-page modals still eagerly loaded)
-- [x] Portfolio query optimization — portfolioOverview batches tasks + sprints into 3 total queries (Wave 12, 2026-03-16)
 
 ### S1: Styling & Branding
-**Why:** Brand identity system fully deployed. Remaining items are polish and component abstraction.
 **Touches:** `apps/web/src/components/shared/`, `apps/web/tailwind.config.js`, `apps/web/index.html`, `apps/web/public/`
 
-- [x] Favicon + meta tags — favicon.png, `<meta>` description/theme-color/og:image (2026-03-16)
-- [x] Design token system — CSS custom properties (`--brand-*`) + Tailwind `brand.*` tokens (2026-03-16)
-- [x] Logo integration — sidebar, login, signup, home page, dashboard (2026-03-16)
-- [x] Primary CTA button branding — brand-green on key CTAs (2026-03-16)
-- [x] Full button color migration — all action buttons across 35 files migrated from slate-800/700 to brand-green/brand-green-hover (2026-03-16)
-- [x] Focus ring branding — all `focus:ring-slate-400` → `focus:ring-brand-green` across 19 files (2026-03-16)
-- [x] Active tab/toggle indicators — AIUsageDashboard, BurndownChart, ProjectChatPanel, TaskPlanApprovalDialog step indicators → brand-green (2026-03-16)
-- [x] Loading spinner branding — border-t-slate-700 → border-t-brand-green in App.tsx, OrgSettings, TaskPlanApprovalDialog (2026-03-16)
-- [x] Button component library — shared `<Button>` with primary/secondary/ghost/danger variants, sm/md/lg sizes, loading spinner; 31 ad-hoc buttons converted (Wave 13, 2026-03-16)
 - [ ] Consistent spacing/typography scale — audit and normalize padding, margin, font-size usage across components
-- [x] Dark mode prep — Tailwind `darkMode: 'class'`, CSS custom properties for dark brand colors, dark: variants on layout shell + Button + Modal (Wave 13, 2026-03-16)
 - [ ] Dark mode rollout — extend dark: variants to remaining components (ProjectDetail, modals, cards, tables, forms); add user-facing toggle with localStorage persistence
 - [ ] Button component adoption — ~26 remaining ad-hoc buttons not yet converted (cancel buttons, login/signup submit, some one-off styles)
 - [ ] SVG favicon — generate proper SVG favicon from T-Frog silhouette for sharp rendering at all sizes
@@ -197,19 +117,10 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 - [ ] PWA manifest — `manifest.json` with icon set for installable web app
 
 ### SW1: Swarm Workflow Optimization (Meta)
-**Why:** 10 waves of swarm experience have surfaced recurring friction — type errors from new packages, missing files arrays, idle workers, stale knowledge base. Fixing these improves every future wave.
 **Touches:** `.claude/skills/`, `.claude-knowledge/`, `scripts/swarm/`, `CLAUDE.md`
 
 - [ ] Auto-prisma-generate in merge script — `scripts/swarm/merge-worker.sh` should detect Prisma schema changes in the diff and run `npx prisma generate` automatically before typecheck, preventing the recurring "stale Prisma client types" review rejection
 - [ ] Task file array validation — add a pre-flight check in the swarm skill that cross-references task description file paths against the `files` array, flagging any mentioned files that aren't listed (recurring issue: Prisma relation files, resolver index, entry point files)
-- [ ] Standard Prisma task boilerplate — when a task adds a Prisma model with relations, auto-include `auth.prisma`, `org.prisma`, `resolvers/index.ts` in the files array and add "Run `npx prisma generate` && verify `pnpm typecheck`" to acceptance criteria
-- [ ] New package type-check reminder — when a task installs a new npm package, add acceptance criterion: "Verify `pnpm typecheck` passes — add `@types/*` package or `.d.ts` declaration if needed"
-- [x] Knowledge base audit — app-overview.md, skills.md, decisions.md updated for Waves 9-11 (Wave 12, 2026-03-16)
-- [x] CLAUDE.md refresh — test commands, REST endpoints, observability, GraphQL schema, key files, env vars all updated (Wave 12, 2026-03-16)
-- [x] Swarm status dashboard — file overlap warnings between in-flight tasks across workers added to status.sh (Wave 12, 2026-03-16)
-- [x] Worker branch strategy — BRANCH_STRATEGY.md documenting commit-per-task, rebase-after-merge, rejection handling (Wave 12, 2026-03-16)
-- [x] Standard Prisma task boilerplate — auto-added to swarm SKILL.md acceptance criteria reminders (Wave 12, 2026-03-16)
-- [x] New package type-check reminder — auto-added to swarm SKILL.md acceptance criteria reminders (Wave 12, 2026-03-16)
 - [ ] Auto-strip worker role from CLAUDE.md commits — swarm setup appends worker role to CLAUDE.md but workers accidentally commit it; need .gitignore or pre-commit hook to strip the role section before commit
 
 ---
@@ -228,7 +139,7 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 - A11 + Q1 (both touch components — but A11 is UI-level, Q1 is structural; could be split carefully)
 - A11 + S1 (both touch component styling)
 
-**Remaining legacy sets (W1, W2, W6):** All can run in parallel with each other — no file overlap.
+**Remaining legacy sets (W2, W6):** Can run in parallel with each other — no file overlap.
 
 **SW1 (meta):** No code file overlap with any set — only touches skills, scripts, docs. Can run alongside anything, or be done manually between waves.
 
@@ -301,15 +212,6 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 - [x] Email retry with backoff — 3 attempts (1s/5s/15s)
 - [x] Slack user mapping — full vertical slice (Prisma, GraphQL, slash commands, settings UI)
 - [x] Slack list assignee filtering — user-specific task lists for mapped users
-
-### S1 (partial): Styling & Branding (2026-03-16)
-- [x] CSS custom properties + Tailwind brand tokens (--brand-green, --brand-lime, --brand-dark, --brand-cyan, --brand-green-light, --brand-green-hover)
-- [x] Logo assets deployed (logo.png, logo-data.png, favicon.png) + meta tags (favicon, og:*, theme-color)
-- [x] Logo placements: sidebar, login, signup, home page, project dashboard
-- [x] Full button color migration: all action buttons (35 files) → brand-green
-- [x] Focus ring migration: all focus:ring-slate-400 (19 files) → focus:ring-brand-green
-- [x] Active tab/toggle indicators → brand-green (4 components)
-- [x] Loading spinner borders → border-t-brand-green (3 files)
 
 ### P1 (partial): Production Hardening (Wave 9, 2026-03-16)
 - [x] Graceful shutdown handlers (SIGTERM/SIGINT) — close Prisma, clear intervals, force-kill timeout
