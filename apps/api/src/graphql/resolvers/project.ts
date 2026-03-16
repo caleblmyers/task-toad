@@ -35,62 +35,75 @@ export const projectQueries = {
       orderBy: { createdAt: 'desc' },
     });
 
+    if (projects.length === 0) return [];
+
+    const projectIds = projects.map((p: { projectId: string }) => p.projectId);
     const today = new Date().toISOString().slice(0, 10);
 
-    const summaries = await Promise.all(
-      projects.map(async (proj: { projectId: string; name: string }) => {
-        const tasks = await context.prisma.task.findMany({
-          where: { projectId: proj.projectId, parentTaskId: null, archived: false },
-          select: { status: true, dueDate: true },
-        });
+    // Batch: fetch ALL tasks for all projects in one query
+    const allTasks = await context.prisma.task.findMany({
+      where: { projectId: { in: projectIds }, parentTaskId: null, archived: false },
+      select: { projectId: true, status: true, dueDate: true },
+    });
 
-        const totalTasks = tasks.length;
-        const completedTasks = tasks.filter((t: { status: string }) => t.status === 'done').length;
-        const overdueTasks = tasks.filter((t: { dueDate: string | null; status: string }) =>
-          t.dueDate && t.dueDate < today && t.status !== 'done'
-        ).length;
-        const completionPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    // Batch: fetch ALL active sprints for all projects in one query
+    const activeSprints = await context.prisma.sprint.findMany({
+      where: { projectId: { in: projectIds }, isActive: true, closedAt: null },
+      select: { projectId: true, name: true },
+    });
 
-        // Status distribution
-        const statusMap = new Map<string, number>();
-        for (const t of tasks) {
-          statusMap.set(t.status, (statusMap.get(t.status) ?? 0) + 1);
-        }
-        const statusDistribution = Array.from(statusMap, ([label, count]) => ({ label, count }));
+    // Group tasks by projectId
+    const tasksByProject = new Map<string, Array<{ status: string; dueDate: string | null }>>();
+    for (const t of allTasks) {
+      const list = tasksByProject.get(t.projectId);
+      if (list) list.push(t);
+      else tasksByProject.set(t.projectId, [t]);
+    }
 
-        // Active sprint
-        const activeSprint = await context.prisma.sprint.findFirst({
-          where: { projectId: proj.projectId, isActive: true, closedAt: null },
-          select: { name: true },
-        });
+    // Index active sprints by projectId
+    const sprintByProject = new Map<string, string>();
+    for (const s of activeSprints) {
+      sprintByProject.set(s.projectId, s.name);
+    }
 
-        // Health score: simple heuristic (100 base, penalize overdue and low completion)
-        let healthScore: number | null = null;
-        if (totalTasks > 0) {
-          healthScore = 100;
-          // Penalize for overdue tasks (-10 per overdue, max -50)
-          healthScore -= Math.min(overdueTasks * 10, 50);
-          // Penalize if completion is low relative to expected (just use completion as a positive signal)
-          if (completionPercent < 25) healthScore -= 20;
-          else if (completionPercent < 50) healthScore -= 10;
-          healthScore = Math.max(0, Math.min(100, healthScore));
-        }
+    return projects.map((proj: { projectId: string; name: string }) => {
+      const tasks = tasksByProject.get(proj.projectId) ?? [];
+      const totalTasks = tasks.length;
+      const completedTasks = tasks.filter((t) => t.status === 'done').length;
+      const overdueTasks = tasks.filter((t) =>
+        t.dueDate && t.dueDate < today && t.status !== 'done'
+      ).length;
+      const completionPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-        return {
-          projectId: proj.projectId,
-          name: proj.name,
-          totalTasks,
-          completedTasks,
-          overdueTasks,
-          completionPercent,
-          activeSprint: activeSprint?.name ?? null,
-          healthScore,
-          statusDistribution,
-        };
-      })
-    );
+      // Status distribution
+      const statusMap = new Map<string, number>();
+      for (const t of tasks) {
+        statusMap.set(t.status, (statusMap.get(t.status) ?? 0) + 1);
+      }
+      const statusDistribution = Array.from(statusMap, ([label, count]) => ({ label, count }));
 
-    return summaries;
+      // Health score: simple heuristic (100 base, penalize overdue and low completion)
+      let healthScore: number | null = null;
+      if (totalTasks > 0) {
+        healthScore = 100;
+        healthScore -= Math.min(overdueTasks * 10, 50);
+        if (completionPercent < 25) healthScore -= 20;
+        else if (completionPercent < 50) healthScore -= 10;
+        healthScore = Math.max(0, Math.min(100, healthScore));
+      }
+
+      return {
+        projectId: proj.projectId,
+        name: proj.name,
+        totalTasks,
+        completedTasks,
+        overdueTasks,
+        completionPercent,
+        activeSprint: sprintByProject.get(proj.projectId) ?? null,
+        healthScore,
+        statusDistribution,
+      };
+    });
   },
 
   savedFilters: async (_parent: unknown, args: { projectId: string }, context: Context) => {

@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './auth/context';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -7,17 +7,19 @@ import Signup from './pages/Signup';
 import CreateOrg from './pages/CreateOrg';
 import AppLayout from './pages/AppLayout';
 import Home from './pages/Home';
-import NewProject from './pages/NewProject';
-import Projects from './pages/Projects';
-import ProjectDetail from './pages/ProjectDetail';
-import OrgSettings from './pages/OrgSettings';
 import VerifyEmail from './pages/VerifyEmail';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import AcceptInvite from './pages/AcceptInvite';
-import Search from './pages/Search';
-import Portfolio from './pages/Portfolio';
-import ProfilePage from './pages/ProfilePage';
+
+// Lazy-load heavy route components for code-splitting
+const ProjectDetail = lazy(() => import('./pages/ProjectDetail'));
+const Portfolio = lazy(() => import('./pages/Portfolio'));
+const OrgSettings = lazy(() => import('./pages/OrgSettings'));
+const Search = lazy(() => import('./pages/Search'));
+const NewProject = lazy(() => import('./pages/NewProject'));
+const Projects = lazy(() => import('./pages/Projects'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 
 function Protected({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
