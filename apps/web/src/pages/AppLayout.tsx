@@ -3,12 +3,14 @@ import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/context';
 import { gql } from '../api/client';
 import NotificationCenter from '../components/NotificationCenter';
+import NotificationSettings from '../components/NotificationSettings';
 import GlobalSearchModal from '../components/GlobalSearchModal';
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showNotifSettings, setShowNotifSettings] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showSearch, setShowSearch] = useState(false);
 
@@ -88,7 +90,22 @@ export default function AppLayout() {
             <button
               type="button"
               onClick={() => {
+                setShowNotifSettings((v) => !v);
+                setShowNotifications(false);
+              }}
+              className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-700"
+              title="Notification Preferences"
+            >
+              <svg className="w-4.5 h-4.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <circle cx="8" cy="8" r="2" />
+                <path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" strokeLinecap="round" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
                 setShowNotifications((v) => !v);
+                setShowNotifSettings(false);
                 if (!showNotifications) setUnreadCount(0);
               }}
               className="relative text-slate-400 hover:text-white p-1 rounded hover:bg-slate-700"
@@ -116,6 +133,21 @@ export default function AppLayout() {
         </div>
         {showNotifications && (
           <NotificationCenter onClose={() => setShowNotifications(false)} />
+        )}
+        {showNotifSettings && (
+          <div className="absolute bottom-full left-0 mb-2 w-80 bg-white rounded-lg shadow-lg border border-slate-200 p-4 z-50">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-slate-800">Notification Preferences</h3>
+              <button
+                type="button"
+                onClick={() => setShowNotifSettings(false)}
+                className="text-slate-400 hover:text-slate-600 text-lg leading-none"
+              >
+                &times;
+              </button>
+            </div>
+            <NotificationSettings />
+          </div>
         )}
       </aside>
       <main className="flex-1 p-6 overflow-auto">

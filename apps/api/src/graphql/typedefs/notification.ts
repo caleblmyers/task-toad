@@ -8,14 +8,23 @@ export const notificationTypeDefs = /* GraphQL */ `
     isRead: Boolean!
     createdAt: String!
   }
+
+  type NotificationPreference {
+    id: ID!
+    notificationType: String!
+    inApp: Boolean!
+    email: Boolean!
+  }
 `;
 
 export const notificationQueryFields = /* GraphQL */ `
   notifications(unreadOnly: Boolean, limit: Int): [Notification!]!
   unreadNotificationCount: Int!
+  notificationPreferences: [NotificationPreference!]!
 `;
 
 export const notificationMutationFields = /* GraphQL */ `
   markNotificationRead(notificationId: ID!): Notification!
   markAllNotificationsRead: Boolean!
+  updateNotificationPreference(notificationType: String!, inApp: Boolean, email: Boolean): NotificationPreference!
 `;

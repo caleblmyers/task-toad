@@ -13,8 +13,10 @@ model User {
   comments            Comment[] @relation("UserComments")
   activities          Activity[] @relation("UserActivities")
   notifications       Notification[] @relation("UserNotifications")
+  notificationPreferences NotificationPreference[]
   aiUsageLogs         AIUsageLog[]
   reports             Report[]
+  emailNotificationsEnabled Boolean @default(false) @map("email_notifications_enabled")
 
   @@map("users")
 }

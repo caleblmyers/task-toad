@@ -24,6 +24,22 @@ export const notificationQueries = {
       where: { userId: user.userId, orgId: user.orgId, isRead: false },
     });
   },
+
+  notificationPreferences: async (_parent: unknown, _args: unknown, context: Context) => {
+    const user = requireOrg(context);
+    const prefs = await context.prisma.notificationPreference.findMany({
+      where: { userId: user.userId, orgId: user.orgId },
+    });
+
+    const defaultTypes = ['assigned', 'status_changed', 'commented', 'mentioned', 'due_date_reminder', 'sprint_event'];
+    const prefMap = new Map(prefs.map(p => [p.notificationType, p]));
+
+    return defaultTypes.map(type => {
+      const existing = prefMap.get(type);
+      if (existing) return existing;
+      return { id: `default-${type}`, notificationType: type, inApp: true, email: false };
+    });
+  },
 };
 
 // ── Notification mutations ──
@@ -48,6 +64,34 @@ export const notificationMutations = {
       data: { isRead: true },
     });
     return true;
+  },
+
+  updateNotificationPreference: async (
+    _parent: unknown,
+    args: { notificationType: string; inApp?: boolean | null; email?: boolean | null },
+    context: Context,
+  ) => {
+    const user = requireOrg(context);
+    return context.prisma.notificationPreference.upsert({
+      where: {
+        userId_orgId_notificationType: {
+          userId: user.userId,
+          orgId: user.orgId,
+          notificationType: args.notificationType,
+        },
+      },
+      create: {
+        userId: user.userId,
+        orgId: user.orgId,
+        notificationType: args.notificationType,
+        inApp: args.inApp ?? true,
+        email: args.email ?? false,
+      },
+      update: {
+        ...(args.inApp != null ? { inApp: args.inApp } : {}),
+        ...(args.email != null ? { email: args.email } : {}),
+      },
+    });
   },
 };
 

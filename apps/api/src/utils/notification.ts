@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { createChildLogger } from './logger.js';
+import { sendEmail } from './email.js';
 
 const log = createChildLogger('notification');
 
@@ -16,7 +17,13 @@ interface CreateNotificationParams {
 
 export function createNotification(prisma: PrismaClient, params: CreateNotificationParams): void {
   // Fire-and-forget like logActivity
-  prisma.notification.create({
+  doCreateNotification(prisma, params).catch((err: unknown) => {
+    log.error({ err, type: params.type }, 'Failed to create notification');
+  });
+}
+
+async function doCreateNotification(prisma: PrismaClient, params: CreateNotificationParams): Promise<void> {
+  await prisma.notification.create({
     data: {
       orgId: params.orgId,
       userId: params.userId,
@@ -27,7 +34,27 @@ export function createNotification(prisma: PrismaClient, params: CreateNotificat
       relatedTaskId: params.relatedTaskId ?? null,
       relatedProjectId: params.relatedProjectId ?? null,
     },
-  }).catch((err: unknown) => {
-    log.error({ err, type: params.type }, 'Failed to create notification');
   });
+
+  // Check if user wants email for this notification type
+  const user = await prisma.user.findUnique({
+    where: { userId: params.userId },
+    select: { email: true, emailNotificationsEnabled: true },
+  });
+  if (!user || !user.emailNotificationsEnabled) return;
+
+  const pref = await prisma.notificationPreference.findUnique({
+    where: {
+      userId_orgId_notificationType: {
+        userId: params.userId,
+        orgId: params.orgId,
+        notificationType: params.type,
+      },
+    },
+  });
+  // Default: email is off unless explicitly enabled
+  if (!pref?.email) return;
+
+  const html = `<h3>${params.title}</h3>${params.body ? `<p>${params.body}</p>` : ''}`;
+  await sendEmail(user.email, `TaskToad: ${params.title}`, html);
 }
