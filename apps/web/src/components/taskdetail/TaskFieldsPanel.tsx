@@ -18,6 +18,8 @@ interface TaskFieldsPanelProps {
   onAddTaskLabel?: (taskId: string, labelId: string) => Promise<void>;
   onRemoveTaskLabel?: (taskId: string, labelId: string) => Promise<void>;
   onCreateLabel?: (name: string, color: string) => Promise<Label | null>;
+  onAddAssignee?: (taskId: string, userId: string) => Promise<void>;
+  onRemoveAssignee?: (taskId: string, userId: string) => Promise<void>;
 }
 
 const priorityStyles: Record<string, string> = {
@@ -48,7 +50,10 @@ export default function TaskFieldsPanel({
   onAddTaskLabel,
   onRemoveTaskLabel,
   onCreateLabel,
+  onAddAssignee,
+  onRemoveAssignee,
 }: TaskFieldsPanelProps) {
+  const [showAssigneePicker, setShowAssigneePicker] = useState(false);
   const [showLabelPicker, setShowLabelPicker] = useState(false);
   const [newLabelName, setNewLabelName] = useState('');
   const [newLabelColor, setNewLabelColor] = useState('#6b7280');
@@ -90,21 +95,81 @@ export default function TaskFieldsPanel({
         </select>
       </div>
 
-      {/* Assignee */}
+      {/* Assignees */}
       <div className="mb-4">
-        <label htmlFor="task-assignee-select" className="text-xs font-medium text-slate-500 uppercase tracking-wide">Assignee</label>
-        <select
-          id="task-assignee-select"
-          value={task.assigneeId ?? ''}
-          onChange={(e) => onAssignUser(task.taskId, e.target.value || null)}
-          className="block mt-1 border border-slate-300 rounded px-2 py-1 text-sm"
-          disabled={disabled}
-        >
-          <option value="">Unassigned</option>
-          {orgUsers.map((u) => (
-            <option key={u.userId} value={u.userId}>{u.email}</option>
-          ))}
-        </select>
+        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Assignees</p>
+        {onAddAssignee && onRemoveAssignee ? (
+          <>
+            <div className="flex flex-wrap gap-1.5 mb-1">
+              {(task.assignees ?? []).map((a) => (
+                <span
+                  key={a.id}
+                  className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200"
+                >
+                  {a.user.email}
+                  <button
+                    onClick={() => onRemoveAssignee(task.taskId, a.user.userId)}
+                    className="ml-0.5 hover:opacity-70"
+                    disabled={disabled}
+                    aria-label={`Remove ${a.user.email}`}
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))}
+              {(task.assignees ?? []).length === 0 && (
+                <span className="text-xs text-slate-400">No assignees</span>
+              )}
+            </div>
+            {showAssigneePicker ? (
+              <div className="mt-1">
+                <div className="max-h-32 overflow-y-auto border border-slate-200 rounded mb-1">
+                  {orgUsers
+                    .filter((u) => !(task.assignees ?? []).some((a) => a.user.userId === u.userId))
+                    .map((u) => (
+                      <button
+                        key={u.userId}
+                        onClick={() => {
+                          onAddAssignee(task.taskId, u.userId);
+                          setShowAssigneePicker(false);
+                        }}
+                        className="w-full text-left px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                        disabled={disabled}
+                      >
+                        {u.email}
+                      </button>
+                    ))}
+                  {orgUsers.filter((u) => !(task.assignees ?? []).some((a) => a.user.userId === u.userId)).length === 0 && (
+                    <p className="text-xs text-slate-400 px-2 py-1">All users assigned</p>
+                  )}
+                </div>
+                <button onClick={() => setShowAssigneePicker(false)} className="text-xs text-slate-400 hover:text-slate-600">Cancel</button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowAssigneePicker(true)}
+                className="text-xs text-slate-500 hover:text-slate-700"
+                disabled={disabled}
+              >
+                + Add assignee
+              </button>
+            )}
+          </>
+        ) : (
+          <select
+            id="task-assignee-select"
+            value={task.assigneeId ?? ''}
+            onChange={(e) => onAssignUser(task.taskId, e.target.value || null)}
+            className="block mt-1 border border-slate-300 rounded px-2 py-1 text-sm"
+            disabled={disabled}
+            aria-label="Assignee"
+          >
+            <option value="">Unassigned</option>
+            {orgUsers.map((u) => (
+              <option key={u.userId} value={u.userId}>{u.email}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* Due Date */}

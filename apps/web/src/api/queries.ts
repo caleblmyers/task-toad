@@ -95,6 +95,16 @@ export const REMOVE_TASK_LABEL_MUTATION = `mutation RemoveTaskLabel($taskId: ID!
   removeTaskLabel(taskId: $taskId, labelId: $labelId) { taskId }
 }`;
 
+// ── Assignee Mutations ──
+
+export const ADD_TASK_ASSIGNEE_MUTATION = `mutation AddTaskAssignee($taskId: ID!, $userId: ID!) {
+  addTaskAssignee(taskId: $taskId, userId: $userId) { id user { userId email } assignedAt }
+}`;
+
+export const REMOVE_TASK_ASSIGNEE_MUTATION = `mutation RemoveTaskAssignee($taskId: ID!, $userId: ID!) {
+  removeTaskAssignee(taskId: $taskId, userId: $userId)
+}`;
+
 // ── Comment Mutations ──
 
 export const CREATE_COMMENT_MUTATION = `mutation CreateComment($taskId: ID!, $content: String!, $parentCommentId: ID) {

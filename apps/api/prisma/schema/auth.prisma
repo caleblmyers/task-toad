@@ -23,6 +23,7 @@ model User {
   emailNotificationsEnabled Boolean @default(false) @map("email_notifications_enabled")
   savedFilters      SavedFilter[]
   slackUserMappings SlackUserMapping[]
+  taskAssignments   TaskAssignee[] @relation("TaskAssignees")
 
   @@map("users")
 }

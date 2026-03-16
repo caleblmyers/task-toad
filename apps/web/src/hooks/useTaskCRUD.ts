@@ -6,9 +6,10 @@ import {
   COMMENTS_QUERY, ACTIVITIES_QUERY, CREATE_COMMENT_MUTATION, UPDATE_COMMENT_MUTATION,
   DELETE_COMMENT_MUTATION, CREATE_LABEL_MUTATION, DELETE_LABEL_MUTATION,
   ADD_TASK_LABEL_MUTATION, REMOVE_TASK_LABEL_MUTATION, LABELS_QUERY,
+  ADD_TASK_ASSIGNEE_MUTATION, REMOVE_TASK_ASSIGNEE_MUTATION,
 } from '../api/queries';
 import { columnToStatus, statusToColumn } from '../utils/taskHelpers';
-import type { Task, TaskConnection, Sprint, Comment, Activity, Label } from '../types';
+import type { Task, TaskConnection, Sprint, Comment, Activity, Label, TaskAssignee } from '../types';
 
 interface UseTaskCRUDOptions {
   projectId: string | undefined;
@@ -490,6 +491,33 @@ export function useTaskCRUD({ projectId, userId, sprints }: UseTaskCRUDOptions) 
     }
   }, [loadTasks]);
 
+  // ── Assignees ──
+
+  const handleAddAssignee = useCallback(async (taskId: string, userId: string) => {
+    try {
+      const data = await gql<{ addTaskAssignee: TaskAssignee }>(ADD_TASK_ASSIGNEE_MUTATION, { taskId, userId });
+      const newAssignee = data.addTaskAssignee;
+      setTasks((prev) => prev.map((t) =>
+        t.taskId === taskId ? { ...t, assignees: [...(t.assignees ?? []), newAssignee] } : t
+      ));
+      setSelectedTask((t) => t?.taskId === taskId ? { ...t, assignees: [...(t.assignees ?? []), newAssignee] } : t);
+    } catch {
+      loadTasks();
+    }
+  }, [loadTasks]);
+
+  const handleRemoveAssignee = useCallback(async (taskId: string, userId: string) => {
+    setTasks((prev) => prev.map((t) =>
+      t.taskId === taskId ? { ...t, assignees: (t.assignees ?? []).filter((a) => a.user.userId !== userId) } : t
+    ));
+    setSelectedTask((t) => t?.taskId === taskId ? { ...t, assignees: (t.assignees ?? []).filter((a) => a.user.userId !== userId) } : t);
+    try {
+      await gql<{ removeTaskAssignee: boolean }>(REMOVE_TASK_ASSIGNEE_MUTATION, { taskId, userId });
+    } catch {
+      loadTasks();
+    }
+  }, [loadTasks]);
+
   // ── Comments ──
 
   const handleCreateComment = useCallback(async (taskId: string, content: string, parentCommentId?: string) => {
@@ -540,6 +568,8 @@ export function useTaskCRUD({ projectId, userId, sprints }: UseTaskCRUDOptions) 
     handleBulkUpdate, handleArchiveTask,
     // Labels
     handleCreateLabel, handleDeleteLabel, handleAddTaskLabel, handleRemoveTaskLabel,
+    // Assignees
+    handleAddAssignee, handleRemoveAssignee,
     // Comments
     handleCreateComment, handleUpdateComment, handleDeleteComment,
   };

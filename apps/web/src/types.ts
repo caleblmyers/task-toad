@@ -120,6 +120,13 @@ export interface Task {
   commits?:           TaskCommit[];
   children?:          Task[];
   progress?:          { total: number; completed: number; percentage: number };
+  assignees?:         TaskAssignee[];
+}
+
+export interface TaskAssignee {
+  id: string;
+  user: { userId: string; email: string };
+  assignedAt: string;
 }
 
 export interface TaskCommit {

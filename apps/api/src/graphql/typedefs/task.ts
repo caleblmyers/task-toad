@@ -29,6 +29,13 @@ export const taskTypeDefs = /* GraphQL */ `
     children: [Task!]!
     progress: TaskProgress
     customFieldValues: [CustomFieldValue!]!
+    assignees: [TaskAssignee!]!
+  }
+
+  type TaskAssignee {
+    id: ID!
+    user: User!
+    assignedAt: String!
   }
 
   type CustomField {
@@ -135,4 +142,7 @@ export const taskMutationFields = /* GraphQL */ `
   updateCustomField(customFieldId: ID!, name: String, options: String, required: Boolean, position: Int): CustomField!
   deleteCustomField(customFieldId: ID!): Boolean!
   setCustomFieldValue(taskId: ID!, customFieldId: ID!, value: String!): CustomFieldValue!
+
+  addTaskAssignee(taskId: ID!, userId: ID!): TaskAssignee!
+  removeTaskAssignee(taskId: ID!, userId: ID!): Boolean!
 `;

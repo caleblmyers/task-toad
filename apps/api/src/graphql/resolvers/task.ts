@@ -515,6 +515,56 @@ export const taskMutations = {
       include: { customField: true },
     });
   },
+
+  addTaskAssignee: async (
+    _parent: unknown,
+    args: { taskId: string; userId: string },
+    context: Context
+  ) => {
+    const { user, task } = await requireTask(context, args.taskId);
+    const assignee = await context.prisma.taskAssignee.upsert({
+      where: { taskId_userId: { taskId: args.taskId, userId: args.userId } },
+      create: { taskId: args.taskId, userId: args.userId },
+      update: {},
+      include: { user: true },
+    });
+    logActivity(context.prisma, {
+      orgId: user.orgId, projectId: task.projectId, taskId: task.taskId, userId: user.userId,
+      action: 'task.assignee_added', field: 'assignee', newValue: args.userId,
+    });
+    if (args.userId !== user.userId) {
+      createNotification(context.prisma, {
+        orgId: user.orgId,
+        userId: args.userId,
+        type: 'assigned',
+        title: `You were assigned to "${task.title}"`,
+        linkUrl: `/app/projects/${task.projectId}`,
+        relatedTaskId: task.taskId,
+        relatedProjectId: task.projectId,
+      });
+    }
+    return {
+      id: assignee.id,
+      user: assignee.user,
+      assignedAt: assignee.assignedAt.toISOString(),
+    };
+  },
+
+  removeTaskAssignee: async (
+    _parent: unknown,
+    args: { taskId: string; userId: string },
+    context: Context
+  ) => {
+    const { user, task } = await requireTask(context, args.taskId);
+    await context.prisma.taskAssignee.deleteMany({
+      where: { taskId: args.taskId, userId: args.userId },
+    });
+    logActivity(context.prisma, {
+      orgId: user.orgId, projectId: task.projectId, taskId: task.taskId, userId: user.userId,
+      action: 'task.assignee_removed', field: 'assignee', oldValue: args.userId,
+    });
+    return true;
+  },
 };
 
 // ── Task field resolvers ──
@@ -526,6 +576,14 @@ export const taskFieldResolvers = {
     },
     customFieldValues: async (parent: { taskId: string }, _args: unknown, context: Context) => {
       return context.loaders.customFieldValuesByTask.load(parent.taskId);
+    },
+    assignees: async (parent: { taskId: string }, _args: unknown, context: Context) => {
+      const assignees = await context.loaders.taskAssignees.load(parent.taskId);
+      return assignees.map((a) => ({
+        id: a.id,
+        user: a.user,
+        assignedAt: a.assignedAt.toISOString(),
+      }));
     },
     githubIssueUrl: async (parent: { taskId: string; projectId: string; githubIssueNumber?: number | null }, _args: unknown, context: Context) => {
       if (!parent.githubIssueNumber) return null;
