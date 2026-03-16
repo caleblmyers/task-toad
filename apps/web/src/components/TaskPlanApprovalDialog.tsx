@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { TaskPlanPreview } from '../types';
 import Modal from './shared/Modal';
+import Button from './shared/Button';
 
 const PRIORITY_STYLES: Record<string, string> = {
   critical: 'bg-red-100 text-red-700',
@@ -297,14 +298,9 @@ export default function TaskPlanApprovalDialog({
                   rows={2}
                 />
                 <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={handleRefineAndRegenerate}
-                    disabled={!refinementText.trim()}
-                    className="px-3 py-1.5 text-sm bg-brand-green text-white rounded-lg font-medium hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
+                  <Button size="sm" disabled={!refinementText.trim()} onClick={handleRefineAndRegenerate} className="font-medium rounded-lg">
                     Regenerate with feedback
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -335,14 +331,9 @@ export default function TaskPlanApprovalDialog({
               >
                 Cancel
               </button>
-              <button
-                type="button"
-                onClick={handleRetryWithContext}
-                disabled={!context.trim()}
-                className="px-4 py-1.5 text-sm bg-brand-green text-white rounded-lg font-medium hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
-              >
+              <Button size="sm" disabled={!context.trim()} onClick={handleRetryWithContext} className="font-medium rounded-lg px-4">
                 Try with context →
-              </button>
+              </Button>
             </div>
           </div>
         ) : (
@@ -383,22 +374,12 @@ export default function TaskPlanApprovalDialog({
             {loading ? 'Generating…' : `${selectedCount} of ${tasks.length} task${tasks.length !== 1 ? 's' : ''} selected`}
           </span>
           <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={loading}
-              className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <Button variant="ghost" onClick={onCancel} disabled={loading}>
               Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => onApprove(selectedTasks)}
-              disabled={selectedCount === 0 || loading}
-              className="px-5 py-2 text-sm bg-brand-green text-white rounded-lg font-medium hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            </Button>
+            <Button size="lg" disabled={selectedCount === 0 || loading} onClick={() => onApprove(selectedTasks)} className="font-medium rounded-lg">
               Approve & create {selectedCount} task{selectedCount !== 1 ? 's' : ''} →
-            </button>
+            </Button>
           </div>
         </div>
       </div>

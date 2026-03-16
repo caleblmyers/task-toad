@@ -36,6 +36,7 @@ import BugReportModal from '../components/BugReportModal';
 import PRDBreakdownModal from '../components/PRDBreakdownModal';
 import SprintTransitionModal from '../components/SprintTransitionModal';
 import ProjectSettingsModal from '../components/ProjectSettingsModal';
+import Button from '../components/shared/Button';
 import { IconList, IconBoard, IconTable, IconCalendar, IconClose, IconPlus, IconRefresh, IconSummary, IconFilter, IconKeyboard, IconGitHub } from '../components/shared/Icons';
 import { TOKEN_KEY } from '../api/client';
 import { statusLabel } from '../utils/taskHelpers';
@@ -421,93 +422,44 @@ export default function ProjectDetail() {
           >
             <IconKeyboard className="w-4 h-4" />
           </button>
-          <button
-            type="button"
-            onClick={() => d.setShowAddForm(!d.showAddForm)}
-            className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={d.isGenerating}
-          >
+          <Button variant="ghost" size="sm" onClick={() => d.setShowAddForm(!d.showAddForm)} disabled={d.isGenerating}>
             {d.showAddForm ? <><IconClose className="w-3.5 h-3.5" /> Cancel</> : <><IconPlus className="w-3.5 h-3.5" /> Add task</>}
-          </button>
-          <button
-            type="button"
-            onClick={() => d.openPreview()}
-            disabled={d.isGenerating}
-            className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => d.openPreview()} disabled={d.isGenerating}>
             <IconRefresh className="w-3.5 h-3.5" />
             {d.previewLoading ? 'Planning…' : 'Regenerate'}
-          </button>
-          <button
-            type="button"
-            onClick={() => { d.handleSummarize(); d.setShowAddForm(false); }}
-            disabled={d.isGenerating}
-            className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => { d.handleSummarize(); d.setShowAddForm(false); }} disabled={d.isGenerating}>
             <IconSummary className="w-3.5 h-3.5" />
             {d.summarizing ? 'Summarizing…' : 'Summarize'}
-          </button>
-          <button
-            type="button"
-            onClick={() => { setShowStandup(true); setShowHealth(false); setShowTrends(false); d.setSummary(null); }}
-            disabled={d.isGenerating}
-            className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => { setShowStandup(true); setShowHealth(false); setShowTrends(false); d.setSummary(null); }} disabled={d.isGenerating}>
             Standup
-          </button>
-          <button
-            type="button"
-            onClick={() => { setShowHealth(true); setShowStandup(false); setShowTrends(false); d.setSummary(null); }}
-            disabled={d.isGenerating}
-            className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => { setShowHealth(true); setShowStandup(false); setShowTrends(false); d.setSummary(null); }} disabled={d.isGenerating}>
             Health
-          </button>
-          <button
-            type="button"
-            onClick={() => { setShowTrends(true); setShowHealth(false); setShowStandup(false); d.setSummary(null); }}
-            disabled={d.isGenerating}
-            className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => { setShowTrends(true); setShowHealth(false); setShowStandup(false); d.setSummary(null); }} disabled={d.isGenerating}>
             Trends
-          </button>
+          </Button>
           {d.activeSprint && (
-            <button
-              type="button"
-              onClick={() => setShowTransition({ sprintId: d.activeSprint!.sprintId, sprintName: d.activeSprint!.name })}
-              disabled={d.isGenerating}
-              className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <Button variant="ghost" size="sm" onClick={() => setShowTransition({ sprintId: d.activeSprint!.sprintId, sprintName: d.activeSprint!.name })} disabled={d.isGenerating}>
               Transition
-            </button>
+            </Button>
           )}
-          <button
-            type="button"
-            onClick={() => setShowMeetingNotes(true)}
-            disabled={d.isGenerating}
-            className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <Button variant="ghost" size="sm" onClick={() => setShowMeetingNotes(true)} disabled={d.isGenerating}>
             Notes
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowBugReport(true)}
-            disabled={d.isGenerating}
-            className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setShowBugReport(true)} disabled={d.isGenerating}>
             Bug
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowPRDBreakdown(true)}
-            disabled={d.isGenerating}
-            className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setShowPRDBreakdown(true)} disabled={d.isGenerating}>
             PRD
-          </button>
+          </Button>
           {gitHubRepo && d.rootTasks.length < 5 && (
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={async () => {
                 if (!confirm('Analyze linked repo and generate initial tasks?')) return;
                 setBootstrapping(true);
@@ -521,20 +473,14 @@ export default function ProjectDetail() {
                 }
               }}
               disabled={d.isGenerating || bootstrapping}
-              className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {bootstrapping ? 'Bootstrapping...' : 'Bootstrap'}
-            </button>
+            </Button>
           )}
           <div className="relative">
-            <button
-              type="button"
-              onClick={() => { setShowTemplateMenu((v) => !v); if (!showTemplateMenu) loadTemplates(); }}
-              disabled={d.isGenerating}
-              className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <Button variant="ghost" size="sm" onClick={() => { setShowTemplateMenu((v) => !v); if (!showTemplateMenu) loadTemplates(); }} disabled={d.isGenerating}>
               Template
-            </button>
+            </Button>
             {showTemplateMenu && (
               <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg py-2 z-50 min-w-[260px] p-3 space-y-2">
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Create from template</p>
@@ -583,13 +529,9 @@ export default function ProjectDetail() {
             )}
           </div>
           <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowExportMenu((v) => !v)}
-              className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1"
-            >
+            <Button variant="ghost" size="sm" onClick={() => setShowExportMenu((v) => !v)}>
               Import/Export
-            </button>
+            </Button>
             {showExportMenu && (
               <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg py-1 z-50 min-w-[180px]">
                 <button

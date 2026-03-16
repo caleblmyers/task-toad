@@ -3,6 +3,7 @@ import { gql } from '../api/client';
 import type { Task, Sprint, CloseSprintResult } from '../types';
 import { parseColumns } from '../utils/jsonHelpers';
 import Modal from './shared/Modal';
+import Button from './shared/Button';
 
 interface CloseSprintModalProps {
   sprint: Sprint;
@@ -202,13 +203,9 @@ export default function CloseSprintModal({
                       ))}
                     </select>
                   )}
-                  <button
-                    type="button"
-                    onClick={applyGlobalAction}
-                    className="text-xs px-2.5 py-1 bg-brand-green text-white rounded hover:bg-brand-green-hover flex-shrink-0"
-                  >
+                  <Button size="sm" onClick={applyGlobalAction} className="flex-shrink-0">
                     Apply
-                  </button>
+                  </Button>
                 </div>
 
                 {/* Per-task rows */}
@@ -269,14 +266,9 @@ export default function CloseSprintModal({
             >
               Cancel
             </button>
-            <button
-              type="button"
-              onClick={handleClose}
-              disabled={loading}
-              className="px-4 py-1.5 text-sm bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50"
-            >
+            <Button size="sm" onClick={handleClose} disabled={loading}>
               {loading ? 'Closing…' : 'Close Sprint'}
-            </button>
+            </Button>
           </div>
         </>
       )}
@@ -294,13 +286,9 @@ export default function CloseSprintModal({
                   <p className="text-xs text-blue-600 font-medium uppercase tracking-wide mb-1">Next Sprint</p>
                   <p className="text-sm font-semibold text-slate-800">{result.nextSprint.name}</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => { onActivateNext(result.nextSprint!.sprintId); onClose(); }}
-                  className="w-full px-4 py-2 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-hover"
-                >
+                <Button onClick={() => { onActivateNext(result.nextSprint!.sprintId); onClose(); }} className="w-full rounded-lg">
                   Activate {result.nextSprint.name}
-                </button>
+                </Button>
                 <button
                   type="button"
                   onClick={onClose}
@@ -312,13 +300,9 @@ export default function CloseSprintModal({
             ) : (
               <div className="mt-4 space-y-3">
                 <p className="text-sm text-slate-500">No more sprints planned. What would you like to do next?</p>
-                <button
-                  type="button"
-                  onClick={() => { onCreateSprint(); onClose(); }}
-                  className="w-full px-4 py-2 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-hover"
-                >
+                <Button onClick={() => { onCreateSprint(); onClose(); }} className="w-full rounded-lg">
                   + Create Next Sprint
-                </button>
+                </Button>
                 <button
                   type="button"
                   onClick={onClose}

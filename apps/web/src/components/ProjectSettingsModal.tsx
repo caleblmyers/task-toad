@@ -3,6 +3,7 @@ import { gql } from '../api/client';
 import { parseOptions } from '../utils/jsonHelpers';
 import type { OrgUser } from '../types';
 import Modal from './shared/Modal';
+import Button from './shared/Button';
 
 interface ProjectMember {
   id: string;
@@ -469,13 +470,9 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
                   <option value="chore">Chore</option>
                 </select>
               </div>
-              <button
-                onClick={handleUpdateTemplate}
-                disabled={!editingTemplate.name.trim()}
-                className="px-3 py-1.5 bg-brand-green text-white text-sm rounded hover:bg-brand-green-hover disabled:opacity-50"
-              >
+              <Button size="sm" disabled={!editingTemplate.name.trim()} onClick={handleUpdateTemplate}>
                 Save Changes
-              </button>
+              </Button>
             </div>
           ) : (
             <>
@@ -536,13 +533,9 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
                     <option value="chore">Chore</option>
                   </select>
                 </div>
-                <button
-                  onClick={handleCreateTemplate}
-                  disabled={!tplName.trim()}
-                  className="px-3 py-1.5 bg-brand-green text-white text-sm rounded hover:bg-brand-green-hover disabled:opacity-50"
-                >
+                <Button size="sm" disabled={!tplName.trim()} onClick={handleCreateTemplate}>
                   Create Template
-                </button>
+                </Button>
               </div>
             </>
           )
@@ -627,13 +620,9 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
                 />
                 Required field
               </label>
-              <button
-                onClick={handleCreateCustomField}
-                disabled={!cfName.trim()}
-                className="px-3 py-1.5 bg-brand-green text-white text-sm rounded hover:bg-brand-green-hover disabled:opacity-50"
-              >
+              <Button size="sm" disabled={!cfName.trim()} onClick={handleCreateCustomField}>
                 Create Field
-              </button>
+              </Button>
             </div>
           </>
         ) : tab === 'members' ? (
@@ -681,13 +670,9 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
                   <option value="editor">Editor</option>
                   <option value="admin">Admin</option>
                 </select>
-                <button
-                  onClick={handleAddMember}
-                  disabled={!addUserId}
-                  className="px-3 py-1.5 bg-brand-green text-white text-sm rounded hover:bg-brand-green-hover disabled:opacity-50"
-                >
+                <Button size="sm" disabled={!addUserId} onClick={handleAddMember}>
                   Add
-                </button>
+                </Button>
               </div>
             </div>
           </>
@@ -797,13 +782,9 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
                   )}
                 </div>
               )}
-              <button
-                onClick={handleCreateRule}
-                disabled={!ruleName.trim()}
-                className="px-3 py-1.5 bg-brand-green text-white text-sm rounded hover:bg-brand-green-hover disabled:opacity-50"
-              >
+              <Button size="sm" disabled={!ruleName.trim()} onClick={handleCreateRule}>
                 Create Rule
-              </button>
+              </Button>
             </div>
           </>
         )}

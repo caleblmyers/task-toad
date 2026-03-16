@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { IconClose } from './shared/Icons';
 import Modal from './shared/Modal';
+import Button from './shared/Button';
 
 interface PRDTask {
   title: string;
@@ -169,21 +170,13 @@ export default function PRDBreakdownModal({ onPreview, onCommit, onClose }: PRDB
             Cancel
           </button>
           {!preview ? (
-            <button
-              onClick={handleAnalyze}
-              disabled={loading || !prd.trim()}
-              className="px-4 py-1.5 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <Button size="sm" onClick={handleAnalyze} disabled={loading || !prd.trim()} className="rounded-lg">
               {analyzing ? 'Analyzing...' : 'Analyze PRD'}
-            </button>
+            </Button>
           ) : (
-            <button
-              onClick={handleCommit}
-              disabled={loading}
-              className="px-4 py-1.5 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <Button size="sm" onClick={handleCommit} disabled={loading} className="rounded-lg">
               {committing ? 'Creating...' : 'Create Tasks'}
-            </button>
+            </Button>
           )}
         </div>
       </div>

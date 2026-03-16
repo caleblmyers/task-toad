@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { gql } from '../api/client';
 import type { Task, Sprint, SprintPlanItem } from '../types';
 import Modal from './shared/Modal';
+import Button from './shared/Button';
 
 interface SprintPlanModalProps {
   projectId: string;
@@ -128,14 +129,9 @@ export default function SprintPlanModal({
           </div>
           <div className="flex-1 text-right">
             <p className="text-xs text-slate-400 mb-1.5">~{capacity}h capacity/sprint</p>
-            <button
-              type="button"
-              onClick={handleGenerate}
-              disabled={loading || backlogTasks.length === 0}
-              className="px-4 py-1.5 text-sm bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50"
-            >
+            <Button size="sm" onClick={handleGenerate} disabled={loading || backlogTasks.length === 0}>
               {loading ? '◌ Planning…' : plan ? '↺ Regenerate' : '✦ Generate Plan'}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -219,14 +215,9 @@ export default function SprintPlanModal({
             >
               Cancel
             </button>
-            <button
-              type="button"
-              onClick={handleCommit}
-              disabled={committing}
-              className="px-4 py-1.5 text-sm bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50"
-            >
+            <Button size="sm" onClick={handleCommit} disabled={committing}>
               {committing ? 'Creating…' : 'Accept Plan'}
-            </button>
+            </Button>
           </div>
         </div>
       )}
