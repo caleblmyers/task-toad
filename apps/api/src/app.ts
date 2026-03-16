@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { schema } from './graphql/schema.js';
 import { buildContext } from './graphql/context.js';
 import { handleGitHubWebhook } from './github/index.js';
+import { exportRouter } from './routes/export.js';
 import { logger } from './utils/logger.js';
 
 // Validate required environment variables at startup
@@ -50,6 +51,9 @@ app.post('/api/github/webhooks', express.raw({ type: 'application/json' }), hand
 
 // Body size limit
 app.use(express.json({ limit: '1mb' }));
+
+// Export REST endpoints (file downloads — not suited for GraphQL)
+app.use('/api/export', exportRouter);
 
 // Global rate limit: 200 requests per minute per IP
 app.use(

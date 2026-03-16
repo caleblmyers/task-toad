@@ -28,7 +28,9 @@ import GitHubRepoModal from '../components/GitHubRepoModal';
 import StandupReportPanel from '../components/StandupReportPanel';
 import ProjectHealthPanel from '../components/ProjectHealthPanel';
 import MeetingNotesDialog from '../components/MeetingNotesDialog';
+import CSVImportModal from '../components/CSVImportModal';
 import { IconList, IconBoard, IconTable, IconCalendar, IconClose, IconPlus, IconRefresh, IconSummary, IconFilter, IconKeyboard, IconGitHub } from '../components/shared/Icons';
+import { TOKEN_KEY } from '../api/client';
 import { statusLabel } from '../utils/taskHelpers';
 
 const activeClass = 'px-3 py-1 text-sm rounded-md bg-white text-slate-800 font-medium shadow-sm';
@@ -53,6 +55,8 @@ export default function ProjectDetail() {
   const [showGitHubModal, setShowGitHubModal] = useState(false);
   const [gitHubRepo, setGitHubRepo] = useState<GitHubRepoLink | null>(null);
   const [gitHubInstallations, setGitHubInstallations] = useState<GitHubInstallation[]>([]);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showCSVImport, setShowCSVImport] = useState(false);
 
   useKeyboardShortcuts({
     tasks: filtering.filteredTasks,
@@ -159,6 +163,26 @@ export default function ProjectDetail() {
     if (d.projectStatuses.length <= 1) return;
     const updated = d.projectStatuses.filter((s) => s !== status);
     d.handleUpdateProject({ statuses: JSON.stringify(updated) });
+  };
+
+  const downloadExport = async (path: string, filename: string) => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    const res = await fetch(`/api/export/${path}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCSVImport = async (tasks: Array<{ title: string; description?: string; status?: string; priority?: string }>) => {
+    await d.handleBulkCreateTasks(tasks);
+    addToast('success', `Imported ${tasks.length} tasks`);
+    setShowCSVImport(false);
   };
 
   if (!d.projectId) return null;
@@ -358,6 +382,50 @@ export default function ProjectDetail() {
           >
             Notes
           </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowExportMenu((v) => !v)}
+              className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1"
+            >
+              Import/Export
+            </button>
+            {showExportMenu && (
+              <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg py-1 z-50 min-w-[180px]">
+                <button
+                  className="w-full text-left px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                  onClick={() => { downloadExport(`project/${d.projectId}/csv`, `${d.project?.name ?? 'tasks'}.csv`); setShowExportMenu(false); }}
+                >
+                  Export Tasks (CSV)
+                </button>
+                <button
+                  className="w-full text-left px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                  onClick={() => { downloadExport(`project/${d.projectId}/json`, `${d.project?.name ?? 'tasks'}.json`); setShowExportMenu(false); }}
+                >
+                  Export Tasks (JSON)
+                </button>
+                <button
+                  className="w-full text-left px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                  onClick={() => { downloadExport(`project/${d.projectId}/activity/csv`, `${d.project?.name ?? 'activity'}-activity.csv`); setShowExportMenu(false); }}
+                >
+                  Export Activity (CSV)
+                </button>
+                <button
+                  className="w-full text-left px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                  onClick={() => { downloadExport(`project/${d.projectId}/activity/json`, `${d.project?.name ?? 'activity'}-activity.json`); setShowExportMenu(false); }}
+                >
+                  Export Activity (JSON)
+                </button>
+                <hr className="my-1 border-slate-100" />
+                <button
+                  className="w-full text-left px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                  onClick={() => { setShowCSVImport(true); setShowExportMenu(false); }}
+                >
+                  Import CSV
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -665,6 +733,14 @@ export default function ProjectDetail() {
           projectId={d.projectId}
           onTasksCreated={() => { d.loadTasks(); setShowMeetingNotes(false); }}
           onClose={() => setShowMeetingNotes(false)}
+        />
+      )}
+
+      {/* CSV Import modal */}
+      {showCSVImport && (
+        <CSVImportModal
+          onImport={handleCSVImport}
+          onClose={() => setShowCSVImport(false)}
         />
       )}
 

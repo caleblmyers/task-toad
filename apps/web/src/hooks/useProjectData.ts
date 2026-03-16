@@ -85,6 +85,7 @@ export interface ProjectData {
   handleUpdateDependencies: (taskId: string, dependsOnIds: string[]) => Promise<void>;
   handleBulkUpdate: (taskIds: string[], updates: { status?: string; assigneeId?: string | null; sprintId?: string | null; archived?: boolean }) => Promise<void>;
   handleArchiveTask: (taskId: string, archived: boolean) => Promise<void>;
+  handleBulkCreateTasks: (tasks: Array<{ title: string; description?: string; status?: string; priority?: string }>, onProgress?: (current: number, total: number) => void) => Promise<void>;
   handleCreateSubtask: (parentTaskId: string, title: string) => Promise<void>;
   handleCreateLabel: (name: string, color: string) => Promise<Label | null>;
   handleDeleteLabel: (labelId: string) => Promise<void>;
@@ -1046,6 +1047,24 @@ export function useProjectData(): ProjectData {
     }
   };
 
+  const handleBulkCreateTasks = async (
+    tasksToCreate: Array<{ title: string; description?: string; status?: string; priority?: string }>,
+    onProgress?: (current: number, total: number) => void
+  ) => {
+    if (!projectId) return;
+    for (let i = 0; i < tasksToCreate.length; i++) {
+      const t = tasksToCreate[i];
+      await gql<{ createTask: Task }>(
+        `mutation CreateTask($projectId: ID!, $title: String!, $status: String) {
+          createTask(projectId: $projectId, title: $title, status: $status) { taskId }
+        }`,
+        { projectId, title: t.title, status: t.status }
+      );
+      onProgress?.(i + 1, tasksToCreate.length);
+    }
+    await loadTasks();
+  };
+
   const startEditTitle = (task: Task) => {
     setEditTitleValue(task.title);
     setEditingTitle(true);
@@ -1120,7 +1139,7 @@ export function useProjectData(): ProjectData {
     handleSprintClosed, handleSprintUpdated, handleDeleteSprint,
     openPreview, handleCommitPlan, handleSummarize, handleGenerateInstructions, handleGenerateCode, handleRegenerateFile, handleCreatePR,
     handleAddTask, startEditTitle, handleTitleSave, handleUpdateTask, switchView,
-    handleUpdateProject, handleUpdateDependencies, handleBulkUpdate, handleArchiveTask, handleCreateSubtask,
+    handleUpdateProject, handleUpdateDependencies, handleBulkUpdate, handleArchiveTask, handleBulkCreateTasks, handleCreateSubtask,
     handleCreateLabel, handleDeleteLabel, handleAddTaskLabel, handleRemoveTaskLabel,
     handleCreateComment, handleUpdateComment, handleDeleteComment,
     loadDashboardStats,
