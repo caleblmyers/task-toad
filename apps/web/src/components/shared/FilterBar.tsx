@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { OrgUser } from '../../types';
 import { statusLabel } from '../../utils/taskHelpers';
+import { parseOptions } from '../../utils/jsonHelpers';
 import { gql } from '../../api/client';
 
 interface SavedFilter {
@@ -95,8 +96,7 @@ export default function FilterBar({
   };
 
   const getDropdownOptions = (field: CustomFieldDef): string[] => {
-    if (!field.options) return [];
-    try { return JSON.parse(field.options) as string[]; } catch { return []; }
+    return parseOptions(field.options);
   };
 
   return (

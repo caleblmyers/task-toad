@@ -39,6 +39,7 @@ import ProjectSettingsModal from '../components/ProjectSettingsModal';
 import { IconList, IconBoard, IconTable, IconCalendar, IconClose, IconPlus, IconRefresh, IconSummary, IconFilter, IconKeyboard, IconGitHub } from '../components/shared/Icons';
 import { TOKEN_KEY } from '../api/client';
 import { statusLabel } from '../utils/taskHelpers';
+import { parseColumns } from '../utils/jsonHelpers';
 
 const activeClass = 'px-3 py-1 text-sm rounded-md bg-white text-slate-800 font-medium shadow-sm';
 const inactiveClass = 'px-3 py-1 text-sm rounded-md text-slate-500 hover:text-slate-700';
@@ -804,7 +805,7 @@ export default function ProjectDetail() {
           ) : d.activeSprint ? (
             <div className="flex-1 overflow-x-auto overflow-y-hidden px-6 py-4">
               <KanbanBoard
-                columns={JSON.parse(d.activeSprint.columns) as string[]}
+                columns={parseColumns(d.activeSprint.columns)}
                 tasks={filtering.filteredTasks.filter((t) => t.sprintId === d.activeSprint!.sprintId && !t.archived)}
                 subtasks={d.subtasks}
                 selectedTask={d.selectedTask}

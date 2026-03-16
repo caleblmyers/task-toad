@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
+import { parseOptions } from '../utils/jsonHelpers';
 import type { OrgUser } from '../types';
 import Modal from './shared/Modal';
 
@@ -317,6 +318,38 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
     }
   };
 
+  const handleReorderField = async (fieldId: string, direction: 'up' | 'down') => {
+    const sorted = [...customFields].sort((a, b) => a.position - b.position);
+    const idx = sorted.findIndex((f) => f.customFieldId === fieldId);
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= sorted.length) return;
+
+    const fieldA = sorted[idx];
+    const fieldB = sorted[swapIdx];
+    setError(null);
+    try {
+      await Promise.all([
+        gql<{ updateCustomField: CustomFieldDef }>(
+          `mutation ReorderA($customFieldId: ID!, $position: Int) { updateCustomField(customFieldId: $customFieldId, position: $position) { customFieldId name fieldType options required position } }`,
+          { customFieldId: fieldA.customFieldId, position: fieldB.position },
+        ),
+        gql<{ updateCustomField: CustomFieldDef }>(
+          `mutation ReorderB($customFieldId: ID!, $position: Int) { updateCustomField(customFieldId: $customFieldId, position: $position) { customFieldId name fieldType options required position } }`,
+          { customFieldId: fieldB.customFieldId, position: fieldA.position },
+        ),
+      ]);
+      setCustomFields((prev) =>
+        prev.map((f) => {
+          if (f.customFieldId === fieldA.customFieldId) return { ...f, position: fieldB.position };
+          if (f.customFieldId === fieldB.customFieldId) return { ...f, position: fieldA.position };
+          return f;
+        }),
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to reorder fields');
+    }
+  };
+
   const describeTrigger = (triggerJson: string) => {
     try {
       const t = JSON.parse(triggerJson) as { event: string; condition?: Record<string, string> };
@@ -516,17 +549,37 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
         ) : tab === 'fields' ? (
           <>
             <ul className="divide-y divide-slate-100">
-              {customFields.map((f) => (
+              {[...customFields].sort((a, b) => a.position - b.position).map((f, idx) => (
                 <li key={f.customFieldId} className="py-2 flex items-center justify-between">
-                  <div>
-                    <span className="text-sm font-medium text-slate-800">{f.name}</span>
-                    <span className="ml-2 text-xs text-slate-400">{f.fieldType}</span>
-                    {f.required && <span className="ml-1 text-xs text-red-400">required</span>}
-                    {f.options && (
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        Options: {(() => { try { return (JSON.parse(f.options) as string[]).join(', '); } catch { return f.options; } })()}
-                      </p>
-                    )}
+                  <div className="flex items-center gap-2">
+                    <div className="flex flex-col gap-0.5">
+                      <button
+                        onClick={() => handleReorderField(f.customFieldId, 'up')}
+                        disabled={idx === 0}
+                        className="text-slate-400 hover:text-slate-600 disabled:opacity-25 disabled:cursor-not-allowed text-xs leading-none"
+                        title="Move up"
+                      >
+                        ▲
+                      </button>
+                      <button
+                        onClick={() => handleReorderField(f.customFieldId, 'down')}
+                        disabled={idx === customFields.length - 1}
+                        className="text-slate-400 hover:text-slate-600 disabled:opacity-25 disabled:cursor-not-allowed text-xs leading-none"
+                        title="Move down"
+                      >
+                        ▼
+                      </button>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-slate-800">{f.name}</span>
+                      <span className="ml-2 text-xs text-slate-400">{f.fieldType}</span>
+                      {f.required && <span className="ml-1 text-xs text-red-400">required</span>}
+                      {f.options && (
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          Options: {parseOptions(f.options).join(', ') || f.options}
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <button onClick={() => handleDeleteCustomField(f.customFieldId)} className="text-red-500 hover:text-red-700 text-xs">Delete</button>
                 </li>

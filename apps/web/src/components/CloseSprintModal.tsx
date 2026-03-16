@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { gql } from '../api/client';
 import type { Task, Sprint, CloseSprintResult } from '../types';
+import { parseColumns } from '../utils/jsonHelpers';
 import Modal from './shared/Modal';
 
 interface CloseSprintModalProps {
@@ -29,7 +30,7 @@ export default function CloseSprintModal({
   onCreateSprint,
   onClose,
 }: CloseSprintModalProps) {
-  const cols = JSON.parse(sprint.columns) as string[];
+  const cols = parseColumns(sprint.columns);
   const doneCol = cols[cols.length - 1];
   const completeTasks = sprintTasks.filter((t) => t.sprintColumn === doneCol || t.status === 'done');
   const incompleteTasks = sprintTasks.filter((t) => t.sprintColumn !== doneCol && t.status !== 'done');

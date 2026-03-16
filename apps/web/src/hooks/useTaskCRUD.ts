@@ -9,6 +9,7 @@ import {
   ADD_TASK_ASSIGNEE_MUTATION, REMOVE_TASK_ASSIGNEE_MUTATION,
 } from '../api/queries';
 import { columnToStatus, statusToColumn } from '../utils/taskHelpers';
+import { parseColumns } from '../utils/jsonHelpers';
 import type { Task, TaskConnection, Sprint, Comment, Activity, Label, TaskAssignee } from '../types';
 
 interface UseTaskCRUDOptions {
@@ -129,7 +130,8 @@ export function useTaskCRUD({ projectId, userId, sprints }: UseTaskCRUDOptions) 
     if (!task.sprintId) return null;
     const sprint = sprints.find((s) => s.sprintId === task.sprintId);
     if (!sprint) return null;
-    try { return JSON.parse(sprint.columns) as string[]; } catch { return null; }
+    const parsed = parseColumns(sprint.columns);
+    return parsed;
   }, [sprints]);
 
   // ── Status / Column changes ──
@@ -207,7 +209,7 @@ export function useTaskCRUD({ projectId, userId, sprints }: UseTaskCRUDOptions) 
 
   const handleAssignSprint = useCallback(async (taskId: string, sprintId: string | null) => {
     const sprint = sprintId ? sprints.find((s) => s.sprintId === sprintId) : null;
-    const firstColumn = sprint ? (JSON.parse(sprint.columns) as string[])[0] ?? null : null;
+    const firstColumn = sprint ? parseColumns(sprint.columns)[0] ?? null : null;
     setTasks((prev) => prev.map((t) => t.taskId === taskId ? { ...t, sprintId, sprintColumn: firstColumn } : t));
     setSelectedTask((t) => t?.taskId === taskId ? { ...t, sprintId, sprintColumn: firstColumn } : t);
     try {
@@ -302,7 +304,7 @@ export function useTaskCRUD({ projectId, userId, sprints }: UseTaskCRUDOptions) 
     const isChangingSprint = task.sprintId !== targetSprintId;
     const targetSprint = targetSprintId ? sprints.find((s) => s.sprintId === targetSprintId) : null;
     const newSprintColumn = isChangingSprint
-      ? (targetSprint ? (JSON.parse(targetSprint.columns) as string[])[0] ?? null : null)
+      ? (targetSprint ? parseColumns(targetSprint.columns)[0] ?? null : null)
       : task.sprintColumn;
 
     setTasks((prev) => prev.map((t) =>

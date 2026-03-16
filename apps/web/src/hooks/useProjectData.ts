@@ -6,6 +6,7 @@ import { PROJECT_QUERY, ORG_USERS_QUERY, PROJECT_STATS_QUERY, UPDATE_PROJECT_MUT
 import { useTaskCRUD } from './useTaskCRUD';
 import { useSprintManagement } from './useSprintManagement';
 import { useAIGeneration } from './useAIGeneration';
+import { parseStatuses } from '../utils/jsonHelpers';
 import type { Task, TaskPlanPreview, Sprint, OrgUser, CloseSprintResult, Project, Comment, Activity, ProjectStats, Label } from '../types';
 
 const VIEW_KEY = 'task-toad-view';
@@ -154,7 +155,7 @@ export function useProjectData(): ProjectData {
 
   const projectStatuses: string[] = useMemo(() => {
     if (!project) return ['todo', 'in_progress', 'done'];
-    try { return JSON.parse(project.statuses) as string[]; } catch { return ['todo', 'in_progress', 'done']; }
+    return parseStatuses(project.statuses);
   }, [project]);
 
   // ── Refs for cross-hook communication (breaks circular init dependency) ──

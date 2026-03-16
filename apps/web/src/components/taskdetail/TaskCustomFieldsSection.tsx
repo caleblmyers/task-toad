@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { gql } from '../../api/client';
+import { parseOptions } from '../../utils/jsonHelpers';
 
 interface CustomField {
   customFieldId: string;
@@ -65,8 +66,7 @@ export default function TaskCustomFieldsSection({ taskId, projectId, customField
   };
 
   const getDropdownOptions = (field: CustomField): string[] => {
-    if (!field.options) return [];
-    try { return JSON.parse(field.options) as string[]; } catch { return []; }
+    return parseOptions(field.options);
   };
 
   return (

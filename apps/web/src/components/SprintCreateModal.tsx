@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { gql } from '../api/client';
 import type { Sprint } from '../types';
+import { parseColumns } from '../utils/jsonHelpers';
 import Modal from './shared/Modal';
 
 interface SprintCreateModalProps {
@@ -19,7 +20,7 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
   const [goal, setGoal] = useState(initialSprint?.goal ?? '');
   const [startDate, setStartDate] = useState(initialSprint?.startDate ?? '');
   const [endDate, setEndDate] = useState(initialSprint?.endDate ?? '');
-  const initialColumns = initialSprint ? (() => { try { return JSON.parse(initialSprint.columns) as string[]; } catch { return DEFAULT_COLUMNS; } })() : DEFAULT_COLUMNS;
+  const initialColumns = initialSprint ? parseColumns(initialSprint.columns) : DEFAULT_COLUMNS;
   const [columns, setColumns] = useState<string[]>(initialColumns);
   const [newCol, setNewCol] = useState('');
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
