@@ -10,7 +10,7 @@ import {
 } from '../api/queries';
 import { columnToStatus, statusToColumn } from '../utils/taskHelpers';
 import { parseColumns } from '../utils/jsonHelpers';
-import type { Task, TaskConnection, Sprint, Comment, Activity, Label, TaskAssignee } from '../types';
+import type { Task, TaskConnection, Sprint, Comment, Activity, Label, TaskAssignee, CodeReview } from '../types';
 
 interface UseTaskCRUDOptions {
   projectId: string | undefined;
@@ -30,6 +30,8 @@ export function useTaskCRUD({ projectId, userId, sprints }: UseTaskCRUDOptions) 
   const [labels, setLabels] = useState<Label[]>([]);
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const [err, setErr] = useState<string | null>(null);
+  const [reviewResult, setReviewResult] = useState<CodeReview | null>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   // Add task form state
   const [showAddForm, setShowAddForm] = useState(false);
@@ -520,6 +522,32 @@ export function useTaskCRUD({ projectId, userId, sprints }: UseTaskCRUDOptions) 
     }
   }, [loadTasks]);
 
+  // ── AI Review ──
+
+  const handleReviewPR = useCallback(async (taskId: string, prNumber: number): Promise<CodeReview | null> => {
+    setReviewLoading(true);
+    setReviewResult(null);
+    try {
+      const data = await gql<{ reviewPullRequest: CodeReview }>(
+        `mutation ReviewPR($taskId: ID!, $prNumber: Int!) {
+          reviewPullRequest(taskId: $taskId, prNumber: $prNumber) {
+            summary approved
+            comments { file line severity comment }
+            suggestions
+          }
+        }`,
+        { taskId, prNumber },
+      );
+      setReviewResult(data.reviewPullRequest);
+      return data.reviewPullRequest;
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Failed to review PR');
+      return null;
+    } finally {
+      setReviewLoading(false);
+    }
+  }, []);
+
   // ── Comments ──
 
   const handleCreateComment = useCallback(async (taskId: string, content: string, parentCommentId?: string) => {
@@ -574,5 +602,7 @@ export function useTaskCRUD({ projectId, userId, sprints }: UseTaskCRUDOptions) 
     handleAddAssignee, handleRemoveAssignee,
     // Comments
     handleCreateComment, handleUpdateComment, handleDeleteComment,
+    // AI Review
+    reviewResult, reviewLoading, handleReviewPR,
   };
 }

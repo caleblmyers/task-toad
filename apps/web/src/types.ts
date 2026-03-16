@@ -243,6 +243,20 @@ export interface SprintPlanItem {
   totalHours: number;
 }
 
+export interface CodeReviewComment {
+  file: string;
+  line: number | null;
+  severity: string;
+  comment: string;
+}
+
+export interface CodeReview {
+  summary: string;
+  approved: boolean;
+  comments: CodeReviewComment[];
+  suggestions: string[];
+}
+
 export interface Notification {
   notificationId: string;
   type: string;

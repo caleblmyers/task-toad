@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Task, Sprint, OrgUser, Comment, Activity, Label } from '../types';
+import type { Task, Sprint, OrgUser, Comment, Activity, Label, CodeReview } from '../types';
 import CommentSection from './CommentSection';
 import ActivityFeed from './ActivityFeed';
 import MarkdownRenderer from './shared/MarkdownRenderer';
@@ -10,6 +10,7 @@ import TaskGitHubSection from './taskdetail/TaskGitHubSection';
 import TaskDependenciesSection from './taskdetail/TaskDependenciesSection';
 import TaskSubtasksSection from './taskdetail/TaskSubtasksSection';
 import TaskAIHistory from './taskdetail/TaskAIHistory';
+import TaskAIReviewSection from './taskdetail/TaskAIReviewSection';
 
 function parseTools(raw?: string | null): Array<{ name: string; category: string; reason?: string }> {
   if (!raw) return [];
@@ -68,6 +69,9 @@ export interface TaskDetailPanelProps {
   onRemoveTaskLabel?: (taskId: string, labelId: string) => Promise<void>;
   onCreateLabel?: (name: string, color: string) => Promise<Label | null>;
   onCreateSubtask?: (parentTaskId: string, title: string) => Promise<void>;
+  onReviewPR?: (taskId: string, prNumber: number) => Promise<CodeReview | null>;
+  reviewResult?: CodeReview | null;
+  reviewLoading?: boolean;
   onClose?: () => void;
   isDrawer?: boolean;
 }
@@ -82,6 +86,7 @@ function PanelContent({
   onAssignSprint, onAssignUser, onDueDateChange, onUpdateDependencies,
   onCreateComment, onUpdateComment, onDeleteComment, onUpdateTask, onArchiveTask,
   onCreateSubtask,
+  onReviewPR, reviewResult, reviewLoading,
 }: Omit<TaskDetailPanelProps, 'onClose' | 'isDrawer'>) {
   const tools = parseTools(task.suggestedTools);
   const [editingDescription, setEditingDescription] = useState(false);
@@ -250,6 +255,22 @@ function PanelContent({
           </div>
         )}
       </div>
+
+      {/* AI Review */}
+      {onReviewPR && task.pullRequests && task.pullRequests.length > 0 && (
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => onReviewPR(task.taskId, task.pullRequests![0].prNumber)}
+            disabled={disabled || reviewLoading}
+            className="px-3 py-1.5 text-sm border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50"
+          >
+            {reviewLoading ? 'Reviewing…' : '✦ AI Review'}
+          </button>
+        </div>
+      )}
+
+      <TaskAIReviewSection review={reviewResult ?? null} loading={reviewLoading ?? false} />
 
       <TaskSubtasksSection
         task={task}
