@@ -23,6 +23,7 @@ export {
   breakdownPRD,
   analyzeSprintTransition,
   bootstrapFromRepo,
+  projectChat,
 } from './aiService.js';
 
 export { logUsageToDB, checkBudget } from './aiUsageTracker.js';
@@ -49,5 +50,6 @@ export type {
   PRDTask,
   SprintTransition,
   RepoBootstrap,
+  ProjectChatResponse,
   AIFeature,
 } from './aiTypes.js';

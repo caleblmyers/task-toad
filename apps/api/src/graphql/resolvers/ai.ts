@@ -16,6 +16,7 @@ import {
   breakdownPRD as aiBreakdownPRD,
   analyzeSprintTransition as aiAnalyzeSprintTransition,
   bootstrapFromRepo as aiBootstrapFromRepo,
+  projectChat as aiProjectChat,
 } from '../../ai/index.js';
 import { NotFoundError, ValidationError, AuthorizationError } from '../errors.js';
 import { requireOrg, requireApiKey } from './auth.js';
@@ -687,6 +688,75 @@ export const aiMutations = {
 // ── AI queries ──
 
 export const aiQueries = {
+  projectChat: async (
+    _parent: unknown,
+    args: { projectId: string; question: string },
+    context: Context
+  ) => {
+    const user = requireOrg(context);
+    const apiKey = requireApiKey(context);
+    const project = await context.prisma.project.findFirst({
+      where: { projectId: args.projectId, orgId: user.orgId },
+    });
+    if (!project) {
+      throw new NotFoundError('Project not found');
+    }
+    if (!args.question.trim()) {
+      throw new ValidationError('Question is required');
+    }
+
+    const tasks = await context.prisma.task.findMany({
+      where: { projectId: args.projectId, parentTaskId: null, archived: false },
+      include: { assignee: { select: { email: true } }, sprint: { select: { name: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    const sprints = await context.prisma.sprint.findMany({
+      where: { projectId: args.projectId },
+      include: { _count: { select: { tasks: true } } },
+    });
+
+    const activities = await context.prisma.activity.findMany({
+      where: { projectId: args.projectId },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    // Build a taskId→title map for activity references
+    const activityTaskIds = [...new Set(activities.map((a: { taskId: string | null }) => a.taskId).filter(Boolean))] as string[];
+    const activityTasks = activityTaskIds.length > 0
+      ? await context.prisma.task.findMany({ where: { taskId: { in: activityTaskIds } }, select: { taskId: true, title: true } })
+      : [];
+    const taskTitleMap = new Map(activityTasks.map((t: { taskId: string; title: string }) => [t.taskId, t.title]));
+
+    return aiProjectChat(apiKey, {
+      question: args.question,
+      projectName: project.name,
+      projectDescription: project.description,
+      tasks: tasks.map((t: { taskId: string; title: string; status: string; priority: string; assignee: { email: string } | null; sprint: { name: string } | null }) => ({
+        taskId: t.taskId,
+        title: t.title,
+        status: t.status,
+        priority: t.priority,
+        assignee: t.assignee?.email ?? null,
+        sprintName: t.sprint?.name ?? null,
+      })),
+      sprints: sprints.map((s: { name: string; isActive: boolean; _count: { tasks: number } }) => ({
+        name: s.name,
+        isActive: s.isActive,
+        taskCount: s._count.tasks,
+      })),
+      recentActivity: activities.map((a: { action: string; field: string | null; taskId: string | null; createdAt: Date }) => ({
+        action: a.action,
+        field: a.field,
+        taskTitle: a.taskId ? taskTitleMap.get(a.taskId) ?? null : null,
+        createdAt: a.createdAt.toISOString(),
+      })),
+      knowledgeBase: project.knowledgeBase,
+    });
+  },
+
   analyzeSprintTransition: async (
     _parent: unknown,
     args: { sprintId: string },

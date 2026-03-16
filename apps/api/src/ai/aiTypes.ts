@@ -253,7 +253,19 @@ export type AIFeature =
   | 'parseBugReport'
   | 'breakdownPRD'
   | 'analyzeSprintTransition'
-  | 'bootstrapFromRepo';
+  | 'bootstrapFromRepo'
+  | 'projectChat';
+
+export const ProjectChatResponseSchema = z.object({
+  answer: z.string(),
+  references: z.array(z.object({
+    type: z.enum(['task', 'sprint', 'activity']),
+    id: z.string(),
+    title: z.string(),
+  })).optional().default([]),
+});
+
+export type ProjectChatResponse = z.infer<typeof ProjectChatResponseSchema>;
 
 export interface AIUsage {
   inputTokens: number;

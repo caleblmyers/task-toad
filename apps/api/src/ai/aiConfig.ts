@@ -39,6 +39,7 @@ export const FEATURE_CONFIG: Record<AIFeature, FeatureConfig> = {
   breakdownPRD:             { maxTokens: 4096, cacheTTLMs: 0,       retryOnValidationFailure: true },
   analyzeSprintTransition:  { maxTokens: 2048, cacheTTLMs: 0,       retryOnValidationFailure: true },
   bootstrapFromRepo:        { maxTokens: 4096, cacheTTLMs: 0,       retryOnValidationFailure: true },
+  projectChat:              { maxTokens: 2048, cacheTTLMs: 0,       retryOnValidationFailure: true },
 };
 
 // ---------------------------------------------------------------------------

@@ -821,3 +821,63 @@ Generate 5-15 tasks covering: setup/documentation, code quality, testing, featur
 Tasks should be specific to THIS codebase — reference actual files, technologies, and patterns found.`,
   };
 }
+
+export function buildProjectChatPrompt(data: {
+  question: string;
+  projectName: string;
+  projectDescription?: string | null;
+  tasks: Array<{ taskId: string; title: string; status: string; priority: string; assignee?: string | null; sprintName?: string | null }>;
+  sprints: Array<{ name: string; isActive: boolean; taskCount: number }>;
+  recentActivity: Array<{ action: string; field?: string | null; taskTitle?: string | null; createdAt: string }>;
+  knowledgeBase?: string | null;
+}): Prompt {
+  const taskLines = data.tasks
+    .slice(0, 50)
+    .map((t) => `[${t.taskId}] "${t.title}" — ${t.status}, ${t.priority}${t.assignee ? `, assigned: ${t.assignee}` : ''}${t.sprintName ? `, sprint: ${t.sprintName}` : ''}`)
+    .join('\n');
+
+  const sprintLines = data.sprints
+    .map((s) => `"${s.name}" — ${s.isActive ? 'ACTIVE' : 'inactive'}, ${s.taskCount} tasks`)
+    .join('\n');
+
+  const activityLines = data.recentActivity
+    .slice(0, 20)
+    .map((a) => `${a.action}${a.field ? ` (${a.field})` : ''}${a.taskTitle ? ` on "${a.taskTitle}"` : ''} at ${a.createdAt}`)
+    .join('\n');
+
+  const descLine = data.projectDescription
+    ? `\nDescription: ${userInput('description', truncate(data.projectDescription, MAX_PROJECT_DESCRIPTION_CHARS))}`
+    : '';
+  const kbLine = data.knowledgeBase
+    ? `\nKnowledge Base:\n${userInput('knowledge_base', truncate(data.knowledgeBase, 800))}`
+    : '';
+
+  return {
+    systemPrompt: SYSTEM_JSON,
+    userPrompt: `Answer the user's question about this project using ONLY the provided data. If the data doesn't contain enough information to answer, say so honestly.
+
+Project: ${userInput('project', data.projectName)}${descLine}${kbLine}
+
+Tasks (${data.tasks.length} total):
+${taskLines || '(no tasks)'}
+
+Sprints:
+${sprintLines || '(no sprints)'}
+
+Recent activity:
+${activityLines || '(no recent activity)'}
+
+Question:
+<user_input label="question">
+${truncate(data.question, 500)}
+</user_input>
+
+Return JSON:
+{
+  "answer": string,
+  "references": [{ "type": "task" | "sprint" | "activity", "id": string, "title": string }]
+}
+"answer" — clear, concise answer grounded in the project data above.
+"references" — specific tasks, sprints, or activities you referenced in your answer. Use taskId for tasks, sprint name for sprints. Only include items you actually mentioned.`,
+  };
+}

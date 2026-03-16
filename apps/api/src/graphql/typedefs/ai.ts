@@ -84,11 +84,23 @@ export const aiTypeDefs = /* GraphQL */ `
     deprioritize: [TransitionTask!]!
     recommendations: [String!]!
   }
+
+  type ChatReference {
+    type: String!
+    id: ID!
+    title: String!
+  }
+
+  type ProjectChatResponse {
+    answer: String!
+    references: [ChatReference!]!
+  }
 `;
 
 export const aiQueryFields = /* GraphQL */ `
   aiUsage(days: Int): AIUsageSummary!
   analyzeSprintTransition(sprintId: ID!): SprintTransitionAnalysis!
+  projectChat(projectId: ID!, question: String!): ProjectChatResponse!
 `;
 
 export const aiMutationFields = /* GraphQL */ `

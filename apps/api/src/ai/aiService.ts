@@ -22,8 +22,9 @@ import {
   PRDBreakdownSchema,
   SprintTransitionSchema,
   RepoBootstrapSchema,
+  ProjectChatResponseSchema,
 } from './aiTypes.js';
-import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap } from './aiTypes.js';
+import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse } from './aiTypes.js';
 import { FEATURE_CONFIG } from './aiConfig.js';
 import { callAI } from './aiClient.js';
 import { parseJSON } from './responseParser.js';
@@ -49,6 +50,7 @@ import {
   buildPRDBreakdownPrompt,
   buildSprintTransitionPrompt,
   buildRepoBootstrapPrompt,
+  buildProjectChatPrompt,
 } from './promptBuilder.js';
 
 // ---------------------------------------------------------------------------
@@ -403,4 +405,20 @@ export async function bootstrapFromRepo(
 ): Promise<RepoBootstrap> {
   const p = buildRepoBootstrapPrompt(data);
   return callAndParse(apiKey, 'bootstrapFromRepo', p, RepoBootstrapSchema);
+}
+
+export async function projectChat(
+  apiKey: string,
+  data: {
+    question: string;
+    projectName: string;
+    projectDescription?: string | null;
+    tasks: Array<{ taskId: string; title: string; status: string; priority: string; assignee?: string | null; sprintName?: string | null }>;
+    sprints: Array<{ name: string; isActive: boolean; taskCount: number }>;
+    recentActivity: Array<{ action: string; field?: string | null; taskTitle?: string | null; createdAt: string }>;
+    knowledgeBase?: string | null;
+  }
+): Promise<ProjectChatResponse> {
+  const p = buildProjectChatPrompt(data);
+  return callAndParse(apiKey, 'projectChat', p, ProjectChatResponseSchema);
 }
