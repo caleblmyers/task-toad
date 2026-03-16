@@ -63,8 +63,10 @@ Should only show the main worktree.
 - Read `.claude-knowledge/todos.md`
 - Move completed sets from "Remaining" to "Completed" section
 - Mark items as `[x]` with the wave number and date
+- **Add follow-up items as new todos:** Read `issues.md` and the changelog for any incomplete work, unfinished wiring, or gaps discovered during the wave. Add each as a `- [ ]` item under the appropriate work set in todos.md. Common examples: background processors not wired into entry points, templates built but not called, features blocked on prerequisites. If no existing set fits, add to the most relevant one.
+- **Verify follow-ups are in todos:** Before committing, grep todos.md for each open follow-up mentioned in issues.md or the changelog. If any are missing, add them. This is the critical step — follow-ups that don't become todos get lost.
 - Update the Parallelism Matrix if set relationships changed
-- Update `.claude-knowledge/changelog.md` if it exists — add a summary of what was done
+- Update `.claude-knowledge/changelog.md` if it exists — add a summary of what was done, including an "Open follow-ups" section listing items that need future work
 
 ## 6. Commit
 
