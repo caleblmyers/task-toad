@@ -205,6 +205,33 @@ export type PRDTask = z.infer<typeof PRDTaskSchema>;
 export type PRDEpic = z.infer<typeof PRDEpicSchema>;
 export type PRDBreakdown = z.infer<typeof PRDBreakdownSchema>;
 
+export const SprintTransitionTaskSchema = z.object({
+  taskId: z.string(),
+  reason: z.string(),
+});
+
+export const SprintTransitionSchema = z.object({
+  summary: z.string(),
+  carryOver: z.array(SprintTransitionTaskSchema),
+  deprioritize: z.array(SprintTransitionTaskSchema),
+  recommendations: z.array(z.string()),
+});
+
+export type SprintTransition = z.infer<typeof SprintTransitionSchema>;
+
+export const RepoBootstrapSchema = z.object({
+  projectDescription: z.string(),
+  tasks: z.array(z.object({
+    title: z.string(),
+    description: z.string(),
+    priority: z.enum(['low', 'medium', 'high', 'critical']),
+    estimatedHours: z.number().optional(),
+    taskType: z.enum(['epic', 'story', 'task']).optional().default('task'),
+  })),
+});
+
+export type RepoBootstrap = z.infer<typeof RepoBootstrapSchema>;
+
 export type AIFeature =
   | 'generateProjectOptions'
   | 'generateTaskPlan'
@@ -224,7 +251,9 @@ export type AIFeature =
   | 'decomposeIssue'
   | 'generateReviewFix'
   | 'parseBugReport'
-  | 'breakdownPRD';
+  | 'breakdownPRD'
+  | 'analyzeSprintTransition'
+  | 'bootstrapFromRepo';
 
 export interface AIUsage {
   inputTokens: number;

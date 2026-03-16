@@ -738,3 +738,86 @@ Tasks should be concrete, actionable implementation items.
 Order epics and tasks by logical implementation sequence.`,
   };
 }
+
+export function buildSprintTransitionPrompt(data: {
+  sprintName: string;
+  sprintGoal?: string | null;
+  tasks: Array<{ taskId: string; title: string; status: string; priority: string; assignee?: string | null; storyPoints?: number | null }>;
+  completionRate: number;
+}): Prompt {
+  const taskLines = data.tasks
+    .map((t) => `[${t.taskId}] "${t.title}" — status: ${t.status}, priority: ${t.priority}${t.assignee ? `, assignee: ${t.assignee}` : ''}${t.storyPoints != null ? `, points: ${t.storyPoints}` : ''}`)
+    .join('\n');
+
+  return {
+    systemPrompt: SYSTEM_JSON,
+    userPrompt: `Analyze the incomplete tasks from this sprint and recommend which to carry over to the next sprint vs deprioritize to backlog.
+
+Sprint: ${userInput('sprint', data.sprintName)}${data.sprintGoal ? `\nGoal: ${userInput('goal', data.sprintGoal)}` : ''}
+Completion rate: ${data.completionRate}%
+
+Incomplete tasks:
+<user_input label="tasks">
+${taskLines}
+</user_input>
+
+Return JSON:
+{
+  "summary": string,
+  "carryOver": [{ "taskId": string, "reason": string }],
+  "deprioritize": [{ "taskId": string, "reason": string }],
+  "recommendations": string[]
+}
+"carryOver" — tasks that should move to the next sprint (high priority, in progress, nearly done, critical path).
+"deprioritize" — tasks that should go back to backlog (low priority, not started, scope creep).
+"recommendations" — 2-4 actionable suggestions for the next sprint.
+"summary" — 2-3 sentence overview of the sprint completion and transition.
+Every incomplete task must appear in either carryOver or deprioritize.`,
+  };
+}
+
+export function buildRepoBootstrapPrompt(data: {
+  repoName: string;
+  repoDescription?: string | null;
+  readme?: string | null;
+  packageJson?: string | null;
+  fileTree: Array<{ path: string; language?: string | null; size?: number | null }>;
+  languages: string[];
+}): Prompt {
+  const filesSection = data.fileTree
+    .slice(0, 50)
+    .map((f) => `- ${f.path}${f.language ? ` (${f.language})` : ''}${f.size != null ? ` [${f.size}B]` : ''}`)
+    .join('\n');
+  const readmeSection = data.readme
+    ? `\nREADME:\n<user_input label="readme">\n${truncate(data.readme, 2000)}\n</user_input>`
+    : '';
+  const packageSection = data.packageJson
+    ? `\npackage.json:\n<user_input label="package_json">\n${truncate(data.packageJson, 1000)}\n</user_input>`
+    : '';
+
+  return {
+    systemPrompt: SYSTEM_JSON,
+    userPrompt: `Analyze this GitHub repository and generate a project description and initial task breakdown for improving and maintaining the codebase.
+
+Repository: ${userInput('repo', data.repoName)}${data.repoDescription ? `\nDescription: ${userInput('description', data.repoDescription)}` : ''}
+Languages: ${data.languages.join(', ')}
+
+File tree (${data.fileTree.length} files):
+${filesSection}${readmeSection}${packageSection}
+
+Return JSON:
+{
+  "projectDescription": string,
+  "tasks": [{
+    "title": string,
+    "description": string,
+    "priority": "low" | "medium" | "high" | "critical",
+    "estimatedHours": number,
+    "taskType": "epic" | "story" | "task"
+  }]
+}
+"projectDescription" — 2-3 sentences summarizing the project purpose and tech stack.
+Generate 5-15 tasks covering: setup/documentation, code quality, testing, features, and maintenance.
+Tasks should be specific to THIS codebase — reference actual files, technologies, and patterns found.`,
+  };
+}

@@ -14,10 +14,12 @@ import {
   reviewCode as aiReviewCode,
   parseBugReport as aiParseBugReport,
   breakdownPRD as aiBreakdownPRD,
+  analyzeSprintTransition as aiAnalyzeSprintTransition,
+  bootstrapFromRepo as aiBootstrapFromRepo,
 } from '../../ai/index.js';
 import { NotFoundError, ValidationError, AuthorizationError } from '../errors.js';
 import { requireOrg, requireApiKey } from './auth.js';
-import { getProjectRepo, fetchProjectFileTree, getPullRequestDiff } from '../../github/index.js';
+import { getProjectRepo, fetchProjectFileTree, fetchFileContent, getPullRequestDiff } from '../../github/index.js';
 
 // ── AI mutations ──
 
@@ -602,6 +604,67 @@ export const aiMutations = {
     return allCreated;
   },
 
+  bootstrapProjectFromRepo: async (
+    _parent: unknown,
+    args: { projectId: string },
+    context: Context
+  ) => {
+    const user = requireOrg(context);
+    const apiKey = requireApiKey(context);
+    const project = await context.prisma.project.findFirst({
+      where: { projectId: args.projectId, orgId: user.orgId },
+    });
+    if (!project) {
+      throw new NotFoundError('Project not found');
+    }
+    const repo = await getProjectRepo(args.projectId);
+    if (!repo) {
+      throw new ValidationError('Project has no linked GitHub repository');
+    }
+    const fileTree = await fetchProjectFileTree(repo).catch(() => []);
+    const readme = await fetchFileContent(repo.installationId, repo.repositoryOwner, repo.repositoryName, 'README.md').catch(() => null);
+    const packageJson = await fetchFileContent(repo.installationId, repo.repositoryOwner, repo.repositoryName, 'package.json').catch(() => null);
+
+    const languageSet = new Set<string>();
+    for (const f of fileTree) {
+      if (f.language) languageSet.add(f.language);
+    }
+
+    const result = await aiBootstrapFromRepo(apiKey, {
+      repoName: `${repo.repositoryOwner}/${repo.repositoryName}`,
+      repoDescription: project.description,
+      readme,
+      packageJson,
+      fileTree: fileTree.map((f) => ({ path: f.path, language: f.language, size: f.size })),
+      languages: [...languageSet],
+    });
+
+    if (!project.description && result.projectDescription) {
+      await context.prisma.project.update({
+        where: { projectId: args.projectId },
+        data: { description: result.projectDescription },
+      });
+    }
+
+    const created = await Promise.all(
+      result.tasks.map((t) =>
+        context.prisma.task.create({
+          data: {
+            title: t.title,
+            description: t.description,
+            priority: t.priority,
+            estimatedHours: t.estimatedHours ?? null,
+            taskType: t.taskType || 'task',
+            status: 'todo',
+            projectId: args.projectId,
+            orgId: user.orgId,
+          },
+        })
+      )
+    );
+    return created;
+  },
+
   summarizeProject: async (_parent: unknown, args: { projectId: string }, context: Context) => {
     const user = requireOrg(context);
     const apiKey = requireApiKey(context);
@@ -624,6 +687,51 @@ export const aiMutations = {
 // ── AI queries ──
 
 export const aiQueries = {
+  analyzeSprintTransition: async (
+    _parent: unknown,
+    args: { sprintId: string },
+    context: Context
+  ) => {
+    const user = requireOrg(context);
+    const apiKey = requireApiKey(context);
+    const sprint = await context.prisma.sprint.findFirst({
+      where: { sprintId: args.sprintId },
+    });
+    if (!sprint) {
+      throw new NotFoundError('Sprint not found');
+    }
+    const project = await context.prisma.project.findFirst({
+      where: { projectId: sprint.projectId, orgId: user.orgId },
+    });
+    if (!project) {
+      throw new NotFoundError('Project not found');
+    }
+
+    const sprintTasks = await context.prisma.task.findMany({
+      where: { sprintId: args.sprintId, parentTaskId: null },
+      include: { assignee: { select: { email: true } } },
+    });
+
+    const totalTasks = sprintTasks.length;
+    const completedCount = sprintTasks.filter((t: { status: string }) => t.status === 'done').length;
+    const completionRate = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
+
+    const incompleteTasks = sprintTasks.filter((t: { status: string }) => t.status !== 'done');
+
+    return aiAnalyzeSprintTransition(apiKey, {
+      sprintName: sprint.name,
+      tasks: incompleteTasks.map((t: { taskId: string; title: string; status: string; priority: string; storyPoints: number | null; assignee: { email: string } | null }) => ({
+        taskId: t.taskId,
+        title: t.title,
+        status: t.status,
+        priority: t.priority,
+        storyPoints: t.storyPoints,
+        assignee: t.assignee?.email ?? null,
+      })),
+      completionRate,
+    });
+  },
+
   reports: async (
     _parent: unknown,
     args: { projectId: string; type?: string | null; limit?: number | null },

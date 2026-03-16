@@ -97,6 +97,7 @@ export interface ProjectData {
   handleParseBugReport: (bugReport: string) => Promise<void>;
   handlePreviewPRD: (prd: string) => Promise<{ epics: Array<{ title: string; description: string; tasks: Array<{ title: string; description: string; priority: string; estimatedHours?: number | null; acceptanceCriteria?: string | null }> }> }>;
   handleCommitPRD: (epics: string) => Promise<void>;
+  handleBootstrapFromRepo: () => Promise<void>;
   loadDashboardStats: () => Promise<void>;
   setSelectedTask: React.Dispatch<React.SetStateAction<Task | null>>;
   setErr: React.Dispatch<React.SetStateAction<string | null>>;
@@ -877,6 +878,17 @@ export function useProjectData(): ProjectData {
     await loadTasks();
   };
 
+  const handleBootstrapFromRepo = async () => {
+    if (!projectId) return;
+    await gql<{ bootstrapProjectFromRepo: Task[] }>(
+      `mutation BootstrapFromRepo($projectId: ID!) {
+        bootstrapProjectFromRepo(projectId: $projectId) { ${TASK_FIELDS} }
+      }`,
+      { projectId }
+    );
+    await loadTasks();
+  };
+
   // --- AI generation handlers ---
 
   const openPreview = async (context?: string, appendToTitles?: string[]) => {
@@ -1183,7 +1195,7 @@ export function useProjectData(): ProjectData {
     handleUpdateProject, handleUpdateDependencies, handleBulkUpdate, handleArchiveTask, handleBulkCreateTasks, handleCreateSubtask,
     handleCreateLabel, handleDeleteLabel, handleAddTaskLabel, handleRemoveTaskLabel,
     handleCreateComment, handleUpdateComment, handleDeleteComment,
-    handleParseBugReport, handlePreviewPRD, handleCommitPRD,
+    handleParseBugReport, handlePreviewPRD, handleCommitPRD, handleBootstrapFromRepo,
     loadDashboardStats,
     setSelectedTask, setErr, setSummary, setPreviewTasks, setPreviewError,
     setShowAddForm, setNewTaskTitle, setEditTitleValue, setEditingTitle,

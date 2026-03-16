@@ -21,6 +21,8 @@ export {
   generateReviewFix,
   parseBugReport,
   breakdownPRD,
+  analyzeSprintTransition,
+  bootstrapFromRepo,
 } from './aiService.js';
 
 export { logUsageToDB, checkBudget } from './aiUsageTracker.js';
@@ -45,5 +47,7 @@ export type {
   PRDBreakdown,
   PRDEpic,
   PRDTask,
+  SprintTransition,
+  RepoBootstrap,
   AIFeature,
 } from './aiTypes.js';

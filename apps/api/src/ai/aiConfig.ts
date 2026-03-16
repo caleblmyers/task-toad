@@ -37,6 +37,8 @@ export const FEATURE_CONFIG: Record<AIFeature, FeatureConfig> = {
   generateReviewFix:        { maxTokens: 8192, cacheTTLMs: 0,       retryOnValidationFailure: true },
   parseBugReport:           { maxTokens: 2048, cacheTTLMs: 0,       retryOnValidationFailure: true },
   breakdownPRD:             { maxTokens: 4096, cacheTTLMs: 0,       retryOnValidationFailure: true },
+  analyzeSprintTransition:  { maxTokens: 2048, cacheTTLMs: 0,       retryOnValidationFailure: true },
+  bootstrapFromRepo:        { maxTokens: 4096, cacheTTLMs: 0,       retryOnValidationFailure: true },
 };
 
 // ---------------------------------------------------------------------------

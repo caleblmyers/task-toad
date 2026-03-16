@@ -72,10 +72,23 @@ export const aiTypeDefs = /* GraphQL */ `
   type PRDBreakdown {
     epics: [PRDEpic!]!
   }
+
+  type TransitionTask {
+    taskId: ID!
+    reason: String!
+  }
+
+  type SprintTransitionAnalysis {
+    summary: String!
+    carryOver: [TransitionTask!]!
+    deprioritize: [TransitionTask!]!
+    recommendations: [String!]!
+  }
 `;
 
 export const aiQueryFields = /* GraphQL */ `
   aiUsage(days: Int): AIUsageSummary!
+  analyzeSprintTransition(sprintId: ID!): SprintTransitionAnalysis!
 `;
 
 export const aiMutationFields = /* GraphQL */ `
@@ -85,4 +98,5 @@ export const aiMutationFields = /* GraphQL */ `
   parseBugReport(projectId: ID!, bugReport: String!): Task!
   previewPRDBreakdown(projectId: ID!, prd: String!): PRDBreakdown!
   commitPRDBreakdown(projectId: ID!, epics: String!): [Task!]!
+  bootstrapProjectFromRepo(projectId: ID!): [Task!]!
 `;

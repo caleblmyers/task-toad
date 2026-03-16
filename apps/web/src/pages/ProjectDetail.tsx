@@ -32,6 +32,7 @@ import CSVImportModal from '../components/CSVImportModal';
 import KnowledgeBaseModal from '../components/KnowledgeBaseModal';
 import BugReportModal from '../components/BugReportModal';
 import PRDBreakdownModal from '../components/PRDBreakdownModal';
+import SprintTransitionModal from '../components/SprintTransitionModal';
 import { IconList, IconBoard, IconTable, IconCalendar, IconClose, IconPlus, IconRefresh, IconSummary, IconFilter, IconKeyboard, IconGitHub } from '../components/shared/Icons';
 import { TOKEN_KEY } from '../api/client';
 import { statusLabel } from '../utils/taskHelpers';
@@ -63,6 +64,8 @@ export default function ProjectDetail() {
   const [showKnowledgeBase, setShowKnowledgeBase] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
   const [showPRDBreakdown, setShowPRDBreakdown] = useState(false);
+  const [showTransition, setShowTransition] = useState<{ sprintId: string; sprintName: string } | null>(null);
+  const [bootstrapping, setBootstrapping] = useState(false);
 
   useKeyboardShortcuts({
     tasks: filtering.filteredTasks,
@@ -389,6 +392,16 @@ export default function ProjectDetail() {
           >
             Health
           </button>
+          {d.activeSprint && (
+            <button
+              type="button"
+              onClick={() => setShowTransition({ sprintId: d.activeSprint!.sprintId, sprintName: d.activeSprint!.name })}
+              disabled={d.isGenerating}
+              className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Transition
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setShowMeetingNotes(true)}
@@ -413,6 +426,27 @@ export default function ProjectDetail() {
           >
             PRD
           </button>
+          {gitHubRepo && d.rootTasks.length < 5 && (
+            <button
+              type="button"
+              onClick={async () => {
+                if (!confirm('Analyze linked repo and generate initial tasks?')) return;
+                setBootstrapping(true);
+                try {
+                  await d.handleBootstrapFromRepo();
+                  addToast('success', 'Tasks generated from repo');
+                } catch (err) {
+                  addToast('error', err instanceof Error ? err.message : 'Bootstrap failed');
+                } finally {
+                  setBootstrapping(false);
+                }
+              }}
+              disabled={d.isGenerating || bootstrapping}
+              className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {bootstrapping ? 'Bootstrapping...' : 'Bootstrap'}
+            </button>
+          )}
           <div className="relative">
             <button
               type="button"
@@ -772,6 +806,23 @@ export default function ProjectDetail() {
         <CSVImportModal
           onImport={handleCSVImport}
           onClose={() => setShowCSVImport(false)}
+        />
+      )}
+
+      {/* Sprint transition modal */}
+      {showTransition && (
+        <SprintTransitionModal
+          sprintId={showTransition.sprintId}
+          sprintName={showTransition.sprintName}
+          onApply={async (carryOverIds, deprioritizeIds) => {
+            // Move deprioritized tasks to backlog (remove sprint)
+            for (const taskId of deprioritizeIds) {
+              await d.handleAssignSprint(taskId, null);
+            }
+            // Carry over tasks stay in sprint — they'll be moved when the sprint is closed
+            addToast('success', `${carryOverIds.length} tasks carried over, ${deprioritizeIds.length} moved to backlog`);
+          }}
+          onClose={() => setShowTransition(null)}
         />
       )}
 

@@ -20,8 +20,10 @@ import {
   ReviewFixSchema,
   BugReportTaskSchema,
   PRDBreakdownSchema,
+  SprintTransitionSchema,
+  RepoBootstrapSchema,
 } from './aiTypes.js';
-import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown } from './aiTypes.js';
+import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap } from './aiTypes.js';
 import { FEATURE_CONFIG } from './aiConfig.js';
 import { callAI } from './aiClient.js';
 import { parseJSON } from './responseParser.js';
@@ -45,6 +47,8 @@ import {
   buildReviewFixPrompt,
   buildParseBugReportPrompt,
   buildPRDBreakdownPrompt,
+  buildSprintTransitionPrompt,
+  buildRepoBootstrapPrompt,
 } from './promptBuilder.js';
 
 // ---------------------------------------------------------------------------
@@ -371,4 +375,32 @@ export async function breakdownPRD(
 ): Promise<PRDBreakdown> {
   const p = buildPRDBreakdownPrompt(data);
   return callAndParse(apiKey, 'breakdownPRD', p, PRDBreakdownSchema);
+}
+
+export async function analyzeSprintTransition(
+  apiKey: string,
+  data: {
+    sprintName: string;
+    sprintGoal?: string | null;
+    tasks: Array<{ taskId: string; title: string; status: string; priority: string; assignee?: string | null; storyPoints?: number | null }>;
+    completionRate: number;
+  }
+): Promise<SprintTransition> {
+  const p = buildSprintTransitionPrompt(data);
+  return callAndParse(apiKey, 'analyzeSprintTransition', p, SprintTransitionSchema);
+}
+
+export async function bootstrapFromRepo(
+  apiKey: string,
+  data: {
+    repoName: string;
+    repoDescription?: string | null;
+    readme?: string | null;
+    packageJson?: string | null;
+    fileTree: Array<{ path: string; language?: string | null; size?: number | null }>;
+    languages: string[];
+  }
+): Promise<RepoBootstrap> {
+  const p = buildRepoBootstrapPrompt(data);
+  return callAndParse(apiKey, 'bootstrapFromRepo', p, RepoBootstrapSchema);
 }
