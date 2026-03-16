@@ -14,6 +14,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import AcceptInvite from './pages/AcceptInvite';
 import Search from './pages/Search';
+import Portfolio from './pages/Portfolio';
 import ProfilePage from './pages/ProfilePage';
 
 function Protected({ children }: { children: React.ReactNode }) {
@@ -50,6 +51,7 @@ export default function App() {
         }
       >
         <Route index element={<Home />} />
+        <Route path="portfolio" element={<Portfolio />} />
         <Route path="projects" element={<Projects />} />
         <Route path="projects/new" element={<NewProject />} />
         <Route path="projects/:projectId" element={<ProjectDetail />} />

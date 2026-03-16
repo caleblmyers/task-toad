@@ -13,6 +13,7 @@ import TaskPlanApprovalDialog from '../components/TaskPlanApprovalDialog';
 import BacklogView from '../components/BacklogView';
 import TableView from '../components/TableView';
 import CalendarView from '../components/CalendarView';
+import GanttChart from '../components/GanttChart';
 import BulkActionBar from '../components/BulkActionBar';
 import ProjectDashboard from '../components/ProjectDashboard';
 import CodePreviewModal from '../components/CodePreviewModal';
@@ -68,6 +69,7 @@ export default function ProjectDetail() {
   const [showTransition, setShowTransition] = useState<{ sprintId: string; sprintName: string } | null>(null);
   const [bootstrapping, setBootstrapping] = useState(false);
   const [showProjectSettings, setShowProjectSettings] = useState(false);
+  const [timelineView, setTimelineView] = useState(false);
 
   useKeyboardShortcuts({
     tasks: filtering.filteredTasks,
@@ -248,19 +250,25 @@ export default function ProjectDetail() {
 
   const viewToggle = (
     <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
-      <button onClick={() => d.switchView('backlog')} className={d.view === 'backlog' ? activeClass : inactiveClass} disabled={d.isGenerating}>
+      <button onClick={() => { d.switchView('backlog'); setTimelineView(false); }} className={d.view === 'backlog' && !timelineView ? activeClass : inactiveClass} disabled={d.isGenerating}>
         <span className="flex items-center gap-1"><IconList className="w-3.5 h-3.5" /> Backlog</span>
       </button>
-      <button onClick={() => d.switchView('board')} className={d.view === 'board' ? activeClass : inactiveClass} disabled={d.isGenerating}>
+      <button onClick={() => { d.switchView('board'); setTimelineView(false); }} className={d.view === 'board' && !timelineView ? activeClass : inactiveClass} disabled={d.isGenerating}>
         <span className="flex items-center gap-1"><IconBoard className="w-3.5 h-3.5" /> Board</span>
       </button>
-      <button onClick={() => d.switchView('table')} className={d.view === 'table' ? activeClass : inactiveClass} disabled={d.isGenerating}>
+      <button onClick={() => { d.switchView('table'); setTimelineView(false); }} className={d.view === 'table' && !timelineView ? activeClass : inactiveClass} disabled={d.isGenerating}>
         <span className="flex items-center gap-1"><IconTable className="w-3.5 h-3.5" /> Table</span>
       </button>
-      <button onClick={() => d.switchView('calendar')} className={d.view === 'calendar' ? activeClass : inactiveClass} disabled={d.isGenerating}>
+      <button onClick={() => { d.switchView('calendar'); setTimelineView(false); }} className={d.view === 'calendar' && !timelineView ? activeClass : inactiveClass} disabled={d.isGenerating}>
         <span className="flex items-center gap-1"><IconCalendar className="w-3.5 h-3.5" /> Calendar</span>
       </button>
-      <button onClick={() => { d.switchView('dashboard'); loadProjectActivities(); }} className={d.view === 'dashboard' ? activeClass : inactiveClass} disabled={d.isGenerating}>
+      <button onClick={() => { d.switchView('calendar'); setTimelineView(true); }} className={timelineView ? activeClass : inactiveClass} disabled={d.isGenerating}>
+        <span className="flex items-center gap-1">
+          <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="3" width="14" height="2" rx="0.5" /><rect x="4" y="7" width="10" height="2" rx="0.5" /><rect x="2" y="11" width="8" height="2" rx="0.5" /></svg>
+          Timeline
+        </span>
+      </button>
+      <button onClick={() => { d.switchView('dashboard'); setTimelineView(false); loadProjectActivities(); }} className={d.view === 'dashboard' && !timelineView ? activeClass : inactiveClass} disabled={d.isGenerating}>
         <span className="flex items-center gap-1">📊 Dashboard</span>
       </button>
     </div>
@@ -610,6 +618,11 @@ export default function ProjectDetail() {
                 <p className="text-slate-700 leading-relaxed">{d.summary}</p>
               </div>
             </div>
+          ) : timelineView ? (
+            <GanttChart
+              tasks={filtering.filteredTasks}
+              onSelectTask={d.selectTask}
+            />
           ) : d.view === 'dashboard' ? (
             <ProjectDashboard
               stats={d.dashboardStats}

@@ -26,6 +26,72 @@ export const projectQueries = {
     }
   },
 
+  portfolioOverview: async (_parent: unknown, _args: unknown, context: Context) => {
+    const user = requireOrg(context);
+    const projects = await context.prisma.project.findMany({
+      where: { orgId: user.orgId, archived: false },
+      select: { projectId: true, name: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    const summaries = await Promise.all(
+      projects.map(async (proj: { projectId: string; name: string }) => {
+        const tasks = await context.prisma.task.findMany({
+          where: { projectId: proj.projectId, parentTaskId: null, archived: false },
+          select: { status: true, dueDate: true },
+        });
+
+        const totalTasks = tasks.length;
+        const completedTasks = tasks.filter((t: { status: string }) => t.status === 'done').length;
+        const overdueTasks = tasks.filter((t: { dueDate: string | null; status: string }) =>
+          t.dueDate && t.dueDate < today && t.status !== 'done'
+        ).length;
+        const completionPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+        // Status distribution
+        const statusMap = new Map<string, number>();
+        for (const t of tasks) {
+          statusMap.set(t.status, (statusMap.get(t.status) ?? 0) + 1);
+        }
+        const statusDistribution = Array.from(statusMap, ([label, count]) => ({ label, count }));
+
+        // Active sprint
+        const activeSprint = await context.prisma.sprint.findFirst({
+          where: { projectId: proj.projectId, isActive: true, closedAt: null },
+          select: { name: true },
+        });
+
+        // Health score: simple heuristic (100 base, penalize overdue and low completion)
+        let healthScore: number | null = null;
+        if (totalTasks > 0) {
+          healthScore = 100;
+          // Penalize for overdue tasks (-10 per overdue, max -50)
+          healthScore -= Math.min(overdueTasks * 10, 50);
+          // Penalize if completion is low relative to expected (just use completion as a positive signal)
+          if (completionPercent < 25) healthScore -= 20;
+          else if (completionPercent < 50) healthScore -= 10;
+          healthScore = Math.max(0, Math.min(100, healthScore));
+        }
+
+        return {
+          projectId: proj.projectId,
+          name: proj.name,
+          totalTasks,
+          completedTasks,
+          overdueTasks,
+          completionPercent,
+          activeSprint: activeSprint?.name ?? null,
+          healthScore,
+          statusDistribution,
+        };
+      })
+    );
+
+    return summaries;
+  },
+
   projectStats: async (_parent: unknown, args: { projectId: string }, context: Context) => {
     await requireProjectAccess(context, args.projectId);
     const tasks = await context.prisma.task.findMany({

@@ -40,12 +40,25 @@ export const projectTypeDefs = /* GraphQL */ `
     totalEstimatedHours: Float!
     completedEstimatedHours: Float!
   }
+
+  type ProjectSummary {
+    projectId: String!
+    name: String!
+    totalTasks: Int!
+    completedTasks: Int!
+    overdueTasks: Int!
+    completionPercent: Float!
+    activeSprint: String
+    healthScore: Int
+    statusDistribution: [CountEntry!]!
+  }
 `;
 
 export const projectQueryFields = /* GraphQL */ `
   projects(includeArchived: Boolean): [Project!]!
   project(projectId: ID!): Project
   projectStats(projectId: ID!): ProjectStats!
+  portfolioOverview: [ProjectSummary!]!
 `;
 
 export const projectMutationFields = /* GraphQL */ `
