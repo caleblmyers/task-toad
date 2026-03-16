@@ -15,7 +15,7 @@ if [ $# -lt 1 ]; then
   echo "  merge-worker.sh swarm/worker-1 --validate"
   echo ""
   echo "Flags:"
-  echo "  --validate    Run typecheck + lint before merging (exits 1 on failure)"
+  echo "  --validate    Run prisma generate (if needed) + typecheck + lint before merging (exits 1 on failure)"
   exit 1
 fi
 
@@ -42,15 +42,31 @@ echo ""
 
 # Validate if requested
 if [ "$VALIDATE" = true ]; then
-  echo "Running typecheck..."
+  echo "Running validation..."
   # Temporarily merge to test
   git -C "$MAIN_REPO" merge --no-commit --no-ff "$BRANCH" 2>/dev/null || {
     echo "Error: merge conflicts detected"
     git -C "$MAIN_REPO" merge --abort
     exit 1
   }
-  if ! (cd "$MAIN_REPO" && pnpm --filter api typecheck 2>&1); then
+
+  # Regenerate Prisma client if schema files changed
+  if git -C "$MAIN_REPO" diff --cached --name-only | grep -q 'prisma/schema/'; then
+    echo "Prisma schema changes detected — running prisma generate..."
+    if ! (cd "$MAIN_REPO/apps/api" && npx prisma generate 2>&1); then
+      echo "Prisma generate failed — aborting merge"
+      git -C "$MAIN_REPO" merge --abort
+      exit 1
+    fi
+  fi
+
+  if ! (cd "$MAIN_REPO" && pnpm typecheck 2>&1); then
     echo "Typecheck failed — aborting merge"
+    git -C "$MAIN_REPO" merge --abort
+    exit 1
+  fi
+  if ! (cd "$MAIN_REPO" && pnpm lint 2>&1); then
+    echo "Lint failed — aborting merge"
     git -C "$MAIN_REPO" merge --abort
     exit 1
   fi

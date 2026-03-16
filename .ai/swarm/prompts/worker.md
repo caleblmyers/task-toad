@@ -51,7 +51,22 @@ Loop continuously until all your tasks are `merged`:
     ```bash
     bash {{MAIN_REPO}}/scripts/swarm/task-update.sh TASK_ID completed --completedAt
     ```
-11. **Go to step 1** — check for review feedback or next task.
+11. **Wait for merge, then rebase** — before starting your next task, wait until this task is `merged` in tasks.json, then rebase:
+    ```bash
+    git fetch {{MAIN_REPO}} main && git rebase FETCH_HEAD
+    ```
+    This prevents merge conflicts when multiple of your tasks are merged sequentially.
+12. **Go to step 1** — check for review feedback or next task.
+
+## Prisma Schema Changes
+
+If your task modifies any file in `apps/api/prisma/schema/`:
+1. Run `cd apps/api && npx prisma migrate dev --name <descriptive-name>`
+2. Run `cd apps/api && npx prisma generate`
+3. Run `pnpm typecheck` to verify the generated client types are correct
+4. Include the generated migration files in your commit
+
+Do NOT skip steps 1-2. The typecheck in step 3 will pass with stale types if you skip `prisma generate`, but the reviewer's build will fail.
 
 ## Rules
 

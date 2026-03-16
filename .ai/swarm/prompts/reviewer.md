@@ -44,10 +44,13 @@ Loop continuously until all tasks are `merged`:
       ```bash
       bash {{MAIN_REPO}}/scripts/swarm/merge-worker.sh <worker-branch> --validate
       ```
-      The `--validate` flag runs `pnpm --filter api typecheck` automatically.
+      The `--validate` flag auto-detects Prisma changes, runs `prisma generate` if needed, then runs full `pnpm typecheck` and `pnpm lint`.
 
    e. **Run full build and deployment checks** after the squash merge is staged:
       ```bash
+      # If Prisma schema files are in the diff, regenerate client types
+      git -C {{MAIN_REPO}} diff --cached --name-only | grep -q 'prisma/schema/' && \
+        (cd {{MAIN_REPO}}/apps/api && npx prisma generate)
       cd {{MAIN_REPO}} && pnpm typecheck
       cd {{MAIN_REPO}} && pnpm lint
       cd {{MAIN_REPO}} && pnpm build

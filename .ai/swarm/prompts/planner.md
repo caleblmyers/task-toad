@@ -44,6 +44,22 @@ Each task MUST represent **30-60 minutes** of focused agentic work. This is the 
 
 **Sizing test:** If you can describe the full task in one sentence, it's probably too small. A good task description should be 2-3 paragraphs with multiple implementation steps.
 
+## Prisma Task Planning Rules
+
+When a task adds or modifies Prisma models:
+- Include ALL related `.prisma` files in the `files` array — not just the primary model file. If the model has relations to User, Org, or Project, include `auth.prisma`, `org.prisma`, `project.prisma` respectively.
+- Include `resolvers/index.ts` if new resolvers need registration.
+- Add this note to the task description: "**Prisma:** After schema changes, run `cd apps/api && npx prisma migrate dev --name <name> && npx prisma generate`, then verify `pnpm typecheck` passes."
+- Mark Prisma-related acceptance criteria explicitly: "Migration files are committed" and "Prisma client types are regenerated".
+
+## Required vs Optional Items
+
+If a task has sub-items of varying priority, clearly mark them:
+- **Required items** — must be completed for the task to pass review
+- **Optional/stretch items** — nice to have but can be deferred. Prefix with "(Optional)" in the description.
+
+Workers will skip unmarked items if the task is running long. If an item is critical, don't bury it as a sub-bullet — make it a top-level requirement in the acceptance criteria.
+
 ## Assignment Rules
 
 ### Rule 1: Check file overlap
