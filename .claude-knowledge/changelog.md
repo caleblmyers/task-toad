@@ -4,6 +4,39 @@ Summaries of work completed each session. Most recent first.
 
 ---
 
+## 2026-03-16
+
+### Wave 6: W1 + W3 + W4 + W5 + W6 (3 workers, 10 tasks)
+
+**W1 — Frontend Architecture Refactor (partial):**
+- Split `useProjectData.ts` into focused hooks (`useTasks`, `useSprintManagement`, `useAIGeneration`, `useProjectUI`)
+- Decomposed `TaskDetailPanel.tsx` into sub-components
+- Added `useMemo`/`useCallback` memoization to KanbanBoard and BacklogView
+- Extracted GraphQL query strings into `queries.ts`
+
+**W3 — Users, Roles & Automation:**
+- User avatars and profile management (display name, timezone, notification prefs)
+- Project-level roles (viewer, editor, admin) with permission checks in resolvers
+- Automation rules engine with configurable triggers and rule builder UI
+
+**W4 — AI Power Features:**
+- Task dedup (prevent AI from generating duplicate tasks)
+- Bug report → Task parser with BugReportModal UI
+- PRD → Task breakdown with preview/commit flow
+- Sprint transition analyzer (AI analyzes backlog on sprint close)
+- GitHub repo → Project bootstrap (import repo, AI generates initial tasks)
+
+**W5 — External Integrations (partial):**
+- Outgoing webhooks with HMAC signing, retry queue, management UI
+- Real-time SSE updates with auth, `useEventSource` hook, live UI patching
+
+**W6 — AI Extras (partial):**
+- Contextual project chat — NL Q&A grounded in live project data
+- Repo ↔ Task drift analysis — flags outdated/untracked work
+- Batch code generation — multi-task code gen in one PR
+
+---
+
 ## 2026-03-14
 
 ### Production Deployment

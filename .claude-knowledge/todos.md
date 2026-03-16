@@ -31,16 +31,11 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 
 ## Work Sets
 
-### W1: Full-Stack Quality Refactor
+### W1: Full-Stack Quality Refactor (partially completed)
 **Touches:** `useProjectData.ts`, `TaskDetailPanel.tsx`, `BacklogView.tsx`, `KanbanBoard.tsx`, `ProjectDetail.tsx`, `resolvers/*`, `typedefs/*`, `context.ts`, `utils/`, `promptBuilder.ts`, `app.ts`
-**Est. time:** 60 min per worker (split across 2-3 workers if needed)
 
-**Frontend architecture:**
-- [ ] Split `useProjectData.ts` (~1150 lines, 37 useState, 40+ functions) into focused hooks: `useTasks()`, `useSprintManagement()`, `useAIGeneration()`, `useProjectUI()` — current god-object causes excessive re-renders and prop drilling
-- [ ] Decompose `TaskDetailPanel.tsx` (~780 lines, 73+ props) — extract `TaskTitleEditor`, `TaskFieldsPanel`, `GitHubTaskSection`, `TaskPRSection`, `TaskCommitsSection` sub-components
+**Frontend architecture (remaining):**
 - [ ] Decompose `BacklogView.tsx` (~533 lines) — extract `SprintSection` component with its own DnD logic
-- [ ] Add `useMemo`/`useCallback` coverage — wrap mutation handlers, memoize KanbanBoard column grouping (O(tasks × columns) → Map), memoize blocked-task status (O(n²) → Map)
-- [ ] Extract GraphQL query strings from `useProjectData` into `queries.ts` with typed constants
 - [ ] Replace direct `setState` exports with action functions that enforce invariants
 - [ ] Lazy-load `react-markdown` + `remark-gfm` (~60KB gzipped) — only import on pages that render markdown
 
@@ -72,49 +67,57 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 - [ ] JSON string columns → Prisma Json type — Sprint.columns, Task.suggestedTools (migration + resolver updates)
 - [ ] Shared types between API and web — evaluate graphql-codegen or shared package for type safety
 
-### W3: Users, Roles & Automation
-**Touches:** `prisma/schema/auth.prisma`, `prisma/schema/` (new models), `typedefs/auth.ts`, `typedefs/` (new files), `resolvers/auth.ts`, `context.ts`, `resolvers/*`, new frontend components, new automation engine
-**Est. time:** 45-60 min
+### W3: Users, Roles & Automation — COMPLETED (Wave 6, 2026-03-16)
+_Moved to Completed section_
 
-- [ ] User avatars — upload/set profile avatar, display on task cards, board, comments, and assignee dropdowns. Full slice: avatar field on User, upload endpoint or Gravatar integration, avatar rendering component, display everywhere users appear
-- [ ] Profile management — edit display name, timezone, notification prefs from user settings page. Full slice: new fields on User (displayName, timezone), profile page component, updateProfile mutation
-- [ ] Project-level roles — per-project access control (viewer, editor, admin). Full slice: ProjectMember Prisma model with role field, permission checks in resolvers via context helper, invite-to-project UI, role management in project settings
-- [ ] Automation rules — configurable triggers (e.g. "when Done → notify assignee", "when assigned → move to In Progress"). Full slice: AutomationRule Prisma model, rule evaluation engine (runs on task/sprint mutations), rule builder UI in project settings
+### W4: AI Power Features — COMPLETED (Wave 6, 2026-03-16)
+_Moved to Completed section_
 
-### W4: AI Power Features
-**Touches:** `ai/*`, `resolvers/ai.ts`, `typedefs/ai.ts`, `typedefs/task.ts`, `github/*`, new frontend components/modals
-**Est. time:** 45-60 min
-
-- [ ] Deduplicate "add more tasks" — prevent AI task generation from creating duplicate tasks. Full slice: fetch existing titles in resolver, inject into prompt as exclusion list (cap at 30), post-generation case-insensitive dedup filter, apply to both `previewTaskPlan` and `expandTask`
-- [ ] Bug report → Task — AI parses bug report into structured task. Full slice: Zod schema (BugReportTask), prompt builder, service function, `parseBugReport` mutation, BugReportModal component with textarea + submit, toolbar button in ProjectDetail
-- [ ] PRD → Task breakdown — AI breaks PRD into epics/tasks. Full slice: Zod schema (PRDBreakdown with nested epics/tasks), prompt builder, service, preview/commit mutation pair (like task plans), PRDBreakdownModal with preview + commit flow, toolbar button
-- [ ] Sprint transition analyzer — AI analyzes backlog on sprint close. Full slice: Zod schema (SprintTransition with carryOver/deprioritize/recommendations), prompt builder, service, `analyzeSprintTransition` query, UI integration in sprint close flow
-- [ ] GitHub repo → Project bootstrap — import existing repo, AI analyzes codebase to auto-generate project with initial tasks. Full slice: fetch repo file tree + README + package.json via GitHub API, prompt builder for codebase analysis, service function, `bootstrapProjectFromRepo` mutation, UI in new project flow
-
-### W5: External Integrations & Real-time
+### W5: External Integrations & Real-time (partially completed)
 **Touches:** `prisma/schema/org.prisma`, `typedefs/org.ts`, new backend services, `OrgSettings.tsx`, `app.ts`, new client-side hooks
-**Est. time:** 45-60 min
 
 - [ ] Slack integration — channel notifications for task events, create tasks from Slack. Full slice: Prisma model (SlackIntegration with webhookUrl, channelId), Slack webhook client service, notification utility integration (send to Slack when creating notifications), slash command endpoint for task creation, OrgSettings UI for connecting Slack workspace
-- [ ] Webhook support — outgoing webhooks on task/sprint/comment events. Full slice: Prisma model (WebhookEndpoint with url, events[], secret), webhook dispatch service with HMAC signing, fire-and-forget delivery on mutations, retry queue with exponential backoff, OrgSettings UI for managing endpoints, test webhook button
-- [ ] Real-time updates (websockets or SSE) — push task/sprint/comment changes to all connected clients. Full slice: SSE endpoint in `app.ts` with auth, event emitter service that mutations call after DB writes, client-side `useEventSource` hook that patches local state on events, reconnection logic with exponential backoff
 
-### W6: Advanced Views & AI Extras
+### W6: Advanced Views & AI Extras (partially completed)
 **Touches:** new `apps/web/src/components/` files, `ProjectDetail.tsx`, `useProjectData.ts`, `ai/*`, `resolvers/ai.ts`
-**Est. time:** 45-60 min
 
 - [ ] Timeline / Gantt view — horizontal bars showing task duration + dependencies. Full slice: GanttChart component with SVG rendering, task bars positioned by start/due date, dependency arrows, zoom/scroll, integrated as new view tab in ProjectDetail
 - [ ] Portfolio / multi-project overview — cross-project summary with health, progress, overdue counts. Full slice: `portfolioOverview` query aggregating stats across projects, Portfolio page component with project cards showing health scores and progress bars, route in App.tsx
 - [ ] Public REST/GraphQL API docs — documented API for third-party use. Full slice: auto-generate from GraphQL schema using graphql-markdown or similar, serve at `/api/docs`, add auth token instructions
-- [ ] Repo ↔ Task drift analysis — AI compares repo state (commits, PRs, file changes) against task set to flag outdated/untracked work. Full slice: Zod schema, prompt builder using repo context, `analyzeRepoDrift` query, results panel in ProjectDetail
-- [ ] Contextual project chat — NL Q&A grounded in live project data. Full slice: chat UI component, `projectChat` mutation that injects project/task/sprint context into AI prompt, conversation history state, streaming response support
 - [ ] Historical summary analysis — trend analysis over persisted reports. Full slice: query past reports, prompt builder for trend analysis, `analyzeTrends` query, trend chart component
-- [ ] Batch code generation — generate code for multiple related tasks in one PR. Full slice: multi-task selection UI, prompt that includes all selected tasks, single PR creation with all generated files
 - [ ] Prompt replay / history — save AI prompts + responses per task for debugging and cost tracking. Full slice: Prisma model (AIPromptLog with input/output/tokens/cost), persist in AI service layer, UI panel in task detail showing prompt history
 
 ---
 
 ## Completed
+
+### W1 (partial): Frontend Architecture Refactor (Wave 6, 2026-03-16)
+- [x] Split `useProjectData.ts` into focused hooks: `useTasks()`, `useSprintManagement()`, `useAIGeneration()`, `useProjectUI()`
+- [x] Decompose `TaskDetailPanel.tsx` — extracted sub-components
+- [x] Add `useMemo`/`useCallback` coverage — memoized KanbanBoard and BacklogView
+- [x] Extract GraphQL query strings from `useProjectData` into `queries.ts` with typed constants
+
+### W3: Users, Roles & Automation (Wave 6, 2026-03-16)
+- [x] User avatars — profile avatar with display on task cards, board, comments, assignee dropdowns
+- [x] Profile management — display name, timezone, notification prefs, user settings page
+- [x] Project-level roles — per-project access control (viewer, editor, admin) with permission checks
+- [x] Automation rules — configurable triggers with rule evaluation engine and builder UI
+
+### W4: AI Power Features (Wave 6, 2026-03-16)
+- [x] Deduplicate "add more tasks" — prevent AI from generating duplicate tasks
+- [x] Bug report → Task — AI parses bug report into structured task with UI
+- [x] PRD → Task breakdown — AI breaks PRD into epics/tasks with preview/commit flow
+- [x] Sprint transition analyzer — AI analyzes backlog on sprint close
+- [x] GitHub repo → Project bootstrap — import repo, AI generates initial tasks
+
+### W5 (partial): External Integrations (Wave 6, 2026-03-16)
+- [x] Outgoing webhooks — HMAC-signed webhooks on task/sprint/comment events with management UI
+- [x] Real-time updates via SSE — server-sent events with auth, client hook, live UI updates
+
+### W6 (partial): AI Extras (Wave 6, 2026-03-16)
+- [x] Contextual project chat — NL Q&A grounded in live project data
+- [x] Repo ↔ Task drift analysis — AI compares repo state against tasks to flag outdated work
+- [x] Batch code generation — generate code for multiple related tasks in one PR
 
 ### A1: DataLoader & DB Optimization (Wave 5, 2026-03-16)
 - [x] DataLoader infrastructure — 10 loaders, per-request instances, context integration
@@ -151,13 +154,12 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 
 ## Parallelism Matrix (which sets can run together)
 
+**Remaining sets:** W1 (partial), W2, W5 (partial — Slack only), W6 (partial)
+
 Sets that **conflict** (share domain files):
 - W1 + W2 (both touch `resolvers/*`, `useProjectData.ts`, `TaskDetailPanel.tsx`)
 - W1 + W6 (both touch `useProjectData.ts`, `ProjectDetail.tsx`)
-- W2 + W4 (both touch `typedefs/task.ts` if AI features add task fields)
 
 Sets that **can run in parallel** (no file overlap):
-- W1 (frontend/API refactor) + W5 (external integrations) + W4 (AI features — if scoped to `ai/*` only)
-- W2 (task domain) + W3 (auth domain) + W5 (org domain)
-- W3 (auth/roles) + W4 (AI) + W5 (external)
-- W4 (AI) + W5 (external) + W6 (views — if AI portions don't overlap)
+- W1 (API refactor) + W5 (Slack) + W6 (views)
+- W2 (task domain) + W5 (Slack) + W6 (views)
