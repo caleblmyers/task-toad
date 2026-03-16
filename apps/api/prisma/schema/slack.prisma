@@ -15,3 +15,20 @@ model SlackIntegration {
   @@index([orgId])
   @@map("slack_integrations")
 }
+
+model SlackUserMapping {
+  id          String   @id @default(cuid())
+  slackUserId String   @map("slack_user_id")
+  slackTeamId String   @map("slack_team_id")
+  userId      String   @map("user_id")
+  orgId       String   @map("org_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  org  Org  @relation(fields: [orgId], references: [orgId], onDelete: Cascade)
+
+  @@unique([slackTeamId, slackUserId])
+  @@index([userId])
+  @@index([orgId])
+  @@map("slack_user_mappings")
+}

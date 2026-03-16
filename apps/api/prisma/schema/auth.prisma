@@ -22,6 +22,7 @@ model User {
   projectMemberships ProjectMember[]
   emailNotificationsEnabled Boolean @default(false) @map("email_notifications_enabled")
   savedFilters      SavedFilter[]
+  slackUserMappings SlackUserMapping[]
 
   @@map("users")
 }

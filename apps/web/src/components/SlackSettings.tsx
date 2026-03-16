@@ -12,6 +12,22 @@ interface SlackIntegration {
   createdAt: string;
 }
 
+interface SlackUserMapping {
+  id: string;
+  slackUserId: string;
+  slackTeamId: string;
+  userId: string;
+  orgId: string;
+  createdAt: string;
+  user: { userId: string; email: string; displayName: string | null } | null;
+}
+
+interface OrgUser {
+  userId: string;
+  email: string;
+  displayName: string | null;
+}
+
 const SUPPORTED_EVENTS = [
   'task.created',
   'task.updated',
@@ -42,6 +58,14 @@ export default function SlackSettings() {
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<{ id: string; success: boolean } | null>(null);
 
+  // User mapping state
+  const [mappings, setMappings] = useState<SlackUserMapping[]>([]);
+  const [orgUsers, setOrgUsers] = useState<OrgUser[]>([]);
+  const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | null>(null);
+  const [mapSlackUserId, setMapSlackUserId] = useState('');
+  const [mapTargetUserId, setMapTargetUserId] = useState('');
+  const [mappingSaving, setMappingSaving] = useState(false);
+
   const fetchIntegrations = () => {
     setLoading(true);
     gql<{ slackIntegrations: SlackIntegration[] }>(SLACK_QUERY)
@@ -52,7 +76,66 @@ export default function SlackSettings() {
 
   useEffect(() => {
     fetchIntegrations();
+    // Fetch org users for the mapping dropdown
+    gql<{ orgUsers: OrgUser[] }>(`query { orgUsers { userId email displayName } }`)
+      .then((data) => setOrgUsers(data.orgUsers))
+      .catch(() => { /* non-critical */ });
   }, []);
+
+  // Auto-select single integration for user mappings
+  useEffect(() => {
+    if (integrations.length === 1 && !selectedIntegrationId) {
+      fetchMappings(integrations[0].id);
+    }
+  }, [integrations, selectedIntegrationId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fetchMappings = (integrationId: string) => {
+    setSelectedIntegrationId(integrationId);
+    gql<{ slackUserMappings: SlackUserMapping[] }>(
+      `query ($integrationId: ID!) { slackUserMappings(integrationId: $integrationId) { id slackUserId slackTeamId userId orgId createdAt user { userId email displayName } } }`,
+      { integrationId }
+    )
+      .then((data) => setMappings(data.slackUserMappings))
+      .catch((e) => setErr(e instanceof Error ? e.message : 'Failed to load mappings'));
+  };
+
+  const handleMapUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedIntegrationId || !mapSlackUserId.trim() || !mapTargetUserId) return;
+    const integration = integrations.find((i) => i.id === selectedIntegrationId);
+    if (!integration) return;
+    setMappingSaving(true);
+    setErr(null);
+    try {
+      const data = await gql<{ mapSlackUser: SlackUserMapping }>(
+        `mutation MapSlack($slackUserId: String!, $slackTeamId: String!, $userId: ID!) {
+          mapSlackUser(slackUserId: $slackUserId, slackTeamId: $slackTeamId, userId: $userId) {
+            id slackUserId slackTeamId userId orgId createdAt user { userId email displayName }
+          }
+        }`,
+        { slackUserId: mapSlackUserId.trim(), slackTeamId: integration.teamId, userId: mapTargetUserId }
+      );
+      setMappings((prev) => [data.mapSlackUser, ...prev.filter((m) => m.id !== data.mapSlackUser.id)]);
+      setMapSlackUserId('');
+      setMapTargetUserId('');
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Failed to map user');
+    } finally {
+      setMappingSaving(false);
+    }
+  };
+
+  const handleUnmapUser = async (mappingId: string) => {
+    try {
+      await gql<{ unmapSlackUser: boolean }>(
+        `mutation UnmapSlack($mappingId: ID!) { unmapSlackUser(mappingId: $mappingId) }`,
+        { mappingId }
+      );
+      setMappings((prev) => prev.filter((m) => m.id !== mappingId));
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Failed to remove mapping');
+    }
+  };
 
   const handleToggleEvent = (event: string) => {
     setFormEvents((prev) =>
@@ -207,6 +290,108 @@ export default function SlackSettings() {
         </ul>
       ) : (
         <p className="text-sm text-slate-500">No Slack integrations configured.</p>
+      )}
+
+      {/* User Mappings */}
+      {integrations.length > 0 && (
+        <div className="border border-slate-200 rounded p-4 space-y-3">
+          <h3 className="text-sm font-semibold text-slate-700">User Mappings</h3>
+          <p className="text-xs text-slate-500">
+            Link Slack users to TaskToad accounts for personalized slash command results.
+          </p>
+
+          {integrations.length > 1 && (
+            <div>
+              <label htmlFor="mapping-integration" className="block text-xs font-medium text-slate-600 mb-1">
+                Integration
+              </label>
+              <select
+                id="mapping-integration"
+                value={selectedIntegrationId ?? ''}
+                onChange={(e) => e.target.value && fetchMappings(e.target.value)}
+                className="w-full px-3 py-1.5 border border-slate-300 rounded text-sm"
+              >
+                <option value="">Select integration...</option>
+                {integrations.map((int) => (
+                  <option key={int.id} value={int.id}>
+                    {int.teamName} — #{int.channelName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {selectedIntegrationId && (
+            <>
+              {mappings.length > 0 && (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
+                      <th className="pb-1 font-medium">Slack User ID</th>
+                      <th className="pb-1 font-medium">TaskToad User</th>
+                      <th className="pb-1 font-medium sr-only">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {mappings.map((m) => (
+                      <tr key={m.id}>
+                        <td className="py-1.5 text-slate-700 font-mono text-xs">{m.slackUserId}</td>
+                        <td className="py-1.5 text-slate-700">{m.user?.displayName ?? m.user?.email ?? m.userId}</td>
+                        <td className="py-1.5 text-right">
+                          <button
+                            onClick={() => handleUnmapUser(m.id)}
+                            className="text-xs text-red-600 hover:text-red-800"
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              <form onSubmit={handleMapUser} className="flex items-end gap-2">
+                <div className="flex-1">
+                  <label htmlFor="map-slack-user-id" className="block text-xs font-medium text-slate-600 mb-1">Slack User ID</label>
+                  <input
+                    id="map-slack-user-id"
+                    type="text"
+                    placeholder="U01234567"
+                    value={mapSlackUserId}
+                    onChange={(e) => setMapSlackUserId(e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-300 rounded text-sm"
+                    required
+                  />
+                </div>
+                <div className="flex-1">
+                  <label htmlFor="map-target-user" className="block text-xs font-medium text-slate-600 mb-1">TaskToad User</label>
+                  <select
+                    id="map-target-user"
+                    value={mapTargetUserId}
+                    onChange={(e) => setMapTargetUserId(e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-300 rounded text-sm"
+                    required
+                  >
+                    <option value="">Select user...</option>
+                    {orgUsers.map((u) => (
+                      <option key={u.userId} value={u.userId}>
+                        {u.displayName ? `${u.displayName} (${u.email})` : u.email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  type="submit"
+                  disabled={mappingSaving || !mapSlackUserId.trim() || !mapTargetUserId}
+                  className="px-3 py-1.5 bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50 text-sm whitespace-nowrap"
+                >
+                  {mappingSaving ? 'Adding...' : 'Add Mapping'}
+                </button>
+              </form>
+            </>
+          )}
+        </div>
       )}
 
       {/* Connect form */}

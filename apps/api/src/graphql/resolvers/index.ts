@@ -50,4 +50,5 @@ export const resolvers = {
   Sprint: { ...sprintFieldResolvers.Sprint },
   Notification: { ...notificationFieldResolvers.Notification },
   SlackIntegration: { ...slackFieldResolvers.SlackIntegration },
+  SlackUserMapping: { ...slackFieldResolvers.SlackUserMapping },
 };

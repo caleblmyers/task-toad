@@ -22,6 +22,22 @@ export const slackQueries = {
       orderBy: { createdAt: 'desc' },
     });
   },
+
+  slackUserMappings: async (_parent: unknown, args: { integrationId: string }, context: Context) => {
+    const user = requireAdmin(context);
+    // Verify integration belongs to this org
+    const integration = await context.prisma.slackIntegration.findUnique({
+      where: { id: args.integrationId },
+    });
+    if (!integration || integration.orgId !== user.orgId) {
+      throw new NotFoundError('Slack integration not found');
+    }
+    return context.prisma.slackUserMapping.findMany({
+      where: { orgId: user.orgId, slackTeamId: integration.teamId },
+      include: { user: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  },
 };
 
 // ── Slack mutations ──
@@ -137,6 +153,49 @@ export const slackMutations = {
     const message = buildTestMessage();
     return sendSlackWebhook(integration.webhookUrl, message);
   },
+
+  mapSlackUser: async (
+    _parent: unknown,
+    args: { slackUserId: string; slackTeamId: string; userId: string },
+    context: Context
+  ) => {
+    const user = requireAdmin(context);
+
+    // Verify the target user belongs to the same org
+    const targetUser = await context.prisma.user.findUnique({ where: { userId: args.userId } });
+    if (!targetUser || targetUser.orgId !== user.orgId) {
+      throw new NotFoundError('User not found in your organization');
+    }
+
+    return context.prisma.slackUserMapping.upsert({
+      where: {
+        slackTeamId_slackUserId: {
+          slackTeamId: args.slackTeamId,
+          slackUserId: args.slackUserId,
+        },
+      },
+      update: { userId: args.userId },
+      create: {
+        slackUserId: args.slackUserId,
+        slackTeamId: args.slackTeamId,
+        userId: args.userId,
+        orgId: user.orgId,
+      },
+      include: { user: true },
+    });
+  },
+
+  unmapSlackUser: async (_parent: unknown, args: { mappingId: string }, context: Context) => {
+    const user = requireAdmin(context);
+    const mapping = await context.prisma.slackUserMapping.findUnique({
+      where: { id: args.mappingId },
+    });
+    if (!mapping || mapping.orgId !== user.orgId) {
+      throw new NotFoundError('Slack user mapping not found');
+    }
+    await context.prisma.slackUserMapping.delete({ where: { id: args.mappingId } });
+    return true;
+  },
 };
 
 // ── Slack field resolvers ──
@@ -145,5 +204,8 @@ export const slackFieldResolvers = {
   SlackIntegration: {
     createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
     events: (parent: { events: string }) => JSON.parse(parent.events) as string[],
+  },
+  SlackUserMapping: {
+    createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
   },
 };

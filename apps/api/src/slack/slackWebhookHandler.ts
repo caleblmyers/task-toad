@@ -57,7 +57,7 @@ export async function handleSlackCommand(req: Request, res: Response): Promise<v
     return;
   }
 
-  const { command, text, team_id } = req.body as Record<string, string>;
+  const { command, text, team_id, user_id: slackUserId } = req.body as Record<string, string>;
 
   if (command !== '/tasktoad') {
     res.json({ response_type: 'ephemeral', text: `Unknown command: ${command}` });
@@ -92,18 +92,27 @@ export async function handleSlackCommand(req: Request, res: Response): Promise<v
         return;
       }
 
+      // Look up mapped user for auto-assignment
+      const mapping = slackUserId
+        ? await prisma.slackUserMapping.findUnique({
+            where: { slackTeamId_slackUserId: { slackTeamId: team_id, slackUserId } },
+          })
+        : null;
+
       const task = await prisma.task.create({
         data: {
           title,
           status: 'todo',
           projectId: project.projectId,
           orgId: integration.orgId,
+          ...(mapping ? { assigneeId: mapping.userId } : {}),
         },
       });
 
+      const assignedText = mapping ? `\nAssigned to: you` : '';
       res.json({
         response_type: 'in_channel',
-        text: `Task created: *${task.title}*\nProject: ${project.name}\nStatus: todo`,
+        text: `Task created: *${task.title}*\nProject: ${project.name}\nStatus: todo${assignedText}`,
       });
     } catch (err) {
       log.error({ err }, 'Failed to create task from Slack command');
@@ -130,13 +139,34 @@ export async function handleSlackCommand(req: Request, res: Response): Promise<v
         return;
       }
 
+      // Look up mapped user to show personalized task list
+      const listMapping = slackUserId
+        ? await prisma.slackUserMapping.findUnique({
+            where: { slackTeamId_slackUserId: { slackTeamId: team_id, slackUserId } },
+          })
+        : null;
+
       const tasks = await prisma.task.findMany({
-        where: { projectId: project.projectId, parentTaskId: null, archived: false },
+        where: {
+          projectId: project.projectId,
+          parentTaskId: null,
+          archived: false,
+          ...(listMapping ? { assigneeId: listMapping.userId } : {}),
+        },
         orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
         take: 10,
       });
 
-      res.json(formatTaskList(tasks, project.name));
+      const result = formatTaskList(tasks, project.name);
+      if (listMapping) {
+        result.text = result.text
+          ? `*Your tasks:*\n${result.text}`
+          : '*Your tasks:*\nNo tasks assigned to you.';
+      } else if (!listMapping && slackUserId) {
+        const hint = '\n_Tip: Link your Slack account in TaskToad settings for personalized results._';
+        result.text = result.text ? `${result.text}${hint}` : hint;
+      }
+      res.json(result);
     } catch (err) {
       log.error({ err }, 'Failed to list tasks from Slack command');
       res.json({ response_type: 'ephemeral', text: 'Failed to fetch tasks. Please try again.' });
