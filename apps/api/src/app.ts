@@ -8,7 +8,7 @@ import rateLimit from 'express-rate-limit';
 import * as Sentry from '@sentry/node';
 import { createYoga } from 'graphql-yoga';
 import { z } from 'zod';
-import { schema, depthLimitRule } from './graphql/schema.js';
+import { schema, depthLimitRule, costLimitRule } from './graphql/schema.js';
 import { buildContext } from './graphql/context.js';
 import { handleGitHubWebhook } from './github/index.js';
 import { handleSlackCommand } from './slack/slackWebhookHandler.js';
@@ -254,7 +254,10 @@ const yoga = createYoga({
   context: buildContext,
   graphqlEndpoint: '/graphql',
   plugins: [
-    { onValidate({ addValidationRule }: { addValidationRule: (rule: unknown) => void }) { addValidationRule(depthLimitRule(10)); } },
+    { onValidate({ addValidationRule }: { addValidationRule: (rule: unknown) => void }) {
+      addValidationRule(depthLimitRule(10));
+      addValidationRule(costLimitRule(Number(process.env.MAX_QUERY_COST) || 10000));
+    } },
     {
       onResultProcess({ result }: { result: { errors?: ReadonlyArray<{ message: string; extensions?: Record<string, unknown> }> } }) {
         if (!result.errors) return;

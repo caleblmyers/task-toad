@@ -1,5 +1,6 @@
 import { createSchema } from 'graphql-yoga';
-import { GraphQLError, Kind, type ValidationContext, type ASTVisitor, type SelectionSetNode } from 'graphql';
+import { GraphQLError, Kind, type ValidationContext, type ASTVisitor, type SelectionSetNode, type FieldNode } from 'graphql';
+import { logger } from '../utils/logger.js';
 import type { Context } from './context.js';
 import { resolvers } from './resolvers/index.js';
 import { authTypeDefs, authQueryFields, authMutationFields } from './typedefs/auth.js';
@@ -105,6 +106,96 @@ export function depthLimitRule(maxDepth: number) {
                 )
               );
             }
+          }
+        }
+      },
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Query complexity / cost analysis — prevents wide fan-out queries
+// ---------------------------------------------------------------------------
+
+/** Estimated item counts for known list fields */
+const COST_MAP: Record<string, number> = {
+  projects: 20,
+  tasks: 50,
+  comments: 30,
+  activities: 50,
+  notifications: 30,
+  sprints: 10,
+  labels: 20,
+  epics: 20,
+  reports: 10,
+  savedFilters: 10,
+  webhookEndpoints: 10,
+  webhookDeliveries: 50,
+};
+
+const DEFAULT_LIST_MULTIPLIER = 10;
+
+/** Introspection fields exempt from cost analysis */
+const INTROSPECTION_FIELDS = new Set(['__schema', '__type']);
+
+function computeSelectionCost(selectionSet: SelectionSetNode, multiplier: number): number {
+  let cost = 0;
+  for (const selection of selectionSet.selections) {
+    if (selection.kind === Kind.FIELD) {
+      const field = selection as FieldNode;
+      const fieldName = field.name.value;
+
+      // Introspection fields are free
+      if (INTROSPECTION_FIELDS.has(fieldName)) continue;
+
+      // Leaf field costs 1 × current multiplier
+      if (!field.selectionSet) {
+        cost += multiplier;
+        continue;
+      }
+
+      // Nested object/list field — apply list multiplier if known
+      const listMultiplier = COST_MAP[fieldName] ?? DEFAULT_LIST_MULTIPLIER;
+      const fieldMultiplier = COST_MAP[fieldName] !== undefined
+        ? multiplier * listMultiplier
+        : multiplier; // scalar object fields don't multiply
+      cost += computeSelectionCost(field.selectionSet, fieldMultiplier);
+    }
+    // InlineFragment / FragmentSpread — traverse their selection sets at the same multiplier
+    if ('selectionSet' in selection && selection.selectionSet && selection.kind !== Kind.FIELD) {
+      cost += computeSelectionCost(selection.selectionSet, multiplier);
+    }
+  }
+  return cost;
+}
+
+export function costLimitRule(maxCost: number) {
+  return (context: ValidationContext): ASTVisitor => ({
+    Document: {
+      enter(node) {
+        for (const definition of node.definitions) {
+          if (definition.kind !== Kind.OPERATION_DEFINITION) continue;
+
+          // Exempt introspection-only queries
+          const isIntrospectionOnly = definition.selectionSet.selections.every(
+            (sel) => sel.kind === Kind.FIELD && INTROSPECTION_FIELDS.has(sel.name.value),
+          );
+          if (isIntrospectionOnly) continue;
+
+          const cost = computeSelectionCost(definition.selectionSet, 1);
+
+          // Warn at 50% threshold
+          if (cost > maxCost * 0.5 && cost <= maxCost) {
+            const opName = definition.name?.value ?? 'anonymous';
+            logger.warn({ cost, maxCost, operationName: opName }, 'Query approaching complexity cost limit');
+          }
+
+          if (cost > maxCost) {
+            context.reportError(
+              new GraphQLError(
+                `Query complexity cost (${cost}) exceeds maximum allowed (${maxCost}). Simplify your query by requesting fewer nested collections.`,
+              ),
+            );
           }
         }
       },
