@@ -57,6 +57,26 @@ export function statusToColumn(status: Task['status'], columns: string[]): strin
   return null;
 }
 
+export function parseSuggestedTools(
+  raw: string | null | undefined,
+): Array<{ name: string; category: string; reason: string }> {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (item): item is { name: string; category: string; reason: string } =>
+        typeof item === 'object' &&
+        item !== null &&
+        typeof (item as Record<string, unknown>).name === 'string' &&
+        typeof (item as Record<string, unknown>).category === 'string' &&
+        typeof (item as Record<string, unknown>).reason === 'string',
+    );
+  } catch {
+    return [];
+  }
+}
+
 export function sortTasks(taskList: Task[]): Task[] {
   return taskList.slice().sort((a, b) => {
     if (a.position != null && b.position != null) return a.position - b.position;
