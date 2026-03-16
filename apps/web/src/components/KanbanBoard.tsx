@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useState, useCallback } from 'react';
 import type { Task } from '../types';
 import DependencyBadge from './shared/DependencyBadge';
 
@@ -21,6 +21,8 @@ interface KanbanBoardProps {
 
 export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, onSelectTask, onColumnChange }: KanbanBoardProps) {
   const draggedId = useRef<string | null>(null);
+  const [movingTaskId, setMovingTaskId] = useState<string | null>(null);
+  const [moveAnnouncement, setMoveAnnouncement] = useState('');
 
   // Memoize column grouping — O(n) map instead of O(n*columns) inline filter per render
   const tasksByColumn = useMemo(() => {
@@ -50,8 +52,54 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
     return blocked;
   }, [tasks]);
 
+  const handleCardKeyDown = useCallback((e: React.KeyboardEvent, task: Task) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (movingTaskId === task.taskId) {
+        // Exit move mode
+        setMovingTaskId(null);
+        setMoveAnnouncement('');
+      } else {
+        // Enter move mode
+        setMovingTaskId(task.taskId);
+        const col = task.sprintColumn ?? columns[0];
+        setMoveAnnouncement(`Moving "${task.title}". Use Left and Right arrows to change column. Currently in ${col}. Press Enter or Escape to finish.`);
+      }
+      return;
+    }
+
+    if (e.key === 'Escape' && movingTaskId === task.taskId) {
+      e.preventDefault();
+      setMovingTaskId(null);
+      setMoveAnnouncement('');
+      return;
+    }
+
+    if (movingTaskId === task.taskId && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      e.preventDefault();
+      const currentCol = task.sprintColumn ?? columns[0];
+      const currentIdx = columns.indexOf(currentCol);
+      let newIdx: number;
+      if (e.key === 'ArrowLeft') {
+        newIdx = Math.max(0, currentIdx - 1);
+      } else {
+        newIdx = Math.min(columns.length - 1, currentIdx + 1);
+      }
+      if (newIdx !== currentIdx) {
+        const newCol = columns[newIdx];
+        onColumnChange(task.taskId, newCol);
+        setMoveAnnouncement(`Moved "${task.title}" to ${newCol}`);
+      }
+    }
+  }, [movingTaskId, columns, onColumnChange]);
+
   return (
     <div className="flex gap-4 h-full">
+      {/* Live region for keyboard move announcements */}
+      <div className="sr-only" aria-live="assertive" role="status">
+        {moveAnnouncement}
+      </div>
+
       {columns.map((col, idx) => {
         const style = COLUMN_ACCENTS[idx % COLUMN_ACCENTS.length];
         const colTasks = tasksByColumn.get(col) ?? [];
@@ -78,7 +126,7 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
               </span>
             </div>
 
-            <div className="flex-1 px-2 pb-2 space-y-2 min-h-[4rem]">
+            <div className="flex-1 px-2 pb-2 space-y-2 min-h-[4rem]" role="listbox" aria-label={`${col} column`}>
               {colTasks.length === 0 ? (
                 <div className="flex items-center justify-center h-16 text-xs text-slate-400">
                   No tasks
@@ -88,20 +136,28 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
                   const isSelected = selectedTask?.taskId === task.taskId;
                   const subtaskCount = subtasks[task.taskId]?.length ?? 0;
                   const isBlocked = blockedTasks.has(task.taskId);
+                  const isMoving = movingTaskId === task.taskId;
                   return (
                     <div
                       key={task.taskId}
                       draggable
+                      tabIndex={0}
+                      role="option"
+                      aria-selected={isSelected}
+                      aria-description="Press Enter to move this task between columns"
                       onDragStart={() => { draggedId.current = task.taskId; }}
                       onClick={() => onSelectTask(task)}
+                      onKeyDown={(e) => handleCardKeyDown(e, task)}
                       className={`bg-white rounded-lg p-3 shadow-sm border border-slate-200 border-l-4 ${
                         task.taskType === 'epic' ? 'border-l-purple-500' :
                         task.taskType === 'story' ? 'border-l-blue-500' :
                         style.barColor
                       }
                         cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow duration-150
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1
                         ${isSelected ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
-                        ${isBlocked ? 'opacity-75' : ''}`}
+                        ${isBlocked ? 'opacity-75' : ''}
+                        ${isMoving ? 'border-dashed border-2 border-blue-400 shadow-lg' : ''}`}
                     >
                       <div className="flex items-center gap-1.5 mb-0.5">
                         {task.taskType !== 'task' && (
