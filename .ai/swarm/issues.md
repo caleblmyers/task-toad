@@ -97,3 +97,26 @@ Format:
 ### Reviewer — Positive (Wave 11)
 **Observation:** Worker-1 pivoted from pino-http (type issues) to a custom Express middleware that handles both logging and Prometheus metrics in one pass. More efficient and avoids the external dependency type problem.
 **Why it worked:** Worker autonomously chose a better approach when the prescribed one hit an obstacle.
+
+### worker-3 — task-005
+**Issue:** Task required modifying CLAUDE.md, but the worker role section is appended to CLAUDE.md in each worktree. The worker rules say "Do not modify CLAUDE.md" to avoid committing the worker role block, but this task specifically lists CLAUDE.md as a file to modify for documentation updates.
+**Impact:** First commit included the entire worker role section. Reviewer caught it and sent the task back. Required an extra fixup commit and restoring the worker role in the working copy.
+**Suggestion:** When a task needs to modify CLAUDE.md, the task description should explicitly warn: "Only modify the main content above the `---` separator. Do NOT commit the worker role section below. Stage the clean version, commit, then restore the worker role in your working copy."
+
+### Reviewer — task-005 (Wave 12)
+**Issue:** Worker-3 committed their "Role: Swarm Worker (worker-3)" section appended to CLAUDE.md. This is the worktree-specific role injection that should never be committed to main.
+**Impact:** Required sending the task back for a fixup commit. One extra review cycle.
+**Suggestion:** The swarm setup should .gitignore or auto-strip the role section before commit, OR task descriptions that modify CLAUDE.md should include explicit acceptance criterion: "Verify the worker role section is NOT included in the commit."
+
+### Reviewer — Positive (Wave 12)
+**Observation:** Worker-1 delivered both memoization (task-001) and lazy-loading/portfolio optimization (task-002) cleanly with zero rejections. Both commits were well-scoped with proper React patterns.
+**Why it worked:** Tasks had clear file boundaries, no overlap with other workers, and the acceptance criteria were concrete and verifiable.
+
+### Reviewer — Positive (Wave 12)
+**Observation:** Worker-2 delivered task-003 (task templates, full vertical slice) cleanly — Prisma model, migration, GraphQL CRUD, and complete UI in one commit.
+**Why it worked:** Proper task sizing as a full vertical slice. No layer-by-layer splitting.
+
+### Reviewer — task-003 (Wave 12, files)
+**Issue:** Task files array listed `auth.prisma` for the Org relation, but the Org model is actually in `org.prisma`. Worker correctly modified `org.prisma` instead.
+**Impact:** None — worker made the right call.
+**Suggestion:** Verify file locations during task planning, especially for Prisma schema files where model-to-file mapping isn't always intuitive.

@@ -116,11 +116,11 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 - [x] Multiple assignees — TaskAssignee join table, GraphQL types/resolvers with DataLoader, multi-select assignee picker UI with chips (Wave 11, 2026-03-16)
 - [ ] Recurring tasks — auto-recreate on schedule. Full slice: Prisma fields (recurrenceRule, recurrenceParentId), cron/scheduler utility, creation logic, UI toggle in TaskDetailPanel
 - [ ] File attachments on tasks — upload images/docs/screenshots. Full slice: storage service abstraction (local + S3), Prisma model (Attachment), upload endpoint, TaskDetailPanel attachment section
-- [ ] Task templates — reusable task structures for repeated workflows. Full slice: Prisma model (TaskTemplate), CRUD mutations, "Create from template" UI in project toolbar
-- [ ] JSON string columns → centralized helpers — Sprint.columns, Task.suggestedTools (parseColumns/parseSuggestedTools helpers, not migration)
+- [x] Task templates — TaskTemplate Prisma model, GraphQL CRUD, template picker in ProjectDetail toolbar, Save as Template on task detail, management tab in ProjectSettingsModal (Wave 12, 2026-03-16)
+- [x] JSON string columns → centralized helpers — parseColumns/parseOptions/parseStatuses in jsonHelpers.ts, 10 call sites replaced (Wave 12, 2026-03-16)
 - [ ] Shared types between API and web — evaluate graphql-codegen or shared package for type safety
 - [x] Custom field DataLoader — customFieldValuesByTask DataLoader with batched loading (Wave 11, 2026-03-16)
-- [ ] Custom field reordering UI — drag-to-reorder in ProjectSettingsModal (position field exists but no drag UI implemented)
+- [x] Custom field reordering UI — Up/Down arrow buttons in ProjectSettingsModal with position swap via updateCustomField mutation (Wave 12, 2026-03-16)
 - [x] Custom field NUMBER/DATE filter controls — number input with operator dropdown (=,<,>,<=,>=), date input with operator, numeric/date comparison logic in useTaskFiltering (Wave 11, 2026-03-16)
 
 ### W6: Advanced Views & AI Extras (remaining)
@@ -161,10 +161,14 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 **Touches:** `apps/web/src/components/`, `apps/api/src/graphql/resolvers/project.ts`
 
 - [ ] Virtualize long lists — use `react-window` or `@tanstack/virtual` for task lists (BacklogView, TableView) and activity feeds when > 100 items
-- [ ] Memoize list item components — wrap ActivityFeed items and CommentItem in `React.memo`
-- [ ] Cache parsed JSON at task level — `dependsOn` and `suggestedTools` are JSON.parse'd on every render in KanbanBoard; parse once and cache
-- [ ] Lazy-load heavy view components — GanttChart, BatchCodeGenModal, DriftAnalysisModal with `React.lazy()`
-- [ ] Portfolio query optimization — batch sprint queries instead of sequential per-project in `portfolioOverview` resolver
+- [ ] dependsOnCache memory management — parseDependsOn in taskHelpers.ts uses a module-level Map that never clears; add TTL or WeakRef-based eviction if task counts grow large
+- [ ] Template dropdown click-outside close — ProjectDetail template menu doesn't close on click-outside, only via Close button
+- [ ] Template instructions/acceptanceCriteria in create UI — createTaskTemplate form only has name/description/priority/type but the model supports instructions and acceptanceCriteria fields
+- [ ] Route lazy-load error boundaries — React.lazy chunks can fail to load (network issues); add retry logic or per-route error boundaries with refresh prompt
+- [x] Memoize list item components — TaskRow, CommentItem, ActivityItem wrapped in React.memo with stable callbacks (Wave 12, 2026-03-16)
+- [x] Cache parsed JSON at task level — parseDependsOn utility with Map cache in taskHelpers.ts, used in KanbanBoard and GanttChart (Wave 12, 2026-03-16)
+- [ ] Lazy-load heavy view components — GanttChart, BatchCodeGenModal, DriftAnalysisModal with `React.lazy()` (route-level lazy loading done, but these in-page modals still eagerly loaded)
+- [x] Portfolio query optimization — portfolioOverview batches tasks + sprints into 3 total queries (Wave 12, 2026-03-16)
 
 ### S1: Styling & Branding
 **Why:** Brand identity system fully deployed. Remaining items are polish and component abstraction.
@@ -193,10 +197,13 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 - [ ] Task file array validation — add a pre-flight check in the swarm skill that cross-references task description file paths against the `files` array, flagging any mentioned files that aren't listed (recurring issue: Prisma relation files, resolver index, entry point files)
 - [ ] Standard Prisma task boilerplate — when a task adds a Prisma model with relations, auto-include `auth.prisma`, `org.prisma`, `resolvers/index.ts` in the files array and add "Run `npx prisma generate` && verify `pnpm typecheck`" to acceptance criteria
 - [ ] New package type-check reminder — when a task installs a new npm package, add acceptance criterion: "Verify `pnpm typecheck` passes — add `@types/*` package or `.d.ts` declaration if needed"
-- [ ] Knowledge base audit — review and consolidate `.claude-knowledge/` files: remove stale info from `app-overview.md` and `skills.md` that's been superseded by 10 waves of changes, ensure `decisions.md` reflects current architecture (SSE fetch-based client, Prisma metrics preview, DataLoaders, brand system)
-- [ ] CLAUDE.md refresh — update to reflect current state: test commands (`pnpm test`), new endpoints (`/api/health`, `/api/metrics`), new env vars (`LOG_LEVEL`, `SENTRY_DSN`), Prisma preview features, updated file map
-- [ ] Swarm status dashboard — enhance `scripts/swarm/status.sh` to show file overlap warnings between in-flight tasks across workers, so the reviewer can spot potential merge conflicts early
-- [ ] Worker branch strategy — document whether workers should commit per-task or per-worker, and how to handle rebase after partial merges (recurring source of merge conflicts when one task merges before another on the same branch)
+- [x] Knowledge base audit — app-overview.md, skills.md, decisions.md updated for Waves 9-11 (Wave 12, 2026-03-16)
+- [x] CLAUDE.md refresh — test commands, REST endpoints, observability, GraphQL schema, key files, env vars all updated (Wave 12, 2026-03-16)
+- [x] Swarm status dashboard — file overlap warnings between in-flight tasks across workers added to status.sh (Wave 12, 2026-03-16)
+- [x] Worker branch strategy — BRANCH_STRATEGY.md documenting commit-per-task, rebase-after-merge, rejection handling (Wave 12, 2026-03-16)
+- [x] Standard Prisma task boilerplate — auto-added to swarm SKILL.md acceptance criteria reminders (Wave 12, 2026-03-16)
+- [x] New package type-check reminder — auto-added to swarm SKILL.md acceptance criteria reminders (Wave 12, 2026-03-16)
+- [ ] Auto-strip worker role from CLAUDE.md commits — swarm setup appends worker role to CLAUDE.md but workers accidentally commit it; need .gitignore or pre-commit hook to strip the role section before commit
 
 ---
 
@@ -221,6 +228,24 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 ---
 
 ## Completed
+
+### F1 (partial): Frontend Performance (Wave 12, 2026-03-16)
+- [x] React.memo on TaskRow, CommentItem, ActivityItem with stable useCallback props
+- [x] parseDependsOn cache utility in taskHelpers.ts — KanbanBoard + GanttChart use cached JSON parsing
+- [x] Route lazy-loading — ProjectDetail, Portfolio, OrgSettings, Search, NewProject, Projects, ProfilePage via React.lazy
+- [x] portfolioOverview N+1 fix — batched from 1+2N queries to 3 total queries
+
+### W2 (partial): Task Templates + JSON Helpers + Field Reorder (Wave 12, 2026-03-16)
+- [x] TaskTemplate Prisma model, GraphQL CRUD, template picker in ProjectDetail toolbar, Save as Template, management tab in ProjectSettingsModal
+- [x] JSON column helpers — parseColumns/parseOptions/parseStatuses in jsonHelpers.ts, 10 call sites replaced
+- [x] Custom field reordering UI — Up/Down arrow buttons with position swap via updateCustomField mutation
+
+### SW1 (partial): Swarm Meta (Wave 12, 2026-03-16)
+- [x] CLAUDE.md refreshed with current queries/mutations, key files, endpoints, env vars
+- [x] Knowledge base audit — app-overview.md, skills.md, decisions.md updated for Waves 9-11
+- [x] Swarm status dashboard file overlap warnings in status.sh
+- [x] Worker branch strategy documented in BRANCH_STRATEGY.md
+- [x] Standard Prisma + npm package acceptance criteria reminders in swarm SKILL.md
 
 ### P1+D1 (partial): Production Infra & Observability (Wave 11, 2026-03-16)
 - [x] Prisma connection pooling documented, LOG_LEVEL env var, pino-http structured request logging with request IDs

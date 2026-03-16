@@ -6,6 +6,39 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-16
 
+### Wave 12: F1 + W2 + SW1 (3 workers, 6 tasks)
+
+**F1 — Frontend Performance (Worker 1):**
+- React.memo on TaskRow (SprintSection), CommentItem, ActivityItem with stable useCallback props in parent components
+- parseDependsOn cache utility in taskHelpers.ts — Map-based caching replaces inline JSON.parse in KanbanBoard and GanttChart
+- Route lazy-loading via React.lazy: ProjectDetail, Portfolio, OrgSettings, Search, NewProject, Projects, ProfilePage — build now produces separate chunks (ProjectDetail 264KB, OrgSettings 36KB, etc.)
+- portfolioOverview N+1 fix: batched from 1+2N queries (11 for 5 projects) to 3 total queries via `projectId: { in: projectIds }` bulk fetch
+
+**W2 — Task Templates + JSON Helpers (Worker 2):**
+- TaskTemplate Prisma model + migration, GraphQL CRUD (createTaskTemplate, updateTaskTemplate, deleteTaskTemplate, createTaskFromTemplate, taskTemplates query)
+- Template picker dropdown in ProjectDetail toolbar + "Save as Template" button on task detail panel
+- Template management tab in ProjectSettingsModal (list/edit/delete)
+- jsonHelpers.ts: parseColumns(), parseOptions(), parseStatuses() centralized helpers — replaced 10 scattered JSON.parse call sites across 7 files
+- Custom field reorder UI: Up/Down arrow buttons in ProjectSettingsModal with position swap via two updateCustomField mutations
+
+**SW1 — Swarm Meta (Worker 3):**
+- CLAUDE.md refreshed: test commands, REST endpoints (/api/health, /api/metrics), full GraphQL schema, key files (loaders.ts, metrics.ts, vitest configs), env vars (LOG_LEVEL, SENTRY_DSN)
+- Knowledge base audit: app-overview.md (TaskAssignee, SlackUserMapping, WebhookDelivery models), skills.md (Vitest, prom-client, pino-http, React.lazy patterns), decisions.md (SSE migration, Vitest, Prisma metrics)
+- status.sh file overlap warnings for in-flight tasks across workers
+- BRANCH_STRATEGY.md documenting commit-per-task, rebase-after-merge, rejection handling
+- swarm/SKILL.md standard acceptance criteria reminders for Prisma and npm package tasks
+
+**Process issues (Wave 12):**
+- Worker-3 committed CLAUDE.md with appended worker role section (caught by reviewer, required fixup)
+- Task-003 files array listed auth.prisma for Org relation but model is actually in org.prisma (worker corrected)
+
+**Open follow-ups:**
+- [ ] Auto-strip worker role from CLAUDE.md commits (recurring issue — needs .gitignore or pre-commit hook)
+- [ ] parseDependsOn cache memory management (Map never clears — needs TTL or size limit)
+- [ ] Template dropdown click-outside close
+- [ ] Template instructions/acceptanceCriteria fields in create UI form
+- [ ] Route lazy-load error boundaries (retry logic for failed chunk loads)
+
 ### Wave 11: P1+D1 + Q1 + W2 (3 workers, 6 tasks)
 
 **P1+D1 — Production Infra & Observability (Worker 1):**
