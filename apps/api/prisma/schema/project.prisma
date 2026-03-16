@@ -19,7 +19,25 @@ model Project {
   reports               Report[]
   members               ProjectMember[]
   automationRules       AutomationRule[]
+  customFields          CustomField[]
+  savedFilters          SavedFilter[]
 
   @@index([orgId])
   @@map("projects")
+}
+
+model SavedFilter {
+  savedFilterId String   @id @default(uuid()) @map("saved_filter_id")
+  projectId     String   @map("project_id")
+  userId        String   @map("user_id")
+  name          String
+  filters       String   // JSON string of filter state
+  isDefault     Boolean  @default(false) @map("is_default")
+  createdAt     DateTime @default(now()) @map("created_at")
+  project       Project  @relation(fields: [projectId], references: [projectId])
+  user          User     @relation(fields: [userId], references: [userId])
+
+  @@index([projectId])
+  @@index([userId])
+  @@map("saved_filters")
 }

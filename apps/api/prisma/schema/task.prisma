@@ -28,10 +28,11 @@ model Task {
   assignee       User?    @relation("TaskAssignee", fields: [assigneeId], references: [userId])
   githubIssueNumber Int?    @map("github_issue_number")
   githubIssueNodeId  String? @map("github_issue_node_id")
-  comments       Comment[]
-  labels         TaskLabel[]
-  pullRequests   GitHubPullRequestLink[]
-  commits        GitHubCommitLink[]
+  comments          Comment[]
+  labels            TaskLabel[]
+  pullRequests      GitHubPullRequestLink[]
+  commits           GitHubCommitLink[]
+  customFieldValues CustomFieldValue[]
 
   @@index([projectId])
   @@index([parentTaskId])
@@ -41,6 +42,41 @@ model Task {
   @@index([orgId, archived])
   @@index([projectId, sprintId, position])
   @@map("tasks")
+}
+
+model CustomField {
+  customFieldId String             @id @default(uuid()) @map("custom_field_id")
+  orgId         String             @map("org_id")
+  projectId     String             @map("project_id")
+  name          String
+  fieldType     String             @map("field_type") // TEXT, NUMBER, DATE, DROPDOWN
+  options       String?            // JSON array for dropdown options
+  required      Boolean            @default(false)
+  position      Int                @default(0)
+  createdAt     DateTime           @default(now()) @map("created_at")
+  org           Org                @relation(fields: [orgId], references: [orgId])
+  project       Project            @relation(fields: [projectId], references: [projectId])
+  values        CustomFieldValue[]
+
+  @@index([projectId])
+  @@index([orgId])
+  @@map("custom_fields")
+}
+
+model CustomFieldValue {
+  customFieldValueId String      @id @default(uuid()) @map("custom_field_value_id")
+  customFieldId      String      @map("custom_field_id")
+  taskId             String      @map("task_id")
+  value              String
+  createdAt          DateTime    @default(now()) @map("created_at")
+  updatedAt          DateTime    @updatedAt @map("updated_at")
+  customField        CustomField @relation(fields: [customFieldId], references: [customFieldId], onDelete: Cascade)
+  task               Task        @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
+
+  @@unique([customFieldId, taskId])
+  @@index([taskId])
+  @@index([customFieldId])
+  @@map("custom_field_values")
 }
 
 model Label {

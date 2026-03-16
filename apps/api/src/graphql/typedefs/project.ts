@@ -13,6 +13,15 @@ export const projectTypeDefs = /* GraphQL */ `
     githubRepositoryOwner: String
   }
 
+  type SavedFilter {
+    savedFilterId: ID!
+    projectId: ID!
+    name: String!
+    filters: String!
+    isDefault: Boolean!
+    createdAt: String!
+  }
+
   type ProjectOption {
     title: String!
     description: String!
@@ -59,6 +68,7 @@ export const projectQueryFields = /* GraphQL */ `
   project(projectId: ID!): Project
   projectStats(projectId: ID!): ProjectStats!
   portfolioOverview: [ProjectSummary!]!
+  savedFilters(projectId: ID!): [SavedFilter!]!
 `;
 
 export const projectMutationFields = /* GraphQL */ `
@@ -67,4 +77,7 @@ export const projectMutationFields = /* GraphQL */ `
   archiveProject(projectId: ID!, archived: Boolean!): Project!
   generateProjectOptions(prompt: String!): [ProjectOption!]!
   createProjectFromOption(prompt: String!, title: String!, description: String!): Project!
+  saveFilter(projectId: ID!, name: String!, filters: String!): SavedFilter!
+  updateFilter(savedFilterId: ID!, name: String, filters: String): SavedFilter!
+  deleteFilter(savedFilterId: ID!): Boolean!
 `;

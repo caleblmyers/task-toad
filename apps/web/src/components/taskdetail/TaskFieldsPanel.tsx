@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Task, Sprint, OrgUser, Label } from '../../types';
 import { statusLabel } from '../../utils/taskHelpers';
+import TaskCustomFieldsSection from './TaskCustomFieldsSection';
 
 interface TaskFieldsPanelProps {
   task: Task;
@@ -148,6 +149,14 @@ export default function TaskFieldsPanel({
           disabled={disabled}
         />
       </div>
+
+      {/* Custom Fields */}
+      <TaskCustomFieldsSection
+        taskId={task.taskId}
+        projectId={task.projectId}
+        customFieldValues={(task as Task & { customFieldValues?: Array<{ customFieldValueId: string; field: { customFieldId: string; name: string; fieldType: string; options: string | null; required: boolean; position: number }; value: string }> }).customFieldValues}
+        disabled={disabled}
+      />
 
       {/* Labels */}
       {(onAddTaskLabel || (task.labels && task.labels.length > 0)) && (

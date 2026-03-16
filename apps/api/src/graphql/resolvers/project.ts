@@ -1,7 +1,7 @@
 import type { Context } from '../context.js';
 import { logActivity } from '../../utils/activity.js';
-import { AuthorizationError, ValidationError } from '../errors.js';
-import { requireOrg, requireProjectAccess } from './auth.js';
+import { AuthorizationError, NotFoundError, ValidationError } from '../errors.js';
+import { requireAuth, requireOrg, requireProjectAccess } from './auth.js';
 import { parseInput, CreateProjectInput } from '../../utils/resolverHelpers.js';
 
 // ── Project queries ──
@@ -91,6 +91,16 @@ export const projectQueries = {
     );
 
     return summaries;
+  },
+
+  savedFilters: async (_parent: unknown, args: { projectId: string }, context: Context) => {
+    const user = requireAuth(context);
+    await requireProjectAccess(context, args.projectId);
+    const filters = await context.prisma.savedFilter.findMany({
+      where: { projectId: args.projectId, userId: user.userId },
+      orderBy: { createdAt: 'asc' },
+    });
+    return filters.map((f: typeof filters[number]) => ({ ...f, createdAt: f.createdAt.toISOString() }));
   },
 
   projectStats: async (_parent: unknown, args: { projectId: string }, context: Context) => {
@@ -195,6 +205,38 @@ export const projectMutations = {
       ...(args.name && args.name !== project.name ? { field: 'name', oldValue: project.name, newValue: args.name } : {}),
     });
     return updated;
+  },
+
+  saveFilter: async (_parent: unknown, args: { projectId: string; name: string; filters: string }, context: Context) => {
+    const user = requireAuth(context);
+    await requireProjectAccess(context, args.projectId);
+    if (!args.name.trim()) throw new ValidationError('Filter name is required');
+    const filter = await context.prisma.savedFilter.create({
+      data: { projectId: args.projectId, userId: user.userId, name: args.name.trim(), filters: args.filters },
+    });
+    return { ...filter, createdAt: filter.createdAt.toISOString() };
+  },
+
+  updateFilter: async (_parent: unknown, args: { savedFilterId: string; name?: string | null; filters?: string | null }, context: Context) => {
+    const user = requireAuth(context);
+    const filter = await context.prisma.savedFilter.findUnique({ where: { savedFilterId: args.savedFilterId } });
+    if (!filter || filter.userId !== user.userId) throw new NotFoundError('Saved filter not found');
+    const updated = await context.prisma.savedFilter.update({
+      where: { savedFilterId: args.savedFilterId },
+      data: {
+        ...(args.name !== undefined && args.name !== null ? { name: args.name.trim() } : {}),
+        ...(args.filters !== undefined && args.filters !== null ? { filters: args.filters } : {}),
+      },
+    });
+    return { ...updated, createdAt: updated.createdAt.toISOString() };
+  },
+
+  deleteFilter: async (_parent: unknown, args: { savedFilterId: string }, context: Context) => {
+    const user = requireAuth(context);
+    const filter = await context.prisma.savedFilter.findUnique({ where: { savedFilterId: args.savedFilterId } });
+    if (!filter || filter.userId !== user.userId) throw new NotFoundError('Saved filter not found');
+    await context.prisma.savedFilter.delete({ where: { savedFilterId: args.savedFilterId } });
+    return true;
   },
 
   archiveProject: async (_parent: unknown, args: { projectId: string; archived: boolean }, context: Context) => {

@@ -92,6 +92,14 @@ export const taskQueries = {
       orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
     });
   },
+
+  customFields: async (_parent: unknown, args: { projectId: string }, context: Context) => {
+    await requireProjectAccess(context, args.projectId);
+    return context.prisma.customField.findMany({
+      where: { projectId: args.projectId },
+      orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+    });
+  },
 };
 
 // ── Task mutations ──
@@ -415,6 +423,80 @@ export const taskMutations = {
       replies: [],
     };
   },
+
+  createCustomField: async (
+    _parent: unknown,
+    args: { projectId: string; name: string; fieldType: string; options?: string | null; required?: boolean | null },
+    context: Context
+  ) => {
+    const user = requireOrg(context);
+    await requireProjectAccess(context, args.projectId);
+    const validTypes = ['TEXT', 'NUMBER', 'DATE', 'DROPDOWN'];
+    if (!validTypes.includes(args.fieldType)) {
+      throw new ValidationError(`Invalid fieldType "${args.fieldType}". Valid: ${validTypes.join(', ')}`);
+    }
+    if (args.fieldType === 'DROPDOWN' && !args.options) {
+      throw new ValidationError('DROPDOWN fields require options');
+    }
+    const maxPos = await context.prisma.customField.aggregate({
+      where: { projectId: args.projectId },
+      _max: { position: true },
+    });
+    return context.prisma.customField.create({
+      data: {
+        orgId: user.orgId,
+        projectId: args.projectId,
+        name: args.name,
+        fieldType: args.fieldType,
+        options: args.options ?? null,
+        required: args.required ?? false,
+        position: (maxPos._max.position ?? 0) + 1,
+      },
+    });
+  },
+
+  updateCustomField: async (
+    _parent: unknown,
+    args: { customFieldId: string; name?: string | null; options?: string | null; required?: boolean | null; position?: number | null },
+    context: Context
+  ) => {
+    const user = requireOrg(context);
+    const field = await context.prisma.customField.findUnique({ where: { customFieldId: args.customFieldId } });
+    if (!field || field.orgId !== user.orgId) throw new NotFoundError('Custom field not found');
+    return context.prisma.customField.update({
+      where: { customFieldId: args.customFieldId },
+      data: {
+        ...(args.name !== undefined && args.name !== null ? { name: args.name } : {}),
+        ...(args.options !== undefined ? { options: args.options } : {}),
+        ...(args.required !== undefined && args.required !== null ? { required: args.required } : {}),
+        ...(args.position !== undefined && args.position !== null ? { position: args.position } : {}),
+      },
+    });
+  },
+
+  deleteCustomField: async (_parent: unknown, args: { customFieldId: string }, context: Context) => {
+    const user = requireOrg(context);
+    const field = await context.prisma.customField.findUnique({ where: { customFieldId: args.customFieldId } });
+    if (!field || field.orgId !== user.orgId) throw new NotFoundError('Custom field not found');
+    await context.prisma.customField.delete({ where: { customFieldId: args.customFieldId } });
+    return true;
+  },
+
+  setCustomFieldValue: async (
+    _parent: unknown,
+    args: { taskId: string; customFieldId: string; value: string },
+    context: Context
+  ) => {
+    await requireTask(context, args.taskId);
+    const field = await context.prisma.customField.findUnique({ where: { customFieldId: args.customFieldId } });
+    if (!field) throw new NotFoundError('Custom field not found');
+    return context.prisma.customFieldValue.upsert({
+      where: { customFieldId_taskId: { customFieldId: args.customFieldId, taskId: args.taskId } },
+      create: { customFieldId: args.customFieldId, taskId: args.taskId, value: args.value },
+      update: { value: args.value },
+      include: { customField: true },
+    });
+  },
 };
 
 // ── Task field resolvers ──
@@ -423,6 +505,12 @@ export const taskFieldResolvers = {
   Task: {
     labels: async (parent: { taskId: string }, _args: unknown, context: Context) => {
       return context.loaders.taskLabels.load(parent.taskId);
+    },
+    customFieldValues: async (parent: { taskId: string }, _args: unknown, context: Context) => {
+      return context.prisma.customFieldValue.findMany({
+        where: { taskId: parent.taskId },
+        include: { customField: true },
+      });
     },
     githubIssueUrl: async (parent: { taskId: string; projectId: string; githubIssueNumber?: number | null }, _args: unknown, context: Context) => {
       if (!parent.githubIssueNumber) return null;
@@ -447,6 +535,12 @@ export const taskFieldResolvers = {
       const result = await context.loaders.taskProgress.load(parent.taskId);
       if (!result || result.total === 0) return { total: 0, completed: 0, percentage: 0 };
       return { total: result.total, completed: result.completed, percentage: Math.round((result.completed / result.total) * 100) };
+    },
+  },
+  CustomFieldValue: {
+    field: (parent: { customField?: unknown; customFieldId: string }, _args: unknown, context: Context) => {
+      if (parent.customField) return parent.customField;
+      return context.prisma.customField.findUnique({ where: { customFieldId: parent.customFieldId } });
     },
   },
 };

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import type { Task } from '../types';
 
 export interface TaskFiltering {
@@ -8,6 +8,7 @@ export interface TaskFiltering {
   assigneeFilter: string;
   labelFilter: string[];
   showArchived: boolean;
+  customFieldFilters: Record<string, string>;
   filteredTasks: Task[];
   setSearchQuery: (q: string) => void;
   setStatusFilter: (s: string) => void;
@@ -15,8 +16,15 @@ export interface TaskFiltering {
   setAssigneeFilter: (a: string) => void;
   setLabelFilter: (ids: string[]) => void;
   setShowArchived: (v: boolean) => void;
+  setCustomFieldFilter: (fieldId: string, value: string) => void;
   clearFilters: () => void;
   hasActiveFilters: boolean;
+  loadSavedFilter: (filtersJson: string) => void;
+}
+
+interface CustomFieldValue {
+  field: { customFieldId: string };
+  value: string;
 }
 
 export function useTaskFiltering(tasks: Task[]): TaskFiltering {
@@ -26,8 +34,14 @@ export function useTaskFiltering(tasks: Task[]): TaskFiltering {
   const [assigneeFilter, setAssigneeFilter] = useState<string | 'all'>('all');
   const [labelFilter, setLabelFilter] = useState<string[]>([]);
   const [showArchived, setShowArchived] = useState(false);
+  const [customFieldFilters, setCustomFieldFilters] = useState<Record<string, string>>({});
 
-  const hasActiveFilters = searchQuery !== '' || statusFilter !== 'all' || priorityFilter !== 'all' || assigneeFilter !== 'all' || labelFilter.length > 0 || showArchived;
+  const hasCustomFieldFilters = Object.values(customFieldFilters).some((v) => v !== '');
+  const hasActiveFilters = searchQuery !== '' || statusFilter !== 'all' || priorityFilter !== 'all' || assigneeFilter !== 'all' || labelFilter.length > 0 || showArchived || hasCustomFieldFilters;
+
+  const setCustomFieldFilter = useCallback((fieldId: string, value: string) => {
+    setCustomFieldFilters((prev) => ({ ...prev, [fieldId]: value }));
+  }, []);
 
   const filteredTasks = useMemo(() => {
     let result = tasks;
@@ -59,8 +73,20 @@ export function useTaskFiltering(tasks: Task[]): TaskFiltering {
         t.labels?.some((l) => labelFilter.includes(l.labelId))
       );
     }
+    // Custom field filters
+    const activeCfFilters = Object.entries(customFieldFilters).filter(([, v]) => v !== '');
+    if (activeCfFilters.length > 0) {
+      result = result.filter((t) => {
+        const cfValues = (t as Task & { customFieldValues?: CustomFieldValue[] }).customFieldValues ?? [];
+        return activeCfFilters.every(([fieldId, filterVal]) => {
+          const cfv = cfValues.find((v) => v.field.customFieldId === fieldId);
+          if (!cfv) return false;
+          return cfv.value.toLowerCase().includes(filterVal.toLowerCase());
+        });
+      });
+    }
     return result;
-  }, [tasks, searchQuery, statusFilter, priorityFilter, assigneeFilter, labelFilter, showArchived]);
+  }, [tasks, searchQuery, statusFilter, priorityFilter, assigneeFilter, labelFilter, showArchived, customFieldFilters]);
 
   const clearFilters = () => {
     setSearchQuery('');
@@ -68,11 +94,30 @@ export function useTaskFiltering(tasks: Task[]): TaskFiltering {
     setPriorityFilter('all');
     setAssigneeFilter('all');
     setLabelFilter([]);
+    setCustomFieldFilters({});
   };
+
+  const loadSavedFilter = useCallback((filtersJson: string) => {
+    try {
+      const parsed = JSON.parse(filtersJson) as {
+        statusFilter?: string;
+        priorityFilter?: string;
+        assigneeFilter?: string;
+        labelFilter?: string[];
+        customFieldFilters?: Record<string, string>;
+      };
+      if (parsed.statusFilter) setStatusFilter(parsed.statusFilter);
+      if (parsed.priorityFilter) setPriorityFilter(parsed.priorityFilter);
+      if (parsed.assigneeFilter) setAssigneeFilter(parsed.assigneeFilter);
+      if (parsed.labelFilter) setLabelFilter(parsed.labelFilter);
+      if (parsed.customFieldFilters) setCustomFieldFilters(parsed.customFieldFilters);
+    } catch { /* ignore invalid JSON */ }
+  }, []);
 
   return {
     searchQuery, statusFilter, priorityFilter, assigneeFilter, labelFilter,
-    filteredTasks, setSearchQuery, setStatusFilter, setPriorityFilter,
-    setAssigneeFilter, setLabelFilter, showArchived, setShowArchived, clearFilters, hasActiveFilters,
+    customFieldFilters, filteredTasks, setSearchQuery, setStatusFilter, setPriorityFilter,
+    setAssigneeFilter, setLabelFilter, showArchived, setShowArchived,
+    setCustomFieldFilter, clearFilters, hasActiveFilters, loadSavedFilter,
   };
 }

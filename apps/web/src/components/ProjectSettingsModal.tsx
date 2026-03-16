@@ -19,6 +19,15 @@ interface AutomationRule {
   createdAt: string;
 }
 
+interface CustomFieldDef {
+  customFieldId: string;
+  name: string;
+  fieldType: string;
+  options: string | null;
+  required: boolean;
+  position: number;
+}
+
 interface Props {
   projectId: string;
   orgUsers: OrgUser[];
@@ -38,15 +47,22 @@ const ACTION_TYPES = [
 ];
 
 export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: Props) {
-  const [tab, setTab] = useState<'members' | 'automation'>('members');
+  const [tab, setTab] = useState<'members' | 'automation' | 'fields'>('members');
   const [members, setMembers] = useState<ProjectMember[]>([]);
   const [rules, setRules] = useState<AutomationRule[]>([]);
+  const [customFields, setCustomFields] = useState<CustomFieldDef[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Member form
   const [addUserId, setAddUserId] = useState('');
   const [addRole, setAddRole] = useState('editor');
+
+  // Custom field form
+  const [cfName, setCfName] = useState('');
+  const [cfType, setCfType] = useState('TEXT');
+  const [cfOptions, setCfOptions] = useState('');
+  const [cfRequired, setCfRequired] = useState(false);
 
   // Rule form
   const [ruleName, setRuleName] = useState('');
@@ -63,7 +79,7 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
   const loadData = async () => {
     setLoading(true);
     try {
-      const [membersData, rulesData] = await Promise.all([
+      const [membersData, rulesData, fieldsData] = await Promise.all([
         gql<{ projectMembers: ProjectMember[] }>(
           `query ProjectMembers($projectId: ID!) { projectMembers(projectId: $projectId) { id userId email role createdAt } }`,
           { projectId },
@@ -72,9 +88,14 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
           `query AutomationRules($projectId: ID!) { automationRules(projectId: $projectId) { id name trigger action enabled createdAt } }`,
           { projectId },
         ),
+        gql<{ customFields: CustomFieldDef[] }>(
+          `query CustomFields($projectId: ID!) { customFields(projectId: $projectId) { customFieldId name fieldType options required position } }`,
+          { projectId },
+        ),
       ]);
       setMembers(membersData.projectMembers);
       setRules(rulesData.automationRules);
+      setCustomFields(fieldsData.customFields);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load');
     } finally {
@@ -181,6 +202,43 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
     }
   };
 
+  const handleCreateCustomField = async () => {
+    if (!cfName.trim()) return;
+    setError(null);
+    try {
+      const { createCustomField } = await gql<{ createCustomField: CustomFieldDef }>(
+        `mutation CreateCF($projectId: ID!, $name: String!, $fieldType: String!, $options: String, $required: Boolean) {
+          createCustomField(projectId: $projectId, name: $name, fieldType: $fieldType, options: $options, required: $required) { customFieldId name fieldType options required position }
+        }`,
+        {
+          projectId,
+          name: cfName.trim(),
+          fieldType: cfType,
+          options: cfType === 'DROPDOWN' && cfOptions.trim() ? JSON.stringify(cfOptions.split(',').map((s) => s.trim()).filter(Boolean)) : null,
+          required: cfRequired,
+        },
+      );
+      setCustomFields((prev) => [...prev, createCustomField]);
+      setCfName('');
+      setCfOptions('');
+      setCfRequired(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create custom field');
+    }
+  };
+
+  const handleDeleteCustomField = async (fieldId: string) => {
+    try {
+      await gql<{ deleteCustomField: boolean }>(
+        `mutation DeleteCF($customFieldId: ID!) { deleteCustomField(customFieldId: $customFieldId) }`,
+        { customFieldId: fieldId },
+      );
+      setCustomFields((prev) => prev.filter((f) => f.customFieldId !== fieldId));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete custom field');
+    }
+  };
+
   const describeTrigger = (triggerJson: string) => {
     try {
       const t = JSON.parse(triggerJson) as { event: string; condition?: Record<string, string> };
@@ -236,6 +294,12 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
           >
             Automation
           </button>
+          <button
+            className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === 'fields' ? 'border-slate-800 text-slate-800' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+            onClick={() => setTab('fields')}
+          >
+            Custom Fields
+          </button>
         </div>
 
         {error && <p className="text-sm text-red-600 px-4 pt-2">{error}</p>}
@@ -243,6 +307,78 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {loading ? (
             <p className="text-sm text-slate-500">Loading...</p>
+          ) : tab === 'fields' ? (
+            <>
+              {/* Custom fields list */}
+              <ul className="divide-y divide-slate-100">
+                {customFields.map((f) => (
+                  <li key={f.customFieldId} className="py-2 flex items-center justify-between">
+                    <div>
+                      <span className="text-sm font-medium text-slate-800">{f.name}</span>
+                      <span className="ml-2 text-xs text-slate-400">{f.fieldType}</span>
+                      {f.required && <span className="ml-1 text-xs text-red-400">required</span>}
+                      {f.options && (
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          Options: {(() => { try { return (JSON.parse(f.options) as string[]).join(', '); } catch { return f.options; } })()}
+                        </p>
+                      )}
+                    </div>
+                    <button onClick={() => handleDeleteCustomField(f.customFieldId)} className="text-red-500 hover:text-red-700 text-xs">Delete</button>
+                  </li>
+                ))}
+                {customFields.length === 0 && <li className="py-2 text-sm text-slate-500">No custom fields yet.</li>}
+              </ul>
+
+              {/* Add custom field form */}
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <p className="text-sm font-medium text-slate-500 uppercase tracking-wide">Add custom field</p>
+                <input
+                  type="text"
+                  value={cfName}
+                  onChange={(e) => setCfName(e.target.value)}
+                  placeholder="Field name"
+                  className="w-full text-sm border border-slate-300 rounded px-2 py-1.5"
+                />
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-slate-500">Type:</label>
+                  <select
+                    value={cfType}
+                    onChange={(e) => setCfType(e.target.value)}
+                    className="flex-1 text-sm border border-slate-300 rounded px-2 py-1"
+                  >
+                    <option value="TEXT">Text</option>
+                    <option value="NUMBER">Number</option>
+                    <option value="DATE">Date</option>
+                    <option value="DROPDOWN">Dropdown</option>
+                  </select>
+                </div>
+                {cfType === 'DROPDOWN' && (
+                  <input
+                    type="text"
+                    value={cfOptions}
+                    onChange={(e) => setCfOptions(e.target.value)}
+                    placeholder="Options (comma-separated)"
+                    className="w-full text-sm border border-slate-300 rounded px-2 py-1.5"
+                  />
+                )}
+                <label className="flex items-center gap-2 text-xs text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={cfRequired}
+                    onChange={(e) => setCfRequired(e.target.checked)}
+                    className="rounded"
+                  />
+                  Required field
+                </label>
+                <button
+                  onClick={handleCreateCustomField}
+                  disabled={!cfName.trim()}
+                  className="px-3 py-1.5 bg-slate-800 text-white text-sm rounded hover:bg-slate-700 disabled:opacity-50"
+                >
+                  Create Field
+                </button>
+              </div>
+            </>
           ) : tab === 'members' ? (
             <>
               {/* Members list */}

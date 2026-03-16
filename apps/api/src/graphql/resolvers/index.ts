@@ -45,6 +45,7 @@ export const resolvers = {
   OrgInvite: { ...authFieldResolvers.OrgInvite },
   Org: { ...orgFieldResolvers.Org },
   Task: { ...taskFieldResolvers.Task },
+  CustomFieldValue: { ...taskFieldResolvers.CustomFieldValue },
   GitHubInstallation: { ...githubFieldResolvers.GitHubInstallation },
   Sprint: { ...sprintFieldResolvers.Sprint },
   Notification: { ...notificationFieldResolvers.Notification },

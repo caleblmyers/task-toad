@@ -28,6 +28,22 @@ export const taskTypeDefs = /* GraphQL */ `
     commits: [TaskCommit!]!
     children: [Task!]!
     progress: TaskProgress
+    customFieldValues: [CustomFieldValue!]!
+  }
+
+  type CustomField {
+    customFieldId: ID!
+    name: String!
+    fieldType: String!
+    options: String
+    required: Boolean!
+    position: Int!
+  }
+
+  type CustomFieldValue {
+    customFieldValueId: ID!
+    field: CustomField!
+    value: String!
   }
 
   type TaskProgress {
@@ -95,6 +111,7 @@ export const taskQueryFields = /* GraphQL */ `
   tasks(projectId: ID!, parentTaskId: ID, limit: Int, offset: Int): TaskConnection!
   epics(projectId: ID!): [Task!]!
   labels: [Label!]!
+  customFields(projectId: ID!): [CustomField!]!
 `;
 
 export const taskMutationFields = /* GraphQL */ `
@@ -113,4 +130,9 @@ export const taskMutationFields = /* GraphQL */ `
   commitTaskPlan(projectId: ID!, tasks: [CommitTaskInput!]!, clearExisting: Boolean): [Task!]!
   expandTask(taskId: ID!, context: String): [Task!]!
   generateTaskInstructions(taskId: ID!): Task!
+
+  createCustomField(projectId: ID!, name: String!, fieldType: String!, options: String, required: Boolean): CustomField!
+  updateCustomField(customFieldId: ID!, name: String, options: String, required: Boolean, position: Int): CustomField!
+  deleteCustomField(customFieldId: ID!): Boolean!
+  setCustomFieldValue(taskId: ID!, customFieldId: ID!, value: String!): CustomFieldValue!
 `;

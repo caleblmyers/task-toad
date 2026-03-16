@@ -16,6 +16,7 @@ model Org {
   automationRules AutomationRule[]
   webhookEndpoints WebhookEndpoint[]
   slackIntegrations SlackIntegration[]
+  customFields    CustomField[]
 
   @@map("orgs")
 }

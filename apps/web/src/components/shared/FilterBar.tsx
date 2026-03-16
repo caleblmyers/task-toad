@@ -1,5 +1,22 @@
+import { useState } from 'react';
 import type { OrgUser } from '../../types';
 import { statusLabel } from '../../utils/taskHelpers';
+import { gql } from '../../api/client';
+
+interface SavedFilter {
+  savedFilterId: string;
+  name: string;
+  filters: string;
+  isDefault: boolean;
+  createdAt: string;
+}
+
+interface CustomFieldDef {
+  customFieldId: string;
+  name: string;
+  fieldType: string;
+  options: string | null;
+}
 
 interface FilterBarProps {
   statusFilter: string;
@@ -16,6 +33,13 @@ interface FilterBarProps {
   onClear: () => void;
   hasActiveFilters: boolean;
   className?: string;
+  projectId?: string;
+  savedFilters?: SavedFilter[];
+  onSavedFiltersChange?: (filters: SavedFilter[]) => void;
+  onLoadFilter?: (filters: string) => void;
+  customFields?: CustomFieldDef[];
+  customFieldFilters?: Record<string, string>;
+  onCustomFieldFilterChange?: (fieldId: string, value: string) => void;
 }
 
 const pillBase = 'text-xs px-2.5 py-1 rounded-full border transition-colors cursor-pointer';
@@ -27,79 +51,210 @@ export default function FilterBar({
   orgUsers, statuses, labels, labelFilter, onLabelChange,
   onStatusChange, onPriorityChange, onAssigneeChange,
   onClear, hasActiveFilters, className = '',
+  projectId, savedFilters, onSavedFiltersChange, onLoadFilter,
+  customFields, customFieldFilters, onCustomFieldFilterChange,
 }: FilterBarProps) {
   const statusOptions = statuses ?? ['todo', 'in_progress', 'done'];
+  const [saveName, setSaveName] = useState('');
+  const [showSaveInput, setShowSaveInput] = useState(false);
+
+  const handleSaveFilter = async () => {
+    if (!projectId || !saveName.trim()) return;
+    const filtersJson = JSON.stringify({
+      statusFilter, priorityFilter, assigneeFilter, labelFilter: labelFilter ?? [],
+      customFieldFilters: customFieldFilters ?? {},
+    });
+    try {
+      const { saveFilter } = await gql<{ saveFilter: SavedFilter }>(
+        `mutation SaveFilter($projectId: ID!, $name: String!, $filters: String!) {
+          saveFilter(projectId: $projectId, name: $name, filters: $filters) { savedFilterId name filters isDefault createdAt }
+        }`,
+        { projectId, name: saveName.trim(), filters: filtersJson },
+      );
+      onSavedFiltersChange?.([...(savedFilters ?? []), saveFilter]);
+      setSaveName('');
+      setShowSaveInput(false);
+    } catch { /* ignore */ }
+  };
+
+  const handleDeleteFilter = async (filterId: string) => {
+    try {
+      await gql<{ deleteFilter: boolean }>(
+        `mutation DeleteFilter($savedFilterId: ID!) { deleteFilter(savedFilterId: $savedFilterId) }`,
+        { savedFilterId: filterId },
+      );
+      onSavedFiltersChange?.((savedFilters ?? []).filter((f) => f.savedFilterId !== filterId));
+    } catch { /* ignore */ }
+  };
+
+  const getDropdownOptions = (field: CustomFieldDef): string[] => {
+    if (!field.options) return [];
+    try { return JSON.parse(field.options) as string[]; } catch { return []; }
+  };
 
   return (
-    <div className={`flex items-center gap-2 flex-wrap ${className}`}>
-      <select
-        value={statusFilter}
-        onChange={(e) => onStatusChange(e.target.value)}
-        className={`${pillBase} ${statusFilter !== 'all' ? pillActive : pillInactive}`}
-      >
-        <option value="all">Status</option>
-        {statusOptions.map((s) => (
-          <option key={s} value={s}>{statusLabel(s)}</option>
-        ))}
-      </select>
-
-      <select
-        value={priorityFilter}
-        onChange={(e) => onPriorityChange(e.target.value)}
-        className={`${pillBase} ${priorityFilter !== 'all' ? pillActive : pillInactive}`}
-      >
-        <option value="all">Priority</option>
-        <option value="critical">Critical</option>
-        <option value="high">High</option>
-        <option value="medium">Medium</option>
-        <option value="low">Low</option>
-      </select>
-
-      <select
-        value={assigneeFilter}
-        onChange={(e) => onAssigneeChange(e.target.value)}
-        className={`${pillBase} ${assigneeFilter !== 'all' ? pillActive : pillInactive}`}
-      >
-        <option value="all">Assignee</option>
-        <option value="unassigned">Unassigned</option>
-        {orgUsers.map((u) => (
-          <option key={u.userId} value={u.userId}>{u.email}</option>
-        ))}
-      </select>
-
-      {labels && labels.length > 0 && onLabelChange && (
-        <div className="flex items-center gap-1">
-          {labels.map((l) => {
-            const isActive = labelFilter?.includes(l.labelId);
-            return (
+    <div className={`space-y-2 ${className}`}>
+      {/* Saved filters pills */}
+      {savedFilters && savedFilters.length > 0 && onLoadFilter && (
+        <div className="flex items-center gap-1 flex-wrap">
+          <span className="text-xs text-slate-400 mr-1">Saved:</span>
+          {savedFilters.map((sf) => (
+            <span key={sf.savedFilterId} className="inline-flex items-center gap-1">
               <button
-                key={l.labelId}
-                onClick={() => {
-                  if (isActive) {
-                    onLabelChange((labelFilter ?? []).filter((id) => id !== l.labelId));
-                  } else {
-                    onLabelChange([...(labelFilter ?? []), l.labelId]);
-                  }
-                }}
-                className={`${pillBase} ${isActive ? pillActive : pillInactive} flex items-center gap-1`}
+                onClick={() => onLoadFilter(sf.filters)}
+                className={`${pillBase} ${pillInactive}`}
               >
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: l.color }} />
-                {l.name}
+                {sf.name}
               </button>
-            );
-          })}
+              <button
+                onClick={() => handleDeleteFilter(sf.savedFilterId)}
+                className="text-xs text-slate-300 hover:text-red-400 -ml-1"
+                title="Delete filter"
+              >
+                &times;
+              </button>
+            </span>
+          ))}
         </div>
       )}
 
-      {hasActiveFilters && (
-        <button
-          type="button"
-          onClick={onClear}
-          className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1"
+      <div className="flex items-center gap-2 flex-wrap">
+        <select
+          value={statusFilter}
+          onChange={(e) => onStatusChange(e.target.value)}
+          className={`${pillBase} ${statusFilter !== 'all' ? pillActive : pillInactive}`}
         >
-          Clear filters
-        </button>
-      )}
+          <option value="all">Status</option>
+          {statusOptions.map((s) => (
+            <option key={s} value={s}>{statusLabel(s)}</option>
+          ))}
+        </select>
+
+        <select
+          value={priorityFilter}
+          onChange={(e) => onPriorityChange(e.target.value)}
+          className={`${pillBase} ${priorityFilter !== 'all' ? pillActive : pillInactive}`}
+        >
+          <option value="all">Priority</option>
+          <option value="critical">Critical</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+
+        <select
+          value={assigneeFilter}
+          onChange={(e) => onAssigneeChange(e.target.value)}
+          className={`${pillBase} ${assigneeFilter !== 'all' ? pillActive : pillInactive}`}
+        >
+          <option value="all">Assignee</option>
+          <option value="unassigned">Unassigned</option>
+          {orgUsers.map((u) => (
+            <option key={u.userId} value={u.userId}>{u.email}</option>
+          ))}
+        </select>
+
+        {labels && labels.length > 0 && onLabelChange && (
+          <div className="flex items-center gap-1">
+            {labels.map((l) => {
+              const isActive = labelFilter?.includes(l.labelId);
+              return (
+                <button
+                  key={l.labelId}
+                  onClick={() => {
+                    if (isActive) {
+                      onLabelChange((labelFilter ?? []).filter((id) => id !== l.labelId));
+                    } else {
+                      onLabelChange([...(labelFilter ?? []), l.labelId]);
+                    }
+                  }}
+                  className={`${pillBase} ${isActive ? pillActive : pillInactive} flex items-center gap-1`}
+                >
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: l.color }} />
+                  {l.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Custom field filters */}
+        {customFields && customFields.length > 0 && onCustomFieldFilterChange && customFields.map((field) => {
+          const filterVal = customFieldFilters?.[field.customFieldId] ?? '';
+          if (field.fieldType === 'DROPDOWN') {
+            return (
+              <select
+                key={field.customFieldId}
+                value={filterVal}
+                onChange={(e) => onCustomFieldFilterChange(field.customFieldId, e.target.value)}
+                className={`${pillBase} ${filterVal ? pillActive : pillInactive}`}
+              >
+                <option value="">{field.name}</option>
+                {getDropdownOptions(field).map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            );
+          }
+          if (field.fieldType === 'TEXT') {
+            return (
+              <input
+                key={field.customFieldId}
+                type="text"
+                value={filterVal}
+                onChange={(e) => onCustomFieldFilterChange(field.customFieldId, e.target.value)}
+                placeholder={field.name}
+                className={`${pillBase} w-24 ${filterVal ? pillActive : pillInactive}`}
+              />
+            );
+          }
+          return null;
+        })}
+
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1"
+          >
+            Clear filters
+          </button>
+        )}
+
+        {/* Save filter button */}
+        {projectId && onSavedFiltersChange && hasActiveFilters && (
+          showSaveInput ? (
+            <span className="inline-flex items-center gap-1">
+              <input
+                type="text"
+                value={saveName}
+                onChange={(e) => setSaveName(e.target.value)}
+                placeholder="Filter name"
+                className="text-xs border border-slate-300 rounded px-2 py-1 w-28 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSaveFilter(); }}
+                autoFocus
+              />
+              <button
+                onClick={handleSaveFilter}
+                disabled={!saveName.trim()}
+                className="text-xs text-slate-600 hover:text-slate-800 disabled:opacity-50"
+              >
+                Save
+              </button>
+              <button onClick={() => setShowSaveInput(false)} className="text-xs text-slate-400 hover:text-slate-600">
+                Cancel
+              </button>
+            </span>
+          ) : (
+            <button
+              onClick={() => setShowSaveInput(true)}
+              className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1"
+            >
+              Save filter
+            </button>
+          )
+        )}
+      </div>
     </div>
   );
 }
