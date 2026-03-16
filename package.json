@@ -8,6 +8,7 @@
     "lint": "pnpm -r run lint",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
     "test": "pnpm -r run test",
+    "test:integration": "pnpm --filter api test:integration",
     "typecheck": "pnpm -r run typecheck",
     "dev": "concurrently -n api,web -c cyan,magenta \"pnpm dev:api\" \"pnpm dev:web\"",
     "dev:web": "pnpm --filter web dev",
