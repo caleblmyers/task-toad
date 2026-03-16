@@ -55,8 +55,39 @@ Object.entries(byWorker).sort().forEach(([worker, tasks]) => {
   console.log(worker + ':');
   tasks.forEach(t => {
     const icon = icons[t.status] || '?';
-    const deps = t.dependsOn.length ? ' (depends: ' + t.dependsOn.join(', ') + ')' : '';
-    console.log('  ' + icon + ' ' + t.id + ' [' + t.group + '] ' + t.title + deps);
+    const deps = (t.dependsOn || []).length ? ' (depends: ' + t.dependsOn.join(', ') + ')' : '';
+    console.log('  ' + icon + ' ' + t.id + ' [' + (t.group || t.set || '-') + '] ' + t.title + deps);
   });
 });
+
+// File overlap detection
+const inflight = data.tasks.filter(t =>
+  t.status === 'in_progress' || t.status === 'completed'
+);
+
+if (inflight.length > 1) {
+  const overlaps = [];
+  for (let i = 0; i < inflight.length; i++) {
+    for (let j = i + 1; j < inflight.length; j++) {
+      const a = inflight[i];
+      const b = inflight[j];
+      if (a.assignee === b.assignee) continue; // same worker, no conflict risk
+      const filesA = new Set(a.files || []);
+      const shared = (b.files || []).filter(f => filesA.has(f));
+      if (shared.length > 0) {
+        overlaps.push({ a, b, shared });
+      }
+    }
+  }
+
+  if (overlaps.length > 0) {
+    console.log('');
+    console.log('--- File Overlap Warnings ---');
+    overlaps.forEach(({ a, b, shared }) => {
+      shared.forEach(f => {
+        console.log('  ⚠ OVERLAP: ' + a.id + ' (' + a.assignee + ') and ' + b.id + ' (' + b.assignee + ') both touch: ' + f);
+      });
+    });
+  }
+}
 "

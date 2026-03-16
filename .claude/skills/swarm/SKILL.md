@@ -41,6 +41,9 @@ You are setting up a new swarm wave. Follow these steps precisely.
    - Task descriptions should be 2-3 paragraphs with specific file paths, code snippets, and implementation details
    - Include acceptance criteria that are concrete and verifiable
    - **Worker parallelism:** When a worker has multiple tasks, minimize file overlap between them so the worker can start the next task while the previous one is in review. If two tasks on the same worker must share files, order them sequentially and note the dependency.
+   - **Standard acceptance criteria reminders:**
+     - If a task adds or modifies a Prisma model (any file in `apps/api/prisma/schema/`), ALWAYS include in acceptance criteria: `"Run npx prisma generate && pnpm typecheck passes"` and remind the worker to include migration files in the commit.
+     - If a task installs a new npm package (mentions `pnpm add` or adds a new import from an uninstalled package), ALWAYS include in acceptance criteria: `"Verify pnpm typecheck passes — add @types/* or declare module in a .d.ts if needed"`.
 
 ## Execution
 
