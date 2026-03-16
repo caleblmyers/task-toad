@@ -6,6 +6,42 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-16
 
+### Wave 15: Q1 + F1 + S1 (3 workers, 6 tasks)
+
+**Q1 — Code Quality & Testing (Worker 1):**
+- 51 AI module unit tests: tokenEstimator (estimateTokens, checkPromptSize), responseParser (stripFences, parseJSON), aiCache (hashPrompt, set/get, TTL, LRU eviction), promptBuilder (buildTaskPlanPrompt, buildProjectOptionsPrompt, userInput, context compression)
+- CI test gate: PostgreSQL 16 service in GitHub Actions, `pnpm test` step between typecheck and build
+- Task/sprint integration tests: createTask, updateTask (status/title/priority), archiveTask, bulkUpdateTasks, createSprint, activateSprint (single-active enforcement), deleteSprint
+
+**F1 — Frontend Performance (Worker 2):**
+- Fixed lazyWithRetry: async loop pattern replacing recursive bug, extracted to `utils/lazyWithRetry.ts`
+- Lazy-loaded 17 conditional modals in ProjectDetail (GitHubRepoModal, StandupReportPanel, ProjectHealthPanel, TrendAnalysisPanel, MeetingNotesDialog, CSVImportModal, KnowledgeBaseModal, BugReportModal, PRDBreakdownModal, SprintTransitionModal, BatchCodeGenModal, DriftAnalysisModal, SprintReportPanel, CodePreviewModal, AIUsageDashboard, SprintPlanModal, ProjectChatPanel) — chunk reduced from 224KB to 179KB
+- dependsOnCache size limit: MAX_CACHE_SIZE=1000 with oldest-entry eviction
+- Cost limit: DEFAULT_LIST_MULTIPLIER applied to unknown fields with selection sets
+- react-window list virtualization: SprintSection (>20 tasks), BacklogView (>20 tasks), TableView (>50 rows with CSS grid)
+- Position rebalancing: needsRebalance detection (gap < 0.001), auto-rebalance to evenly-spaced positions
+
+**S1 — Styling & Branding (Worker 3):**
+- Dark mode rollout across all views: ProjectDetail, TaskDetailPanel, BacklogView, KanbanBoard, TableView, SprintSection, CommentSection, CalendarView, ProjectDashboard, GanttChart, BulkActionBar, Skeleton
+- Dark mode for shared components: FilterBar, SearchInput, ToastContainer, KeyboardShortcutHelp, DependencyBadge, MarkdownContent, MarkdownEditor
+- Dark mode for pages: ProfilePage, OrgSettings
+- Dark mode toggle: sun/moon icon in AppLayout sidebar, localStorage persistence, system preference default
+- 23 ad-hoc buttons converted to shared `<Button>` component with variant/loading props
+- PWA manifest: manifest.json with app metadata + Apple mobile web app meta tags
+
+**Post-wave fix:** Cost limit rule calibration — added SINGLE_OBJECT_FIELDS set for non-list fields (user, project, field, etc.), reduced nested list multipliers (labels: 5, assignees: 3, etc.), set default limit to 50K. Root cause: connection wrapper `tasks` query field was being double-counted as a list (50×50=2500× nesting), blocking all standard app queries.
+
+**Process notes (Wave 15):**
+- Worker-3 had a merge conflict in TableView.tsx after worker-2's react-window changes — required one rebase
+- merge-worker.sh pnpm install fix worked perfectly for react-window dependency (zero manual workarounds)
+- All tasks merged successfully
+
+**Open follow-ups:**
+- [ ] Dark mode contrast audit — verify dark: color pairings meet WCAG AA 4.5:1
+- [ ] Virtualize activity feeds — apply react-window to activity/comment feeds when > 100 items
+- [ ] Dark mode for remaining modals — BatchCodeGenModal, DriftAnalysisModal etc. may still lack dark: variants
+- [ ] PWA service worker — manifest exists but no service worker for offline caching
+
 ### Wave 14: P1 + P2 + A11 + F1 (3 workers, 6 tasks)
 
 **P1 — Sentry Error Tracking (Worker 1, task-001):**

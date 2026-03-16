@@ -155,3 +155,16 @@ Format:
 ### Reviewer — Positive (Wave 14)
 **Observation:** Worker-2's sprint picker accessibility work (task-004) was exemplary — full ARIA listbox pattern with proper focus management, keyboard navigation, and click-outside handling.
 **Why it worked:** Task description was highly detailed with specific ARIA attributes and interaction patterns spelled out.
+
+### Reviewer — task-005 (Wave 15)
+**Issue:** Worker-3 did not rebase after first rejection for merge conflict in TableView.tsx. Same commit hash was resubmitted, causing the same conflict. Required a second rejection with more explicit instructions.
+**Impact:** Two review rejections, delayed merge by ~3 minutes total.
+**Suggestion:** Review notes for merge conflicts should include the explicit command: "Run `git rebase main` to resolve conflicts." Workers should verify merge-ability before re-marking as completed.
+
+### Reviewer — Positive (Wave 15)
+**Observation:** Worker-1 delivered 51 unit tests and integration tests with CI pipeline changes — all passed on first review. Worker-2 delivered 4 frontend fixes (lazyWithRetry, lazy modals, cache limit, cost rule) plus virtualization — all clean.
+**Why it worked:** No file overlap between workers 1 and 2. Tasks were well-scoped with concrete acceptance criteria. merge-worker.sh now handles pnpm install automatically.
+
+### Reviewer — Positive (Wave 15)
+**Observation:** merge-worker.sh pnpm install fix (from Wave 14) worked flawlessly this wave — react-window dependency was auto-installed during validation. Zero manual workarounds needed.
+**Why it worked:** The script detects package.json changes and runs pnpm install before typecheck/lint.

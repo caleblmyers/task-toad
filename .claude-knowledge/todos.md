@@ -53,9 +53,8 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 **Touches:** `apps/web/src/hooks/`, `apps/api/src/graphql/resolvers/`, `__tests__/` directories
 
 - [ ] TypeScript strictness (final) — remaining `any` types audit; add Zod for suggestedTools and dependsOn JSON parsing in taskHelpers.ts
-- [ ] Expand test coverage — add tests for useTaskCRUD, tokenEstimator, aiService, and resolver integration tests
-- [ ] Integration test CI — tasktoad_test database needs to be created/available in CI; add docker-compose or GitHub Actions step for test DB
-- [ ] Integration test coverage — extend beyond auth to task CRUD, sprint, project resolvers
+- [ ] Expand test coverage — add tests for useTaskCRUD, aiService, and web component tests
+- [ ] Integration test coverage — extend beyond auth/task/sprint to project, AI, and notification resolvers
 
 ### W2: Advanced Tasks & Filters
 **Touches:** `prisma/schema/task.prisma`, `typedefs/task.ts`, `resolvers/task.ts`, `TaskDetailPanel.tsx`, `useProjectData.ts`, `useTaskFiltering.ts`, `FilterBar.tsx`
@@ -87,22 +86,18 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 ### F1: Frontend Performance (Low-Medium Priority)
 **Touches:** `apps/web/src/components/`, `apps/api/src/graphql/resolvers/project.ts`
 
-- [ ] Virtualize long lists — use `react-window` or `@tanstack/virtual` for task lists (BacklogView, TableView) and activity feeds when > 100 items
-- [ ] dependsOnCache memory management — parseDependsOn in taskHelpers.ts uses a module-level Map that never clears; add TTL or WeakRef-based eviction if task counts grow large
-- [ ] **[MEDIUM]** Fix lazyWithRetry retry bug — recursive call returns LazyExoticComponent instead of retrying importFn() directly; `as never` cast hides the type mismatch. Only affects chunk load failures on bad networks; happy path works.
-- [ ] Lazy-load BatchCodeGenModal and DriftAnalysisModal — still eagerly imported in ProjectDetail
-- [ ] Fractional position rebalancing — when positions converge (many reorders in same spot), rebalance by reassigning evenly-spaced positions across the column
-- [ ] Cost limit rule: apply DEFAULT_LIST_MULTIPLIER to unknown fields with selection sets — currently only known COST_MAP fields get list multipliers
+- [ ] Virtualize activity feeds — apply react-window to activity/comment feeds when > 100 items (task lists already virtualized)
+- [ ] Dark mode contrast audit — verify dark: variant color pairings meet WCAG AA 4.5:1 contrast ratio (new dark mode may have introduced low-contrast pairs)
 
 ### S1: Styling & Branding
 **Touches:** `apps/web/src/components/shared/`, `apps/web/tailwind.config.js`, `apps/web/index.html`, `apps/web/public/`
 
 - [ ] Consistent spacing/typography scale — audit and normalize padding, margin, font-size usage across components
-- [ ] Dark mode rollout — extend dark: variants to remaining components (ProjectDetail, modals, cards, tables, forms); add user-facing toggle with localStorage persistence
-- [ ] Button component adoption — ~26 remaining ad-hoc buttons not yet converted (cancel buttons, login/signup submit, some one-off styles)
 - [ ] SVG favicon — generate proper SVG favicon from T-Frog silhouette for sharp rendering at all sizes
 - [ ] Social preview image — proper og:image composite (logo + text on brand-dark background) for link sharing
-- [ ] PWA manifest — `manifest.json` with icon set for installable web app
+- [ ] PWA service worker — manifest.json exists but no service worker for offline caching; add workbox or custom SW for asset caching
+- [ ] Dark mode for remaining modals — BatchCodeGenModal, DriftAnalysisModal, and other modals not in task-005 scope may still lack dark: variants
+- [ ] ToastContainer dark mode — was in task-005 allowed files but may not have been updated
 
 ### SW1: Swarm Workflow Optimization (Meta)
 **Touches:** `.claude/skills/`, `.claude-knowledge/`, `scripts/swarm/`, `CLAUDE.md`
@@ -135,6 +130,21 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 ---
 
 ## Completed
+
+### Q1+F1+S1: Wave 15 (2026-03-16)
+- [x] AI module unit tests — 51 tests for tokenEstimator, responseParser, aiCache, promptBuilder
+- [x] CI test gate — PostgreSQL service in GitHub Actions, pnpm test step before build
+- [x] Task/sprint integration tests — createTask, updateTask, archiveTask, bulkUpdate, createSprint, activateSprint, deleteSprint
+- [x] Fix lazyWithRetry — async loop pattern replacing recursive bug, extracted to utils/lazyWithRetry.ts
+- [x] Lazy-load 17 conditional modals — Suspense fallbacks, ProjectDetail chunk reduced from 224KB to 179KB
+- [x] dependsOnCache size limit — MAX_CACHE_SIZE=1000 with oldest-entry eviction
+- [x] Cost limit unknown field handling — DEFAULT_LIST_MULTIPLIER applied to unknown fields with selection sets
+- [x] react-window list virtualization — SprintSection (>20), TableView (>50) with CSS grid, BacklogView (>20)
+- [x] Position rebalancing — needsRebalance detection (gap < 0.001), auto-rebalance to evenly-spaced positions
+- [x] Dark mode rollout — all views + shared components + settings pages with dark: Tailwind variants
+- [x] Dark mode toggle — sun/moon icon in AppLayout sidebar, localStorage persistence, system preference default
+- [x] Button component adoption — 23 more ad-hoc buttons converted to shared Button with variant/loading props
+- [x] PWA manifest — manifest.json with app metadata, Apple mobile web app meta tags in index.html
 
 ### P1+P2+A11+F1 (partial): Wave 14 (2026-03-16)
 - [x] Sentry error tracking — @sentry/node init, GraphQL error capture (filters expected codes), AI failure capture, user context, graceful shutdown flush
