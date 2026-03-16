@@ -161,9 +161,25 @@ app.use('/graphql', yoga as unknown as express.RequestHandler);
 if (process.env.NODE_ENV === 'production') {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const webDist = path.resolve(__dirname, '../../web/dist');
-  app.use(express.static(webDist));
+
+  // Hashed assets (Vite fingerprints these) — cache immutably for 1 year
+  app.use('/assets', express.static(path.join(webDist, 'assets'), {
+    maxAge: '1y',
+    immutable: true,
+  }));
+
+  // All other static files — always revalidate HTML to pick up new deployments
+  app.use(express.static(webDist, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache');
+      }
+    },
+  }));
+
   // SPA fallback — serve index.html for non-API routes
   app.get('*', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache');
     res.sendFile(path.join(webDist, 'index.html'));
   });
 } else {

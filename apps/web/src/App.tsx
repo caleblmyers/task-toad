@@ -1,5 +1,7 @@
+import { Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './auth/context';
+import ErrorBoundary from './components/ErrorBoundary';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import CreateOrg from './pages/CreateOrg';
@@ -27,41 +29,51 @@ function Protected({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/verify-email" element={<VerifyEmail />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/invite/accept" element={<AcceptInvite />} />
-      <Route
-        path="/create-org"
-        element={
-          <ProtectedOrCreateOrg>
-            <CreateOrg />
-          </ProtectedOrCreateOrg>
-        }
-      />
-      <Route
-        path="/app"
-        element={
-          <Protected>
-            <AppLayout />
-          </Protected>
+    <ErrorBoundary>
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center h-screen">
+            <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" />
+          </div>
         }
       >
-        <Route index element={<Home />} />
-        <Route path="portfolio" element={<Portfolio />} />
-        <Route path="projects" element={<Projects />} />
-        <Route path="projects/new" element={<NewProject />} />
-        <Route path="projects/:projectId" element={<ProjectDetail />} />
-        <Route path="search" element={<Search />} />
-        <Route path="profile" element={<ProfilePage />} />
-        <Route path="settings" element={<OrgSettings />} />
-      </Route>
-      <Route path="/" element={<Navigate to="/app" replace />} />
-      <Route path="*" element={<Navigate to="/app" replace />} />
-    </Routes>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/invite/accept" element={<AcceptInvite />} />
+          <Route
+            path="/create-org"
+            element={
+              <ProtectedOrCreateOrg>
+                <CreateOrg />
+              </ProtectedOrCreateOrg>
+            }
+          />
+          <Route
+            path="/app"
+            element={
+              <Protected>
+                <AppLayout />
+              </Protected>
+            }
+          >
+            <Route index element={<Home />} />
+            <Route path="portfolio" element={<Portfolio />} />
+            <Route path="projects" element={<Projects />} />
+            <Route path="projects/new" element={<NewProject />} />
+            <Route path="projects/:projectId" element={<ProjectDetail />} />
+            <Route path="search" element={<Search />} />
+            <Route path="profile" element={<ProfilePage />} />
+            <Route path="settings" element={<OrgSettings />} />
+          </Route>
+          <Route path="/" element={<Navigate to="/app" replace />} />
+          <Route path="*" element={<Navigate to="/app" replace />} />
+        </Routes>
+      </Suspense>
+    </ErrorBoundary>
   );
 }
 
