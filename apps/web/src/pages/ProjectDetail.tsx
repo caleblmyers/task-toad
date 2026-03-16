@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, lazy, Suspense } from 'react';
+import { useRef, useState, useEffect, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { useProjectData } from '../hooks/useProjectData';
 import { useTaskFiltering } from '../hooks/useTaskFiltering';
@@ -14,30 +14,31 @@ import TableView from '../components/TableView';
 import CalendarView from '../components/CalendarView';
 import BulkActionBar from '../components/BulkActionBar';
 import ProjectDashboard from '../components/ProjectDashboard';
-import CodePreviewModal from '../components/CodePreviewModal';
-import SprintCreateModal from '../components/SprintCreateModal';
-import SprintPlanModal from '../components/SprintPlanModal';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 
 // Lazy-load heavy modals — only rendered on user action
-const GanttChart = lazy(() => import('../components/GanttChart'));
-const TaskPlanApprovalDialog = lazy(() => import('../components/TaskPlanApprovalDialog'));
-const CloseSprintModal = lazy(() => import('../components/CloseSprintModal'));
-const ProjectSettingsModal = lazy(() => import('../components/ProjectSettingsModal'));
+const GanttChart = lazyWithRetry(() => import('../components/GanttChart'));
+const TaskPlanApprovalDialog = lazyWithRetry(() => import('../components/TaskPlanApprovalDialog'));
+const CloseSprintModal = lazyWithRetry(() => import('../components/CloseSprintModal'));
+const ProjectSettingsModal = lazyWithRetry(() => import('../components/ProjectSettingsModal'));
+const CodePreviewModal = lazyWithRetry(() => import('../components/CodePreviewModal'));
+const SprintCreateModal = lazyWithRetry(() => import('../components/SprintCreateModal'));
+const SprintPlanModal = lazyWithRetry(() => import('../components/SprintPlanModal'));
+const GitHubRepoModal = lazyWithRetry(() => import('../components/GitHubRepoModal'));
+const StandupReportPanel = lazyWithRetry(() => import('../components/StandupReportPanel'));
+const ProjectHealthPanel = lazyWithRetry(() => import('../components/ProjectHealthPanel'));
+const TrendAnalysisPanel = lazyWithRetry(() => import('../components/TrendAnalysisPanel'));
+const MeetingNotesDialog = lazyWithRetry(() => import('../components/MeetingNotesDialog'));
+const CSVImportModal = lazyWithRetry(() => import('../components/CSVImportModal'));
+const KnowledgeBaseModal = lazyWithRetry(() => import('../components/KnowledgeBaseModal'));
+const BugReportModal = lazyWithRetry(() => import('../components/BugReportModal'));
+const PRDBreakdownModal = lazyWithRetry(() => import('../components/PRDBreakdownModal'));
+const SprintTransitionModal = lazyWithRetry(() => import('../components/SprintTransitionModal'));
 import { TaskListSkeleton, KanbanBoardSkeleton } from '../components/Skeleton';
 import SearchInput from '../components/shared/SearchInput';
 import FilterBar from '../components/shared/FilterBar';
 import ToastContainer from '../components/shared/ToastContainer';
 import KeyboardShortcutHelp from '../components/shared/KeyboardShortcutHelp';
-import GitHubRepoModal from '../components/GitHubRepoModal';
-import StandupReportPanel from '../components/StandupReportPanel';
-import ProjectHealthPanel from '../components/ProjectHealthPanel';
-import TrendAnalysisPanel from '../components/TrendAnalysisPanel';
-import MeetingNotesDialog from '../components/MeetingNotesDialog';
-import CSVImportModal from '../components/CSVImportModal';
-import KnowledgeBaseModal from '../components/KnowledgeBaseModal';
-import BugReportModal from '../components/BugReportModal';
-import PRDBreakdownModal from '../components/PRDBreakdownModal';
-import SprintTransitionModal from '../components/SprintTransitionModal';
 import Button from '../components/shared/Button';
 import { IconList, IconBoard, IconTable, IconCalendar, IconClose, IconPlus, IconRefresh, IconSummary, IconFilter, IconKeyboard, IconGitHub } from '../components/shared/Icons';
 import { TOKEN_KEY } from '../api/client';
@@ -686,23 +687,29 @@ export default function ProjectDetail() {
         {/* Left: board / backlog / dashboard / states */}
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
           {showStandup && d.projectId ? (
-            <StandupReportPanel
-              projectId={d.projectId}
-              disabled={d.isGenerating}
-              onClose={() => setShowStandup(false)}
-            />
+            <Suspense fallback={lazyFallback}>
+              <StandupReportPanel
+                projectId={d.projectId}
+                disabled={d.isGenerating}
+                onClose={() => setShowStandup(false)}
+              />
+            </Suspense>
           ) : showHealth && d.projectId ? (
-            <ProjectHealthPanel
-              projectId={d.projectId}
-              disabled={d.isGenerating}
-              onClose={() => setShowHealth(false)}
-            />
+            <Suspense fallback={lazyFallback}>
+              <ProjectHealthPanel
+                projectId={d.projectId}
+                disabled={d.isGenerating}
+                onClose={() => setShowHealth(false)}
+              />
+            </Suspense>
           ) : showTrends && d.projectId ? (
-            <TrendAnalysisPanel
-              projectId={d.projectId}
-              disabled={d.isGenerating}
-              onClose={() => setShowTrends(false)}
-            />
+            <Suspense fallback={lazyFallback}>
+              <TrendAnalysisPanel
+                projectId={d.projectId}
+                disabled={d.isGenerating}
+                onClose={() => setShowTrends(false)}
+              />
+            </Suspense>
           ) : d.summary ? (
             <div className="flex-1 flex items-center justify-center px-8">
               <div className="max-w-lg w-full">
@@ -841,33 +848,39 @@ export default function ProjectDetail() {
 
       {/* Sprint create modal */}
       {d.showSprintModal && d.projectId && (
-        <SprintCreateModal
-          projectId={d.projectId}
-          onCreated={d.handleCreateSprint}
-          onClose={() => d.setShowSprintModal(false)}
-        />
+        <Suspense fallback={lazyFallback}>
+          <SprintCreateModal
+            projectId={d.projectId}
+            onCreated={d.handleCreateSprint}
+            onClose={() => d.setShowSprintModal(false)}
+          />
+        </Suspense>
       )}
 
       {/* Sprint edit modal */}
       {d.editingSprint && d.projectId && (
-        <SprintCreateModal
-          projectId={d.projectId}
-          initialSprint={d.editingSprint}
-          onCreated={d.handleCreateSprint}
-          onUpdated={d.handleSprintUpdated}
-          onClose={() => d.setEditingSprint(null)}
-        />
+        <Suspense fallback={lazyFallback}>
+          <SprintCreateModal
+            projectId={d.projectId}
+            initialSprint={d.editingSprint}
+            onCreated={d.handleCreateSprint}
+            onUpdated={d.handleSprintUpdated}
+            onClose={() => d.setEditingSprint(null)}
+          />
+        </Suspense>
       )}
 
       {/* Sprint plan modal */}
       {d.showSprintPlanModal && d.projectId && (
-        <SprintPlanModal
-          projectId={d.projectId}
-          tasks={d.tasks}
-          onCreated={d.handleSprintPlanCreated}
-          onTasksUpdated={d.loadTasks}
-          onClose={() => d.setShowSprintPlanModal(false)}
-        />
+        <Suspense fallback={lazyFallback}>
+          <SprintPlanModal
+            projectId={d.projectId}
+            tasks={d.tasks}
+            onCreated={d.handleSprintPlanCreated}
+            onTasksUpdated={d.loadTasks}
+            onClose={() => d.setShowSprintPlanModal(false)}
+          />
+        </Suspense>
       )}
 
       {/* Close sprint modal */}
@@ -906,92 +919,108 @@ export default function ProjectDetail() {
 
       {/* GitHub repo modal */}
       {showGitHubModal && d.projectId && (
-        <GitHubRepoModal
-          projectId={d.projectId}
-          installations={gitHubInstallations}
-          currentRepo={gitHubRepo}
-          onConnected={(repo) => { setGitHubRepo(repo); setShowGitHubModal(false); }}
-          onDisconnected={() => { setGitHubRepo(null); setShowGitHubModal(false); }}
-          onClose={() => setShowGitHubModal(false)}
-        />
+        <Suspense fallback={lazyFallback}>
+          <GitHubRepoModal
+            projectId={d.projectId}
+            installations={gitHubInstallations}
+            currentRepo={gitHubRepo}
+            onConnected={(repo) => { setGitHubRepo(repo); setShowGitHubModal(false); }}
+            onDisconnected={() => { setGitHubRepo(null); setShowGitHubModal(false); }}
+            onClose={() => setShowGitHubModal(false)}
+          />
+        </Suspense>
       )}
 
       {/* Code preview modal */}
-      <CodePreviewModal
-        isOpen={d.generatedCode !== null}
-        onClose={() => d.setGeneratedCode(null)}
-        files={d.generatedCode?.files ?? []}
-        summary={d.generatedCode?.summary ?? ''}
-        estimatedTokensUsed={d.generatedCode?.estimatedTokensUsed ?? 0}
-        onCreatePR={d.handleCreatePR}
-        isCreatingPR={d.creatingPR}
-        delegationHint={d.generatedCode?.delegationHint}
-      />
+      <Suspense fallback={lazyFallback}>
+        <CodePreviewModal
+          isOpen={d.generatedCode !== null}
+          onClose={() => d.setGeneratedCode(null)}
+          files={d.generatedCode?.files ?? []}
+          summary={d.generatedCode?.summary ?? ''}
+          estimatedTokensUsed={d.generatedCode?.estimatedTokensUsed ?? 0}
+          onCreatePR={d.handleCreatePR}
+          isCreatingPR={d.creatingPR}
+          delegationHint={d.generatedCode?.delegationHint}
+        />
+      </Suspense>
 
       {/* Meeting notes dialog */}
       {showMeetingNotes && d.projectId && (
-        <MeetingNotesDialog
-          projectId={d.projectId}
-          onTasksCreated={() => { d.loadTasks(); setShowMeetingNotes(false); }}
-          onClose={() => setShowMeetingNotes(false)}
-        />
+        <Suspense fallback={lazyFallback}>
+          <MeetingNotesDialog
+            projectId={d.projectId}
+            onTasksCreated={() => { d.loadTasks(); setShowMeetingNotes(false); }}
+            onClose={() => setShowMeetingNotes(false)}
+          />
+        </Suspense>
       )}
 
       {/* CSV Import modal */}
       {showCSVImport && (
-        <CSVImportModal
-          onImport={handleCSVImport}
-          onClose={() => setShowCSVImport(false)}
-        />
+        <Suspense fallback={lazyFallback}>
+          <CSVImportModal
+            onImport={handleCSVImport}
+            onClose={() => setShowCSVImport(false)}
+          />
+        </Suspense>
       )}
 
       {/* Sprint transition modal */}
       {showTransition && (
-        <SprintTransitionModal
-          sprintId={showTransition.sprintId}
-          sprintName={showTransition.sprintName}
-          onApply={async (carryOverIds, deprioritizeIds) => {
-            // Move deprioritized tasks to backlog (remove sprint)
-            for (const taskId of deprioritizeIds) {
-              await d.handleAssignSprint(taskId, null);
-            }
-            // Carry over tasks stay in sprint — they'll be moved when the sprint is closed
-            addToast('success', `${carryOverIds.length} tasks carried over, ${deprioritizeIds.length} moved to backlog`);
-          }}
-          onClose={() => setShowTransition(null)}
-        />
+        <Suspense fallback={lazyFallback}>
+          <SprintTransitionModal
+            sprintId={showTransition.sprintId}
+            sprintName={showTransition.sprintName}
+            onApply={async (carryOverIds, deprioritizeIds) => {
+              // Move deprioritized tasks to backlog (remove sprint)
+              for (const taskId of deprioritizeIds) {
+                await d.handleAssignSprint(taskId, null);
+              }
+              // Carry over tasks stay in sprint — they'll be moved when the sprint is closed
+              addToast('success', `${carryOverIds.length} tasks carried over, ${deprioritizeIds.length} moved to backlog`);
+            }}
+            onClose={() => setShowTransition(null)}
+          />
+        </Suspense>
       )}
 
       {/* Bug report modal */}
       {showBugReport && (
-        <BugReportModal
-          onSubmit={async (bugReport) => {
-            await d.handleParseBugReport(bugReport);
-            addToast('success', 'Bug report parsed and task created');
-          }}
-          onClose={() => setShowBugReport(false)}
-        />
+        <Suspense fallback={lazyFallback}>
+          <BugReportModal
+            onSubmit={async (bugReport) => {
+              await d.handleParseBugReport(bugReport);
+              addToast('success', 'Bug report parsed and task created');
+            }}
+            onClose={() => setShowBugReport(false)}
+          />
+        </Suspense>
       )}
 
       {/* PRD breakdown modal */}
       {showPRDBreakdown && (
-        <PRDBreakdownModal
-          onPreview={d.handlePreviewPRD}
-          onCommit={async (epics) => {
-            await d.handleCommitPRD(epics);
-            addToast('success', 'Tasks created from PRD');
-          }}
-          onClose={() => setShowPRDBreakdown(false)}
-        />
+        <Suspense fallback={lazyFallback}>
+          <PRDBreakdownModal
+            onPreview={d.handlePreviewPRD}
+            onCommit={async (epics) => {
+              await d.handleCommitPRD(epics);
+              addToast('success', 'Tasks created from PRD');
+            }}
+            onClose={() => setShowPRDBreakdown(false)}
+          />
+        </Suspense>
       )}
 
       {/* Knowledge base modal */}
-      <KnowledgeBaseModal
-        isOpen={showKnowledgeBase}
-        onClose={() => setShowKnowledgeBase(false)}
-        knowledgeBase={d.project?.knowledgeBase ?? null}
-        onSave={(kb) => d.handleUpdateProject({ knowledgeBase: kb })}
-      />
+      <Suspense fallback={lazyFallback}>
+        <KnowledgeBaseModal
+          isOpen={showKnowledgeBase}
+          onClose={() => setShowKnowledgeBase(false)}
+          knowledgeBase={d.project?.knowledgeBase ?? null}
+          onSave={(kb) => d.handleUpdateProject({ knowledgeBase: kb })}
+        />
+      </Suspense>
 
       {/* Project settings modal */}
       {showProjectSettings && d.projectId && (

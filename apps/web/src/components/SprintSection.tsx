@@ -1,7 +1,12 @@
 import { useState, useMemo, memo, useRef, useEffect, useCallback } from 'react';
+import { List } from 'react-window';
 import type { Task, Sprint, OrgUser } from '../types';
 import BurndownChart from './BurndownChart';
 import DependencyBadge from './shared/DependencyBadge';
+
+const ROW_HEIGHT = 52;
+const MAX_LIST_HEIGHT = 600;
+const VIRTUALIZE_THRESHOLD = 20;
 
 const priorityStyles: Record<string, string> = {
   critical: 'bg-red-100 text-red-700',
@@ -392,6 +397,33 @@ export default function SprintSection({
       >
         {sprintTasks.length === 0 && dragOverInfo?.sectionId !== sprint.sprintId ? (
           <p className="text-xs text-slate-400 py-2 px-1">No tasks assigned to this sprint.</p>
+        ) : sprintTasks.length > VIRTUALIZE_THRESHOLD ? (
+          <List
+            style={{ height: Math.min(sprintTasks.length * ROW_HEIGHT, MAX_LIST_HEIGHT) }}
+            rowCount={sprintTasks.length}
+            rowHeight={ROW_HEIGHT}
+            rowComponent={({ index, style: rowStyle }) => {
+              const task = sprintTasks[index];
+              return (
+                <div style={rowStyle}>
+                  <TaskRow
+                    task={task}
+                    orgUsers={orgUsers}
+                    allTasks={allTasks}
+                    selectedTask={selectedTask}
+                    onSelectTask={onSelectTask}
+                    onDragStart={onDragStart}
+                    isChecked={selectedTaskIds.has(task.taskId)}
+                    showCheckboxes={showCheckboxes}
+                    onToggleTaskId={onToggleTaskId}
+                    sprints={allSprints}
+                    onAssignSprint={onAssignSprint}
+                  />
+                </div>
+              );
+            }}
+            rowProps={{}}
+          />
         ) : (
           <>
             {renderDropIndicator(0)}

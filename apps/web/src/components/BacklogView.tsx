@@ -1,7 +1,12 @@
 import { useRef, useState, useCallback } from 'react';
+import { List } from 'react-window';
 import type { Task, Sprint, OrgUser } from '../types';
 import SprintReportPanel from './SprintReportPanel';
 import SprintSection, { TaskRow } from './SprintSection';
+
+const ROW_HEIGHT = 52;
+const MAX_LIST_HEIGHT = 600;
+const VIRTUALIZE_THRESHOLD = 20;
 
 interface BacklogSectionProps {
   tasks: Task[];
@@ -60,6 +65,33 @@ function BacklogSection({
       >
         {sectionTasks.length === 0 && dragOverInfo?.sectionId !== null ? (
           <p className="text-xs text-slate-400 py-2 px-1">No unassigned tasks.</p>
+        ) : sectionTasks.length > VIRTUALIZE_THRESHOLD ? (
+          <List
+            style={{ height: Math.min(sectionTasks.length * ROW_HEIGHT, MAX_LIST_HEIGHT) }}
+            rowCount={sectionTasks.length}
+            rowHeight={ROW_HEIGHT}
+            rowComponent={({ index, style: rowStyle }) => {
+              const task = sectionTasks[index];
+              return (
+                <div style={rowStyle}>
+                  <TaskRow
+                    task={task}
+                    orgUsers={orgUsers}
+                    allTasks={allTasks}
+                    selectedTask={selectedTask}
+                    onSelectTask={onSelectTask}
+                    onDragStart={onDragStart}
+                    isChecked={selectedTaskIds.has(task.taskId)}
+                    showCheckboxes={showCheckboxes}
+                    onToggleTaskId={onToggleTaskId}
+                    sprints={sprints}
+                    onAssignSprint={onAssignSprint}
+                  />
+                </div>
+              );
+            }}
+            rowProps={{}}
+          />
         ) : (
           <>
             {renderDropIndicator(0)}

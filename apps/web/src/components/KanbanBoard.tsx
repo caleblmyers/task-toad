@@ -33,6 +33,17 @@ function computePosition(sorted: Task[], targetIndex: number): number {
   return 0;
 }
 
+const MIN_POSITION_GAP = 0.001;
+
+function needsRebalance(sorted: Task[]): boolean {
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = sorted[i - 1].position ?? (i - 1) * 1000;
+    const curr = sorted[i].position ?? i * 1000;
+    if (Math.abs(curr - prev) < MIN_POSITION_GAP) return true;
+  }
+  return false;
+}
+
 interface KanbanBoardProps {
   columns: string[];
   tasks: Task[];
@@ -151,6 +162,19 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
         const others = reordered.filter((t) => t.taskId !== task.taskId);
         const position = computePosition(others, newTaskIdx);
         onReorderTask(task.taskId, position);
+
+        // Rebalance positions if convergence detected
+        if (needsRebalance(reordered)) {
+          for (let ri = 0; ri < reordered.length; ri++) {
+            const newPos = (ri + 1) * 1000;
+            if (reordered[ri].taskId !== task.taskId) {
+              onReorderTask(reordered[ri].taskId, newPos);
+            }
+          }
+          // Also set the moved task's rebalanced position
+          const movedNewPos = (newTaskIdx + 1) * 1000;
+          onReorderTask(task.taskId, movedNewPos);
+        }
       }
 
       const direction = e.key === 'ArrowUp' ? 'up' : 'down';

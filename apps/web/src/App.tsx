@@ -1,4 +1,4 @@
-import { Suspense, lazy, type ComponentType } from 'react';
+import { Suspense, type ComponentType } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './auth/context';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -12,22 +12,7 @@ import VerifyEmail from './pages/VerifyEmail';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import AcceptInvite from './pages/AcceptInvite';
-
-function lazyWithRetry<T extends ComponentType<unknown>>(
-  importFn: () => Promise<{ default: T }>,
-  retries = 2,
-): React.LazyExoticComponent<T> {
-  return lazy(() =>
-    importFn().catch((err) => {
-      if (retries > 0) {
-        return new Promise<{ default: T }>((resolve) =>
-          setTimeout(() => resolve(lazyWithRetry(importFn, retries - 1) as never), 1000),
-        );
-      }
-      throw err;
-    }),
-  );
-}
+import { lazyWithRetry } from './utils/lazyWithRetry';
 
 // Lazy-load heavy route components for code-splitting
 const ProjectDetail = lazyWithRetry(() => import('./pages/ProjectDetail'));

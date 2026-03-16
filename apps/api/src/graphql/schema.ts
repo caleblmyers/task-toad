@@ -154,12 +154,9 @@ function computeSelectionCost(selectionSet: SelectionSetNode, multiplier: number
         continue;
       }
 
-      // Nested object/list field — apply list multiplier if known
+      // Nested object/list field — apply list multiplier (known or default)
       const listMultiplier = COST_MAP[fieldName] ?? DEFAULT_LIST_MULTIPLIER;
-      const fieldMultiplier = COST_MAP[fieldName] !== undefined
-        ? multiplier * listMultiplier
-        : multiplier; // scalar object fields don't multiply
-      cost += computeSelectionCost(field.selectionSet, fieldMultiplier);
+      cost += computeSelectionCost(field.selectionSet, multiplier * listMultiplier);
     }
     // InlineFragment / FragmentSpread — traverse their selection sets at the same multiplier
     if ('selectionSet' in selection && selection.selectionSet && selection.kind !== Kind.FIELD) {

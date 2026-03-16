@@ -1,6 +1,7 @@
 import type { Task } from '../types';
 
 const dependsOnCache = new Map<string, string[]>();
+const MAX_CACHE_SIZE = 1000;
 
 export function parseDependsOn(raw: string | null | undefined): string[] {
   if (!raw) return [];
@@ -9,6 +10,10 @@ export function parseDependsOn(raw: string | null | undefined): string[] {
   try {
     const parsed = JSON.parse(raw) as string[];
     if (!Array.isArray(parsed)) return [];
+    if (dependsOnCache.size >= MAX_CACHE_SIZE) {
+      const firstKey = dependsOnCache.keys().next().value;
+      if (firstKey !== undefined) dependsOnCache.delete(firstKey);
+    }
     dependsOnCache.set(raw, parsed);
     return parsed;
   } catch {
