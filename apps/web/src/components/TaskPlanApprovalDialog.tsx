@@ -239,7 +239,7 @@ export default function TaskPlanApprovalDialog({
             <h2 className="text-lg font-semibold text-slate-800">Review Task Plan</h2>
             {!loading && !error && (
               <p className="text-sm text-slate-500 mt-0.5">
-                {tasks.length} task{tasks.length !== 1 ? 's' : ''} generated — deselect any you don't want
+                {tasks.length} task{tasks.length !== 1 ? 's' : ''} generated based on project scope — deselect any you don&apos;t want, or use &lsquo;+ Add more&rsquo; below
               </p>
             )}
           </div>

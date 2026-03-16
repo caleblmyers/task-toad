@@ -12,6 +12,7 @@ interface GeneratedCode {
   files: Array<{ path: string; content: string; language: string; description: string }>;
   summary: string;
   estimatedTokensUsed: number;
+  delegationHint?: string | null;
 }
 
 interface UseAIGenerationOptions {

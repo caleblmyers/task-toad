@@ -24,6 +24,7 @@ export const aiTypeDefs = /* GraphQL */ `
     files: [GeneratedFile!]!
     summary: String!
     estimatedTokensUsed: Int!
+    delegationHint: String
   }
 
   type AIUsageLog {

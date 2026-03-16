@@ -20,6 +20,7 @@ interface CodePreviewModalProps {
   onRegenerateFile?: (filePath: string, feedback?: string) => Promise<GeneratedFile | null>;
   projectId?: string;
   hasRepo?: boolean;
+  delegationHint?: string | null;
 }
 
 const STYLE_GUIDE_KEY_PREFIX = 'tasktoad-style-guide-';
@@ -64,6 +65,7 @@ export default function CodePreviewModal({
   onRegenerateFile,
   projectId,
   hasRepo,
+  delegationHint,
 }: CodePreviewModalProps) {
   const [expandedIndex, setExpandedIndex] = useState(0);
   const [regeneratingPath, setRegeneratingPath] = useState<string | null>(null);
@@ -226,6 +228,13 @@ export default function CodePreviewModal({
             </div>
           </div>
           <p className="text-sm text-slate-600">{summary}</p>
+          {delegationHint && (
+            <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-sm text-amber-800">
+                <span className="font-medium">Tip:</span> {delegationHint}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* File list */}

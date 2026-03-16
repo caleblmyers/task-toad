@@ -20,7 +20,7 @@ interface FeatureConfig {
 export const FEATURE_CONFIG: Record<AIFeature, FeatureConfig> = {
   analyzeTrends:            { maxTokens: 2048, cacheTTLMs: 300_000, retryOnValidationFailure: true },
   generateProjectOptions:   { maxTokens: 512,  cacheTTLMs: 0,       retryOnValidationFailure: true },
-  generateTaskPlan:         { maxTokens: 6144, cacheTTLMs: 86_400_000, retryOnValidationFailure: true },
+  generateTaskPlan:         { maxTokens: 8192, cacheTTLMs: 86_400_000, retryOnValidationFailure: true },
   expandTask:               { maxTokens: 2048, cacheTTLMs: 43_200_000, retryOnValidationFailure: true },
   summarizeProject:         { maxTokens: 512,  cacheTTLMs: 300_000, retryOnValidationFailure: false },
   planSprints:              { maxTokens: 2048, cacheTTLMs: 0,       retryOnValidationFailure: true },
@@ -39,7 +39,7 @@ export const FEATURE_CONFIG: Record<AIFeature, FeatureConfig> = {
   parseBugReport:           { maxTokens: 2048, cacheTTLMs: 0,       retryOnValidationFailure: true },
   breakdownPRD:             { maxTokens: 4096, cacheTTLMs: 0,       retryOnValidationFailure: true },
   analyzeSprintTransition:  { maxTokens: 2048, cacheTTLMs: 0,       retryOnValidationFailure: true },
-  bootstrapFromRepo:        { maxTokens: 4096, cacheTTLMs: 0,       retryOnValidationFailure: true },
+  bootstrapFromRepo:        { maxTokens: 6144, cacheTTLMs: 0,       retryOnValidationFailure: true },
   projectChat:              { maxTokens: 2048, cacheTTLMs: 0,       retryOnValidationFailure: true },
   analyzeRepoDrift:         { maxTokens: 4096, cacheTTLMs: 0,       retryOnValidationFailure: true },
   batchGenerateCode:        { maxTokens: 8192, cacheTTLMs: 0,       retryOnValidationFailure: true },

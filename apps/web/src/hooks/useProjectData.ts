@@ -35,6 +35,7 @@ export interface ProjectData {
     files: Array<{ path: string; content: string; language: string; description: string }>;
     summary: string;
     estimatedTokensUsed: number;
+    delegationHint?: string | null;
   } | null;
   creatingPR: boolean;
   isGenerating: boolean;

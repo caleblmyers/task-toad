@@ -119,6 +119,7 @@ export const CodeGenerationSchema = z.object({
   files: z.array(GeneratedFileSchema),
   summary: z.string(),
   estimatedTokensUsed: z.number().optional().default(0),
+  delegationHint: z.string().optional(),
 });
 
 export type GeneratedFile = z.infer<typeof GeneratedFileSchema>;
@@ -294,6 +295,7 @@ export const BatchCodeGenerationSchema = z.object({
   files: z.array(GeneratedFileSchema),
   summary: z.string(),
   estimatedTokensUsed: z.number().optional().default(0),
+  delegationHint: z.string().optional(),
 });
 
 export type BatchCodeGeneration = z.infer<typeof BatchCodeGenerationSchema>;

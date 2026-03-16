@@ -132,7 +132,7 @@ export const GENERATE_INSTRUCTIONS_MUTATION = `mutation GenerateTaskInstructions
 
 export const GENERATE_CODE_MUTATION = `mutation($taskId: ID!, $styleGuide: String) {
   generateCodeFromTask(taskId: $taskId, styleGuide: $styleGuide) {
-    files { path content language description } summary estimatedTokensUsed
+    files { path content language description } summary estimatedTokensUsed delegationHint
   }
 }`;
 

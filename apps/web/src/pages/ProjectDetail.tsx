@@ -829,6 +829,7 @@ export default function ProjectDetail() {
         estimatedTokensUsed={d.generatedCode?.estimatedTokensUsed ?? 0}
         onCreatePR={d.handleCreatePR}
         isCreatingPR={d.creatingPR}
+        delegationHint={d.generatedCode?.delegationHint}
       />
 
       {/* Meeting notes dialog */}

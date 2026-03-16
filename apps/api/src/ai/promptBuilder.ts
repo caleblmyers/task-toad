@@ -85,7 +85,7 @@ export function buildTaskPlanPrompt(
     : '';
   const taskPlanSchema = `
 
-Return a JSON array of 4–8 tasks. Each item:
+Return a JSON array of tasks — as many as the project scope requires. For simple projects, 3–5 tasks may suffice; for complex ones, up to 15. Prefer fewer, well-scoped tasks over many trivial ones. Each item:
 {
   "title": string,
   "description": string,
@@ -136,7 +136,7 @@ Task: ${userInput('title', taskTitle)}
 Task description: ${userInput('description', truncate(taskDescription, MAX_DESCRIPTION_CHARS))}
 Project: ${userInput('project', projectName)}${contextLine}${kbLine}${dedupLine}
 
-Return a JSON array of 2–6 subtasks using the same schema:
+Return a JSON array of subtasks — as many as needed to fully break down this task. Typically 2–8, but use your judgment based on complexity. Use the same schema:
 {
   "title": string,
   "description": string,
@@ -375,7 +375,7 @@ Return JSON:
   }],
   "summary": string           // 1-2 sentence summary of the meeting
 }
-Extract 0-15 tasks. Only include clear, actionable items — not discussion points or FYIs.`,
+Extract all clear, actionable items — there is no fixed limit. Do not include discussion points or FYIs.`,
   };
 }
 
@@ -417,12 +417,13 @@ Return JSON:
 {
   "files": [{ "path": string, "content": string, "language": string, "description": string }],
   "summary": string,
-  "estimatedTokensUsed": number
+  "estimatedTokensUsed": number,
+  "delegationHint": string | null
 }
-Generate 1–6 files. Each file should be complete and runnable.
+Generate all files needed for the task. Each file should be complete and runnable.
 Use appropriate file paths relative to the project root.
 Prefer small, focused files over large monolithic ones.
-Keep total output concise — avoid generating files not directly needed for the task.`,
+If the task is too large to implement fully within a reasonable number of files, generate the most critical files and set "delegationHint" to a short message suggesting how the remaining work could be split into new tasks (e.g. "Consider creating separate tasks for the test suite and API documentation"). If you can cover everything, omit "delegationHint".`,
   };
 }
 
@@ -580,7 +581,7 @@ Return JSON:
     "acceptanceCriteria": string
   }]
 }
-Generate 1-8 tasks. Each task should be a concrete, actionable work item.`,
+Generate as many tasks as the issue warrants. Simple bugs may need 1 task; large features may need up to 12. Each task should be a concrete, actionable work item.`,
   };
 }
 
@@ -817,7 +818,7 @@ Return JSON:
   }]
 }
 "projectDescription" — 2-3 sentences summarizing the project purpose and tech stack.
-Generate 5-15 tasks covering: setup/documentation, code quality, testing, features, and maintenance.
+Generate tasks covering: setup/documentation, code quality, testing, features, and maintenance. Include as many as the codebase warrants — small repos may need 5–8; large repos with many concerns may need up to 20.
 Tasks should be specific to THIS codebase — reference actual files, technologies, and patterns found.`,
   };
 }
@@ -1007,8 +1008,10 @@ Return JSON:
 {
   "files": [{ "path": string, "content": string, "language": string, "description": string }],
   "summary": string,
-  "estimatedTokensUsed": number
+  "estimatedTokensUsed": number,
+  "delegationHint": string | null
 }
-Generate complete, runnable files. Keep total output focused — avoid generating files not directly needed.`,
+Generate complete, runnable files. Keep total output focused — avoid generating files not directly needed.
+If the combined scope is too large to implement fully, generate the most critical files and set "delegationHint" to a short message suggesting how remaining work could be split. If you can cover everything, omit "delegationHint".`,
   };
 }
