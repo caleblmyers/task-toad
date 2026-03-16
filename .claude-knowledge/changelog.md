@@ -6,6 +6,26 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-16
 
+### Wave 8: W1 + W2 (2 workers, 2 tasks completed, 1 deferred)
+
+**W1 — API Quality (Worker 1):**
+- Fixed inconsistent mutation return types — `deleteComment` returns deleted Comment, `markAllNotificationsRead` returns count
+- Added cursor-based pagination to `activities` and `reports` queries (ActivityConnection, ReportConnection)
+- Auto-generated API docs served at `GET /api/docs`
+
+**W2 — Custom Fields & Saved Filters (Worker 2):**
+- Custom fields on tasks — CustomField + CustomFieldValue models, 4 field types (text, number, date, dropdown), CRUD mutations, TaskDetailPanel rendering, FilterBar integration, ProjectSettingsModal management
+- Saved filters/views — SavedFilter model, save/load/delete in FilterBar
+
+**Deferred:** Task templates, file attachments, recurring tasks (moved back to W2 todos for future wave)
+
+**Codebase audit:** Added 8 new work sets to todos.md — P1 (production hardening), P2 (security), A11 (accessibility), Q1 (code quality/testing), D1 (deployment/observability), I1 (integration completeness), F1 (frontend performance), S1 (styling/branding)
+
+**Process notes:**
+- Worker-2 submitted without running `prisma generate` — 17 typecheck errors caught by reviewer. Future: task descriptions must include "run `npx prisma generate` AND `pnpm typecheck`" for schema changes.
+- JSON column cleanup sub-item was skipped by worker. Future: mark optional sub-items explicitly or split into separate tasks.
+- Worker modified files not in task's `files` array (auth.prisma, org.prisma, resolvers/index.ts) — necessary for Prisma relations. Future: include related model files in files array.
+
 ### Wave 7: W1 + W5 + W6 (3 workers, 5 tasks)
 
 **W1 — API Refactor & Security Hardening + Frontend Cleanup:**
