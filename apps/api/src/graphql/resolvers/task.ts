@@ -394,55 +394,31 @@ export const taskMutations = {
 export const taskFieldResolvers = {
   Task: {
     labels: async (parent: { taskId: string }, _args: unknown, context: Context) => {
-      const taskLabels = await context.prisma.taskLabel.findMany({
-        where: { taskId: parent.taskId },
-        include: { label: true },
-      });
-      return taskLabels.map((tl: typeof taskLabels[number]) => tl.label);
+      return context.loaders.taskLabels.load(parent.taskId);
     },
-    githubIssueUrl: async (parent: { taskId: string; githubIssueNumber?: number | null }, _args: unknown, context: Context) => {
+    githubIssueUrl: async (parent: { taskId: string; projectId: string; githubIssueNumber?: number | null }, _args: unknown, context: Context) => {
       if (!parent.githubIssueNumber) return null;
-      const task = await context.prisma.task.findUnique({
-        where: { taskId: parent.taskId },
-        select: { projectId: true },
-      });
-      if (!task) return null;
-      const project = await context.prisma.project.findUnique({
-        where: { projectId: task.projectId },
-        select: { githubRepositoryOwner: true, githubRepositoryName: true },
-      });
-      if (!project?.githubRepositoryOwner || !project?.githubRepositoryName) return null;
-      return `https://github.com/${project.githubRepositoryOwner}/${project.githubRepositoryName}/issues/${parent.githubIssueNumber}`;
+      const project = await context.loaders.projectById.load(parent.projectId);
+      if (!project) return null;
+      const owner = (project as unknown as { githubRepositoryOwner: string | null }).githubRepositoryOwner;
+      const name = (project as unknown as { githubRepositoryName: string | null }).githubRepositoryName;
+      if (!owner || !name) return null;
+      return `https://github.com/${owner}/${name}/issues/${parent.githubIssueNumber}`;
     },
     pullRequests: async (parent: { taskId: string }, _args: unknown, context: Context) => {
-      return context.prisma.gitHubPullRequestLink.findMany({
-        where: { taskId: parent.taskId },
-        orderBy: { createdAt: 'desc' },
-      });
+      return context.loaders.taskPullRequests.load(parent.taskId);
     },
     commits: async (parent: { taskId: string }, _args: unknown, context: Context) => {
-      return context.prisma.gitHubCommitLink.findMany({
-        where: { taskId: parent.taskId },
-        orderBy: { createdAt: 'desc' },
-        take: 10,
-      });
+      return context.loaders.taskCommits.load(parent.taskId);
     },
     children: async (parent: { taskId: string }, _args: unknown, context: Context) => {
-      return context.prisma.task.findMany({
-        where: { parentTaskId: parent.taskId, archived: false },
-        orderBy: { position: 'asc' },
-      });
+      return context.loaders.taskChildren.load(parent.taskId);
     },
     progress: async (parent: { taskId: string; taskType: string }, _args: unknown, context: Context) => {
       if (parent.taskType !== 'epic' && parent.taskType !== 'story') return null;
-      const children = await context.prisma.task.findMany({
-        where: { parentTaskId: parent.taskId, archived: false },
-        select: { status: true },
-      });
-      const total = children.length;
-      if (total === 0) return { total: 0, completed: 0, percentage: 0 };
-      const completed = children.filter((c: { status: string }) => c.status === 'done').length;
-      return { total, completed, percentage: Math.round((completed / total) * 100) };
+      const result = await context.loaders.taskProgress.load(parent.taskId);
+      if (!result || result.total === 0) return { total: 0, completed: 0, percentage: 0 };
+      return { total: result.total, completed: result.completed, percentage: Math.round((result.completed / result.total) * 100) };
     },
   },
 };
