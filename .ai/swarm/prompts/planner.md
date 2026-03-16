@@ -8,13 +8,13 @@ The task queue is at `.ai/swarm/tasks.json`. Read it to see the current swarm co
 
 ## How to Plan
 
-1. **Read** `.claude-knowledge/todos.md` — understand the Task Sets, their priorities, and the Parallel Execution Model.
-2. **Select work for this wave.** If no specific sets are requested, follow the priority-based automatic selection rules below.
+1. **Read** `.claude-knowledge/todos.md` — understand the Work Sets, their files, and the Parallel Execution Model.
+2. **Select work for this wave.** Check the Parallelism Matrix for which sets can run together. Assign one set per worker.
 3. **Read** the relevant source files for each selected set to understand what exists today.
-4. **Decompose** each todo item into one or more concrete tasks. Each task should be completable in a single focused session (30-60 min of agent work).
+4. **Decompose** each todo item into concrete tasks following the Task Sizing rules below.
 5. **Specify** for each task:
    - `id`: sequential `task-001`, `task-002`, etc.
-   - `group`: the set ID from todos.md (e.g., `S1`, `I1`, `I3`)
+   - `group`: the set ID from todos.md (e.g., `W1`, `W2`, `W4`)
    - `title`: short action-oriented title
    - `description`: detailed implementation instructions — what to create/modify, expected behavior, edge cases
    - `files`: exhaustive list of files the task will touch (workers are restricted to these)
@@ -22,39 +22,43 @@ The task queue is at `.ai/swarm/tasks.json`. Read it to see the current swarm co
    - `dependsOn`: array of task IDs that must be `merged` before this task can start
 6. **Assign** tasks to workers following the Assignment Rules below.
 
-## Automatic Set Selection (when no specific sets are requested)
+## Task Sizing (CRITICAL — read before planning)
 
-When the user just says "plan the next wave" or similar without specifying sets:
+Each task MUST represent **30-60 minutes** of focused agentic work. This is the single most important planning rule.
 
-1. **Find the highest-priority unfinished Schema set** (S1, S2, S3... in order). Assign it to worker-1.
-2. **Find the highest-priority unfinished Independent sets** to fill remaining workers. Assign one per worker.
-3. **Never assign two Schema sets to the same wave.** Only one Schema set runs at a time.
-4. **Check the Optimal Wave Plan** in todos.md for the recommended pairings.
+**DO:**
+- Combine related items into **full vertical slices**: Prisma model + migration + GraphQL types + resolver + frontend component + hook integration = ONE task
+- Bundle config changes into the feature they support (never a standalone "update config" task)
+- Each worker should have **2-4 tasks** totaling 30-60 min of work
 
-Example with 3 workers:
-- Worker 1: S1 (highest priority schema set)
-- Worker 2: I1 (highest priority independent set)
-- Worker 3: I3 (next highest priority independent set)
+**DON'T:**
+- Create tasks that are just a config tweak, single-file edit, or package install (< 5 min)
+- Split a feature into per-layer tasks (schema task → resolver task → frontend task)
+- Create more than 4 tasks per worker — combine instead
 
-## Assignment Rules (CRITICAL)
+**Examples:**
+- BAD: "Add customField to Prisma schema" (2 min)
+- BAD: "Add customField resolver" (3 min)
+- BAD: "Add customField UI" (5 min)
+- GOOD: "Add custom fields on tasks — Prisma model (CustomField + CustomFieldValue), migration, GraphQL types + CRUD resolvers, TaskDetailPanel rendering, FilterBar integration" (45 min)
 
-### Rule 1: One schema set per wave
-Schema sets (S1-S10) touch `schema.ts` and/or `schema.prisma`. Only ONE schema set can run per wave. Assign it to a single worker.
+**Sizing test:** If you can describe the full task in one sentence, it's probably too small. A good task description should be 2-3 paragraphs with multiple implementation steps.
 
-### Rule 2: Independent sets run freely
-Independent sets (I1-I8) have no shared file conflicts. Assign one per remaining worker. Multiple independent sets can run simultaneously.
+## Assignment Rules
 
-### Rule 3: Self-contained sets
+### Rule 1: Check file overlap
+Two sets can run in parallel ONLY if their `files` arrays don't overlap. Check the Parallelism Matrix in todos.md.
+
+### Rule 2: Self-contained sets
 Each set is fully self-contained. All tasks within a set go to the SAME worker. Never split a set across workers.
 
-### Rule 4: No cross-set dependencies within a wave
+### Rule 3: No cross-set dependencies within a wave
 Tasks in different sets within the same wave must NOT depend on each other. Each worker runs uninterrupted.
 
 ## Dependency Rules
 
 - Tasks within the same set can depend on each other (sequential within a worker).
 - Tasks in different sets are independent within a wave.
-- **Cross-wave dependencies:** Some Independent sets depend on Schema sets from prior waves (noted in todos.md with "depends on" annotations). Check these before assigning.
 - The `dependsOn` field references task IDs, not set names.
 
 ## Output Format
