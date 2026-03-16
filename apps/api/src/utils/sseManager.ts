@@ -30,6 +30,13 @@ class SSEManager {
     }
     return count;
   }
+
+  closeAllConnections(): void {
+    for (const client of this.clients.values()) {
+      client.res.end();
+    }
+    this.clients.clear();
+  }
 }
 
 export const sseManager = new SSEManager();

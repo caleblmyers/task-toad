@@ -3,7 +3,15 @@ import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
 import { JWT_SECRET, type Context } from '../context.js';
 import { generateToken } from '../../utils/token.js';
-import { sendEmail, verifyEmailText, resetPasswordText, inviteText } from '../../utils/email.js';
+import {
+  sendEmail,
+  verifyEmailText,
+  resetPasswordText,
+  inviteText,
+  buildVerifyEmailHtml,
+  buildResetPasswordHtml,
+  buildInviteHtml,
+} from '../../utils/email.js';
 import { decryptApiKey } from '../../utils/encryption.js';
 import {
   AuthenticationError,
@@ -80,7 +88,8 @@ export const authMutations = {
     await sendEmail(
       args.email,
       'Verify your TaskToad account',
-      verifyEmailText(verificationToken)
+      verifyEmailText(verificationToken),
+      buildVerifyEmailHtml(verificationToken)
     );
     return true;
   },
@@ -110,7 +119,8 @@ export const authMutations = {
     await sendEmail(
       dbUser.email,
       'Verify your TaskToad account',
-      verifyEmailText(verificationToken)
+      verifyEmailText(verificationToken),
+      buildVerifyEmailHtml(verificationToken)
     );
     return true;
   },
@@ -139,7 +149,8 @@ export const authMutations = {
     await sendEmail(
       user.email,
       'Reset your TaskToad password',
-      resetPasswordText(resetToken)
+      resetPasswordText(resetToken),
+      buildResetPasswordHtml(resetToken)
     );
     return true;
   },
@@ -199,7 +210,8 @@ export const authMutations = {
     await sendEmail(
       args.email,
       `You're invited to join ${org?.name ?? 'TaskToad'}`,
-      inviteText(org?.name ?? 'TaskToad', token)
+      inviteText(org?.name ?? 'TaskToad', token),
+      buildInviteHtml(org?.name ?? 'TaskToad', token)
     );
     return true;
   },

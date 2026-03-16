@@ -24,13 +24,29 @@ export async function sendEmail(to: string, subject: string, text: string, html?
     },
   });
 
-  await transport.sendMail({
-    from: process.env.EMAIL_FROM ?? 'noreply@tasktoad.app',
-    to,
-    subject,
-    text,
-    html,
-  });
+  const RETRY_DELAYS = [1_000, 5_000, 15_000];
+  const MAX_ATTEMPTS = 3;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      await transport.sendMail({
+        from: process.env.EMAIL_FROM ?? 'noreply@tasktoad.app',
+        to,
+        subject,
+        text,
+        html,
+      });
+      return;
+    } catch (err) {
+      if (attempt < MAX_ATTEMPTS) {
+        const delay = RETRY_DELAYS[attempt - 1] ?? RETRY_DELAYS[RETRY_DELAYS.length - 1];
+        log.warn({ to, subject, attempt, err }, `Email send failed, retrying in ${delay}ms`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      } else {
+        log.error({ to, subject, attempt, err }, 'Email send failed after all retries — dropping');
+      }
+    }
+  }
 }
 
 // ── Plain-text templates ──

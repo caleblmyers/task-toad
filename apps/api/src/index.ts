@@ -2,6 +2,8 @@ import { PrismaClient } from '@prisma/client';
 import app from './app.js';
 import { logger } from './utils/logger.js';
 import { checkDueDateReminders } from './utils/dueDateReminder.js';
+import { startRetryProcessor, stopRetryProcessor } from './utils/webhookDispatcher.js';
+import { sseManager } from './utils/sseManager.js';
 
 const prisma = new PrismaClient();
 const PORT = Number(process.env.PORT) || 3001;
@@ -41,6 +43,8 @@ async function main() {
     logger.info({ port: PORT }, `TaskToad API listening on http://localhost:${PORT}`);
   });
 
+  startRetryProcessor(prisma);
+
   // Graceful shutdown
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'Shutting down gracefully...');
@@ -53,6 +57,8 @@ async function main() {
     forceKillTimeout.unref();
 
     clearInterval(reminderInterval);
+    stopRetryProcessor();
+    sseManager.closeAllConnections();
 
     server.close(() => {
       logger.info('HTTP server closed');
