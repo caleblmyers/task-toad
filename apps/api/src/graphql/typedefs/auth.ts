@@ -5,6 +5,9 @@ export const authTypeDefs = /* GraphQL */ `
     orgId: ID
     role: String
     emailVerifiedAt: String
+    displayName: String
+    avatarUrl: String
+    timezone: String
   }
 
   type OrgInvite {
@@ -35,6 +38,8 @@ export const authMutationFields = /* GraphQL */ `
 
   requestPasswordReset(email: String!): Boolean!
   resetPassword(token: String!, newPassword: String!): Boolean!
+
+  updateProfile(displayName: String, avatarUrl: String, timezone: String): User!
 
   inviteOrgMember(email: String!, role: String): Boolean!
   acceptInvite(token: String!, password: String): AuthPayload!

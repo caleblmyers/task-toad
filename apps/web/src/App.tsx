@@ -14,6 +14,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import AcceptInvite from './pages/AcceptInvite';
 import Search from './pages/Search';
+import ProfilePage from './pages/ProfilePage';
 
 function Protected({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -53,6 +54,7 @@ export default function App() {
         <Route path="projects/new" element={<NewProject />} />
         <Route path="projects/:projectId" element={<ProjectDetail />} />
         <Route path="search" element={<Search />} />
+        <Route path="profile" element={<ProfilePage />} />
         <Route path="settings" element={<OrgSettings />} />
       </Route>
       <Route path="/" element={<Navigate to="/app" replace />} />

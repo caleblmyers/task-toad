@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
 import { JWT_SECRET, type Context } from '../context.js';
@@ -56,8 +57,9 @@ export function requireApiKey(context: Context): string {
 // ── Auth queries ──
 
 export const authQueries = {
-  me: (_parent: unknown, _args: unknown, context: Context) => {
-    return context.user;
+  me: async (_parent: unknown, _args: unknown, context: Context) => {
+    if (!context.user) return null;
+    return context.prisma.user.findUnique({ where: { userId: context.user.userId } });
   },
 };
 
@@ -259,6 +261,40 @@ export const authMutations = {
     await context.prisma.orgInvite.delete({ where: { inviteId: args.inviteId } });
     return true;
   },
+
+  updateProfile: async (
+    _parent: unknown,
+    args: { displayName?: string | null; avatarUrl?: string | null; timezone?: string | null },
+    context: Context,
+  ) => {
+    const user = requireAuth(context);
+    const data: Record<string, string | null> = {};
+
+    if (args.displayName !== undefined) {
+      data.displayName = args.displayName?.trim() || null;
+    }
+    if (args.avatarUrl !== undefined) {
+      if (args.avatarUrl) {
+        try {
+          new URL(args.avatarUrl);
+        } catch {
+          throw new ValidationError('Invalid avatar URL');
+        }
+      }
+      data.avatarUrl = args.avatarUrl || null;
+    }
+    if (args.timezone !== undefined) {
+      if (args.timezone && args.timezone.trim().length === 0) {
+        throw new ValidationError('Timezone must be a non-empty string');
+      }
+      data.timezone = args.timezone?.trim() || null;
+    }
+
+    return context.prisma.user.update({
+      where: { userId: user.userId },
+      data,
+    });
+  },
 };
 
 // ── Auth field resolvers ──
@@ -267,6 +303,11 @@ export const authFieldResolvers = {
   User: {
     emailVerifiedAt: (parent: { emailVerifiedAt: Date | null }) =>
       parent.emailVerifiedAt ? parent.emailVerifiedAt.toISOString() : null,
+    avatarUrl: (parent: { avatarUrl: string | null; email: string }) => {
+      if (parent.avatarUrl) return parent.avatarUrl;
+      const hash = crypto.createHash('md5').update(parent.email.trim().toLowerCase()).digest('hex');
+      return `https://gravatar.com/avatar/${hash}?d=identicon&s=80`;
+    },
   },
 
   OrgInvite: {

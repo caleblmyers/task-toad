@@ -4,6 +4,7 @@ import { useAuth } from '../auth/context';
 import { gql } from '../api/client';
 import type { Org, OrgUser, OrgInvite, GitHubInstallation } from '../types';
 import AIUsageDashboard from '../components/AIUsageDashboard';
+import UserAvatar from '../components/shared/UserAvatar';
 
 const ORG_QUERY = `query GetOrg { org { orgId name hasApiKey apiKeyHint } }`;
 const ORG_USERS_QUERY = `query { orgUsers { userId email role } }`;
@@ -241,8 +242,11 @@ export default function OrgSettings() {
           <p className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-2">Members</p>
           <ul className="divide-y divide-slate-100">
             {orgUsers.map((u) => (
-              <li key={u.userId} className="py-2 flex justify-between text-sm">
-                <span className="text-slate-800">{u.email}</span>
+              <li key={u.userId} className="py-2 flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <UserAvatar email={u.email} size="sm" />
+                  <span className="text-slate-800">{u.email}</span>
+                </div>
                 <span className="text-slate-500">{u.role ?? '—'}</span>
               </li>
             ))}

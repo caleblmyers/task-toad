@@ -5,6 +5,7 @@ import { gql } from '../api/client';
 import NotificationCenter from '../components/NotificationCenter';
 import NotificationSettings from '../components/NotificationSettings';
 import GlobalSearchModal from '../components/GlobalSearchModal';
+import UserAvatar from '../components/shared/UserAvatar';
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
@@ -13,6 +14,20 @@ export default function AppLayout() {
   const [showNotifSettings, setShowNotifSettings] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showSearch, setShowSearch] = useState(false);
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
+  const [profileDisplayName, setProfileDisplayName] = useState<string | null>(null);
+
+  // Fetch profile avatar
+  useEffect(() => {
+    gql<{ me: { avatarUrl: string | null; displayName: string | null } | null }>(
+      `query MeAvatar { me { avatarUrl displayName } }`
+    )
+      .then((data) => {
+        setProfileAvatar(data.me?.avatarUrl ?? null);
+        setProfileDisplayName(data.me?.displayName ?? null);
+      })
+      .catch(() => {/* non-critical */});
+  }, []);
 
   // Poll unread count every 60s
   useEffect(() => {
@@ -67,6 +82,13 @@ export default function AppLayout() {
             </svg>
             Search
           </Link>
+          <Link to="/app/profile" className="flex items-center gap-2 px-3 py-2 rounded hover:bg-slate-700 text-sm">
+            <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <circle cx="8" cy="5.5" r="3" />
+              <path d="M2.5 14.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5" strokeLinecap="round" />
+            </svg>
+            Profile
+          </Link>
           {user?.role === 'org:admin' && (
             <Link to="/app/settings" className="block px-3 py-2 rounded hover:bg-slate-700">
               Settings
@@ -86,7 +108,16 @@ export default function AppLayout() {
         </nav>
         <div className="p-4 border-t border-slate-700 text-sm">
           <div className="flex items-center justify-between mb-2">
-            <p className="truncate flex-1">{user?.email}</p>
+            {user?.email && (
+              <UserAvatar
+                email={user.email}
+                avatarUrl={profileAvatar}
+                displayName={profileDisplayName}
+                size="sm"
+                className="mr-2"
+              />
+            )}
+            <p className="truncate flex-1">{profileDisplayName || user?.email}</p>
             <button
               type="button"
               onClick={() => {
