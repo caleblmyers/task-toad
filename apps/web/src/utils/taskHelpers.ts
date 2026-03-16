@@ -1,5 +1,21 @@
 import type { Task } from '../types';
 
+const dependsOnCache = new Map<string, string[]>();
+
+export function parseDependsOn(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  const cached = dependsOnCache.get(raw);
+  if (cached) return cached;
+  try {
+    const parsed = JSON.parse(raw) as string[];
+    if (!Array.isArray(parsed)) return [];
+    dependsOnCache.set(raw, parsed);
+    return parsed;
+  } catch {
+    return [];
+  }
+}
+
 export function statusLabel(status: string): string {
   return status
     .split('_')

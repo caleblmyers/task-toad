@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import type { Task, Sprint, OrgUser } from '../types';
 import SprintReportPanel from './SprintReportPanel';
 import SprintSection, { TaskRow } from './SprintSection';
@@ -74,7 +74,7 @@ function BacklogSection({
                   onDragStart={onDragStart}
                   isChecked={selectedTaskIds.has(task.taskId)}
                   showCheckboxes={showCheckboxes}
-                  onToggle={() => onToggleTaskId(task.taskId)}
+                  onToggleTaskId={onToggleTaskId}
                   sprints={sprints}
                   onAssignSprint={onAssignSprint}
                 />
@@ -151,7 +151,7 @@ export default function BacklogView({
   const [dragOverInfo, setDragOverInfo] = useState<{ sectionId: string | null; index: number } | null>(null);
   const containerRefs = useRef<Map<string | null, HTMLDivElement>>(new Map());
 
-  const handleDragStart = (taskId: string) => { draggedId.current = taskId; };
+  const handleDragStart = useCallback((taskId: string) => { draggedId.current = taskId; }, []);
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>, sectionId: string | null) => {
     e.preventDefault();

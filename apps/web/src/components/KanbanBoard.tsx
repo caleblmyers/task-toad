@@ -1,5 +1,6 @@
 import { useRef, useMemo, useState, useCallback } from 'react';
 import type { Task } from '../types';
+import { parseDependsOn } from '../utils/taskHelpers';
 import DependencyBadge from './shared/DependencyBadge';
 
 const COLUMN_ACCENTS = [
@@ -50,15 +51,13 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
   const blockedTasks = useMemo(() => {
     const blocked = new Set<string>();
     for (const task of tasks) {
-      if (!task.dependsOn) continue;
-      try {
-        const ids = JSON.parse(task.dependsOn) as string[];
-        const isBlocked = ids.some((id) => {
-          const dep = tasks.find((t) => t.taskId === id);
-          return !dep || dep.status !== 'done';
-        });
-        if (isBlocked) blocked.add(task.taskId);
-      } catch { /* ignore */ }
+      const ids = parseDependsOn(task.dependsOn);
+      if (ids.length === 0) continue;
+      const isBlocked = ids.some((id) => {
+        const dep = tasks.find((t) => t.taskId === id);
+        return !dep || dep.status !== 'done';
+      });
+      if (isBlocked) blocked.add(task.taskId);
     }
     return blocked;
   }, [tasks]);

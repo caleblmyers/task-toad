@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback, memo } from 'react';
 import type { Comment, OrgUser } from '../types';
 import MentionAutocomplete from './MentionAutocomplete';
 import MarkdownRenderer from './shared/MarkdownRenderer';
@@ -24,7 +24,7 @@ interface CommentSectionProps {
   onDeleteComment: (commentId: string) => Promise<void>;
 }
 
-function CommentItem({
+const CommentItem = memo(function CommentItem({
   comment,
   currentUserId,
   isAdmin,
@@ -102,7 +102,7 @@ function CommentItem({
       </div>
     </div>
   );
-}
+});
 
 export default function CommentSection({
   comments,
@@ -120,6 +120,11 @@ export default function CommentSection({
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionAnchor, setMentionAnchor] = useState<{ top: number; left: number } | null>(null);
   const newCommentRef = useRef<HTMLTextAreaElement>(null);
+
+  const handleReply = useCallback((id: string) => { setReplyingTo(id); setReplyContent(''); }, []);
+  const handleUpdate = useCallback((commentId: string, content: string) => onUpdateComment(commentId, content), [onUpdateComment]);
+  const handleDelete = useCallback((commentId: string) => onDeleteComment(commentId), [onDeleteComment]);
+  const handleNoReply = useCallback(() => {}, []);
 
   const handleCommentInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
@@ -229,9 +234,9 @@ export default function CommentSection({
               comment={comment}
               currentUserId={currentUserId}
               isAdmin={isAdmin}
-              onReply={(id) => { setReplyingTo(id); setReplyContent(''); }}
-              onUpdate={onUpdateComment}
-              onDelete={onDeleteComment}
+              onReply={handleReply}
+              onUpdate={handleUpdate}
+              onDelete={handleDelete}
             />
             {/* Replies */}
             {comment.replies.map((reply) => (
@@ -241,9 +246,9 @@ export default function CommentSection({
                 currentUserId={currentUserId}
                 isAdmin={isAdmin}
                 isReply
-                onReply={() => {}}
-                onUpdate={onUpdateComment}
-                onDelete={onDeleteComment}
+                onReply={handleNoReply}
+                onUpdate={handleUpdate}
+                onDelete={handleDelete}
               />
             ))}
             {/* Reply form */}

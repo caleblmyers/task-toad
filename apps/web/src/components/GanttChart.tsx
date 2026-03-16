@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import type { Task } from '../types';
+import { parseDependsOn } from '../utils/taskHelpers';
 
 interface GanttChartProps {
   tasks: Task[];
@@ -182,13 +183,8 @@ export default function GanttChart({ tasks, onSelectTask }: GanttChartProps) {
 
     for (const task of allTasks) {
       if (!task.dependsOn) continue;
-      let depIds: string[];
-      try {
-        depIds = JSON.parse(task.dependsOn) as string[];
-      } catch {
-        continue;
-      }
-      if (!Array.isArray(depIds)) continue;
+      const depIds = parseDependsOn(task.dependsOn);
+      if (depIds.length === 0) continue;
 
       const toIdx = taskIndex.get(task.taskId);
       if (toIdx === undefined) continue;

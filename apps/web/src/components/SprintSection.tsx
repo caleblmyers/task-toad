@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, memo } from 'react';
 import type { Task, Sprint, OrgUser } from '../types';
 import BurndownChart from './BurndownChart';
 import DependencyBadge from './shared/DependencyBadge';
@@ -40,17 +40,17 @@ interface TaskRowProps {
   onDragStart: (taskId: string) => void;
   isChecked: boolean;
   showCheckboxes: boolean;
-  onToggle: () => void;
+  onToggleTaskId: (taskId: string) => void;
   sprints?: Sprint[];
   onAssignSprint?: (taskId: string, sprintId: string | null) => void;
 }
 
-export function TaskRow({
+export const TaskRow = memo(function TaskRow({
   task, orgUsers, allTasks, selectedTask, onSelectTask, onDragStart,
-  isChecked, showCheckboxes, onToggle, sprints, onAssignSprint,
+  isChecked, showCheckboxes, onToggleTaskId, sprints, onAssignSprint,
 }: TaskRowProps) {
   const isSelected = selectedTask?.taskId === task.taskId;
-  const assignee = orgUsers.find((u) => u.userId === task.assigneeId);
+  const assignee = useMemo(() => orgUsers.find((u) => u.userId === task.assigneeId), [orgUsers, task.assigneeId]);
   const [showSprintPicker, setShowSprintPicker] = useState(false);
   const [sprintMoveAnnouncement, setSprintMoveAnnouncement] = useState('');
 
@@ -80,7 +80,7 @@ export function TaskRow({
       <input
         type="checkbox"
         checked={isChecked}
-        onChange={(e) => { e.stopPropagation(); onToggle(); }}
+        onChange={(e) => { e.stopPropagation(); onToggleTaskId(task.taskId); }}
         onClick={(e) => e.stopPropagation()}
         className={`w-3.5 h-3.5 rounded border-slate-300 text-slate-600 flex-shrink-0 cursor-pointer ${
           showCheckboxes ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
@@ -178,7 +178,7 @@ export function TaskRow({
       </div>
     </div>
   );
-}
+});
 
 interface SprintSectionProps {
   sprint: Sprint;
@@ -320,7 +320,7 @@ export default function SprintSection({
                   onDragStart={onDragStart}
                   isChecked={selectedTaskIds.has(task.taskId)}
                   showCheckboxes={showCheckboxes}
-                  onToggle={() => onToggleTaskId(task.taskId)}
+                  onToggleTaskId={onToggleTaskId}
                   sprints={allSprints}
                   onAssignSprint={onAssignSprint}
                 />

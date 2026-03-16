@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { Activity } from '../types';
 import { statusLabel } from '../utils/taskHelpers';
 
@@ -55,6 +56,20 @@ function describeActivity(activity: Activity): string {
   }
 }
 
+const ActivityItem = memo(function ActivityItem({ activity }: { activity: Activity }) {
+  return (
+    <div className="flex items-start gap-2 py-1">
+      <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[10px] font-medium flex-shrink-0 mt-0.5">
+        {activity.userEmail.charAt(0).toUpperCase()}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs text-slate-600">{describeActivity(activity)}</p>
+        <p className="text-[10px] text-slate-400">{timeAgo(activity.createdAt)}</p>
+      </div>
+    </div>
+  );
+});
+
 interface ActivityFeedProps {
   activities: Activity[];
   className?: string;
@@ -68,15 +83,7 @@ export default function ActivityFeed({ activities, className = '' }: ActivityFee
   return (
     <div className={`space-y-2 ${className}`}>
       {activities.map((activity) => (
-        <div key={activity.activityId} className="flex items-start gap-2 py-1">
-          <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[10px] font-medium flex-shrink-0 mt-0.5">
-            {activity.userEmail.charAt(0).toUpperCase()}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-slate-600">{describeActivity(activity)}</p>
-            <p className="text-[10px] text-slate-400">{timeAgo(activity.createdAt)}</p>
-          </div>
-        </div>
+        <ActivityItem key={activity.activityId} activity={activity} />
       ))}
     </div>
   );
