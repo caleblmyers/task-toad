@@ -12,6 +12,13 @@ import { buildContext } from './graphql/context.js';
 import { handleGitHubWebhook } from './github/index.js';
 import { exportRouter } from './routes/export.js';
 import { logger } from './utils/logger.js';
+import { sseManager } from './utils/sseManager.js';
+import { jwtVerify } from 'jose';
+import { JWT_SECRET } from './graphql/context.js';
+import { PrismaClient } from '@prisma/client';
+import crypto from 'crypto';
+
+const ssePrisma = new PrismaClient();
 
 // Validate required environment variables at startup
 const envSchema = z.object({
@@ -55,6 +62,33 @@ app.use(compression());
 
 // Body size limit
 app.use(express.json({ limit: '1mb' }));
+
+// SSE endpoint for real-time events
+app.get('/api/events', async (req, res) => {
+  const token = req.query.token as string;
+  if (!token) { res.status(401).json({ error: 'No token' }); return; }
+  try {
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const user = await ssePrisma.user.findUnique({ where: { userId: payload.sub as string } });
+    if (!user?.orgId) { res.status(401).json({ error: 'Unauthorized' }); return; }
+
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    });
+    res.write('event: connected\ndata: {}\n\n');
+
+    const clientId = crypto.randomUUID();
+    sseManager.addClient(clientId, user.orgId, user.userId, res);
+
+    // Heartbeat every 30s
+    const heartbeat = setInterval(() => res.write(': heartbeat\n\n'), 30000);
+    res.on('close', () => clearInterval(heartbeat));
+  } catch {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
 
 // Export REST endpoints (file downloads — not suited for GraphQL)
 app.use('/api/export', exportRouter);

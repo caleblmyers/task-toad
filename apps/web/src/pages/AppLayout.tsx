@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/context';
 import { gql } from '../api/client';
@@ -6,6 +6,7 @@ import NotificationCenter from '../components/NotificationCenter';
 import NotificationSettings from '../components/NotificationSettings';
 import GlobalSearchModal from '../components/GlobalSearchModal';
 import UserAvatar from '../components/shared/UserAvatar';
+import { useEventSource } from '../hooks/useEventSource';
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
@@ -28,6 +29,13 @@ export default function AppLayout() {
       })
       .catch(() => {/* non-critical */});
   }, []);
+
+  // SSE real-time events
+  const handleSSEEvent = useCallback((_event: string, _data: unknown) => {
+    // For MVP: events are received but UI refresh is handled by individual pages
+    // Future: dispatch to a global event bus or context for granular state updates
+  }, []);
+  const { connected: sseConnected } = useEventSource(handleSSEEvent);
 
   // Poll unread count every 60s
   useEffect(() => {
@@ -65,8 +73,14 @@ export default function AppLayout() {
   return (
     <div className="min-h-screen flex bg-slate-50">
       <aside className="w-56 bg-slate-800 text-white flex flex-col relative">
-        <div className="p-4 border-b border-slate-700">
+        <div className="p-4 border-b border-slate-700 flex items-center justify-between">
           <Link to="/app" className="font-semibold text-lg">TaskToad</Link>
+          {sseConnected && (
+            <span className="flex items-center gap-1 text-[10px] text-green-400" title="Live updates active">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+              Live
+            </span>
+          )}
         </div>
         <nav className="p-2 flex-1 space-y-1">
           <Link to="/app" className="block px-3 py-2 rounded hover:bg-slate-700">

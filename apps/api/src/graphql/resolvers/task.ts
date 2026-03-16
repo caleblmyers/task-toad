@@ -4,6 +4,8 @@ import { createNotification } from '../../utils/notification.js';
 import { NotFoundError, ValidationError, AuthorizationError } from '../errors.js';
 import { requireAuth, requireOrg, requireProjectAccess } from './auth.js';
 import { executeAutomations } from '../../utils/automationEngine.js';
+import { dispatchWebhooks } from '../../utils/webhookDispatcher.js';
+import { sseManager } from '../../utils/sseManager.js';
 
 // ── Task queries ──
 
@@ -129,6 +131,8 @@ export const taskMutations = {
       orgId: user.orgId, projectId: args.projectId, taskId: task.taskId, userId: user.userId,
       action: 'task.created',
     });
+    dispatchWebhooks(context.prisma, user.orgId, 'task.created', { task });
+    sseManager.broadcast(user.orgId, 'task.created', { task });
     return task;
   },
 
@@ -221,6 +225,16 @@ export const taskMutations = {
         data: { oldStatus: task.status, newStatus: args.status },
       });
     }
+    const changes: Record<string, unknown> = {};
+    for (const [field, oldVal, newVal] of fields) {
+      if (newVal !== undefined && newVal !== oldVal) {
+        changes[field] = { old: oldVal, new: newVal };
+      }
+    }
+    if (Object.keys(changes).length > 0) {
+      dispatchWebhooks(context.prisma, user.orgId, 'task.updated', { task: updated, changes });
+      sseManager.broadcast(user.orgId, 'task.updated', { task: updated });
+    }
     return updated;
   },
 
@@ -256,6 +270,7 @@ export const taskMutations = {
         ...(args.status ? { field: 'status', oldValue: task.status, newValue: args.status } : {}),
       });
     }
+    sseManager.broadcast(user.orgId, 'tasks.bulk_updated', { taskIds: args.taskIds });
     return updated;
   },
 

@@ -8,6 +8,7 @@ import { githubQueries, githubMutations, githubFieldResolvers } from './github.j
 import { notificationQueries, notificationMutations, notificationFieldResolvers } from './notification.js';
 import { searchQueries, searchMutations } from './search.js';
 import { projectRoleQueries, projectRoleMutations } from './projectrole.js';
+import { webhookQueries, webhookMutations } from './webhook.js';
 
 export const resolvers = {
   Query: {
@@ -21,6 +22,7 @@ export const resolvers = {
     ...searchQueries,
     ...aiQueries,
     ...projectRoleQueries,
+    ...webhookQueries,
   },
   Mutation: {
     ...authMutations,
@@ -33,6 +35,7 @@ export const resolvers = {
     ...notificationMutations,
     ...searchMutations,
     ...projectRoleMutations,
+    ...webhookMutations,
   },
   // Field resolvers
   User: { ...authFieldResolvers.User },

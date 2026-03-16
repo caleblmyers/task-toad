@@ -1,0 +1,17 @@
+model WebhookEndpoint {
+  id          String    @id @default(uuid())
+  orgId       String    @map("org_id")
+  url         String
+  secret      String
+  events      String    // JSON string array: ["task.created", "task.updated", "sprint.closed", ...]
+  enabled     Boolean   @default(true)
+  description String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  lastError   String?   @map("last_error")
+  lastFiredAt DateTime? @map("last_fired_at")
+
+  org Org @relation(fields: [orgId], references: [orgId], onDelete: Cascade)
+
+  @@index([orgId, enabled])
+  @@map("webhook_endpoints")
+}

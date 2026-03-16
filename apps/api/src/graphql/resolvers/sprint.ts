@@ -5,6 +5,8 @@ import {
 import { logActivity } from '../../utils/activity.js';
 import { NotFoundError, ValidationError } from '../errors.js';
 import { requireOrg, requireProjectAccess, requireApiKey } from './auth.js';
+import { dispatchWebhooks } from '../../utils/webhookDispatcher.js';
+import { sseManager } from '../../utils/sseManager.js';
 
 // ── Sprint queries ──
 
@@ -137,6 +139,7 @@ export const sprintMutations = {
       orgId: user.orgId, projectId: args.projectId, sprintId: sprint.sprintId, userId: user.userId,
       action: 'sprint.created',
     });
+    sseManager.broadcast(user.orgId, 'sprint.created', { sprint });
     return sprint;
   },
 
@@ -167,6 +170,7 @@ export const sprintMutations = {
       orgId: user.orgId, projectId: sprint.projectId, sprintId: sprint.sprintId, userId: user.userId,
       action: 'sprint.updated',
     });
+    sseManager.broadcast(user.orgId, 'sprint.updated', { sprint: updated });
     return updated;
   },
 
@@ -242,6 +246,8 @@ export const sprintMutations = {
       orderBy: { createdAt: 'asc' },
     });
 
+    dispatchWebhooks(context.prisma, user.orgId, 'sprint.closed', { sprint: closedSprint });
+    sseManager.broadcast(user.orgId, 'sprint.closed', { sprint: closedSprint });
     return { sprint: closedSprint, nextSprint: nextSprint ?? null };
   },
 

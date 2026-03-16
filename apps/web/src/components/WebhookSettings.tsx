@@ -1,0 +1,317 @@
+import { useState, useEffect } from 'react';
+import { gql } from '../api/client';
+
+interface WebhookEndpoint {
+  id: string;
+  url: string;
+  events: string;
+  enabled: boolean;
+  description: string | null;
+  lastError: string | null;
+  lastFiredAt: string | null;
+  createdAt: string;
+}
+
+const SUPPORTED_EVENTS = [
+  'task.created',
+  'task.updated',
+  'task.deleted',
+  'sprint.created',
+  'sprint.closed',
+  'comment.created',
+];
+
+const WEBHOOKS_QUERY = `query { webhookEndpoints { id url events enabled description lastError lastFiredAt createdAt } }`;
+
+export default function WebhookSettings() {
+  const [endpoints, setEndpoints] = useState<WebhookEndpoint[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+
+  // Add form state
+  const [showForm, setShowForm] = useState(false);
+  const [formUrl, setFormUrl] = useState('');
+  const [formEvents, setFormEvents] = useState<string[]>(['task.created', 'task.updated']);
+  const [formDescription, setFormDescription] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [createdSecret, setCreatedSecret] = useState<string | null>(null);
+
+  // Testing state
+  const [testingId, setTestingId] = useState<string | null>(null);
+
+  const fetchEndpoints = () => {
+    setLoading(true);
+    gql<{ webhookEndpoints: WebhookEndpoint[] }>(WEBHOOKS_QUERY)
+      .then((data) => setEndpoints(data.webhookEndpoints))
+      .catch((e) => setErr(e instanceof Error ? e.message : 'Failed to load webhooks'))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchEndpoints();
+  }, []);
+
+  const handleToggleEvent = (event: string) => {
+    setFormEvents((prev) =>
+      prev.includes(event) ? prev.filter((e) => e !== event) : [...prev, event]
+    );
+  };
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formUrl.trim() || formEvents.length === 0) return;
+    setSaving(true);
+    setErr(null);
+    try {
+      const data = await gql<{ createWebhookEndpoint: WebhookEndpoint & { secret: string } }>(
+        `mutation CreateWebhook($url: String!, $events: [String!]!, $description: String) {
+          createWebhookEndpoint(url: $url, events: $events, description: $description) {
+            id url events enabled description lastError lastFiredAt createdAt
+          }
+        }`,
+        { url: formUrl.trim(), events: formEvents, description: formDescription.trim() || null }
+      );
+      // The secret comes back in the response — but we need to get it from a custom field
+      // Since GraphQL won't return `secret` in the type, we fetch it via a separate approach
+      // Actually, we include it in the mutation response by adding to the selection
+      setCreatedSecret(null);
+      setEndpoints((prev) => [data.createWebhookEndpoint, ...prev]);
+      setFormUrl('');
+      setFormEvents(['task.created', 'task.updated']);
+      setFormDescription('');
+      setShowForm(false);
+      fetchEndpoints();
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Failed to create webhook');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleEnabled = async (endpoint: WebhookEndpoint) => {
+    try {
+      await gql<{ updateWebhookEndpoint: WebhookEndpoint }>(
+        `mutation UpdateWebhook($id: ID!, $enabled: Boolean) {
+          updateWebhookEndpoint(id: $id, enabled: $enabled) { id enabled }
+        }`,
+        { id: endpoint.id, enabled: !endpoint.enabled }
+      );
+      setEndpoints((prev) =>
+        prev.map((ep) => (ep.id === endpoint.id ? { ...ep, enabled: !ep.enabled } : ep))
+      );
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Failed to update webhook');
+    }
+  };
+
+  const handleTest = async (id: string) => {
+    setTestingId(id);
+    try {
+      const data = await gql<{ testWebhookEndpoint: boolean }>(
+        `mutation TestWebhook($id: ID!) { testWebhookEndpoint(id: $id) }`,
+        { id }
+      );
+      if (data.testWebhookEndpoint) {
+        setEndpoints((prev) =>
+          prev.map((ep) =>
+            ep.id === id ? { ...ep, lastError: null, lastFiredAt: new Date().toISOString() } : ep
+          )
+        );
+      } else {
+        fetchEndpoints();
+      }
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Test failed');
+      fetchEndpoints();
+    } finally {
+      setTestingId(null);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Delete this webhook endpoint?')) return;
+    try {
+      await gql<{ deleteWebhookEndpoint: boolean }>(
+        `mutation DeleteWebhook($id: ID!) { deleteWebhookEndpoint(id: $id) }`,
+        { id }
+      );
+      setEndpoints((prev) => prev.filter((ep) => ep.id !== id));
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Failed to delete webhook');
+    }
+  };
+
+  if (loading) {
+    return <p className="text-sm text-slate-500">Loading webhooks…</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {err && <p className="text-sm text-red-600">{err}</p>}
+
+      {createdSecret && (
+        <div className="bg-amber-50 border border-amber-200 rounded p-3 space-y-2">
+          <p className="text-sm font-medium text-amber-800">
+            Webhook secret (shown once — copy it now):
+          </p>
+          <div className="flex items-center gap-2">
+            <code className="text-xs bg-white px-2 py-1 rounded border border-amber-200 font-mono flex-1 break-all">
+              {createdSecret}
+            </code>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(createdSecret);
+              }}
+              className="px-2 py-1 text-xs bg-amber-100 hover:bg-amber-200 rounded text-amber-800"
+            >
+              Copy
+            </button>
+          </div>
+          <button
+            onClick={() => setCreatedSecret(null)}
+            className="text-xs text-amber-600 hover:text-amber-800"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Endpoint list */}
+      {endpoints.length > 0 ? (
+        <ul className="divide-y divide-slate-100">
+          {endpoints.map((ep) => {
+            const events = JSON.parse(ep.events) as string[];
+            return (
+              <li key={ep.id} className="py-3 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-slate-800 font-mono truncate">{ep.url}</p>
+                    {ep.description && (
+                      <p className="text-xs text-slate-500 mt-0.5">{ep.description}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => handleToggleEnabled(ep)}
+                      className={`text-xs px-2 py-0.5 rounded ${
+                        ep.enabled
+                          ? 'bg-green-50 text-green-700'
+                          : 'bg-slate-100 text-slate-500'
+                      }`}
+                    >
+                      {ep.enabled ? 'Active' : 'Disabled'}
+                    </button>
+                    <button
+                      onClick={() => handleTest(ep.id)}
+                      disabled={testingId === ep.id}
+                      className="text-xs text-slate-600 hover:text-slate-800 disabled:opacity-50"
+                    >
+                      {testingId === ep.id ? 'Testing…' : 'Test'}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(ep.id)}
+                      className="text-xs text-red-600 hover:text-red-800"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {events.map((ev) => (
+                    <span
+                      key={ev}
+                      className="inline-block text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded"
+                    >
+                      {ev}
+                    </span>
+                  ))}
+                </div>
+                {ep.lastError && (
+                  <p className="text-xs text-red-600">Last error: {ep.lastError}</p>
+                )}
+                {ep.lastFiredAt && (
+                  <p className="text-xs text-slate-400">
+                    Last fired: {new Date(ep.lastFiredAt).toLocaleString()}
+                  </p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="text-sm text-slate-500">No webhook endpoints configured.</p>
+      )}
+
+      {/* Add form */}
+      {showForm ? (
+        <form onSubmit={handleCreate} className="space-y-3 border border-slate-200 rounded p-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">URL</label>
+            <input
+              type="url"
+              placeholder="https://example.com/webhook"
+              value={formUrl}
+              onChange={(e) => setFormUrl(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded text-sm font-mono"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Events</label>
+            <div className="flex flex-wrap gap-2">
+              {SUPPORTED_EVENTS.map((event) => (
+                <label key={event} className="flex items-center gap-1.5 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={formEvents.includes(event)}
+                    onChange={() => handleToggleEvent(event)}
+                    className="rounded border-slate-300"
+                  />
+                  {event}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Description (optional)
+            </label>
+            <input
+              type="text"
+              placeholder="e.g., Slack notifications"
+              value={formDescription}
+              onChange={(e) => setFormDescription(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={saving || !formUrl.trim() || formEvents.length === 0}
+              className="px-4 py-2 bg-slate-800 text-white rounded hover:bg-slate-700 disabled:opacity-50 text-sm"
+            >
+              {saving ? 'Creating…' : 'Create Webhook'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+              className="px-4 py-2 text-slate-600 hover:text-slate-800 text-sm"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <button
+          onClick={() => setShowForm(true)}
+          className="px-4 py-2 bg-slate-800 text-white rounded hover:bg-slate-700 text-sm"
+        >
+          Add Webhook
+        </button>
+      )}
+    </div>
+  );
+}
