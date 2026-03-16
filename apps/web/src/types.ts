@@ -20,6 +20,7 @@ export interface Project {
   name: string;
   description?: string | null;
   prompt?: string | null;
+  knowledgeBase?: string | null;
   statuses: string;
   createdAt: string;
   archived?: boolean;
@@ -95,6 +96,7 @@ export interface Task {
   title: string;
   description?: string | null;
   instructions?: string | null;
+  acceptanceCriteria?: string | null;
   suggestedTools?: string | null;
   estimatedHours?: number | null;
   storyPoints?: number | null;
@@ -187,6 +189,7 @@ export interface TaskPlanPreview {
   priority: string;
   dependsOn: string[];
   subtasks: SubtaskPreview[];
+  acceptanceCriteria?: string | null;
 }
 
 export interface Org {

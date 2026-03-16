@@ -29,6 +29,7 @@ import StandupReportPanel from '../components/StandupReportPanel';
 import ProjectHealthPanel from '../components/ProjectHealthPanel';
 import MeetingNotesDialog from '../components/MeetingNotesDialog';
 import CSVImportModal from '../components/CSVImportModal';
+import KnowledgeBaseModal from '../components/KnowledgeBaseModal';
 import { IconList, IconBoard, IconTable, IconCalendar, IconClose, IconPlus, IconRefresh, IconSummary, IconFilter, IconKeyboard, IconGitHub } from '../components/shared/Icons';
 import { TOKEN_KEY } from '../api/client';
 import { statusLabel } from '../utils/taskHelpers';
@@ -57,6 +58,7 @@ export default function ProjectDetail() {
   const [gitHubInstallations, setGitHubInstallations] = useState<GitHubInstallation[]>([]);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showCSVImport, setShowCSVImport] = useState(false);
+  const [showKnowledgeBase, setShowKnowledgeBase] = useState(false);
 
   useKeyboardShortcuts({
     tasks: filtering.filteredTasks,
@@ -313,6 +315,15 @@ export default function ProjectDetail() {
           </button>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowKnowledgeBase(true)}
+            className="flex items-center gap-1 text-slate-400 hover:text-slate-600 px-1.5 py-1 text-sm"
+            title="Project Knowledge Base"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" /></svg>
+            KB
+          </button>
           <button
             type="button"
             onClick={() => setShowGitHubModal(true)}
@@ -743,6 +754,14 @@ export default function ProjectDetail() {
           onClose={() => setShowCSVImport(false)}
         />
       )}
+
+      {/* Knowledge base modal */}
+      <KnowledgeBaseModal
+        isOpen={showKnowledgeBase}
+        onClose={() => setShowKnowledgeBase(false)}
+        knowledgeBase={d.project?.knowledgeBase ?? null}
+        onSave={(kb) => d.handleUpdateProject({ knowledgeBase: kb })}
+      />
 
       {/* Keyboard shortcut help */}
       {showShortcutHelp && <KeyboardShortcutHelp onClose={() => setShowShortcutHelp(false)} />}

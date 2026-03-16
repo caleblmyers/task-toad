@@ -79,9 +79,9 @@ export interface ProjectData {
   handleAddTask: (e: React.FormEvent) => Promise<void>;
   startEditTitle: (task: Task) => void;
   handleTitleSave: () => Promise<void>;
-  handleUpdateTask: (taskId: string, updates: { description?: string; instructions?: string; storyPoints?: number | null }) => Promise<void>;
+  handleUpdateTask: (taskId: string, updates: { description?: string; instructions?: string; acceptanceCriteria?: string; storyPoints?: number | null }) => Promise<void>;
   switchView: (v: 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar') => void;
-  handleUpdateProject: (data: { name?: string; description?: string; statuses?: string }) => Promise<void>;
+  handleUpdateProject: (data: { name?: string; description?: string; prompt?: string; knowledgeBase?: string; statuses?: string }) => Promise<void>;
   handleUpdateDependencies: (taskId: string, dependsOnIds: string[]) => Promise<void>;
   handleBulkUpdate: (taskIds: string[], updates: { status?: string; assigneeId?: string | null; sprintId?: string | null; archived?: boolean }) => Promise<void>;
   handleArchiveTask: (taskId: string, archived: boolean) => Promise<void>;
@@ -231,7 +231,7 @@ export function useProjectData(): ProjectData {
     if (!projectId) return;
     try {
       const data = await gql<{ project: Project | null }>(
-        `query Project($projectId: ID!) { project(projectId: $projectId) { projectId name description prompt statuses createdAt orgId archived } }`,
+        `query Project($projectId: ID!) { project(projectId: $projectId) { projectId name description prompt knowledgeBase statuses createdAt orgId archived } }`,
         { projectId }
       );
       if (data.project) setProject(data.project);
@@ -634,13 +634,13 @@ export function useProjectData(): ProjectData {
 
   // --- Project management ---
 
-  const handleUpdateProject = async (data: { name?: string; description?: string; statuses?: string }) => {
+  const handleUpdateProject = async (data: { name?: string; description?: string; prompt?: string; knowledgeBase?: string; statuses?: string }) => {
     if (!projectId) return;
     try {
       const result = await gql<{ updateProject: Project }>(
-        `mutation UpdateProject($projectId: ID!, $name: String, $description: String, $statuses: String) {
-          updateProject(projectId: $projectId, name: $name, description: $description, statuses: $statuses) {
-            projectId name description prompt statuses createdAt orgId archived
+        `mutation UpdateProject($projectId: ID!, $name: String, $description: String, $prompt: String, $knowledgeBase: String, $statuses: String) {
+          updateProject(projectId: $projectId, name: $name, description: $description, prompt: $prompt, knowledgeBase: $knowledgeBase, statuses: $statuses) {
+            projectId name description prompt knowledgeBase statuses createdAt orgId archived
           }
         }`,
         { projectId, ...data }
@@ -1089,11 +1089,12 @@ export function useProjectData(): ProjectData {
     }
   };
 
-  const handleUpdateTask = async (taskId: string, updates: { description?: string; instructions?: string; storyPoints?: number | null }) => {
+  const handleUpdateTask = async (taskId: string, updates: { description?: string; instructions?: string; acceptanceCriteria?: string; storyPoints?: number | null }) => {
     const mutationParts: string[] = ['$taskId: ID!'];
     const vars: Record<string, unknown> = { taskId };
     if (updates.description !== undefined) { mutationParts.push('$description: String'); vars.description = updates.description; }
     if (updates.instructions !== undefined) { mutationParts.push('$instructions: String'); vars.instructions = updates.instructions; }
+    if (updates.acceptanceCriteria !== undefined) { mutationParts.push('$acceptanceCriteria: String'); vars.acceptanceCriteria = updates.acceptanceCriteria; }
     if (updates.storyPoints !== undefined) { mutationParts.push('$storyPoints: Int'); vars.storyPoints = updates.storyPoints; }
 
     const argsPart = Object.keys(updates).map((k) => `${k}: $${k}`).join(', ');

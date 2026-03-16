@@ -61,7 +61,7 @@ export interface TaskDetailPanelProps {
   onCreateComment: (content: string, parentCommentId?: string) => Promise<void>;
   onUpdateComment: (commentId: string, content: string) => Promise<void>;
   onDeleteComment: (commentId: string) => Promise<void>;
-  onUpdateTask?: (taskId: string, updates: { description?: string; instructions?: string; storyPoints?: number | null }) => Promise<void>;
+  onUpdateTask?: (taskId: string, updates: { description?: string; instructions?: string; acceptanceCriteria?: string; storyPoints?: number | null }) => Promise<void>;
   onArchiveTask?: (taskId: string, archived: boolean) => Promise<void>;
   labels?: Label[];
   onAddTaskLabel?: (taskId: string, labelId: string) => Promise<void>;
@@ -107,6 +107,8 @@ function PanelContent({
   const [editDescValue, setEditDescValue] = useState('');
   const [editingInstructions, setEditingInstructions] = useState(false);
   const [editInstrValue, setEditInstrValue] = useState('');
+  const [editingAC, setEditingAC] = useState(false);
+  const [editACValue, setEditACValue] = useState('');
   const [syncingGitHub, setSyncingGitHub] = useState(false);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [showSubtaskForm, setShowSubtaskForm] = useState(false);
@@ -544,6 +546,42 @@ function PanelContent({
             disabled={disabled}
           >
             + Add description
+          </button>
+        )}
+      </div>
+
+      {/* Acceptance Criteria */}
+      <div className="mb-4">
+        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+          <span className="mr-1">&#10003;</span>Acceptance Criteria
+        </p>
+        {editingAC ? (
+          <MarkdownEditor
+            value={editACValue}
+            onChange={setEditACValue}
+            onSave={async () => {
+              if (onUpdateTask) await onUpdateTask(task.taskId, { acceptanceCriteria: editACValue });
+              setEditingAC(false);
+            }}
+            onCancel={() => setEditingAC(false)}
+            placeholder="Add acceptance criteria…"
+            rows={4}
+          />
+        ) : task.acceptanceCriteria ? (
+          <div
+            className="cursor-pointer hover:bg-slate-50 rounded p-1 -m-1"
+            onClick={() => { if (!disabled) { setEditACValue(task.acceptanceCriteria ?? ''); setEditingAC(true); } }}
+            title="Click to edit"
+          >
+            <MarkdownRenderer content={task.acceptanceCriteria} />
+          </div>
+        ) : (
+          <button
+            onClick={() => { setEditACValue(''); setEditingAC(true); }}
+            className="text-xs text-slate-400 hover:text-slate-600"
+            disabled={disabled}
+          >
+            + Add acceptance criteria
           </button>
         )}
       </div>
