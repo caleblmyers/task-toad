@@ -262,7 +262,7 @@ export default function CloseSprintModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-1.5 text-sm text-slate-600 border border-slate-300 rounded hover:bg-slate-50"
+              className="px-4 py-1.5 text-sm text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-800"
             >
               Cancel
             </button>
@@ -292,7 +292,7 @@ export default function CloseSprintModal({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="w-full px-4 py-2 text-sm text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50"
+                  className="w-full px-4 py-2 text-sm text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800"
                 >
                   Go to Backlog
                 </button>
@@ -306,7 +306,7 @@ export default function CloseSprintModal({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="w-full px-4 py-2 text-sm text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50"
+                  className="w-full px-4 py-2 text-sm text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800"
                 >
                   Go to Backlog
                 </button>

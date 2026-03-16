@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { gql } from '../api/client';
+import Button from '../components/shared/Button';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -45,13 +46,9 @@ export default function ForgotPassword() {
               required
             />
             {err && <p className="text-sm text-red-600">{err}</p>}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50"
-            >
+            <Button type="submit" loading={loading} className="w-full">
               {loading ? 'Sending…' : 'Send reset link'}
-            </button>
+            </Button>
           </form>
         )}
 

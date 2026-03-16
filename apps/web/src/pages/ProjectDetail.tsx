@@ -45,8 +45,8 @@ import { TOKEN_KEY } from '../api/client';
 import { statusLabel } from '../utils/taskHelpers';
 import { parseColumns } from '../utils/jsonHelpers';
 
-const activeClass = 'px-3 py-1 text-sm rounded-md bg-white text-slate-800 font-medium shadow-sm';
-const inactiveClass = 'px-3 py-1 text-sm rounded-md text-slate-500 hover:text-slate-700';
+const activeClass = 'px-3 py-1 text-sm rounded-md bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-medium shadow-sm';
+const inactiveClass = 'px-3 py-1 text-sm rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200';
 
 const lazyFallback = (
   <div className="flex items-center justify-center p-8">
@@ -336,7 +336,7 @@ export default function ProjectDetail() {
   };
 
   const viewToggle = (
-    <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
+    <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
       <button onClick={() => { d.switchView('backlog'); setTimelineView(false); }} className={d.view === 'backlog' && !timelineView ? activeClass : inactiveClass} disabled={d.isGenerating}>
         <span className="flex items-center gap-1"><IconList className="w-3.5 h-3.5" /> Backlog</span>
       </button>
@@ -364,9 +364,9 @@ export default function ProjectDetail() {
   return (
     <div className="flex flex-col h-full -m-6">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-6 py-3 bg-white border-b border-slate-200 flex-shrink-0">
+      <div className="flex items-center justify-between px-6 py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <Link to="/app/projects" className={`text-sm text-slate-500 hover:text-slate-700 ${d.isGenerating ? 'pointer-events-none opacity-50' : ''}`}>
+          <Link to="/app/projects" className={`text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 ${d.isGenerating ? 'pointer-events-none opacity-50' : ''}`}>
             ← Projects
           </Link>
           <span className="text-slate-300">/</span>
@@ -377,12 +377,12 @@ export default function ProjectDetail() {
               onChange={(e) => setEditProjectNameValue(e.target.value)}
               onBlur={handleProjectNameSave}
               onKeyDown={(e) => { if (e.key === 'Enter') handleProjectNameSave(); if (e.key === 'Escape') setEditingProjectName(false); }}
-              className="text-sm font-semibold text-slate-800 border-b-2 border-slate-400 focus:outline-none bg-transparent w-48"
+              className="text-sm font-semibold text-slate-800 dark:text-slate-200 border-b-2 border-slate-400 focus:outline-none bg-transparent w-48"
               autoFocus
             />
           ) : (
             <h1
-              className="text-sm font-semibold text-slate-800 cursor-text hover:underline decoration-dashed"
+              className="text-sm font-semibold text-slate-800 dark:text-slate-200 cursor-text hover:underline decoration-dashed"
               onClick={() => {
                 setEditProjectNameValue(d.project?.name ?? '');
                 setEditingProjectName(true);
@@ -411,7 +411,7 @@ export default function ProjectDetail() {
           <button
             type="button"
             onClick={() => setShowFilters((v) => !v)}
-            className={`flex items-center gap-1 text-sm px-2 py-1 rounded-md transition-colors ${filtering.hasActiveFilters || showFilters ? 'text-slate-800 bg-slate-100' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`flex items-center gap-1 text-sm px-2 py-1 rounded-md transition-colors ${filtering.hasActiveFilters || showFilters ? 'text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-700' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
             title="Toggle filters"
           >
             <IconFilter className="w-3.5 h-3.5" />
@@ -515,8 +515,8 @@ export default function ProjectDetail() {
               Template
             </Button>
             {showTemplateMenu && (
-              <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg py-2 z-50 min-w-[260px] p-3 space-y-2">
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Create from template</p>
+              <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-2 z-50 min-w-[260px] p-3 space-y-2">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Create from template</p>
                 {templateList.length === 0 ? (
                   <p className="text-xs text-slate-400">No templates. Create one in Project Settings.</p>
                 ) : (
@@ -524,7 +524,7 @@ export default function ProjectDetail() {
                     <select
                       value={selectedTemplateId ?? ''}
                       onChange={(e) => setSelectedTemplateId(e.target.value || null)}
-                      className="w-full text-sm border border-slate-300 rounded px-2 py-1"
+                      className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded px-2 py-1 dark:bg-slate-700 dark:text-slate-200"
                     >
                       <option value="">Select template...</option>
                       {templateList.map((t) => (
@@ -538,7 +538,7 @@ export default function ProjectDetail() {
                           value={templateTitle}
                           onChange={(e) => setTemplateTitle(e.target.value)}
                           placeholder="Task title"
-                          className="w-full text-sm border border-slate-300 rounded px-2 py-1.5"
+                          className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 dark:bg-slate-700 dark:text-slate-200"
                           autoFocus
                         />
                         <button
@@ -566,34 +566,34 @@ export default function ProjectDetail() {
               Import/Export
             </Button>
             {showExportMenu && (
-              <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg py-1 z-50 min-w-[180px]">
+              <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 z-50 min-w-[180px]">
                 <button
-                  className="w-full text-left px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                  className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
                   onClick={() => { downloadExport(`project/${d.projectId}/csv`, `${d.project?.name ?? 'tasks'}.csv`); setShowExportMenu(false); }}
                 >
                   Export Tasks (CSV)
                 </button>
                 <button
-                  className="w-full text-left px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                  className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
                   onClick={() => { downloadExport(`project/${d.projectId}/json`, `${d.project?.name ?? 'tasks'}.json`); setShowExportMenu(false); }}
                 >
                   Export Tasks (JSON)
                 </button>
                 <button
-                  className="w-full text-left px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                  className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
                   onClick={() => { downloadExport(`project/${d.projectId}/activity/csv`, `${d.project?.name ?? 'activity'}-activity.csv`); setShowExportMenu(false); }}
                 >
                   Export Activity (CSV)
                 </button>
                 <button
-                  className="w-full text-left px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                  className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
                   onClick={() => { downloadExport(`project/${d.projectId}/activity/json`, `${d.project?.name ?? 'activity'}-activity.json`); setShowExportMenu(false); }}
                 >
                   Export Activity (JSON)
                 </button>
                 <hr className="my-1 border-slate-100" />
                 <button
-                  className="w-full text-left px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                  className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
                   onClick={() => { setShowCSVImport(true); setShowExportMenu(false); }}
                 >
                   Import CSV
@@ -606,7 +606,7 @@ export default function ProjectDetail() {
 
       {/* Status editor */}
       {showStatusEditor && (
-        <div className="px-6 py-2 bg-slate-50 border-b border-slate-100 flex-shrink-0 animate-fade-in">
+        <div className="px-6 py-2 bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 flex-shrink-0 animate-fade-in">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Statuses:</span>
             {d.projectStatuses.map((s) => (
@@ -632,7 +632,7 @@ export default function ProjectDetail() {
 
       {/* Filter bar */}
       {showFilters && (
-        <div className="px-6 py-2 bg-slate-50 border-b border-slate-100 flex-shrink-0 animate-fade-in">
+        <div className="px-6 py-2 bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 flex-shrink-0 animate-fade-in">
           <FilterBar
             statusFilter={filtering.statusFilter}
             priorityFilter={filtering.priorityFilter}
@@ -653,14 +653,14 @@ export default function ProjectDetail() {
 
       {/* Inline add form */}
       {d.showAddForm && !d.isGenerating && (
-        <div className="px-6 py-3 bg-slate-50 border-b border-slate-100 flex-shrink-0">
+        <div className="px-6 py-3 bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 flex-shrink-0">
           <form onSubmit={d.handleAddTask} className="flex items-center gap-2">
             <input
               type="text"
               value={d.newTaskTitle}
               onChange={(e) => d.setNewTaskTitle(e.target.value)}
               placeholder="Task title"
-              className="flex-1 max-w-sm px-2 py-1.5 text-sm border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-brand-green"
+              className="flex-1 max-w-sm px-2 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded focus:outline-none focus:ring-1 focus:ring-brand-green dark:bg-slate-700 dark:text-slate-200"
               required
               autoFocus
             />
@@ -719,7 +719,7 @@ export default function ProjectDetail() {
                     <IconClose className="w-3 h-3" /> Dismiss
                   </button>
                 </div>
-                <p className="text-slate-700 leading-relaxed">{d.summary}</p>
+                <p className="text-slate-700 dark:text-slate-300 leading-relaxed">{d.summary}</p>
               </div>
             </div>
           ) : timelineView ? (
@@ -799,11 +799,11 @@ export default function ProjectDetail() {
           ) : (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center space-y-3">
-                <p className="text-slate-500 text-sm">No active sprint. Set a sprint as active to see the board.</p>
+                <p className="text-slate-500 dark:text-slate-400 text-sm">No active sprint. Set a sprint as active to see the board.</p>
                 <button
                   type="button"
                   onClick={() => d.setShowSprintModal(true)}
-                  className="text-sm text-slate-600 hover:text-slate-800 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50"
+                  className="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800"
                 >
                   + Create Sprint
                 </button>
@@ -814,8 +814,8 @@ export default function ProjectDetail() {
 
         {/* Right: task detail panel */}
         {d.selectedTask && (
-          <div className="w-[440px] flex-shrink-0 border-l border-slate-200 bg-white flex flex-col overflow-hidden">
-            <div className="px-4 pt-2 pb-1 border-b border-slate-100 flex-shrink-0">
+          <div className="w-[440px] flex-shrink-0 border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex flex-col overflow-hidden">
+            <div className="px-4 pt-2 pb-1 border-b border-slate-100 dark:border-slate-700 flex-shrink-0">
               <button
                 type="button"
                 onClick={handleSaveAsTemplate}

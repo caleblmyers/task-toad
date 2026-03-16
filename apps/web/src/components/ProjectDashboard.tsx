@@ -21,9 +21,9 @@ const priorityColors: Record<string, string> = {
 
 function StatCard({ label, value, subtext }: { label: string; value: string | number; subtext?: string }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-4">
-      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
-      <p className="text-2xl font-bold text-slate-800 mt-1">{value}</p>
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+      <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">{label}</p>
+      <p className="text-2xl font-bold text-slate-800 dark:text-slate-200 mt-1">{value}</p>
       {subtext && <p className="text-xs text-slate-400 mt-0.5">{subtext}</p>}
     </div>
   );
@@ -40,10 +40,10 @@ function BarChart({ items, colorMap }: { items: Array<{ label: string; count: nu
         return (
           <div key={item.label}>
             <div className="flex items-center justify-between text-xs mb-0.5">
-              <span className="text-slate-600">{statusLabel(item.label)}</span>
+              <span className="text-slate-600 dark:text-slate-400">{statusLabel(item.label)}</span>
               <span className="text-slate-400">{item.count} ({pct}%)</span>
             </div>
-            <div className="w-full bg-slate-100 rounded-full h-2">
+            <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2">
               <div
                 className={`h-2 rounded-full ${colorMap[item.label] ?? 'bg-slate-400'}`}
                 style={{ width: `${pct}%` }}
@@ -111,7 +111,7 @@ export default function ProjectDashboard({ stats, activities, loading, projectId
         {/* Dashboard header */}
         <div className="flex items-center gap-3">
           <img src="/logo-data.png" alt="" className="w-8 h-8 opacity-60" aria-hidden="true" />
-          <h2 className="text-lg font-semibold text-slate-800">Project Dashboard</h2>
+          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Project Dashboard</h2>
         </div>
 
         {/* Stat cards */}
@@ -126,9 +126,9 @@ export default function ProjectDashboard({ stats, activities, loading, projectId
         </div>
 
         {/* Progress bar */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Completion</p>
-          <div className="w-full bg-slate-100 rounded-full h-3">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Completion</p>
+          <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-3">
             <div
               className="h-3 rounded-full bg-green-500 transition-all"
               style={{ width: `${stats.completionPercent}%` }}
@@ -139,30 +139,30 @@ export default function ProjectDashboard({ stats, activities, loading, projectId
 
         {/* Charts */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Tasks by Status</p>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Tasks by Status</p>
             <BarChart items={stats.tasksByStatus} colorMap={statusColors} />
           </div>
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Tasks by Priority</p>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Tasks by Priority</p>
             <BarChart items={stats.tasksByPriority} colorMap={priorityColors} />
           </div>
         </div>
 
         {/* Assignee breakdown */}
         {stats.tasksByAssignee.length > 0 && (
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Tasks by Assignee</p>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Tasks by Assignee</p>
             <div className="space-y-2">
               {stats.tasksByAssignee.map((a) => {
                 const pct = Math.round((a.count / stats.totalTasks) * 100);
                 return (
                   <div key={a.userId}>
                     <div className="flex items-center justify-between text-xs mb-0.5">
-                      <span className="text-slate-600">{a.email}</span>
+                      <span className="text-slate-600 dark:text-slate-400">{a.email}</span>
                       <span className="text-slate-400">{a.count} ({pct}%)</span>
                     </div>
-                    <div className="w-full bg-slate-100 rounded-full h-2">
+                    <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2">
                       <div className="h-2 rounded-full bg-indigo-400" style={{ width: `${pct}%` }} />
                     </div>
                   </div>
@@ -174,12 +174,12 @@ export default function ProjectDashboard({ stats, activities, loading, projectId
 
         {/* Hours */}
         {stats.totalEstimatedHours > 0 && (
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Hours</p>
-            <p className="text-sm text-slate-700">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Hours</p>
+            <p className="text-sm text-slate-700 dark:text-slate-300">
               {formatHours(stats.completedEstimatedHours)} completed of {formatHours(stats.totalEstimatedHours)} estimated
             </p>
-            <div className="w-full bg-slate-100 rounded-full h-2 mt-2">
+            <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2 mt-2">
               <div
                 className="h-2 rounded-full bg-blue-500"
                 style={{ width: `${Math.round((stats.completedEstimatedHours / stats.totalEstimatedHours) * 100)}%` }}
@@ -190,17 +190,17 @@ export default function ProjectDashboard({ stats, activities, loading, projectId
 
         {/* Velocity Chart */}
         {closedSprints.length >= 2 && (
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Sprint Velocity</p>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Sprint Velocity</p>
             <VelocityChart data={velocityData} />
           </div>
         )}
 
         {/* Burndown Chart */}
         {(activeSprint?.startDate && activeSprint?.endDate) || sprintsWithDates.length > 0 ? (
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Burndown</p>
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Burndown</p>
               {sprintsWithDates.length > 1 && (
                 <select
                   value={selectedBurndownSprint}
@@ -223,8 +223,8 @@ export default function ProjectDashboard({ stats, activities, loading, projectId
         ) : null}
 
         {/* Activity feed */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Recent Activity</p>
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Recent Activity</p>
           <ActivityFeed activities={activities} />
         </div>
       </div>

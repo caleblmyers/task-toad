@@ -144,7 +144,7 @@ function PanelContent({
 
       {/* Description */}
       <div className="mb-4">
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Description</p>
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Description</p>
         {editingDescription ? (
           <MarkdownEditor
             value={editDescValue}
@@ -159,7 +159,7 @@ function PanelContent({
           />
         ) : task.description ? (
           <div
-            className="cursor-pointer hover:bg-slate-50 rounded p-1 -m-1"
+            className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded p-1 -m-1"
             onClick={() => { if (!disabled) { setEditDescValue(task.description ?? ''); setEditingDescription(true); } }}
             title="Click to edit"
           >
@@ -178,7 +178,7 @@ function PanelContent({
 
       {/* Acceptance Criteria */}
       <div className="mb-4">
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
           <span className="mr-1">&#10003;</span>Acceptance Criteria
         </p>
         {editingAC ? (
@@ -195,7 +195,7 @@ function PanelContent({
           />
         ) : task.acceptanceCriteria ? (
           <div
-            className="cursor-pointer hover:bg-slate-50 rounded p-1 -m-1"
+            className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded p-1 -m-1"
             onClick={() => { if (!disabled) { setEditACValue(task.acceptanceCriteria ?? ''); setEditingAC(true); } }}
             title="Click to edit"
           >
@@ -214,7 +214,7 @@ function PanelContent({
 
       {/* Instructions */}
       <div className="mb-4">
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Instructions</p>
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Instructions</p>
         {editingInstructions ? (
           <MarkdownEditor
             value={editInstrValue}
@@ -229,7 +229,7 @@ function PanelContent({
           />
         ) : task.instructions ? (
           <div
-            className="bg-slate-50 rounded-lg p-3 cursor-pointer hover:bg-slate-100"
+            className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700"
             onClick={() => { if (!disabled) { setEditInstrValue(task.instructions ?? ''); setEditingInstructions(true); } }}
             title="Click to edit"
           >
@@ -241,7 +241,7 @@ function PanelContent({
               type="button"
               onClick={() => onGenerateInstructions(task)}
               disabled={disabled || generatingInstructions === task.taskId}
-              className="px-3 py-1.5 text-sm border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50"
+              className="px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 dark:text-slate-200"
             >
               {generatingInstructions === task.taskId ? 'Generating…' : '✦ Generate instructions'}
             </button>
@@ -263,7 +263,7 @@ function PanelContent({
             type="button"
             onClick={() => onReviewPR(task.taskId, task.pullRequests![0].prNumber)}
             disabled={disabled || reviewLoading}
-            className="px-3 py-1.5 text-sm border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50"
+            className="px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 dark:text-slate-200"
           >
             {reviewLoading ? 'Reviewing…' : '✦ AI Review'}
           </button>
@@ -288,7 +288,7 @@ function PanelContent({
       {/* Suggested Tools */}
       {tools.length > 0 && (
         <div className="mb-4">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Suggested Tools</p>
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Suggested Tools</p>
           <div className="flex flex-wrap gap-2">
             {tools.map((tool, i) => (
               <div key={i} className={`px-2.5 py-1.5 rounded-lg text-xs ${categoryColors[tool.category] ?? categoryColors.other}`}>
@@ -319,13 +319,13 @@ function PanelContent({
 
       {/* Activity */}
       <div>
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Activity</p>
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Activity</p>
         <ActivityFeed activities={activities} />
       </div>
 
       {/* Archive / Unarchive */}
       {onArchiveTask && (
-        <div className="mt-6 pt-4 border-t border-slate-200">
+        <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
           <button
             type="button"
             onClick={() => onArchiveTask(task.taskId, !task.archived)}
@@ -354,7 +354,7 @@ export default function TaskDetailPanel(props: TaskDetailPanelProps) {
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 text-lg leading-none"
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-lg leading-none"
             aria-label="Close"
           >
             ✕

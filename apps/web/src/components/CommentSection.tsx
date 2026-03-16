@@ -55,12 +55,12 @@ const CommentItem = memo(function CommentItem({
   return (
     <div className={`${isReply ? 'ml-8 border-l-2 border-slate-100 pl-3' : ''}`}>
       <div className="flex items-start gap-2 py-2">
-        <div className="w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-medium flex-shrink-0">
+        <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center text-xs font-medium flex-shrink-0">
           {comment.userEmail.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-slate-700">{comment.userEmail}</span>
+            <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{comment.userEmail}</span>
             <span className="text-xs text-slate-400">{timeAgo(comment.createdAt)}</span>
             {comment.createdAt !== comment.updatedAt && (
               <span className="text-xs text-slate-400">(edited)</span>
@@ -71,7 +71,7 @@ const CommentItem = memo(function CommentItem({
               <textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
-                className="w-full text-sm border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-green resize-none"
+                className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-green resize-none dark:bg-slate-700 dark:text-slate-200"
                 rows={2}
                 autoFocus
               />
@@ -195,7 +195,7 @@ export default function CommentSection({
 
   return (
     <div>
-      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Comments</p>
+      <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Comments</p>
 
       {/* New comment input */}
       <div className="flex gap-2 mb-3">
@@ -204,7 +204,7 @@ export default function CommentSection({
           value={newComment}
           onChange={handleCommentInput}
           placeholder="Add a comment... (use @ to mention)"
-          className="flex-1 text-sm border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-green resize-none"
+          className="flex-1 text-sm border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-green resize-none dark:bg-slate-700 dark:text-slate-200"
           rows={2}
           onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit(); }}
         />
@@ -258,7 +258,7 @@ export default function CommentSection({
                   value={replyContent}
                   onChange={(e) => setReplyContent(e.target.value)}
                   placeholder="Write a reply…"
-                  className="w-full text-sm border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-green resize-none"
+                  className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-green resize-none dark:bg-slate-700 dark:text-slate-200"
                   rows={2}
                   autoFocus
                   onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleReplySubmit(); }}

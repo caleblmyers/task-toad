@@ -190,21 +190,21 @@ export default function OrgSettings() {
 
   return (
     <div className="max-w-lg space-y-8">
-      <h1 className="text-2xl font-semibold text-slate-800">Settings</h1>
+      <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-200">Settings</h1>
 
       {/* API Key */}
-      <div className="bg-white rounded-lg border border-slate-200 p-6 space-y-6">
+      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-6 space-y-6">
         <div>
-          <p className="text-sm font-medium text-slate-500 uppercase tracking-wide">Organization</p>
-          <p className="text-lg text-slate-800 mt-1">{org.name}</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Organization</p>
+          <p className="text-lg text-slate-800 dark:text-slate-200 mt-1">{org.name}</p>
         </div>
 
         <div>
-          <p className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-1">
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
             Anthropic API Key
           </p>
           {org.hasApiKey ? (
-            <p className="text-slate-700 font-mono text-sm">
+            <p className="text-slate-700 dark:text-slate-300 font-mono text-sm">
               {org.apiKeyHint} <span className="text-slate-400 font-sans">(configured)</span>
             </p>
           ) : (
@@ -213,7 +213,7 @@ export default function OrgSettings() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
             {org.hasApiKey ? 'Replace API key' : 'Add API key'}
           </label>
           <input
@@ -221,7 +221,7 @@ export default function OrgSettings() {
             placeholder="sk-ant-..."
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-300 rounded font-mono text-sm"
+            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded font-mono text-sm dark:bg-slate-700 dark:text-slate-200"
           />
           {err && <p className="text-sm text-red-600">{err}</p>}
           {success && <p className="text-sm text-green-600">API key saved.</p>}
@@ -236,18 +236,18 @@ export default function OrgSettings() {
       </div>
 
       {/* Team */}
-      <div className="bg-white rounded-lg border border-slate-200 p-6 space-y-6">
-        <h2 className="text-lg font-semibold text-slate-800">Team</h2>
+      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-6 space-y-6">
+        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Team</h2>
 
         {/* Current members */}
         <div>
-          <p className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-2">Members</p>
-          <ul className="divide-y divide-slate-100">
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Members</p>
+          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
             {orgUsers.map((u) => (
               <li key={u.userId} className="py-2 flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
                   <UserAvatar email={u.email} size="sm" />
-                  <span className="text-slate-800">{u.email}</span>
+                  <span className="text-slate-800 dark:text-slate-200">{u.email}</span>
                 </div>
                 <span className="text-slate-500">{u.role ?? '—'}</span>
               </li>
@@ -258,12 +258,12 @@ export default function OrgSettings() {
         {/* Pending invites */}
         {invites.length > 0 && (
           <div>
-            <p className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-2">Pending Invites</p>
-            <ul className="divide-y divide-slate-100">
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Pending Invites</p>
+            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
               {invites.map((inv) => (
                 <li key={inv.inviteId} className="py-2 flex items-center justify-between text-sm gap-2">
                   <div>
-                    <span className="text-slate-800">{inv.email}</span>
+                    <span className="text-slate-800 dark:text-slate-200">{inv.email}</span>
                     <span className="ml-2 text-slate-500">{inv.role}</span>
                     <span className="ml-2 text-slate-400 text-xs">
                       expires {new Date(inv.expiresAt).toLocaleDateString()}
@@ -283,20 +283,20 @@ export default function OrgSettings() {
 
         {/* Invite form */}
         <div>
-          <p className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-2">Invite member</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Invite member</p>
           <form onSubmit={handleInvite} className="space-y-2">
             <input
               type="email"
               placeholder="Email address"
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded text-sm dark:bg-slate-700 dark:text-slate-200"
               required
             />
             <select
               value={inviteRole}
               onChange={(e) => setInviteRole(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded text-sm dark:bg-slate-700 dark:text-slate-200"
             >
               <option value="org:member">Member</option>
               <option value="org:admin">Admin</option>
@@ -315,8 +315,8 @@ export default function OrgSettings() {
       </div>
 
       {/* GitHub */}
-      <div className="bg-white rounded-lg border border-slate-200 p-6 space-y-6">
-        <h2 className="text-lg font-semibold text-slate-800">GitHub</h2>
+      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-6 space-y-6">
+        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">GitHub</h2>
 
         {linkErr && <p className="text-sm text-red-600">{linkErr}</p>}
         {linkSuccess && <p className="text-sm text-green-600">GitHub App linked successfully!</p>}
@@ -325,8 +325,8 @@ export default function OrgSettings() {
           <p className="text-sm text-slate-500">Loading…</p>
         ) : installations.length > 0 ? (
           <div>
-            <p className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-2">Installations</p>
-            <ul className="divide-y divide-slate-100">
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Installations</p>
+            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
               {installations.map((inst) => (
                 <li key={inst.installationId} className="py-2 flex items-center justify-between text-sm">
                   <div>
@@ -365,20 +365,20 @@ export default function OrgSettings() {
       </div>
 
       {/* Slack */}
-      <div className="bg-white rounded-lg border border-slate-200 p-6 space-y-6">
-        <h2 className="text-lg font-semibold text-slate-800">Slack</h2>
+      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-6 space-y-6">
+        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Slack</h2>
         <SlackSettings />
       </div>
 
       {/* Webhooks */}
-      <div className="bg-white rounded-lg border border-slate-200 p-6 space-y-6">
-        <h2 className="text-lg font-semibold text-slate-800">Webhooks</h2>
+      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-6 space-y-6">
+        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Webhooks</h2>
         <WebhookSettings />
       </div>
 
       {/* AI Usage */}
-      <div className="bg-white rounded-lg border border-slate-200 p-6 space-y-6">
-        <h2 className="text-lg font-semibold text-slate-800">AI Usage</h2>
+      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-6 space-y-6">
+        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">AI Usage</h2>
         <AIUsageDashboard />
       </div>
     </div>

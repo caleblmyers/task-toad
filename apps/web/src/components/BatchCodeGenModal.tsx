@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { gql } from '../api/client';
 import { IconClose } from './shared/Icons';
 import Modal from './shared/Modal';
+import Button from './shared/Button';
 import type { Task } from '../types';
 
 interface GeneratedFile {
@@ -143,17 +144,13 @@ export default function BatchCodeGenModal({ projectId, tasks, onClose }: BatchCo
           )}
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={onClose} className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800">
+          <Button variant="ghost" size="sm" onClick={onClose}>
             Close
-          </button>
+          </Button>
           {!result && (
-            <button
-              onClick={handleGenerate}
-              disabled={generating || selectedIds.size === 0}
-              className="px-4 py-1.5 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <Button size="sm" onClick={handleGenerate} loading={generating} disabled={selectedIds.size === 0} className="rounded-lg">
               {generating ? 'Generating...' : `Generate Code (${selectedIds.size})`}
-            </button>
+            </Button>
           )}
         </div>
       </div>

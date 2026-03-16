@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { gql } from '../api/client';
 import { computeDiff, type DiffLine } from '../utils/diff';
 import Modal from './shared/Modal';
+import Button from './shared/Button';
 
 interface GeneratedFile {
   path: string;
@@ -378,28 +379,12 @@ export default function CodePreviewModal({
 
       {/* Footer */}
       <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-end gap-3 flex-shrink-0">
-        <button
-          type="button"
-          onClick={onClose}
-          disabled={isCreatingPR}
-          className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50"
-        >
+        <Button variant="secondary" onClick={onClose} disabled={isCreatingPR} className="rounded-lg">
           Cancel
-        </button>
-        <button
-          type="button"
-          onClick={handleCreatePR}
-          disabled={isCreatingPR}
-          className="px-4 py-2 text-sm text-white bg-slate-700 rounded-lg hover:bg-slate-600 disabled:opacity-50 flex items-center gap-2"
-        >
-          {isCreatingPR && (
-            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-          )}
+        </Button>
+        <Button onClick={handleCreatePR} loading={isCreatingPR} className="rounded-lg bg-slate-700 hover:bg-slate-600">
           {isCreatingPR ? 'Creating PR…' : 'Create Pull Request'}
-        </button>
+        </Button>
       </div>
     </Modal>
   );

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { gql } from '../api/client';
 import { useAuth } from '../auth/context';
+import Button from '../components/shared/Button';
 
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams();
@@ -80,13 +81,9 @@ export default function VerifyEmail() {
             {resent ? (
               <p className="text-green-600 text-sm">Verification email sent! Check your inbox.</p>
             ) : (
-              <button
-                onClick={handleResend}
-                disabled={resending}
-                className="w-full py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50"
-              >
+              <Button onClick={handleResend} loading={resending} className="w-full">
                 {resending ? 'Sending…' : 'Resend verification email'}
-              </button>
+              </Button>
             )}
             {err && status !== 'error' && <p className="text-red-600 text-sm">{err}</p>}
           </>

@@ -73,23 +73,23 @@ export default function CalendarView({ tasks, selectedTask, onSelectTask }: Cale
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold text-slate-800">{formatMonthYear(currentMonth)}</h2>
+            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">{formatMonthYear(currentMonth)}</h2>
             <div className="flex items-center gap-1">
               <button
                 onClick={prevMonth}
-                className="px-2 py-1 text-sm text-slate-500 hover:text-slate-700 border border-slate-200 rounded hover:bg-slate-50"
+                className="px-2 py-1 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-800"
               >
                 &#8249;
               </button>
               <button
                 onClick={goToday}
-                className="px-2 py-1 text-sm text-slate-500 hover:text-slate-700 border border-slate-200 rounded hover:bg-slate-50"
+                className="px-2 py-1 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-800"
               >
                 Today
               </button>
               <button
                 onClick={nextMonth}
-                className="px-2 py-1 text-sm text-slate-500 hover:text-slate-700 border border-slate-200 rounded hover:bg-slate-50"
+                className="px-2 py-1 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-800"
               >
                 &#8250;
               </button>
@@ -98,16 +98,16 @@ export default function CalendarView({ tasks, selectedTask, onSelectTask }: Cale
         </div>
 
         {/* Day headers */}
-        <div className="grid grid-cols-7 border-b border-slate-200">
+        <div className="grid grid-cols-7 border-b border-slate-200 dark:border-slate-700">
           {DAY_NAMES.map((d) => (
-            <div key={d} className="px-2 py-1.5 text-xs font-medium text-slate-500 text-center uppercase tracking-wide">
+            <div key={d} className="px-2 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 text-center uppercase tracking-wide">
               {d}
             </div>
           ))}
         </div>
 
         {/* Calendar grid */}
-        <div className="grid grid-cols-7 border-l border-slate-200">
+        <div className="grid grid-cols-7 border-l border-slate-200 dark:border-slate-700">
           {cells.map((cell, i) => {
             const dayTasks = cell.dateStr ? (tasksByDate[cell.dateStr] ?? []) : [];
             const isToday = cell.dateStr === todayStr;
@@ -115,8 +115,8 @@ export default function CalendarView({ tasks, selectedTask, onSelectTask }: Cale
             return (
               <div
                 key={i}
-                className={`min-h-[100px] border-r border-b border-slate-200 p-1 ${
-                  cell.day ? 'bg-white' : 'bg-slate-50'
+                className={`min-h-[100px] border-r border-b border-slate-200 dark:border-slate-700 p-1 ${
+                  cell.day ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-800'
                 }`}
               >
                 {cell.day && (
@@ -154,14 +154,14 @@ export default function CalendarView({ tasks, selectedTask, onSelectTask }: Cale
 
         {/* No date section */}
         {noDateTasks.length > 0 && (
-          <div className="mt-4 bg-white border border-slate-200 rounded-xl p-4">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">No due date ({noDateTasks.length})</p>
+          <div className="mt-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">No due date ({noDateTasks.length})</p>
             <div className="flex flex-wrap gap-1.5">
               {noDateTasks.slice(0, 20).map((task) => (
                 <button
                   key={task.taskId}
                   onClick={() => onSelectTask(task)}
-                  className={`text-xs px-2 py-1 rounded border border-slate-200 text-slate-600 hover:bg-slate-50 truncate max-w-[200px] ${
+                  className={`text-xs px-2 py-1 rounded border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 truncate max-w-[200px] ${
                     selectedTask?.taskId === task.taskId ? 'ring-2 ring-blue-500' : ''
                   }`}
                 >

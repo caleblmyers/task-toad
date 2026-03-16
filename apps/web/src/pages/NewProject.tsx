@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { gql } from '../api/client';
 import type { ProjectOption } from '../types';
+import Button from '../components/shared/Button';
 
 interface LocationState {
   prompt: string;
@@ -112,21 +113,12 @@ export default function NewProject() {
       {selected && (
         <div className="space-y-3">
           <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={handleCreate}
-              disabled={creating}
-              className="flex-1 py-2.5 bg-brand-green text-white rounded-lg font-medium hover:bg-brand-green-hover disabled:opacity-50"
-            >
+            <Button size="lg" loading={creating} onClick={handleCreate} className="flex-1 rounded-lg font-medium">
               {creating ? 'Creating project…' : 'Create this project →'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowRefine(!showRefine)}
-              className="px-4 py-2.5 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
-            >
+            </Button>
+            <Button variant="secondary" size="lg" onClick={() => setShowRefine(!showRefine)} className="rounded-lg">
               Refine
-            </button>
+            </Button>
           </div>
 
           {showRefine && (
@@ -142,13 +134,9 @@ export default function NewProject() {
                 className="w-full px-3 py-2 border border-slate-300 rounded resize-none text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
                 disabled={refining}
               />
-              <button
-                type="submit"
-                disabled={refining}
-                className="px-4 py-2 bg-brand-green text-white rounded text-sm hover:bg-brand-green-hover disabled:opacity-50"
-              >
+              <Button type="submit" loading={refining} size="sm">
                 {refining ? 'Regenerating…' : 'Regenerate options'}
-              </button>
+              </Button>
             </form>
           )}
         </div>

@@ -220,17 +220,17 @@ export default function GanttChart({ tasks, onSelectTask }: GanttChartProps) {
   return (
     <div ref={containerRef} className="flex-1 flex flex-col overflow-hidden">
       {/* Controls */}
-      <div className="flex items-center gap-3 px-6 py-2 border-b border-slate-200 bg-white flex-shrink-0">
-        <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Zoom:</span>
-        <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
+      <div className="flex items-center gap-3 px-6 py-2 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex-shrink-0">
+        <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Zoom:</span>
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
           {(['day', 'week', 'month'] as Granularity[]).map((g) => (
             <button
               key={g}
               onClick={() => setGranularity(g)}
               className={`px-3 py-1 text-xs rounded-md capitalize ${
                 granularity === g
-                  ? 'bg-white text-slate-800 font-medium shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
+                  ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-medium shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
               }`}
             >
               {g}
@@ -247,12 +247,12 @@ export default function GanttChart({ tasks, onSelectTask }: GanttChartProps) {
         {/* Fixed sidebar */}
         <div
           ref={sidebarRef}
-          className="flex-shrink-0 overflow-hidden border-r border-slate-200 bg-white"
+          className="flex-shrink-0 overflow-hidden border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
           style={{ width: SIDEBAR_W }}
         >
           {/* Header spacer */}
           <div
-            className="border-b border-slate-200 bg-slate-50 flex items-center px-3"
+            className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center px-3"
             style={{ height: HEADER_H }}
           >
             <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Task</span>
@@ -265,7 +265,7 @@ export default function GanttChart({ tasks, onSelectTask }: GanttChartProps) {
               return (
                 <div
                   key={task.taskId}
-                  className={`flex items-center gap-2 px-3 cursor-pointer hover:bg-slate-50 border-b border-slate-100 ${
+                  className={`flex items-center gap-2 px-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-slate-800 ${
                     hoveredTaskId === task.taskId ? 'bg-slate-50' : ''
                   } ${isNoDate && i === datedTasks.length ? 'border-t-2 border-t-slate-300' : ''}`}
                   style={{ height: ROW_H }}
@@ -280,7 +280,7 @@ export default function GanttChart({ tasks, onSelectTask }: GanttChartProps) {
                   >
                     {badge.label}
                   </span>
-                  <span className="text-xs text-slate-700 truncate">{task.title}</span>
+                  <span className="text-xs text-slate-700 dark:text-slate-300 truncate">{task.title}</span>
                 </div>
               );
             })}
@@ -295,13 +295,13 @@ export default function GanttChart({ tasks, onSelectTask }: GanttChartProps) {
         >
           {/* Timeline header */}
           <div
-            className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 flex"
+            className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex"
             style={{ width: timelineWidth, height: HEADER_H }}
           >
             {columns.map((col, i) => (
               <div
                 key={i}
-                className="flex-shrink-0 flex items-center justify-center text-xs text-slate-500 border-r border-slate-200"
+                className="flex-shrink-0 flex items-center justify-center text-xs text-slate-500 dark:text-slate-400 border-r border-slate-200 dark:border-slate-700"
                 style={{ width: colWidth }}
               >
                 {col.label}

@@ -324,13 +324,9 @@ export default function TaskPlanApprovalDialog({
               rows={3}
             />
             <div className="flex gap-2 justify-end">
-              <button
-                type="button"
-                onClick={onCancel}
-                className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800"
-              >
+              <Button variant="ghost" size="sm" onClick={onCancel}>
                 Cancel
-              </button>
+              </Button>
               <Button size="sm" disabled={!context.trim()} onClick={handleRetryWithContext} className="font-medium rounded-lg px-4">
                 Try with context →
               </Button>
@@ -347,24 +343,26 @@ export default function TaskPlanApprovalDialog({
               disabled={loading}
               onKeyDown={(e) => { if (e.key === 'Enter' && e.metaKey && !loading) handleRedo(); }}
             />
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={handleRedo}
               disabled={loading}
-              className="px-3 py-1.5 text-sm border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
               aria-label="Redo task generation"
+              className="rounded-lg whitespace-nowrap"
             >
               ↺ Redo
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={handleAddMore}
               disabled={loading}
-              className="px-3 py-1.5 text-sm border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
               aria-label="Add more tasks"
+              className="rounded-lg whitespace-nowrap"
             >
               + Add more
-            </button>
+            </Button>
           </div>
         )}
 

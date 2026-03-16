@@ -44,8 +44,8 @@ interface FilterBarProps {
 }
 
 const pillBase = 'text-xs px-2.5 py-1 rounded-full border transition-colors cursor-pointer';
-const pillActive = 'border-slate-400 bg-slate-100 text-slate-700';
-const pillInactive = 'border-slate-200 bg-white text-slate-500 hover:border-slate-300';
+const pillActive = 'border-slate-400 dark:border-slate-500 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200';
+const pillInactive = 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-500';
 
 export default function FilterBar({
   statusFilter, priorityFilter, assigneeFilter,
@@ -299,7 +299,7 @@ export default function FilterBar({
                 onChange={(e) => setSaveName(e.target.value)}
                 placeholder="Filter name"
                 aria-label="Save filter name"
-                className="text-xs border border-slate-300 rounded px-2 py-1 w-28 focus:outline-none focus:ring-1 focus:ring-brand-green"
+                className="text-xs border border-slate-300 dark:border-slate-600 rounded px-2 py-1 w-28 focus:outline-none focus:ring-1 focus:ring-brand-green dark:bg-slate-700 dark:text-slate-200"
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSaveFilter(); }}
                 autoFocus
               />

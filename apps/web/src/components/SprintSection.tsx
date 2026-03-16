@@ -161,8 +161,8 @@ export const TaskRow = memo(function TaskRow({
         onDragStart(task.taskId);
         e.dataTransfer.effectAllowed = 'move';
       }}
-      className={`relative w-full text-left px-3 py-2 rounded-lg border border-transparent hover:bg-slate-50 hover:border-slate-200 transition-colors flex items-center gap-2 cursor-grab active:cursor-grabbing group ${
-        isSelected ? 'bg-blue-50 border-blue-200' : ''
+      className={`relative w-full text-left px-3 py-2 rounded-lg border border-transparent hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-200 dark:hover:border-slate-700 transition-colors flex items-center gap-2 cursor-grab active:cursor-grabbing group ${
+        isSelected ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700' : ''
       } ${task.archived ? 'opacity-50' : ''}`}
     >
       <input
@@ -177,7 +177,7 @@ export const TaskRow = memo(function TaskRow({
       {task.taskType && task.taskType !== 'task' && (
         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${taskTypeDot[task.taskType] ?? ''}`} title={task.taskType} />
       )}
-      <span className={`flex-1 text-sm leading-snug ${task.taskType === 'epic' ? 'font-semibold text-slate-900' : 'text-slate-800'}`}>{task.title}</span>
+      <span className={`flex-1 text-sm leading-snug ${task.taskType === 'epic' ? 'font-semibold text-slate-900 dark:text-slate-100' : 'text-slate-800 dark:text-slate-200'}`}>{task.title}</span>
       <div className="flex items-center gap-1.5 flex-shrink-0">
         <DependencyBadge task={task} allTasks={allTasks} onTaskClick={(id) => {
           const t = allTasks.find((at) => at.taskId === id);
@@ -241,7 +241,7 @@ export const TaskRow = memo(function TaskRow({
         <div
           ref={dropdownRef}
           tabIndex={-1}
-          className="absolute right-0 top-full mt-1 z-10 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[160px] outline-none"
+          className="absolute right-0 top-full mt-1 z-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 min-w-[160px] outline-none"
           role="listbox"
           aria-label="Select sprint"
           aria-activedescendant={activeOptionId}
@@ -328,8 +328,8 @@ export default function SprintSection({
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
         <div>
           <div className="flex items-center gap-2">
             <input
@@ -340,7 +340,7 @@ export default function SprintSection({
                 showCheckboxes ? 'opacity-100' : 'opacity-0 hover:opacity-100'
               } transition-opacity`}
             />
-            <span className="font-semibold text-slate-800 text-sm">{sprint.name}</span>
+            <span className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{sprint.name}</span>
             <span className="text-xs text-slate-400">({countLabel})</span>
             {dateRange && <span className="text-xs text-slate-400">{dateRange}</span>}
             {sprint.isActive && (
@@ -384,7 +384,7 @@ export default function SprintSection({
         </div>
       </div>
       {burndownVisible && (
-        <div className="px-4 py-3 border-b border-slate-200 bg-white">
+        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
           <BurndownChart sprintId={sprint.sprintId} />
         </div>
       )}

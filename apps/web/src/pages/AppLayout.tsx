@@ -6,6 +6,7 @@ import NotificationCenter from '../components/NotificationCenter';
 import NotificationSettings from '../components/NotificationSettings';
 import GlobalSearchModal from '../components/GlobalSearchModal';
 import UserAvatar from '../components/shared/UserAvatar';
+import { IconSun, IconMoon } from '../components/shared/Icons';
 import { useEventSource } from '../hooks/useEventSource';
 
 export default function AppLayout() {
@@ -17,6 +18,16 @@ export default function AppLayout() {
   const [showSearch, setShowSearch] = useState(false);
   const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
   const [profileDisplayName, setProfileDisplayName] = useState<string | null>(null);
+  const [darkMode, setDarkMode] = useState(() => {
+    const stored = localStorage.getItem('task-toad-dark-mode');
+    if (stored !== null) return stored === 'true';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+    localStorage.setItem('task-toad-dark-mode', String(darkMode));
+  }, [darkMode]);
 
   // Fetch profile avatar
   useEffect(() => {
@@ -183,7 +194,17 @@ export default function AppLayout() {
               )}
             </button>
           </div>
-          <p className="text-slate-400">{user?.role === 'org:admin' ? 'Admin' : 'Member'}</p>
+          <div className="flex items-center justify-between">
+            <p className="text-slate-400">{user?.role === 'org:admin' ? 'Admin' : 'Member'}</p>
+            <button
+              type="button"
+              onClick={() => setDarkMode((v) => !v)}
+              className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-700"
+              aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {darkMode ? <IconSun className="w-4 h-4" /> : <IconMoon className="w-4 h-4" />}
+            </button>
+          </div>
           <button
             type="button"
             onClick={handleLogout}
@@ -196,13 +217,13 @@ export default function AppLayout() {
           <NotificationCenter onClose={() => setShowNotifications(false)} />
         )}
         {showNotifSettings && (
-          <div className="absolute bottom-full left-0 mb-2 w-80 bg-white rounded-lg shadow-lg border border-slate-200 p-4 z-50">
+          <div className="absolute bottom-full left-0 mb-2 w-80 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 p-4 z-50">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-slate-800">Notification Preferences</h3>
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Notification Preferences</h3>
               <button
                 type="button"
                 onClick={() => setShowNotifSettings(false)}
-                className="text-slate-400 hover:text-slate-600 text-lg leading-none"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-lg leading-none"
                 aria-label="Close notification preferences"
               >
                 &times;

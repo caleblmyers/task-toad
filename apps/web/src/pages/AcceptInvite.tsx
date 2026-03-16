@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { gql, TOKEN_KEY } from '../api/client';
 import { useAuth } from '../auth/context';
+import Button from '../components/shared/Button';
 
 export default function AcceptInvite() {
   const [searchParams] = useSearchParams();
@@ -60,13 +61,9 @@ export default function AcceptInvite() {
             className="w-full px-3 py-2 border border-slate-300 rounded"
           />
           {err && <p className="text-sm text-red-600">{err}</p>}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50"
-          >
+          <Button type="submit" loading={loading} className="w-full">
             {loading ? 'Joining…' : 'Join team'}
-          </button>
+          </Button>
         </form>
       </div>
     </div>

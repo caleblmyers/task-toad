@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/context';
 import { gql } from '../api/client';
+import Button from '../components/shared/Button';
 
 export default function CreateOrg() {
   const [name, setName] = useState('');
@@ -49,9 +50,9 @@ export default function CreateOrg() {
             <p className="text-xs text-slate-400 mt-1">You can add this later in Settings.</p>
           </div>
           {err && <p className="text-sm text-red-600">{err}</p>}
-          <button type="submit" className="w-full py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover">
+          <Button type="submit" className="w-full">
             Create
-          </button>
+          </Button>
         </form>
       </div>
     </div>

@@ -40,12 +40,12 @@ export default function MarkdownEditor({ value, onChange, onSave, onCancel, plac
     }, 0);
   };
 
-  const btnClass = 'px-1.5 py-0.5 text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded font-mono';
+  const btnClass = 'px-1.5 py-0.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded font-mono';
 
   return (
-    <div className="border border-slate-300 rounded-lg overflow-hidden">
+    <div className="border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden">
       {/* Toolbar */}
-      <div className="flex items-center gap-0.5 px-2 py-1 bg-slate-50 border-b border-slate-200">
+      <div className="flex items-center gap-0.5 px-2 py-1 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-600">
         <button type="button" onClick={() => wrapSelection('**', '**')} className={btnClass} title="Bold">B</button>
         <button type="button" onClick={() => wrapSelection('*', '*')} className={`${btnClass} italic`} title="Italic">I</button>
         <button type="button" onClick={() => wrapSelection('`', '`')} className={btnClass} title="Code">&lt;/&gt;</button>
@@ -72,12 +72,12 @@ export default function MarkdownEditor({ value, onChange, onSave, onCancel, plac
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           rows={rows}
-          className="w-full px-3 py-2 text-sm text-slate-700 focus:outline-none resize-y"
+          className="w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-200 dark:bg-slate-900 focus:outline-none resize-y"
         />
       )}
 
       {/* Actions */}
-      <div className="flex items-center justify-between px-2 py-1.5 bg-slate-50 border-t border-slate-200">
+      <div className="flex items-center justify-between px-2 py-1.5 bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-600">
         <span className="text-[10px] text-slate-400">Markdown supported</span>
         <div className="flex gap-1">
           <button type="button" onClick={onCancel} className="text-xs text-slate-500 hover:text-slate-700 px-2 py-0.5">Cancel</button>

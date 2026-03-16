@@ -71,7 +71,7 @@ export default function DependencyBadge({ task, allTasks, onTaskClick }: Depende
       </button>
 
       {showTooltip && (
-        <div className="absolute z-50 bottom-full left-0 mb-1 bg-white border border-slate-200 rounded-lg shadow-lg py-1.5 min-w-[200px] max-w-[280px]">
+        <div className="absolute z-50 bottom-full left-0 mb-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1.5 min-w-[200px] max-w-[280px]">
           <p className="text-[10px] font-medium text-slate-400 uppercase px-2.5 mb-1">Dependencies</p>
           {deps.map((dep) => (
             <div
@@ -90,7 +90,7 @@ export default function DependencyBadge({ task, allTasks, onTaskClick }: Depende
                 }
               }}
               className={`flex items-center gap-2 px-2.5 py-1 text-xs ${
-                onTaskClick && dep.task ? 'hover:bg-slate-50 cursor-pointer' : ''
+                onTaskClick && dep.task ? 'hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer' : ''
               }`}
             >
               <span
@@ -98,7 +98,7 @@ export default function DependencyBadge({ task, allTasks, onTaskClick }: Depende
                   dep.task ? (statusDot[dep.task.status] ?? 'bg-slate-400') : 'bg-slate-300'
                 }`}
               />
-              <span className="truncate text-slate-700">
+              <span className="truncate text-slate-700 dark:text-slate-300">
                 {dep.task
                   ? dep.task.title.length > 40
                     ? dep.task.title.slice(0, 40) + '...'

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/context';
+import Button from '../components/shared/Button';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -46,9 +47,9 @@ export default function Login() {
             required
           />
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <button type="submit" className="w-full py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover">
+          <Button type="submit" className="w-full">
             Sign in
-          </button>
+          </Button>
         </form>
         <p className="mt-4 text-sm text-slate-600 dark:text-slate-400">
           No account? <Link to="/signup" className="text-slate-800 dark:text-slate-200 underline">Sign up</Link>

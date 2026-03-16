@@ -3,6 +3,7 @@ import { gql } from '../api/client';
 import type { Sprint } from '../types';
 import { parseColumns } from '../utils/jsonHelpers';
 import Modal from './shared/Modal';
+import Button from './shared/Button';
 
 interface SprintCreateModalProps {
   projectId: string;
@@ -213,16 +214,17 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
           {err && <p className="text-xs text-red-600">{err}</p>}
 
           <div className="flex justify-end gap-2 pt-1">
-            <button type="button" onClick={onClose} className="px-4 py-1.5 text-sm text-slate-600 border border-slate-300 rounded hover:bg-slate-50">
+            <Button variant="secondary" size="sm" type="button" onClick={onClose}>
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              disabled={loading || !name.trim()}
-              className="px-4 py-1.5 text-sm bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50"
+              size="sm"
+              loading={loading}
+              disabled={!name.trim()}
             >
               {loading ? (isEdit ? 'Saving…' : 'Creating…') : (isEdit ? 'Save Changes' : 'Create Sprint')}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

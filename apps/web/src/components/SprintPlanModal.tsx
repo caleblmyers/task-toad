@@ -208,13 +208,9 @@ export default function SprintPlanModal({
             {plan.length} sprint{plan.length !== 1 ? 's' : ''} · {plan.reduce((s, p) => s + p.taskIds.length, 0)} tasks
           </p>
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-1.5 text-sm text-slate-600 border border-slate-300 rounded hover:bg-slate-50"
-            >
+            <Button variant="secondary" size="sm" onClick={onClose}>
               Cancel
-            </button>
+            </Button>
             <Button size="sm" onClick={handleCommit} disabled={committing}>
               {committing ? 'Creating…' : 'Accept Plan'}
             </Button>

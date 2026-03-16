@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { gql } from '../api/client';
+import Button from '../components/shared/Button';
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -58,13 +59,9 @@ export default function ResetPassword() {
             minLength={8}
           />
           {err && <p className="text-sm text-red-600">{err}</p>}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50"
-          >
+          <Button type="submit" loading={loading} className="w-full">
             {loading ? 'Saving…' : 'Save new password'}
-          </button>
+          </Button>
         </form>
       </div>
     </div>

@@ -88,9 +88,9 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-lg space-y-8">
-      <h1 className="text-2xl font-semibold text-slate-800">Profile</h1>
+      <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-200">Profile</h1>
 
-      <div className="bg-white rounded-lg border border-slate-200 p-6 space-y-6">
+      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-6 space-y-6">
         <div className="flex items-center gap-4">
           <UserAvatar
             email={profile.email}
@@ -99,41 +99,41 @@ export default function ProfilePage() {
             size="lg"
           />
           <div>
-            <p className="text-lg font-medium text-slate-800">{displayName || profile.email}</p>
-            <p className="text-sm text-slate-500">{user?.email}</p>
+            <p className="text-lg font-medium text-slate-800 dark:text-slate-200">{displayName || profile.email}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{user?.email}</p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
             <input
               type="email"
               value={profile.email}
               disabled
-              className="w-full px-3 py-2 border border-slate-200 rounded bg-slate-50 text-slate-500 text-sm cursor-not-allowed"
+              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded bg-slate-50 dark:bg-slate-800 text-slate-500 text-sm cursor-not-allowed"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Display Name</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Display Name</label>
             <input
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="Your name"
-              className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded text-sm dark:bg-slate-700 dark:text-slate-200"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Avatar URL</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Avatar URL</label>
             <input
               type="url"
               value={avatarUrl}
               onChange={(e) => setAvatarUrl(e.target.value)}
               placeholder="https://example.com/avatar.jpg"
-              className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded text-sm dark:bg-slate-700 dark:text-slate-200"
             />
             {avatarUrl.trim() && (
               <div className="mt-2 flex items-center gap-2">
@@ -144,11 +144,11 @@ export default function ProfilePage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Timezone</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Timezone</label>
             <select
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded text-sm dark:bg-slate-700 dark:text-slate-200"
             >
               {TIMEZONES.map((tz) => (
                 <option key={tz} value={tz}>

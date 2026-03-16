@@ -45,15 +45,15 @@ function BacklogSection({
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-      <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+      <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
         <input
           type="checkbox"
           checked={allChecked}
           onChange={() => onToggleAll(sectionIds)}
           className={`w-3.5 h-3.5 rounded border-slate-300 text-slate-600 cursor-pointer ${showCheckboxes ? 'opacity-100' : 'opacity-0 hover:opacity-100'} transition-opacity`}
         />
-        <span className="font-semibold text-slate-800 text-sm">Backlog (unassigned)</span>
+        <span className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Backlog (unassigned)</span>
         <span className="text-xs text-slate-400">({sectionTasks.length} tasks)</span>
       </div>
       <div
@@ -225,7 +225,7 @@ export default function BacklogView({
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Backlog</h2>
+          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Backlog</h2>
           {onToggleShowArchived && (
             <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer ml-2">
               <input type="checkbox" checked={showArchived ?? false} onChange={onToggleShowArchived} className="w-3 h-3 rounded border-slate-300" />
@@ -233,17 +233,17 @@ export default function BacklogView({
             </label>
           )}
           <div className="flex items-center gap-2">
-            <button type="button" onClick={onPlanSprints} className="text-sm text-indigo-600 hover:text-indigo-800 px-3 py-1 border border-indigo-200 bg-indigo-50 rounded-lg hover:bg-indigo-100">
+            <button type="button" onClick={onPlanSprints} className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 px-3 py-1 border border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50">
               ✦ AI Plan Sprints
             </button>
-            <button type="button" onClick={onCreateSprint} className="text-sm text-slate-600 hover:text-slate-800 px-3 py-1 border border-slate-300 rounded-lg hover:bg-slate-50">
+            <button type="button" onClick={onCreateSprint} className="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 px-3 py-1 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800">
               + Create Sprint
             </button>
           </div>
         </div>
 
         {openSprints.length === 0 && (
-          <div className="text-sm text-slate-400 bg-slate-50 rounded-lg p-4 text-center">
+          <div className="text-sm text-slate-400 bg-slate-50 dark:bg-slate-800 rounded-lg p-4 text-center">
             No sprints yet. Create a sprint to organize your work into time-boxed periods.
           </div>
         )}
@@ -302,7 +302,7 @@ export default function BacklogView({
         {/* Load more */}
         {hasMore && (
           <div className="text-center">
-            <button type="button" onClick={onLoadMore} className="text-sm text-slate-600 hover:text-slate-800 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50">
+            <button type="button" onClick={onLoadMore} className="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800">
               Load more tasks
             </button>
           </div>

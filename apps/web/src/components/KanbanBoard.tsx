@@ -195,7 +195,7 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
         return (
           <div
             key={col}
-            className={`flex flex-col w-72 min-w-[18rem] flex-shrink-0 bg-slate-100 rounded-xl border-t-4 ${style.accent}`}
+            className={`flex flex-col w-72 min-w-[18rem] flex-shrink-0 bg-slate-100 dark:bg-slate-800 rounded-xl border-t-4 ${style.accent}`}
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => {
               e.preventDefault();
@@ -220,8 +220,8 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
             }}
           >
             <div className="flex items-center justify-between px-3 py-2.5">
-              <span className="text-sm font-semibold text-slate-700">{col}</span>
-              <span className="text-xs font-medium bg-white text-slate-500 rounded-full px-2 py-0.5 shadow-sm">
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{col}</span>
+              <span className="text-xs font-medium bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-full px-2 py-0.5 shadow-sm">
                 {colTasks.length}
               </span>
             </div>
@@ -248,7 +248,7 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
                       onDragStart={() => { draggedId.current = task.taskId; }}
                       onClick={() => onSelectTask(task)}
                       onKeyDown={(e) => handleCardKeyDown(e, task)}
-                      className={`bg-white rounded-lg p-3 shadow-sm border border-slate-200 border-l-4 ${
+                      className={`bg-white dark:bg-slate-900 rounded-lg p-3 shadow-sm border border-slate-200 dark:border-slate-700 border-l-4 ${
                         task.taskType === 'epic' ? 'border-l-purple-500' :
                         task.taskType === 'story' ? 'border-l-blue-500' :
                         style.barColor
@@ -267,10 +267,10 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
                             'bg-slate-400'
                           }`} title={task.taskType} />
                         )}
-                        <p className="text-sm font-medium text-slate-800 leading-snug line-clamp-2">{task.title}</p>
+                        <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-snug line-clamp-2">{task.title}</p>
                       </div>
                       {task.description && (
-                        <p className="text-xs text-slate-500 mt-1 line-clamp-2">{task.description}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{task.description}</p>
                       )}
                       {task.labels && task.labels.length > 0 && (
                         <div className="flex items-center gap-1 mt-1.5">

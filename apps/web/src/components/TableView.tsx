@@ -70,15 +70,16 @@ export default function TableView({
   const allIds = tasks.map((t) => t.taskId);
   const allChecked = allIds.length > 0 && allIds.every((id) => selectedTaskIds.has(id));
 
-  const thClass = 'px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wide cursor-pointer hover:text-slate-700 select-none whitespace-nowrap';
-  const tdClass = 'px-3 py-2 text-sm text-slate-700 whitespace-nowrap';
+  const thClass = 'px-3 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 select-none whitespace-nowrap';
+  const tdClass = 'px-3 py-2 text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap';
+  const selectClass = 'text-xs border border-slate-200 dark:border-slate-600 rounded px-1.5 py-0.5 bg-white dark:bg-slate-700 dark:text-slate-200';
 
   return (
     <div className="flex-1 overflow-auto px-6 py-4">
       <div className="max-w-6xl mx-auto">
         <table className="w-full border-collapse">
           <thead>
-            <tr className="border-b border-slate-200">
+            <tr className="border-b border-slate-200 dark:border-slate-700">
               <th className="px-3 py-2 w-8">
                 <input
                   type="checkbox"
@@ -111,7 +112,7 @@ export default function TableView({
                       return (
                         <div
                           style={rowStyle}
-                          className={`border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50' : ''} ${task.archived ? 'opacity-50' : ''}`}
+                          className={`border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 dark:bg-blue-900/30' : ''} ${task.archived ? 'opacity-50' : ''}`}
                           onClick={() => onSelectTask(task)}
                         >
                           <div className="grid items-center" style={{ gridTemplateColumns: '2rem 1fr 6rem 5rem 8rem 7rem 5rem 8rem 4rem', height: TABLE_ROW_HEIGHT }}>
@@ -126,7 +127,7 @@ export default function TableView({
                             </div>
                             <div className={`${tdClass} font-medium truncate`}>{task.title}</div>
                             <div className={tdClass} onClick={(e) => e.stopPropagation()}>
-                              <select value={task.status} onChange={(e) => onStatusChange(task.taskId, e.target.value)} className="text-xs border border-slate-200 rounded px-1.5 py-0.5 bg-white">
+                              <select value={task.status} onChange={(e) => onStatusChange(task.taskId, e.target.value)} className={selectClass}>
                                 {statuses.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}
                               </select>
                             </div>
@@ -134,17 +135,17 @@ export default function TableView({
                               <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${task.priority === 'critical' ? 'bg-red-100 text-red-700' : task.priority === 'high' ? 'bg-orange-100 text-orange-700' : task.priority === 'low' ? 'bg-slate-100 text-slate-500' : 'bg-blue-100 text-blue-700'}`}>{task.priority}</span>
                             </div>
                             <div className={tdClass} onClick={(e) => e.stopPropagation()}>
-                              <select value={task.assigneeId ?? ''} onChange={(e) => onAssignUser(task.taskId, e.target.value || null)} className="text-xs border border-slate-200 rounded px-1.5 py-0.5 bg-white max-w-[120px]">
+                              <select value={task.assigneeId ?? ''} onChange={(e) => onAssignUser(task.taskId, e.target.value || null)} className={`${selectClass} max-w-[120px]`}>
                                 <option value="">—</option>
                                 {orgUsers.map((u) => <option key={u.userId} value={u.userId}>{u.email}</option>)}
                               </select>
                             </div>
                             <div className={tdClass} onClick={(e) => e.stopPropagation()}>
-                              <input type="date" value={task.dueDate ?? ''} onChange={(e) => onDueDateChange(task.taskId, e.target.value || null)} className="text-xs border border-slate-200 rounded px-1.5 py-0.5 bg-white" />
+                              <input type="date" value={task.dueDate ?? ''} onChange={(e) => onDueDateChange(task.taskId, e.target.value || null)} className={selectClass} />
                             </div>
                             <div className={tdClass}>{task.estimatedHours != null ? `${task.estimatedHours}h` : '—'}</div>
                             <div className={tdClass} onClick={(e) => e.stopPropagation()}>
-                              <select value={task.sprintId ?? ''} onChange={(e) => onAssignSprint(task.taskId, e.target.value || null)} className="text-xs border border-slate-200 rounded px-1.5 py-0.5 bg-white max-w-[120px]">
+                              <select value={task.sprintId ?? ''} onChange={(e) => onAssignSprint(task.taskId, e.target.value || null)} className={`${selectClass} max-w-[120px]`}>
                                 <option value="">Backlog</option>
                                 {sprints.filter((s) => !s.closedAt).map((s) => <option key={s.sprintId} value={s.sprintId}>{s.name}</option>)}
                               </select>
@@ -170,7 +171,7 @@ export default function TableView({
                 return (
                   <tr
                     key={task.taskId}
-                    className={`border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50' : ''} ${task.archived ? 'opacity-50' : ''}`}
+                    className={`border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 dark:bg-blue-900/30' : ''} ${task.archived ? 'opacity-50' : ''}`}
                     onClick={() => onSelectTask(task)}
                   >
                     <td className="px-3 py-2">
@@ -187,7 +188,7 @@ export default function TableView({
                       <select
                         value={task.status}
                         onChange={(e) => onStatusChange(task.taskId, e.target.value)}
-                        className="text-xs border border-slate-200 rounded px-1.5 py-0.5 bg-white"
+                        className={selectClass}
                       >
                         {statuses.map((s) => (
                           <option key={s} value={s}>{statusLabel(s)}</option>
@@ -208,7 +209,7 @@ export default function TableView({
                       <select
                         value={task.assigneeId ?? ''}
                         onChange={(e) => onAssignUser(task.taskId, e.target.value || null)}
-                        className="text-xs border border-slate-200 rounded px-1.5 py-0.5 bg-white max-w-[120px]"
+                        className={`${selectClass} max-w-[120px]`}
                       >
                         <option value="">—</option>
                         {orgUsers.map((u) => (
@@ -221,7 +222,7 @@ export default function TableView({
                         type="date"
                         value={task.dueDate ?? ''}
                         onChange={(e) => onDueDateChange(task.taskId, e.target.value || null)}
-                        className="text-xs border border-slate-200 rounded px-1.5 py-0.5 bg-white"
+                        className={selectClass}
                       />
                     </td>
                     <td className={tdClass}>
@@ -231,7 +232,7 @@ export default function TableView({
                       <select
                         value={task.sprintId ?? ''}
                         onChange={(e) => onAssignSprint(task.taskId, e.target.value || null)}
-                        className="text-xs border border-slate-200 rounded px-1.5 py-0.5 bg-white max-w-[120px]"
+                        className={`${selectClass} max-w-[120px]`}
                       >
                         <option value="">Backlog</option>
                         {sprints.filter((s) => !s.closedAt).map((s) => (
