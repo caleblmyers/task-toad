@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useMemo } from 'react';
 import type { Task } from '../types';
 import DependencyBadge from './shared/DependencyBadge';
 
@@ -22,13 +22,39 @@ interface KanbanBoardProps {
 export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, onSelectTask, onColumnChange }: KanbanBoardProps) {
   const draggedId = useRef<string | null>(null);
 
+  // Memoize column grouping — O(n) map instead of O(n*columns) inline filter per render
+  const tasksByColumn = useMemo(() => {
+    const map = new Map<string, Task[]>();
+    for (const col of columns) map.set(col, []);
+    for (const task of tasks) {
+      const col = task.sprintColumn && map.has(task.sprintColumn) ? task.sprintColumn : columns[0];
+      map.get(col)!.push(task);
+    }
+    return map;
+  }, [tasks, columns]);
+
+  // Memoize blocked task set — O(n) instead of O(n^2) per-card check
+  const blockedTasks = useMemo(() => {
+    const blocked = new Set<string>();
+    for (const task of tasks) {
+      if (!task.dependsOn) continue;
+      try {
+        const ids = JSON.parse(task.dependsOn) as string[];
+        const isBlocked = ids.some((id) => {
+          const dep = tasks.find((t) => t.taskId === id);
+          return !dep || dep.status !== 'done';
+        });
+        if (isBlocked) blocked.add(task.taskId);
+      } catch { /* ignore */ }
+    }
+    return blocked;
+  }, [tasks]);
+
   return (
     <div className="flex gap-4 h-full">
       {columns.map((col, idx) => {
         const style = COLUMN_ACCENTS[idx % COLUMN_ACCENTS.length];
-        const colTasks = tasks.filter((t) =>
-          idx === 0 ? (t.sprintColumn === col || t.sprintColumn == null) : t.sprintColumn === col
-        );
+        const colTasks = tasksByColumn.get(col) ?? [];
         return (
           <div
             key={col}
@@ -61,16 +87,7 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
                 colTasks.map((task) => {
                   const isSelected = selectedTask?.taskId === task.taskId;
                   const subtaskCount = subtasks[task.taskId]?.length ?? 0;
-                  const isBlocked = (() => {
-                    if (!task.dependsOn) return false;
-                    try {
-                      const ids = JSON.parse(task.dependsOn) as string[];
-                      return ids.some((id) => {
-                        const dep = tasks.find((t) => t.taskId === id);
-                        return !dep || dep.status !== 'done';
-                      });
-                    } catch { return false; }
-                  })();
+                  const isBlocked = blockedTasks.has(task.taskId);
                   return (
                     <div
                       key={task.taskId}
