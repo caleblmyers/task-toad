@@ -124,6 +124,11 @@ export interface ProjectData {
     summary: string;
     estimatedTokensUsed: number;
   } | null>>;
+  setCodeGenProgress: React.Dispatch<React.SetStateAction<import('./useAIGeneration').CodeGenProgress | null>>;
+  codeGenProgress: import('./useAIGeneration').CodeGenProgress | null;
+  handlePlanCodeGeneration: (task: Task) => Promise<void>;
+  handleGeneratePlannedFiles: (taskId: string, filePaths?: string[]) => Promise<void>;
+  handleRetryPlannedFile: (taskId: string, filePath: string) => Promise<void>;
   setSelectedTaskIds: React.Dispatch<React.SetStateAction<Set<string>>>;
 
   // Computed
@@ -412,6 +417,11 @@ export function useProjectData(): ProjectData {
     setShowSprintPlanModal: sprintMgmt.setShowSprintPlanModal,
     setCloseSprintId: sprintMgmt.setCloseSprintId,
     setGeneratedCode: ai.setGeneratedCode,
+    setCodeGenProgress: ai.setCodeGenProgress,
+    codeGenProgress: ai.codeGenProgress,
+    handlePlanCodeGeneration: ai.handlePlanCodeGeneration,
+    handleGeneratePlannedFiles: ai.handleGeneratePlannedFiles,
+    handleRetryPlannedFile: ai.handleRetryPlannedFile,
     setSelectedTaskIds: taskCrud.setSelectedTaskIds,
 
     // Computed

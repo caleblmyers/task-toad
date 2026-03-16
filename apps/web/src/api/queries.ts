@@ -146,6 +146,20 @@ export const GENERATE_CODE_MUTATION = `mutation($taskId: ID!, $styleGuide: Strin
   }
 }`;
 
+export const PLAN_CODE_MUTATION = `mutation PlanCodeGeneration($taskId: ID!, $styleGuide: String) {
+  planCodeGeneration(taskId: $taskId, styleGuide: $styleGuide) {
+    files { path language description exports dependsOn }
+    architecture
+    generationOrder
+  }
+}`;
+
+export const GENERATE_PLANNED_FILE_MUTATION = `mutation GeneratePlannedFile($taskId: ID!, $filePath: String!, $fileDescription: String!, $planContext: String!, $completedExports: [String!], $styleGuide: String) {
+  generatePlannedFile(taskId: $taskId, filePath: $filePath, fileDescription: $fileDescription, planContext: $planContext, completedExports: $completedExports, styleGuide: $styleGuide) {
+    path content language description
+  }
+}`;
+
 export const GENERATE_CODE_FROM_SUBTASK_MUTATION = `mutation GenerateCodeFromSubtask($taskId: ID!, $subtaskId: ID!, $styleGuide: String) {
   generateCodeFromSubtask(taskId: $taskId, subtaskId: $subtaskId, styleGuide: $styleGuide) {
     files { path content language description } summary estimatedTokensUsed delegationHint

@@ -2,18 +2,49 @@ import { useState, useCallback, useRef } from 'react';
 import { gql } from '../api/client';
 import {
   PREVIEW_TASK_PLAN_MUTATION, COMMIT_TASK_PLAN_MUTATION, SUMMARIZE_PROJECT_MUTATION,
-  GENERATE_INSTRUCTIONS_MUTATION, GENERATE_CODE_MUTATION, GENERATE_CODE_FROM_SUBTASK_MUTATION,
-  REGENERATE_FILE_MUTATION,
+  GENERATE_INSTRUCTIONS_MUTATION, GENERATE_CODE_FROM_SUBTASK_MUTATION,
+  REGENERATE_FILE_MUTATION, PLAN_CODE_MUTATION, GENERATE_PLANNED_FILE_MUTATION,
   CREATE_PR_MUTATION, PARSE_BUG_REPORT_MUTATION, PREVIEW_PRD_MUTATION,
   COMMIT_PRD_MUTATION, BOOTSTRAP_REPO_MUTATION,
 } from '../api/queries';
 import type { Task, TaskPlanPreview } from '../types';
 
+interface GeneratedFile {
+  path: string;
+  content: string;
+  language: string;
+  description: string;
+}
+
 interface GeneratedCode {
-  files: Array<{ path: string; content: string; language: string; description: string }>;
+  files: GeneratedFile[];
   summary: string;
   estimatedTokensUsed: number;
   delegationHint?: string | null;
+}
+
+interface CodePlanFile {
+  path: string;
+  language: string;
+  description: string;
+  exports: string;
+  dependsOn: string[];
+}
+
+interface CodePlan {
+  files: CodePlanFile[];
+  architecture: string;
+  generationOrder: string[];
+}
+
+export interface CodeGenProgress {
+  plan: CodePlan;
+  completedFiles: GeneratedFile[];
+  completedExports: string[];
+  pendingFiles: string[];
+  currentFile: string | null;
+  errors: Record<string, string>;
+  status: 'planning' | 'planned' | 'generating' | 'complete' | 'error';
 }
 
 interface UseAIGenerationOptions {
@@ -25,6 +56,12 @@ interface UseAIGenerationOptions {
   setErr: (err: string | null) => void;
   loadTasks: () => Promise<Task[]>;
   loadSubtasks: (taskId: string) => void;
+}
+
+/** Extract export lines from generated file content for context threading */
+function extractExports(content: string): string {
+  const exportLines = content.match(/^export\s+.*/gm) ?? [];
+  return exportLines.slice(0, 20).join('\n');
 }
 
 export function useAIGeneration({
@@ -41,6 +78,7 @@ export function useAIGeneration({
   const [generatingCode, setGeneratingCode] = useState<string | null>(null);
   const [generatedCode, setGeneratedCode] = useState<GeneratedCode | null>(null);
   const [creatingPR, setCreatingPR] = useState(false);
+  const [codeGenProgress, setCodeGenProgress] = useState<CodeGenProgress | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -152,25 +190,136 @@ export function useAIGeneration({
     }
   }, [setTasks, setSelectedTask, setErr, loadSubtasks]);
 
-  const handleGenerateCode = useCallback(async (task: Task) => {
+  // ── Multi-step code generation (plan-then-generate) ──
+
+  const handlePlanCodeGeneration = useCallback(async (task: Task) => {
     const controller = new AbortController();
     abortRef.current = controller;
     setGeneratingCode(task.taskId);
+    setCodeGenProgress(null);
     try {
       const styleGuide = projectId ? localStorage.getItem(`tasktoad-style-guide-${projectId}`) : null;
-      const data = await gql<{ generateCodeFromTask: GeneratedCode }>(
-        GENERATE_CODE_MUTATION, { taskId: task.taskId, styleGuide }, controller.signal,
+      const data = await gql<{ planCodeGeneration: CodePlan }>(
+        PLAN_CODE_MUTATION, { taskId: task.taskId, styleGuide }, controller.signal,
       );
-      setGeneratedCode(data.generateCodeFromTask);
+      const plan = data.planCodeGeneration;
+      const order = plan.generationOrder.length > 0
+        ? plan.generationOrder
+        : plan.files.map((f) => f.path);
+      setCodeGenProgress({
+        plan,
+        completedFiles: [],
+        completedExports: [],
+        pendingFiles: order,
+        currentFile: null,
+        errors: {},
+        status: 'planned',
+      });
     } catch (err: unknown) {
       if ((err as Error).name !== 'AbortError') {
-        setErr((err as Error).message || 'Code generation failed');
+        setErr((err as Error).message || 'Failed to plan code generation');
       }
     } finally {
       setGeneratingCode(null);
       if (abortRef.current === controller) abortRef.current = null;
     }
   }, [projectId, setErr]);
+
+  const handleGeneratePlannedFiles = useCallback(async (taskId: string, filePaths?: string[]) => {
+    const progress = codeGenProgress;
+    if (!progress || !projectId) return;
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const styleGuide = localStorage.getItem(`tasktoad-style-guide-${projectId}`);
+    const planContext = JSON.stringify({
+      files: progress.plan.files.map((f) => ({ path: f.path, description: f.description, exports: f.exports })),
+      architecture: progress.plan.architecture,
+    });
+
+    const toGenerate = filePaths ?? progress.pendingFiles;
+    setCodeGenProgress((prev) => prev ? { ...prev, status: 'generating' } : prev);
+
+    let completedFiles = [...progress.completedFiles];
+    let completedExports = [...progress.completedExports];
+    let totalTokens = 0;
+
+    for (const filePath of toGenerate) {
+      if (controller.signal.aborted) break;
+
+      const planFile = progress.plan.files.find((f) => f.path === filePath);
+      if (!planFile) continue;
+
+      setCodeGenProgress((prev) => prev ? {
+        ...prev,
+        currentFile: filePath,
+        pendingFiles: prev.pendingFiles.filter((p) => p !== filePath),
+      } : prev);
+
+      try {
+        const data = await gql<{ generatePlannedFile: GeneratedFile }>(
+          GENERATE_PLANNED_FILE_MUTATION,
+          {
+            taskId,
+            filePath,
+            fileDescription: planFile.description,
+            planContext,
+            completedExports,
+            styleGuide,
+          },
+          controller.signal,
+        );
+
+        const file = data.generatePlannedFile;
+        completedFiles = [...completedFiles, file];
+        const exports = extractExports(file.content);
+        if (exports) {
+          completedExports = [...completedExports, `${filePath}: ${exports}`];
+        }
+        totalTokens += file.content.length / 4; // rough estimate
+
+        setCodeGenProgress((prev) => prev ? {
+          ...prev,
+          completedFiles,
+          completedExports,
+        } : prev);
+      } catch (err: unknown) {
+        if ((err as Error).name === 'AbortError') break;
+        setCodeGenProgress((prev) => prev ? {
+          ...prev,
+          errors: { ...prev.errors, [filePath]: (err as Error).message || 'Generation failed' },
+        } : prev);
+      }
+    }
+
+    // Finalize — set generatedCode so CodePreviewModal shows the result
+    setCodeGenProgress((prev) => prev ? {
+      ...prev,
+      currentFile: null,
+      status: 'complete',
+    } : prev);
+
+    if (completedFiles.length > 0) {
+      setGeneratedCode({
+        files: completedFiles,
+        summary: progress.plan.architecture,
+        estimatedTokensUsed: Math.round(totalTokens),
+      });
+    }
+
+    if (abortRef.current === controller) abortRef.current = null;
+  }, [codeGenProgress, projectId]);
+
+  const handleRetryPlannedFile = useCallback(async (taskId: string, filePath: string) => {
+    await handleGeneratePlannedFiles(taskId, [filePath]);
+  }, [handleGeneratePlannedFiles]);
+
+  // ── Single-call code generation (existing, kept as fast path) ──
+
+  const handleGenerateCode = useCallback(async (task: Task) => {
+    // Always use multi-step plan-then-generate
+    await handlePlanCodeGeneration(task);
+  }, [handlePlanCodeGeneration]);
 
   const handleGenerateCodeFromSubtask = useCallback(async (taskId: string, subtaskId: string): Promise<GeneratedCode | null> => {
     try {
@@ -213,6 +362,7 @@ export function useAIGeneration({
       await gql(CREATE_PR_MUTATION, { projectId, taskId: selectedTask.taskId, files });
       setErr(null);
       setGeneratedCode(null);
+      setCodeGenProgress(null);
     } catch (err: unknown) {
       setErr((err as Error).message || 'Failed to create PR');
     } finally {
@@ -252,11 +402,13 @@ export function useAIGeneration({
     previewTasks, previewLoading, previewError, committing,
     summary, summarizing, generatingInstructions, generatingCode,
     generatedCode, creatingPR, isGenerating,
+    codeGenProgress,
     abortRef,
     openPreview, handleCommitPlan, handleSummarize,
     handleGenerateInstructions, handleGenerateCode, handleGenerateCodeFromSubtask,
     handleRegenerateFile, handleCreatePR,
+    handlePlanCodeGeneration, handleGeneratePlannedFiles, handleRetryPlannedFile,
     handleParseBugReport, handlePreviewPRD, handleCommitPRD, handleBootstrapFromRepo,
-    setPreviewTasks, setPreviewError, setSummary, setGeneratedCode,
+    setPreviewTasks, setPreviewError, setSummary, setGeneratedCode, setCodeGenProgress,
   };
 }

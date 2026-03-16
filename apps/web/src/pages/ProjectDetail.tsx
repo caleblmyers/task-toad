@@ -934,10 +934,10 @@ export default function ProjectDetail() {
       {/* Code preview modal */}
       <Suspense fallback={lazyFallback}>
         <CodePreviewModal
-          isOpen={d.generatedCode !== null}
-          onClose={() => d.setGeneratedCode(null)}
+          isOpen={d.generatedCode !== null || d.codeGenProgress !== null}
+          onClose={() => { d.setGeneratedCode(null); d.setCodeGenProgress(null); }}
           files={d.generatedCode?.files ?? []}
-          summary={d.generatedCode?.summary ?? ''}
+          summary={d.generatedCode?.summary ?? d.codeGenProgress?.plan?.architecture ?? ''}
           estimatedTokensUsed={d.generatedCode?.estimatedTokensUsed ?? 0}
           onCreatePR={d.handleCreatePR}
           isCreatingPR={d.creatingPR}
@@ -945,6 +945,12 @@ export default function ProjectDetail() {
           subtasks={d.selectedTask ? (d.subtasks[d.selectedTask.taskId] ?? []).map((st) => ({ taskId: st.taskId, title: st.title, description: st.description })) : undefined}
           parentTaskId={d.selectedTask?.taskId}
           onGenerateFromSubtask={d.handleGenerateCodeFromSubtask}
+          codeGenProgress={d.codeGenProgress}
+          taskId={d.selectedTask?.taskId}
+          onStartGeneration={d.handleGeneratePlannedFiles}
+          onRetryFile={d.handleRetryPlannedFile}
+          onRegenerateFile={d.selectedTask ? (filePath: string, feedback?: string) => d.handleRegenerateFile(d.selectedTask!.taskId, filePath, feedback) : undefined}
+          projectId={d.projectId}
         />
       </Suspense>
 

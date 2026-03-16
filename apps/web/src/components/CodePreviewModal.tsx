@@ -17,6 +17,24 @@ interface SubtaskItem {
   description?: string | null;
 }
 
+interface CodePlanFile {
+  path: string;
+  language: string;
+  description: string;
+  exports: string;
+  dependsOn: string[];
+}
+
+interface CodeGenProgress {
+  plan: { files: CodePlanFile[]; architecture: string; generationOrder: string[] };
+  completedFiles: GeneratedFile[];
+  completedExports: string[];
+  pendingFiles: string[];
+  currentFile: string | null;
+  errors: Record<string, string>;
+  status: 'planning' | 'planned' | 'generating' | 'complete' | 'error';
+}
+
 interface CodePreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -32,6 +50,10 @@ interface CodePreviewModalProps {
   subtasks?: SubtaskItem[];
   parentTaskId?: string;
   onGenerateFromSubtask?: (taskId: string, subtaskId: string) => Promise<{ files: GeneratedFile[]; summary: string; estimatedTokensUsed: number } | null>;
+  codeGenProgress?: CodeGenProgress | null;
+  taskId?: string;
+  onStartGeneration?: (taskId: string, filePaths?: string[]) => void;
+  onRetryFile?: (taskId: string, filePath: string) => void;
 }
 
 const STYLE_GUIDE_KEY_PREFIX = 'tasktoad-style-guide-';
@@ -80,6 +102,10 @@ export default function CodePreviewModal({
   subtasks,
   parentTaskId,
   onGenerateFromSubtask,
+  codeGenProgress,
+  taskId,
+  onStartGeneration,
+  onRetryFile,
 }: CodePreviewModalProps) {
   const [expandedIndex, setExpandedIndex] = useState(0);
   const [regeneratingPath, setRegeneratingPath] = useState<string | null>(null);
@@ -285,6 +311,75 @@ export default function CodePreviewModal({
 
       {/* File list */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+        {/* Multi-step code generation progress */}
+        {codeGenProgress && (codeGenProgress.status === 'planned' || codeGenProgress.status === 'generating' || codeGenProgress.status === 'complete') && (
+          <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden mb-4">
+            <div className="px-4 py-3 bg-indigo-50 dark:bg-indigo-900/30 border-b border-slate-200 dark:border-slate-700">
+              <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">Code Generation Plan</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{codeGenProgress.plan.architecture}</p>
+            </div>
+            {codeGenProgress.status === 'generating' && codeGenProgress.currentFile && (
+              <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-slate-200 dark:border-slate-700">
+                <div className="flex items-center gap-2 text-xs text-blue-700 dark:text-blue-300">
+                  <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Generating {codeGenProgress.completedFiles.length + 1} of {codeGenProgress.plan.files.length}: {codeGenProgress.currentFile}
+                </div>
+              </div>
+            )}
+            <div className="divide-y divide-slate-100 dark:divide-slate-700">
+              {codeGenProgress.plan.files.map((pf) => {
+                const isCompleted = codeGenProgress.completedFiles.some((f) => f.path === pf.path);
+                const isCurrent = codeGenProgress.currentFile === pf.path;
+                const error = codeGenProgress.errors[pf.path];
+                return (
+                  <div key={pf.path} className="flex items-center justify-between px-4 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="flex-shrink-0">
+                          {isCompleted ? <span className="text-green-500">✓</span>
+                            : isCurrent ? <svg className="animate-spin h-3.5 w-3.5 text-blue-500" viewBox="0 0 24 24" aria-hidden="true"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                            : error ? <span className="text-red-500">✗</span>
+                            : <span className="text-slate-300 dark:text-slate-600">○</span>}
+                        </span>
+                        <code className="text-sm font-mono text-slate-800 dark:text-slate-200 truncate">{pf.path}</code>
+                        <span className="text-xs bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 rounded flex-shrink-0">{pf.language}</span>
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 ml-6 truncate">{pf.description}</p>
+                      {error && (
+                        <p className="text-xs text-red-600 dark:text-red-400 ml-6 mt-0.5">{error}</p>
+                      )}
+                    </div>
+                    {error && onRetryFile && taskId && (
+                      <Button variant="secondary" onClick={() => onRetryFile(taskId, pf.path)} className="text-xs ml-2">
+                        Retry
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {codeGenProgress.status === 'planned' && onStartGeneration && taskId && (
+              <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  {codeGenProgress.plan.files.length} file{codeGenProgress.plan.files.length !== 1 ? 's' : ''} planned
+                </span>
+                <Button variant="primary" onClick={() => onStartGeneration(taskId)} className="text-sm">
+                  Generate All Files
+                </Button>
+              </div>
+            )}
+            {codeGenProgress.status === 'complete' && (
+              <div className="px-4 py-2 bg-green-50 dark:bg-green-900/20 border-t border-slate-200 dark:border-slate-700 text-xs text-green-700 dark:text-green-300">
+                {codeGenProgress.completedFiles.length} file{codeGenProgress.completedFiles.length !== 1 ? 's' : ''} generated
+                {Object.keys(codeGenProgress.errors).length > 0 && ` · ${Object.keys(codeGenProgress.errors).length} failed`}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Subtask generation mode */}
         {isSubtaskMode && (
           <div className="border border-slate-200 rounded-lg overflow-hidden mb-4">
