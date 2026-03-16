@@ -83,9 +83,11 @@ export default function ProjectDetail() {
   const [timelineView, setTimelineView] = useState(false);
   const [showTrends, setShowTrends] = useState(false);
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
-  const [templateList, setTemplateList] = useState<Array<{ taskTemplateId: string; name: string; description: string | null; priority: string; taskType: string }>>([]);
+  const [templateList, setTemplateList] = useState<Array<{ taskTemplateId: string; name: string; description: string | null; instructions: string | null; acceptanceCriteria: string | null; priority: string; taskType: string }>>([]);
   const [templateTitle, setTemplateTitle] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const templateMenuRef = useRef<HTMLDivElement>(null);
+  const templateBtnRef = useRef<HTMLButtonElement>(null);
 
   useKeyboardShortcuts({
     tasks: filtering.filteredTasks,
@@ -113,6 +115,28 @@ export default function ProjectDetail() {
       .then((data) => setGitHubInstallations(data.githubInstallations))
       .catch(() => {/* non-critical */});
   }, [d.projectId]);
+
+  // Close template menu on Escape or click-outside
+  useEffect(() => {
+    if (!showTemplateMenu) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowTemplateMenu(false);
+        templateBtnRef.current?.focus();
+      }
+    };
+    const handleClickOutside = (e: MouseEvent) => {
+      if (templateMenuRef.current && !templateMenuRef.current.contains(e.target as Node)) {
+        setShowTemplateMenu(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showTemplateMenu]);
 
   // Load project-level activities when switching to dashboard
   const loadProjectActivities = async () => {
@@ -218,7 +242,7 @@ export default function ProjectDetail() {
     if (!d.projectId) return;
     try {
       const data = await gql<{ taskTemplates: typeof templateList }>(
-        `query TaskTemplates($projectId: ID) { taskTemplates(projectId: $projectId) { taskTemplateId name description priority taskType } }`,
+        `query TaskTemplates($projectId: ID) { taskTemplates(projectId: $projectId) { taskTemplateId name description instructions acceptanceCriteria priority taskType } }`,
         { projectId: d.projectId },
       );
       setTemplateList(data.taskTemplates);
@@ -249,10 +273,10 @@ export default function ProjectDetail() {
     const t = d.selectedTask;
     try {
       await gql<{ createTaskTemplate: { taskTemplateId: string } }>(
-        `mutation SaveAsTemplate($projectId: ID, $name: String!, $description: String, $priority: String, $taskType: String) {
-          createTaskTemplate(projectId: $projectId, name: $name, description: $description, priority: $priority, taskType: $taskType) { taskTemplateId }
+        `mutation SaveAsTemplate($projectId: ID, $name: String!, $description: String, $instructions: String, $acceptanceCriteria: String, $priority: String, $taskType: String) {
+          createTaskTemplate(projectId: $projectId, name: $name, description: $description, instructions: $instructions, acceptanceCriteria: $acceptanceCriteria, priority: $priority, taskType: $taskType) { taskTemplateId }
         }`,
-        { projectId: d.projectId, name: `Template: ${t.title}`, description: t.description, priority: t.priority, taskType: t.taskType },
+        { projectId: d.projectId, name: `Template: ${t.title}`, description: t.description, instructions: t.instructions ?? null, acceptanceCriteria: t.acceptanceCriteria ?? null, priority: t.priority, taskType: t.taskType },
       );
       addToast('success', 'Saved as template');
     } catch (err) {
@@ -485,8 +509,8 @@ export default function ProjectDetail() {
               {bootstrapping ? 'Bootstrapping...' : 'Bootstrap'}
             </Button>
           )}
-          <div className="relative">
-            <Button variant="ghost" size="sm" onClick={() => { setShowTemplateMenu((v) => !v); if (!showTemplateMenu) loadTemplates(); }} disabled={d.isGenerating}>
+          <div className="relative" ref={templateMenuRef}>
+            <Button ref={templateBtnRef} variant="ghost" size="sm" onClick={() => { setShowTemplateMenu((v) => !v); if (!showTemplateMenu) loadTemplates(); }} disabled={d.isGenerating}>
               Template
             </Button>
             {showTemplateMenu && (

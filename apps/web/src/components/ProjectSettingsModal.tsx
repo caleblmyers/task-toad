@@ -85,6 +85,10 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
   // Template form
   const [tplName, setTplName] = useState('');
   const [tplDescription, setTplDescription] = useState('');
+  const [tplInstructions, setTplInstructions] = useState('');
+  const [tplAcceptanceCriteria, setTplAcceptanceCriteria] = useState('');
+  const [tplEstimatedHours, setTplEstimatedHours] = useState('');
+  const [tplStoryPoints, setTplStoryPoints] = useState('');
   const [tplPriority, setTplPriority] = useState('medium');
   const [tplTaskType, setTplTaskType] = useState('task');
   const [editingTemplate, setEditingTemplate] = useState<TaskTemplateDef | null>(null);
@@ -274,14 +278,28 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
     setError(null);
     try {
       const { createTaskTemplate } = await gql<{ createTaskTemplate: TaskTemplateDef }>(
-        `mutation CreateTemplate($projectId: ID, $name: String!, $description: String, $priority: String, $taskType: String) {
-          createTaskTemplate(projectId: $projectId, name: $name, description: $description, priority: $priority, taskType: $taskType) { taskTemplateId name description instructions acceptanceCriteria priority taskType estimatedHours storyPoints projectId createdAt }
+        `mutation CreateTemplate($projectId: ID, $name: String!, $description: String, $instructions: String, $acceptanceCriteria: String, $estimatedHours: Float, $storyPoints: Int, $priority: String, $taskType: String) {
+          createTaskTemplate(projectId: $projectId, name: $name, description: $description, instructions: $instructions, acceptanceCriteria: $acceptanceCriteria, estimatedHours: $estimatedHours, storyPoints: $storyPoints, priority: $priority, taskType: $taskType) { taskTemplateId name description instructions acceptanceCriteria priority taskType estimatedHours storyPoints projectId createdAt }
         }`,
-        { projectId, name: tplName.trim(), description: tplDescription.trim() || null, priority: tplPriority, taskType: tplTaskType },
+        {
+          projectId,
+          name: tplName.trim(),
+          description: tplDescription.trim() || null,
+          instructions: tplInstructions.trim() || null,
+          acceptanceCriteria: tplAcceptanceCriteria.trim() || null,
+          estimatedHours: tplEstimatedHours ? parseFloat(tplEstimatedHours) : null,
+          storyPoints: tplStoryPoints ? parseInt(tplStoryPoints, 10) : null,
+          priority: tplPriority,
+          taskType: tplTaskType,
+        },
       );
       setTemplates((prev) => [createTaskTemplate, ...prev]);
       setTplName('');
       setTplDescription('');
+      setTplInstructions('');
+      setTplAcceptanceCriteria('');
+      setTplEstimatedHours('');
+      setTplStoryPoints('');
       setTplPriority('medium');
       setTplTaskType('task');
     } catch (e) {
@@ -294,10 +312,20 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
     setError(null);
     try {
       const { updateTaskTemplate } = await gql<{ updateTaskTemplate: TaskTemplateDef }>(
-        `mutation UpdateTemplate($taskTemplateId: ID!, $name: String, $description: String, $priority: String, $taskType: String) {
-          updateTaskTemplate(taskTemplateId: $taskTemplateId, name: $name, description: $description, priority: $priority, taskType: $taskType) { taskTemplateId name description instructions acceptanceCriteria priority taskType estimatedHours storyPoints projectId createdAt }
+        `mutation UpdateTemplate($taskTemplateId: ID!, $name: String, $description: String, $instructions: String, $acceptanceCriteria: String, $estimatedHours: Float, $storyPoints: Int, $priority: String, $taskType: String) {
+          updateTaskTemplate(taskTemplateId: $taskTemplateId, name: $name, description: $description, instructions: $instructions, acceptanceCriteria: $acceptanceCriteria, estimatedHours: $estimatedHours, storyPoints: $storyPoints, priority: $priority, taskType: $taskType) { taskTemplateId name description instructions acceptanceCriteria priority taskType estimatedHours storyPoints projectId createdAt }
         }`,
-        { taskTemplateId: editingTemplate.taskTemplateId, name: editingTemplate.name, description: editingTemplate.description, priority: editingTemplate.priority, taskType: editingTemplate.taskType },
+        {
+          taskTemplateId: editingTemplate.taskTemplateId,
+          name: editingTemplate.name,
+          description: editingTemplate.description,
+          instructions: editingTemplate.instructions,
+          acceptanceCriteria: editingTemplate.acceptanceCriteria,
+          estimatedHours: editingTemplate.estimatedHours,
+          storyPoints: editingTemplate.storyPoints,
+          priority: editingTemplate.priority,
+          taskType: editingTemplate.taskType,
+        },
       );
       setTemplates((prev) => prev.map((t) => (t.taskTemplateId === updateTaskTemplate.taskTemplateId ? updateTaskTemplate : t)));
       setEditingTemplate(null);
@@ -444,6 +472,26 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
                 placeholder="Description"
                 className="w-full text-sm border border-slate-300 rounded px-2 py-1.5 h-20 resize-none"
               />
+              <div>
+                <label className="text-xs text-slate-500">Instructions</label>
+                <textarea
+                  value={editingTemplate.instructions ?? ''}
+                  onChange={(e) => setEditingTemplate({ ...editingTemplate, instructions: e.target.value || null })}
+                  placeholder="Implementation details..."
+                  rows={4}
+                  className="w-full text-sm border border-slate-300 rounded px-2 py-1.5 resize-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500">Acceptance Criteria</label>
+                <textarea
+                  value={editingTemplate.acceptanceCriteria ?? ''}
+                  onChange={(e) => setEditingTemplate({ ...editingTemplate, acceptanceCriteria: e.target.value || null })}
+                  placeholder="How to verify this task is done..."
+                  rows={3}
+                  className="w-full text-sm border border-slate-300 rounded px-2 py-1.5 resize-none"
+                />
+              </div>
               <div className="flex items-center gap-2">
                 <label className="text-xs text-slate-500">Priority:</label>
                 <select
@@ -469,6 +517,30 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
                   <option value="feature">Feature</option>
                   <option value="chore">Chore</option>
                 </select>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-slate-500">Est. Hours:</label>
+                  <input
+                    type="number"
+                    value={editingTemplate.estimatedHours ?? ''}
+                    onChange={(e) => setEditingTemplate({ ...editingTemplate, estimatedHours: e.target.value ? parseFloat(e.target.value) : null })}
+                    min={0}
+                    step={0.5}
+                    className="w-20 text-sm border border-slate-300 rounded px-2 py-1"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-slate-500">Story Pts:</label>
+                  <input
+                    type="number"
+                    value={editingTemplate.storyPoints ?? ''}
+                    onChange={(e) => setEditingTemplate({ ...editingTemplate, storyPoints: e.target.value ? parseInt(e.target.value, 10) : null })}
+                    min={0}
+                    step={1}
+                    className="w-20 text-sm border border-slate-300 rounded px-2 py-1"
+                  />
+                </div>
               </div>
               <Button size="sm" disabled={!editingTemplate.name.trim()} onClick={handleUpdateTemplate}>
                 Save Changes
@@ -509,6 +581,26 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
                   placeholder="Description (optional)"
                   className="w-full text-sm border border-slate-300 rounded px-2 py-1.5 h-16 resize-none"
                 />
+                <div>
+                  <label className="text-xs text-slate-500">Instructions</label>
+                  <textarea
+                    value={tplInstructions}
+                    onChange={(e) => setTplInstructions(e.target.value)}
+                    placeholder="Implementation details..."
+                    rows={4}
+                    className="w-full text-sm border border-slate-300 rounded px-2 py-1.5 resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500">Acceptance Criteria</label>
+                  <textarea
+                    value={tplAcceptanceCriteria}
+                    onChange={(e) => setTplAcceptanceCriteria(e.target.value)}
+                    placeholder="How to verify this task is done..."
+                    rows={3}
+                    className="w-full text-sm border border-slate-300 rounded px-2 py-1.5 resize-none"
+                  />
+                </div>
                 <div className="flex items-center gap-2">
                   <label className="text-xs text-slate-500">Priority:</label>
                   <select
@@ -532,6 +624,30 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
                     <option value="feature">Feature</option>
                     <option value="chore">Chore</option>
                   </select>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-slate-500">Est. Hours:</label>
+                    <input
+                      type="number"
+                      value={tplEstimatedHours}
+                      onChange={(e) => setTplEstimatedHours(e.target.value)}
+                      min={0}
+                      step={0.5}
+                      className="w-20 text-sm border border-slate-300 rounded px-2 py-1"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-slate-500">Story Pts:</label>
+                    <input
+                      type="number"
+                      value={tplStoryPoints}
+                      onChange={(e) => setTplStoryPoints(e.target.value)}
+                      min={0}
+                      step={1}
+                      className="w-20 text-sm border border-slate-300 rounded px-2 py-1"
+                    />
+                  </div>
                 </div>
                 <Button size="sm" disabled={!tplName.trim()} onClick={handleCreateTemplate}>
                   Create Template
