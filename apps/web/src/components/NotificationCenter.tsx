@@ -63,8 +63,8 @@ export default function NotificationCenter({ onClose }: NotificationCenterProps)
         `query Notifications { notifications(limit: 30) { notificationId type title body linkUrl isRead createdAt } }`
       );
       setNotifications(data.notifications);
-    } catch {
-      // ignore
+    } catch (e) {
+      console.error('Failed to load notifications:', e);
     } finally {
       setLoading(false);
     }
@@ -80,8 +80,8 @@ export default function NotificationCenter({ onClose }: NotificationCenterProps)
         setNotifications((prev) =>
           prev.map((n) => n.notificationId === notification.notificationId ? { ...n, isRead: true } : n)
         );
-      } catch {
-        // ignore
+      } catch (e) {
+        console.error('Failed to mark notification as read:', e);
       }
     }
     if (notification.linkUrl) {
@@ -96,8 +96,8 @@ export default function NotificationCenter({ onClose }: NotificationCenterProps)
         `mutation MarkAllRead { markAllNotificationsRead }`
       );
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    } catch {
-      // ignore
+    } catch (e) {
+      console.error('Failed to mark all notifications as read:', e);
     }
   };
 

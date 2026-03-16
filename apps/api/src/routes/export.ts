@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { jwtVerify } from 'jose';
 import { JWT_SECRET } from '../graphql/context.js';
 
@@ -84,6 +84,26 @@ interface TaskExportRow {
   createdAt: string;
 }
 
+type TaskWithJsonRelations = Prisma.TaskGetPayload<{
+  include: {
+    labels: { include: { label: true } };
+    comments: { include: { user: { select: { email: true } } } };
+    assignee: { select: { email: true } };
+  };
+}>;
+
+type TaskWithCsvRelations = Prisma.TaskGetPayload<{
+  include: {
+    labels: { include: { label: true } };
+    assignee: { select: { email: true } };
+    sprint: { select: { name: true } };
+  };
+}>;
+
+type ActivityWithUser = Prisma.ActivityGetPayload<{
+  include: { user: { select: { email: true } } };
+}>;
+
 // GET /project/:projectId/json
 router.get('/project/:projectId/json', requireAuth, async (req: AuthRequest, res: Response) => {
   const projectId = await verifyProjectAccess(req, res);
@@ -95,7 +115,7 @@ router.get('/project/:projectId/json', requireAuth, async (req: AuthRequest, res
     return;
   }
 
-  const tasks = await prisma.task.findMany({
+  const tasks: TaskWithJsonRelations[] = await prisma.task.findMany({
     where: { projectId },
     include: {
       labels: { include: { label: true } },
@@ -113,7 +133,6 @@ router.get('/project/:projectId/json', requireAuth, async (req: AuthRequest, res
   const filename = sanitizeFilename(project.name);
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}.json"`);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   res.json({
     project: {
       name: project.name,
@@ -121,8 +140,7 @@ router.get('/project/:projectId/json', requireAuth, async (req: AuthRequest, res
       statuses: project.statuses,
       createdAt: project.createdAt,
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    tasks: tasks.map((t: any) => ({
+    tasks: tasks.map((t) => ({
       taskId: t.taskId,
       title: t.title,
       description: t.description,
@@ -135,18 +153,15 @@ router.get('/project/:projectId/json', requireAuth, async (req: AuthRequest, res
       dueDate: t.dueDate,
       storyPoints: t.storyPoints,
       estimatedHours: t.estimatedHours,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      labels: t.labels.map((tl: any) => tl.label.name),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      comments: t.comments.map((c: any) => ({
+      labels: t.labels.map((tl) => tl.label.name),
+      comments: t.comments.map((c) => ({
         user: c.user.email,
         content: c.content,
         createdAt: c.createdAt,
       })),
       createdAt: t.createdAt,
     })),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    sprints: sprints.map((s: any) => ({
+    sprints: sprints.map((s) => ({
       sprintId: s.sprintId,
       name: s.name,
       goal: s.goal,
@@ -171,7 +186,7 @@ router.get('/project/:projectId/csv', requireAuth, async (req: AuthRequest, res:
     return;
   }
 
-  const tasks = await prisma.task.findMany({
+  const tasks: TaskWithCsvRelations[] = await prisma.task.findMany({
     where: { projectId },
     include: {
       labels: { include: { label: true } },
@@ -181,8 +196,7 @@ router.get('/project/:projectId/csv', requireAuth, async (req: AuthRequest, res:
     orderBy: { createdAt: 'asc' },
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rows: TaskExportRow[] = tasks.map((t: any) => ({
+  const rows: TaskExportRow[] = tasks.map((t) => ({
     taskId: t.taskId,
     title: t.title,
     description: t.description ?? '',
@@ -193,8 +207,7 @@ router.get('/project/:projectId/csv', requireAuth, async (req: AuthRequest, res:
     dueDate: t.dueDate ?? '',
     storyPoints: t.storyPoints ?? '',
     estimatedHours: t.estimatedHours ?? '',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    labels: t.labels.map((tl: any) => tl.label.name).join('; '),
+    labels: t.labels.map((tl) => tl.label.name).join('; '),
     createdAt: t.createdAt.toISOString(),
   }));
 
@@ -237,7 +250,7 @@ router.get('/project/:projectId/activity/json', requireAuth, async (req: AuthReq
   }
 
   const dateFilter = buildActivityDateFilter(req.query as { from?: string; to?: string });
-  const activities = await prisma.activity.findMany({
+  const activities: ActivityWithUser[] = await prisma.activity.findMany({
     where: {
       projectId,
       ...(dateFilter ? { createdAt: dateFilter } : {}),
@@ -250,8 +263,7 @@ router.get('/project/:projectId/activity/json', requireAuth, async (req: AuthReq
   const filename = sanitizeFilename(project.name);
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}-activity.json"`);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  res.json(activities.map((a: any) => ({
+  res.json(activities.map((a) => ({
     activityId: a.activityId,
     date: a.createdAt.toISOString(),
     user: a.user.email,
@@ -276,7 +288,7 @@ router.get('/project/:projectId/activity/csv', requireAuth, async (req: AuthRequ
   }
 
   const dateFilter = buildActivityDateFilter(req.query as { from?: string; to?: string });
-  const activities = await prisma.activity.findMany({
+  const activities: ActivityWithUser[] = await prisma.activity.findMany({
     where: {
       projectId,
       ...(dateFilter ? { createdAt: dateFilter } : {}),
@@ -286,8 +298,7 @@ router.get('/project/:projectId/activity/csv', requireAuth, async (req: AuthRequ
     take: 10000,
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rows: ActivityExportRow[] = activities.map((a: any) => ({
+  const rows: ActivityExportRow[] = activities.map((a) => ({
     date: a.createdAt.toISOString(),
     user: a.user.email,
     action: a.action,

@@ -31,9 +31,9 @@ export default function AppLayout() {
   }, []);
 
   // SSE real-time events
+  // TODO: Dispatch SSE events to a global event bus or context for granular state updates
   const handleSSEEvent = useCallback((_event: string, _data: unknown) => {
     // For MVP: events are received but UI refresh is handled by individual pages
-    // Future: dispatch to a global event bus or context for granular state updates
   }, []);
   const { connected: sseConnected } = useEventSource(handleSSEEvent);
 

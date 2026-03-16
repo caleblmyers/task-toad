@@ -23,6 +23,7 @@ export default function GlobalSearchModal({ onClose }: GlobalSearchModalProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<GlobalSearchResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
@@ -32,8 +33,9 @@ export default function GlobalSearchModal({ onClose }: GlobalSearchModalProps) {
   }, []);
 
   const search = useCallback(async (q: string) => {
-    if (!q.trim()) { setResults(null); return; }
+    if (!q.trim()) { setResults(null); setError(null); return; }
     setLoading(true);
+    setError(null);
     try {
       const data = await gql<{ globalSearch: GlobalSearchResult }>(
         `query GlobalSearch($query: String!) { globalSearch(query: $query, limit: 10) {
@@ -43,8 +45,8 @@ export default function GlobalSearchModal({ onClose }: GlobalSearchModalProps) {
         { query: q }
       );
       setResults(data.globalSearch);
-    } catch {
-      // ignore
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Search failed');
     } finally {
       setLoading(false);
     }
@@ -88,6 +90,10 @@ export default function GlobalSearchModal({ onClose }: GlobalSearchModalProps) {
         />
         <kbd className="text-[10px] text-slate-400 border border-slate-200 rounded px-1.5 py-0.5">ESC</kbd>
       </div>
+
+      {error && (
+        <p className="text-xs text-red-500 px-4 py-1">{error}</p>
+      )}
 
       {/* Results */}
       <div className="max-h-[50vh] overflow-y-auto">

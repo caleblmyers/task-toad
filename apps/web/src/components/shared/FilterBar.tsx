@@ -57,6 +57,7 @@ export default function FilterBar({
   const statusOptions = statuses ?? ['todo', 'in_progress', 'done'];
   const [saveName, setSaveName] = useState('');
   const [showSaveInput, setShowSaveInput] = useState(false);
+  const [filterError, setFilterError] = useState<string | null>(null);
 
   const handleSaveFilter = async () => {
     if (!projectId || !saveName.trim()) return;
@@ -65,6 +66,7 @@ export default function FilterBar({
       customFieldFilters: customFieldFilters ?? {},
     });
     try {
+      setFilterError(null);
       const { saveFilter } = await gql<{ saveFilter: SavedFilter }>(
         `mutation SaveFilter($projectId: ID!, $name: String!, $filters: String!) {
           saveFilter(projectId: $projectId, name: $name, filters: $filters) { savedFilterId name filters isDefault createdAt }
@@ -74,17 +76,22 @@ export default function FilterBar({
       onSavedFiltersChange?.([...(savedFilters ?? []), saveFilter]);
       setSaveName('');
       setShowSaveInput(false);
-    } catch { /* ignore */ }
+    } catch (e) {
+      setFilterError(e instanceof Error ? e.message : 'Failed to save filter');
+    }
   };
 
   const handleDeleteFilter = async (filterId: string) => {
     try {
+      setFilterError(null);
       await gql<{ deleteFilter: boolean }>(
         `mutation DeleteFilter($savedFilterId: ID!) { deleteFilter(savedFilterId: $savedFilterId) }`,
         { savedFilterId: filterId },
       );
       onSavedFiltersChange?.((savedFilters ?? []).filter((f) => f.savedFilterId !== filterId));
-    } catch { /* ignore */ }
+    } catch (e) {
+      setFilterError(e instanceof Error ? e.message : 'Failed to delete filter');
+    }
   };
 
   const getDropdownOptions = (field: CustomFieldDef): string[] => {
@@ -94,6 +101,9 @@ export default function FilterBar({
 
   return (
     <div className={`space-y-2 ${className}`}>
+      {filterError && (
+        <p className="text-xs text-red-500">{filterError}</p>
+      )}
       {/* Saved filters pills */}
       {savedFilters && savedFilters.length > 0 && onLoadFilter && (
         <div className="flex items-center gap-1 flex-wrap">
