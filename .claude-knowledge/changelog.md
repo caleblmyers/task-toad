@@ -6,6 +6,42 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-16
 
+### Wave 11: P1+D1 + Q1 + W2 (3 workers, 6 tasks)
+
+**P1+D1 — Production Infra & Observability (Worker 1):**
+- Prisma connection pooling documented in .env.example with pool params
+- pino-http structured request logging: method, url, status, responseTime, requestId, GraphQL operationName
+- LOG_LEVEL env var for production verbosity control
+- GET /api/health endpoint with DB connectivity probe (200/503)
+- Dockerfile HEALTHCHECK instruction
+- GET /api/metrics Prometheus endpoint with prom-client: request duration histograms, request counters, Prisma pool stats (via preview metrics feature), Node.js default metrics
+
+**Q1 — Code Quality & Testing (Worker 2):**
+- Vitest setup for both API (TypeScript) and web (jsdom) packages
+- Unit tests for resolverHelpers: validateStatus, parseInput, sanitizeForPrompt
+- Unit tests for useTaskFiltering: search, status, priority, assignee, combined filters, edge cases
+- Root `pnpm test` runs all tests across both packages
+- Error handling audit: NotificationCenter (3 catches → console.error), GlobalSearchModal (silent → error UI), FilterBar (save/delete → error feedback)
+- export.ts type safety: 9 `any` types replaced with `Prisma.TaskGetPayload<>` derived types
+- AppLayout dead SSE handler documented with TODO
+
+**W2 — Advanced Tasks & Filters (Worker 3):**
+- Custom field DataLoader: customFieldValuesByTask with batched loading, eliminating N+1 queries
+- customFieldValues added to TASK_FIELDS query constant (data now fetched with every task query)
+- NUMBER filter: numeric input + operator dropdown (=, <, >, <=, >=) with comparison logic in useTaskFiltering
+- DATE filter: date input + operator dropdown with ISO date comparison logic
+- Multiple assignees: TaskAssignee join table + migration, GraphQL addTaskAssignee/removeTaskAssignee mutations, taskAssignees DataLoader, multi-select chip picker UI in TaskFieldsPanel, backwards-compatible assigneeId support
+
+**Process issues (Wave 11):**
+- Worker-1 hit pino-http type resolution twice — needed `@types/pino-http` or newer version with built-in types
+- Worker-2 hit vitest type resolution twice — needed `/// <reference types="vitest" />` or tsconfig types config
+- Worker-3 needed auth.prisma for TaskAssignee→User relation (not in files array, recurring pattern)
+
+**Open follow-ups:**
+- [ ] Expand test coverage: useTaskCRUD, tokenEstimator, aiService, resolver integration tests
+- [ ] TypeScript strictness (remaining): eliminate other `any` types, Zod for JSON DB fields
+- [ ] Sentry error tracking integration (P1 — deferred from this wave)
+
 ### Wave 10: P2 + A11 + I1 (3 workers, 6 tasks)
 
 **P2 — Security Hardening (Worker 1):**

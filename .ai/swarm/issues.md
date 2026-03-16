@@ -69,3 +69,31 @@ Format:
 ### Reviewer — Positive (Wave 10)
 **Observation:** Worker-3's Slack user mapping was a clean vertical slice — Prisma model, migration, GraphQL CRUD, slash command integration, and settings UI all in one task.
 **Why it worked:** Task was properly scoped as a full feature, not split into layers. The upsert pattern for mapping was a good choice for idempotency.
+
+### Reviewer — task-003 (Wave 11)
+**Issue:** Worker-2 submitted task-003 twice with vitest type error — `Cannot find module 'vitest'` in resolverHelpers.test.ts. The `vitest` package was added as devDependency but tsc can't resolve the types without either a triple-slash reference or tsconfig types configuration.
+**Impact:** Two review rejections, blocking both task-003 and task-004 (which share the same branch).
+**Suggestion:** Task descriptions involving new test frameworks should include: "Ensure `pnpm typecheck` passes — you may need to add `/// <reference types="vitest" />` to test files or add `"types": ["vitest/globals"]` to tsconfig compilerOptions."
+
+### Reviewer — task-001 (Wave 11)
+**Issue:** Worker-1 submitted task-001 twice with pino-http type error — `Cannot find module 'pino-http'` in app.ts. The package was installed but TypeScript couldn't find type declarations.
+**Impact:** Two review rejections so far.
+**Suggestion:** When a task adds a new npm package, explicitly remind workers to verify `pnpm typecheck` passes, and note that some packages need `@types/*` or a custom `.d.ts` declaration.
+
+### worker-3 — task-006
+**Issue:** Task files array did not include `apps/api/prisma/schema/auth.prisma`, but adding a `TaskAssignee` model with a relation to `User` requires adding the reverse relation (`taskAssignments TaskAssignee[] @relation("TaskAssignees")`) on the `User` model in auth.prisma.
+**Impact:** Minimal — had to modify an unlisted file. Change was a single line addition.
+**Suggestion:** Standard pattern noted in previous waves: when adding a new Prisma model with relations to existing models, always include the related schema files (auth.prisma, org.prisma, etc.) in the files array.
+
+### Reviewer — task-001/task-002 (Wave 11)
+**Issue:** merge-worker.sh --validate runs typecheck before pnpm install, so new devDependencies (vitest, prom-client) aren't installed and types can't be found. Had to manually squash merge, run pnpm install, then validate.
+**Impact:** Multiple false rejections for task-001 (pino-http types) and task-003 (vitest types). Worker-1 solved it by rewriting to avoid pino-http; reviewer had to manually handle the merge flow for tasks with new dependencies.
+**Suggestion:** merge-worker.sh should run `pnpm install` after staging the squash merge but before running typecheck/lint/build. This is critical when tasks add new npm packages.
+
+### Reviewer — Positive (Wave 11)
+**Observation:** Worker-3 delivered both task-005 (custom field DataLoader + filters) and task-006 (multiple assignees) cleanly with no rejections. Both were full vertical slices touching API + frontend.
+**Why it worked:** Clean, well-scoped tasks with no file overlap with other workers. Worker followed existing DataLoader and resolver patterns.
+
+### Reviewer — Positive (Wave 11)
+**Observation:** Worker-1 pivoted from pino-http (type issues) to a custom Express middleware that handles both logging and Prometheus metrics in one pass. More efficient and avoids the external dependency type problem.
+**Why it worked:** Worker autonomously chose a better approach when the prescribed one hit an obstacle.

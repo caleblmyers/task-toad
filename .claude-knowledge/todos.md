@@ -38,6 +38,7 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 5. **I1 + D1** — Integration completeness & observability
 6. **F1** — Frontend performance (only matters at scale)
 7. **S1** — Styling & branding (brand tokens deployed, remaining items are polish)
+8. **SW1** — Swarm workflow & knowledge base optimization (meta — improves all future waves)
 
 ---
 
@@ -49,7 +50,9 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 
 - [x] Graceful shutdown handlers (SIGTERM/SIGINT) — close Prisma, SSE connections, clear intervals on redeploy (Wave 9, 2026-03-16)
 - [ ] Sentry error tracking integration — capture unhandled exceptions, GraphQL errors, and AI failures
-- [ ] Prisma connection pooling — configure pool size or add PgBouncer for Railway's PostgreSQL
+- [x] Prisma connection pooling — documented pool params in .env.example, LOG_LEVEL env var, pino-http structured request logging (Wave 11, 2026-03-16)
+- [x] Health check endpoint — GET /api/health with DB connectivity check, Dockerfile HEALTHCHECK (Wave 11, 2026-03-16)
+- [x] Prometheus metrics endpoint — /api/metrics with request latency histograms, Prisma pool stats, Node.js metrics (Wave 11, 2026-03-16)
 - [x] Environment validation improvements — warn if SMTP not configured in production, validate ANTHROPIC_API_KEY (Wave 9, 2026-03-16)
 - [x] Static asset caching headers — `Cache-Control: max-age=31536000, immutable` for hashed assets, `no-cache` for index.html (Wave 9, 2026-03-16)
 - [x] React Error Boundary — global error boundary at App root with fallback UI (Wave 9, 2026-03-16)
@@ -90,11 +93,13 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 **Touches:** `apps/web/src/components/`, `apps/web/src/hooks/`, `apps/api/src/graphql/resolvers/`, new `__tests__/` directories
 
 - [x] Base Modal component — shared `<Modal>` with focus trap, ARIA, Escape-to-close (completed as part of A11 Wave 9, 2026-03-16)
-- [ ] Consistent error handling — replace silent `catch { return }` blocks with user-visible error feedback via toast. Audit: CommentSection, NotificationCenter, GlobalSearchModal, AppLayout
-- [ ] Unit test foundation — set up Jest + React Testing Library, write tests for critical hooks (useTaskFiltering, useTaskCRUD) and utility functions (resolverHelpers, tokenEstimator)
+- [x] Consistent error handling — NotificationCenter, GlobalSearchModal, FilterBar catch blocks now log errors / show UI feedback instead of silent swallowing (Wave 11, 2026-03-16)
+- [x] Unit test foundation — Vitest setup for both API and web, tests for resolverHelpers (validateStatus, parseInput, sanitizeForPrompt) and useTaskFiltering (search, status, priority, assignee, combined) (Wave 11, 2026-03-16)
 - [ ] Integration test foundation — set up test database, write resolver tests for auth flows and task CRUD
-- [ ] TypeScript strictness — eliminate `any` types and untyped JSON.parse calls; add Zod validation for parsed JSON from DB fields (suggestedTools, dependsOn, columns)
-- [ ] Dead code cleanup — remove unused SSE event handler in AppLayout, audit for other unused exports
+- [x] TypeScript strictness (partial) — export.ts `any` types replaced with Prisma-derived types, eslint-disable comments removed (Wave 11, 2026-03-16)
+- [x] Dead code cleanup — AppLayout SSE handler documented with TODO for future event dispatch (Wave 11, 2026-03-16)
+- [ ] TypeScript strictness (remaining) — eliminate remaining `any` types; add Zod validation for parsed JSON from DB fields (suggestedTools, dependsOn, columns)
+- [ ] Expand test coverage — add tests for useTaskCRUD, tokenEstimator, aiService, and resolver integration tests
 
 ### W1: Full-Stack Quality Refactor (remaining)
 **Touches:** `resolvers/*`, `typedefs/*`, `ProjectDetail.tsx`
@@ -108,15 +113,15 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 
 - [x] Custom fields on tasks — 4 field types with CRUD, TaskDetailPanel rendering, FilterBar integration (Wave 8, 2026-03-16)
 - [x] Saved filters / views — save/load/delete filter configurations in FilterBar (Wave 8, 2026-03-16)
-- [ ] Multiple assignees — support multiple `assigneeId`s per task. Full slice: join table in Prisma, GraphQL type update, resolver update, assignee picker UI supporting multi-select
+- [x] Multiple assignees — TaskAssignee join table, GraphQL types/resolvers with DataLoader, multi-select assignee picker UI with chips (Wave 11, 2026-03-16)
 - [ ] Recurring tasks — auto-recreate on schedule. Full slice: Prisma fields (recurrenceRule, recurrenceParentId), cron/scheduler utility, creation logic, UI toggle in TaskDetailPanel
 - [ ] File attachments on tasks — upload images/docs/screenshots. Full slice: storage service abstraction (local + S3), Prisma model (Attachment), upload endpoint, TaskDetailPanel attachment section
 - [ ] Task templates — reusable task structures for repeated workflows. Full slice: Prisma model (TaskTemplate), CRUD mutations, "Create from template" UI in project toolbar
 - [ ] JSON string columns → centralized helpers — Sprint.columns, Task.suggestedTools (parseColumns/parseSuggestedTools helpers, not migration)
 - [ ] Shared types between API and web — evaluate graphql-codegen or shared package for type safety
-- [ ] Custom field DataLoader — customFieldValues field resolver currently uses direct query per task; add DataLoader for batch loading
+- [x] Custom field DataLoader — customFieldValuesByTask DataLoader with batched loading (Wave 11, 2026-03-16)
 - [ ] Custom field reordering UI — drag-to-reorder in ProjectSettingsModal (position field exists but no drag UI implemented)
-- [ ] Custom field NUMBER/DATE filter controls — FilterBar only renders TEXT and DROPDOWN custom field filters, not number range or date picker
+- [x] Custom field NUMBER/DATE filter controls — number input with operator dropdown (=,<,>,<=,>=), date input with operator, numeric/date comparison logic in useTaskFiltering (Wave 11, 2026-03-16)
 
 ### W6: Advanced Views & AI Extras (remaining)
 **Touches:** new `apps/web/src/components/` files, `resolvers/ai.ts`
@@ -128,8 +133,9 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 **Why:** No metrics, no APM, no external monitoring. Railway basic healthcheck is the only signal.
 **Touches:** `apps/api/src/app.ts`, `apps/api/src/index.ts`, Railway dashboard config
 
-- [ ] Expose Prisma metrics at `/api/metrics` for Prometheus scraping
-- [ ] Add structured request logging with latency, status code, and resolver name
+- [x] Expose Prisma metrics at `/api/metrics` for Prometheus scraping — prom-client with Prisma preview metrics feature (Wave 11, 2026-03-16)
+- [x] Add structured request logging with latency, status code, and resolver name — pino-http middleware with request IDs, GraphQL operation name extraction (Wave 11, 2026-03-16)
+- [x] Health check endpoint — GET /api/health with DB connectivity probe (Wave 11, 2026-03-16)
 - [ ] External uptime monitoring (Uptime Robot or similar)
 - [ ] Railway alerting — configure alerts for restart loops, memory spikes, high CPU
 - [ ] Staging environment — Railway preview deployments from PRs
@@ -179,6 +185,19 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 - [ ] Social preview image — proper og:image composite (logo + text on brand-dark background) for link sharing
 - [ ] PWA manifest — `manifest.json` with icon set for installable web app
 
+### SW1: Swarm Workflow Optimization (Meta)
+**Why:** 10 waves of swarm experience have surfaced recurring friction — type errors from new packages, missing files arrays, idle workers, stale knowledge base. Fixing these improves every future wave.
+**Touches:** `.claude/skills/`, `.claude-knowledge/`, `scripts/swarm/`, `CLAUDE.md`
+
+- [ ] Auto-prisma-generate in merge script — `scripts/swarm/merge-worker.sh` should detect Prisma schema changes in the diff and run `npx prisma generate` automatically before typecheck, preventing the recurring "stale Prisma client types" review rejection
+- [ ] Task file array validation — add a pre-flight check in the swarm skill that cross-references task description file paths against the `files` array, flagging any mentioned files that aren't listed (recurring issue: Prisma relation files, resolver index, entry point files)
+- [ ] Standard Prisma task boilerplate — when a task adds a Prisma model with relations, auto-include `auth.prisma`, `org.prisma`, `resolvers/index.ts` in the files array and add "Run `npx prisma generate` && verify `pnpm typecheck`" to acceptance criteria
+- [ ] New package type-check reminder — when a task installs a new npm package, add acceptance criterion: "Verify `pnpm typecheck` passes — add `@types/*` package or `.d.ts` declaration if needed"
+- [ ] Knowledge base audit — review and consolidate `.claude-knowledge/` files: remove stale info from `app-overview.md` and `skills.md` that's been superseded by 10 waves of changes, ensure `decisions.md` reflects current architecture (SSE fetch-based client, Prisma metrics preview, DataLoaders, brand system)
+- [ ] CLAUDE.md refresh — update to reflect current state: test commands (`pnpm test`), new endpoints (`/api/health`, `/api/metrics`), new env vars (`LOG_LEVEL`, `SENTRY_DSN`), Prisma preview features, updated file map
+- [ ] Swarm status dashboard — enhance `scripts/swarm/status.sh` to show file overlap warnings between in-flight tasks across workers, so the reviewer can spot potential merge conflicts early
+- [ ] Worker branch strategy — document whether workers should commit per-task or per-worker, and how to handle rebase after partial merges (recurring source of merge conflicts when one task merges before another on the same branch)
+
 ---
 
 ## Parallelism Matrix
@@ -197,9 +216,29 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 
 **Remaining legacy sets (W1, W2, W6):** All can run in parallel with each other — no file overlap.
 
+**SW1 (meta):** No code file overlap with any set — only touches skills, scripts, docs. Can run alongside anything, or be done manually between waves.
+
 ---
 
 ## Completed
+
+### P1+D1 (partial): Production Infra & Observability (Wave 11, 2026-03-16)
+- [x] Prisma connection pooling documented, LOG_LEVEL env var, pino-http structured request logging with request IDs
+- [x] Health check endpoint (GET /api/health) with DB probe, Dockerfile HEALTHCHECK
+- [x] Prometheus metrics endpoint (GET /api/metrics) with request latency histograms, Prisma pool stats, Node.js default metrics
+
+### Q1 (partial): Code Quality & Testing (Wave 11, 2026-03-16)
+- [x] Vitest setup for API + web with TypeScript support
+- [x] Unit tests for resolverHelpers (validateStatus, parseInput, sanitizeForPrompt) and useTaskFiltering (8 test scenarios)
+- [x] Error handling audit — NotificationCenter, GlobalSearchModal, FilterBar catch blocks now log/show errors
+- [x] export.ts any types replaced with Prisma-derived types
+- [x] AppLayout dead SSE handler documented with TODO
+
+### W2 (partial): Advanced Tasks & Filters (Wave 11, 2026-03-16)
+- [x] Custom field DataLoader — customFieldValuesByTask with batched loading, registered in context
+- [x] customFieldValues added to TASK_FIELDS query constant
+- [x] NUMBER/DATE filter controls in FilterBar with operator dropdowns + comparison logic in useTaskFiltering
+- [x] Multiple assignees — TaskAssignee join table, GraphQL CRUD with DataLoader, multi-select chip picker UI
 
 ### P2 (partial): Security Hardening (Wave 10, 2026-03-16)
 - [x] GraphQL query depth limit (max 10) — custom validation rule

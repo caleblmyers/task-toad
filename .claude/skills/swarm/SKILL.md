@@ -40,6 +40,7 @@ You are setting up a new swarm wave. Follow these steps precisely.
    - Each worker should have **2-4 tasks** totaling 30-60 min
    - Task descriptions should be 2-3 paragraphs with specific file paths, code snippets, and implementation details
    - Include acceptance criteria that are concrete and verifiable
+   - **Worker parallelism:** When a worker has multiple tasks, minimize file overlap between them so the worker can start the next task while the previous one is in review. If two tasks on the same worker must share files, order them sequentially and note the dependency.
 
 ## Execution
 
