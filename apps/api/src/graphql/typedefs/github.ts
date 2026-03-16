@@ -69,4 +69,5 @@ export const githubMutationFields = /* GraphQL */ `
   createPullRequestFromTask(projectId: ID!, taskId: ID!, files: [GitHubFileInput!]!): GitHubPullRequest!
   syncTaskToGitHub(taskId: ID!): Task!
   decomposeGitHubIssue(projectId: ID!, issueNumber: Int!): [Task!]!
+  generateFixFromReview(taskId: ID!, prNumber: Int!): CodeGeneration!
 `;

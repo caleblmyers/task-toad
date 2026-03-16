@@ -18,7 +18,7 @@ export { getProjectRepo, connectRepoToProject, disconnectRepo, createRepoForProj
 export { createBranch, commitFiles } from './githubCommitService.js';
 
 // Pull requests
-export { createPullRequest, getPullRequestDiff } from './githubPullRequestService.js';
+export { createPullRequest, getPullRequestDiff, getPullRequestComments, getPullRequestFiles } from './githubPullRequestService.js';
 
 // Issues
 export { createGitHubIssue, updateGitHubIssueState, getGitHubIssue, getGitHubIssueByNumber } from './githubIssueService.js';

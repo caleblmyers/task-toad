@@ -41,6 +41,115 @@ export async function getPullRequestDiff(
   return response.text();
 }
 
+interface PRComment {
+  path: string;
+  body: string;
+  line?: number;
+}
+
+/**
+ * Fetch review comments on a pull request.
+ */
+export async function getPullRequestComments(
+  installationId: string,
+  owner: string,
+  repo: string,
+  prNumber: number
+): Promise<PRComment[]> {
+  const token = await getInstallationToken(installationId);
+
+  const response = await fetch(
+    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/comments`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    }
+  );
+
+  if (!response.ok) {
+    logApiError('getPullRequestComments', new Error(`HTTP ${response.status}`), {
+      repo: `${owner}/${repo}`,
+      prNumber,
+    });
+    throw new Error(`Failed to fetch PR comments: ${response.status}`);
+  }
+
+  const data = (await response.json()) as Array<{ path: string; body: string; line?: number }>;
+  return data.map((c) => ({ path: c.path, body: c.body, line: c.line ?? undefined }));
+}
+
+interface PRFileEntry {
+  filename: string;
+  contents_url: string;
+  status: string;
+}
+
+/**
+ * Fetch the files changed in a pull request and their current contents.
+ */
+export async function getPullRequestFiles(
+  installationId: string,
+  owner: string,
+  repo: string,
+  prNumber: number
+): Promise<Array<{ path: string; content: string }>> {
+  const token = await getInstallationToken(installationId);
+
+  const response = await fetch(
+    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/files`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    }
+  );
+
+  if (!response.ok) {
+    logApiError('getPullRequestFiles', new Error(`HTTP ${response.status}`), {
+      repo: `${owner}/${repo}`,
+      prNumber,
+    });
+    throw new Error(`Failed to fetch PR files: ${response.status}`);
+  }
+
+  const files = (await response.json()) as PRFileEntry[];
+
+  // Fetch content for each file (skip removed files)
+  const results: Array<{ path: string; content: string }> = [];
+  for (const file of files) {
+    if (file.status === 'removed') continue;
+
+    try {
+      const contentResponse = await fetch(file.contents_url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      });
+
+      if (contentResponse.ok) {
+        const contentData = (await contentResponse.json()) as { content?: string; encoding?: string };
+        if (contentData.content && contentData.encoding === 'base64') {
+          results.push({
+            path: file.filename,
+            content: Buffer.from(contentData.content, 'base64').toString('utf8'),
+          });
+        }
+      }
+    } catch {
+      // Skip files we can't fetch
+    }
+  }
+
+  return results;
+}
+
 const CREATE_PULL_REQUEST = `
   mutation CreatePullRequest(
     $repositoryId: ID!,

@@ -10,8 +10,10 @@ import {
   updateGitHubIssueState,
   getGitHubIssueByNumber,
   fetchFileContent,
+  getPullRequestComments,
+  getPullRequestFiles,
 } from '../../github/index.js';
-import { decomposeIssue as aiDecomposeIssue } from '../../ai/index.js';
+import { decomposeIssue as aiDecomposeIssue, generateReviewFix as aiGenerateReviewFix } from '../../ai/index.js';
 import { NotFoundError, AuthorizationError, ValidationError } from '../errors.js';
 import { requireOrg, requireProjectAccess, requireApiKey } from './auth.js';
 
@@ -189,6 +191,62 @@ export const githubMutations = {
     );
 
     return created;
+  },
+
+  generateFixFromReview: async (
+    _parent: unknown,
+    args: { taskId: string; prNumber: number },
+    context: Context
+  ) => {
+    const user = requireOrg(context);
+    const apiKey = requireApiKey(context);
+    const task = await context.prisma.task.findFirst({
+      where: { taskId: args.taskId, orgId: user.orgId },
+      include: { project: true },
+    });
+    if (!task) throw new NotFoundError('Task not found');
+
+    const project = task.project;
+    if (!project.githubInstallationId || !project.githubRepositoryOwner || !project.githubRepositoryName) {
+      throw new ValidationError('Project has no linked GitHub repository');
+    }
+
+    const [comments, currentFiles] = await Promise.all([
+      getPullRequestComments(
+        project.githubInstallationId,
+        project.githubRepositoryOwner,
+        project.githubRepositoryName,
+        args.prNumber
+      ),
+      getPullRequestFiles(
+        project.githubInstallationId,
+        project.githubRepositoryOwner,
+        project.githubRepositoryName,
+        args.prNumber
+      ),
+    ]);
+
+    if (comments.length === 0) {
+      throw new ValidationError('No review comments found on this pull request');
+    }
+
+    const reviewComments = comments
+      .map((c) => `${c.path}${c.line ? `:${c.line}` : ''}: ${c.body}`)
+      .join('\n');
+
+    const result = await aiGenerateReviewFix(apiKey, {
+      taskTitle: task.title,
+      taskInstructions: task.instructions ?? '',
+      reviewComments,
+      currentFiles,
+      projectName: project.name,
+    });
+
+    return {
+      files: result.files,
+      summary: result.commitMessage,
+      estimatedTokensUsed: 0,
+    };
   },
 
   syncTaskToGitHub: async (_parent: unknown, args: { taskId: string }, context: Context) => {

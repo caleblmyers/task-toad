@@ -18,6 +18,7 @@ export {
   enrichPRDescription,
   reviewCode,
   decomposeIssue,
+  generateReviewFix,
 } from './aiService.js';
 
 export { logUsageToDB, checkBudget } from './aiUsageTracker.js';
@@ -37,5 +38,6 @@ export type {
   MeetingNotesExtraction,
   CodeReview,
   IssueDecomposition,
+  ReviewFix,
   AIFeature,
 } from './aiTypes.js';

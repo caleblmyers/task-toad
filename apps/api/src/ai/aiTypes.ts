@@ -155,6 +155,20 @@ export const IssueDecompositionSchema = z.object({
 
 export type IssueDecomposition = z.infer<typeof IssueDecompositionSchema>;
 
+export const ReviewFixFileSchema = z.object({
+  path: z.string(),
+  content: z.string(),
+  language: z.string(),
+  description: z.string(),
+});
+
+export const ReviewFixSchema = z.object({
+  files: z.array(ReviewFixFileSchema),
+  commitMessage: z.string(),
+});
+
+export type ReviewFix = z.infer<typeof ReviewFixSchema>;
+
 // ---------------------------------------------------------------------------
 // AI subsystem internal types
 // ---------------------------------------------------------------------------
@@ -175,7 +189,8 @@ export type AIFeature =
   | 'enrichPRDescription'
   | 'regenerateFile'
   | 'reviewCode'
-  | 'decomposeIssue';
+  | 'decomposeIssue'
+  | 'generateReviewFix';
 
 export interface AIUsage {
   inputTokens: number;

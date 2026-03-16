@@ -17,8 +17,9 @@ import {
   GeneratedFileSchema,
   CodeReviewSchema,
   IssueDecompositionSchema,
+  ReviewFixSchema,
 } from './aiTypes.js';
-import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition } from './aiTypes.js';
+import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix } from './aiTypes.js';
 import { FEATURE_CONFIG } from './aiConfig.js';
 import { callAI } from './aiClient.js';
 import { parseJSON } from './responseParser.js';
@@ -39,6 +40,7 @@ import {
   buildEnrichPRDescriptionPrompt,
   buildCodeReviewPrompt,
   buildDecomposeIssuePrompt,
+  buildReviewFixPrompt,
 } from './promptBuilder.js';
 
 // ---------------------------------------------------------------------------
@@ -298,6 +300,20 @@ export async function reviewCode(
 ): Promise<CodeReview> {
   const p = buildCodeReviewPrompt(data);
   return callAndParse(apiKey, 'reviewCode', p, CodeReviewSchema);
+}
+
+export async function generateReviewFix(
+  apiKey: string,
+  data: {
+    taskTitle: string;
+    taskInstructions: string;
+    reviewComments: string;
+    currentFiles: Array<{ path: string; content: string }>;
+    projectName: string;
+  }
+): Promise<ReviewFix> {
+  const p = buildReviewFixPrompt(data);
+  return callAndParse(apiKey, 'generateReviewFix', p, ReviewFixSchema);
 }
 
 export async function decomposeIssue(

@@ -34,6 +34,7 @@ export const FEATURE_CONFIG: Record<AIFeature, FeatureConfig> = {
   regenerateFile:           { maxTokens: 4096, cacheTTLMs: 0,       retryOnValidationFailure: true },
   reviewCode:               { maxTokens: 4096, cacheTTLMs: 0,       retryOnValidationFailure: true },
   decomposeIssue:           { maxTokens: 4096, cacheTTLMs: 0,       retryOnValidationFailure: true },
+  generateReviewFix:        { maxTokens: 8192, cacheTTLMs: 0,       retryOnValidationFailure: true },
 };
 
 // ---------------------------------------------------------------------------

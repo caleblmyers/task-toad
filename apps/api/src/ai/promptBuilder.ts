@@ -490,6 +490,45 @@ Include: ## Summary (2-3 sentences), ## Changes (bullet list), ## Testing (how t
   };
 }
 
+export function buildReviewFixPrompt(data: {
+  taskTitle: string;
+  taskInstructions: string;
+  reviewComments: string;
+  currentFiles: Array<{ path: string; content: string }>;
+  projectName: string;
+}): Prompt {
+  const filesSection = data.currentFiles
+    .map((f) => `--- ${f.path} ---\n${truncate(f.content, 2000)}`)
+    .join('\n\n');
+
+  return {
+    systemPrompt: SYSTEM_JSON,
+    userPrompt: `Fix the code based on the review feedback. Return updated file contents that address each comment. Only include files that need changes.
+
+Task: ${userInput('title', data.taskTitle)}
+Instructions: ${userInput('instructions', truncate(data.taskInstructions, 800))}
+Project: ${userInput('project', data.projectName)}
+
+Review comments:
+<user_input label="review_comments">
+${truncate(data.reviewComments, 3000)}
+</user_input>
+
+Current file contents:
+<user_input label="current_files">
+${truncate(filesSection, 6000)}
+</user_input>
+
+Return JSON:
+{
+  "files": [{ "path": string, "content": string, "language": string, "description": string }],
+  "commitMessage": string
+}
+Generate complete, updated file contents (not patches). Only include files that need changes.
+The commit message should summarize what was fixed.`,
+  };
+}
+
 export function buildDecomposeIssuePrompt(data: {
   issueTitle: string;
   issueBody: string;
