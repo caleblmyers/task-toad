@@ -58,22 +58,31 @@ export const taskQueries = {
     }));
   },
 
-  activities: async (_parent: unknown, args: { projectId?: string | null; taskId?: string | null; limit?: number | null }, context: Context) => {
+  activities: async (_parent: unknown, args: { projectId?: string | null; taskId?: string | null; limit?: number | null; cursor?: string | null }, context: Context) => {
     const user = requireOrg(context);
     const where: Record<string, unknown> = { orgId: user.orgId };
     if (args.projectId) where.projectId = args.projectId;
     if (args.taskId) where.taskId = args.taskId;
+    const limit = args.limit ?? 50;
     const activities = await context.prisma.activity.findMany({
       where,
       include: { user: { select: { email: true } } },
       orderBy: { createdAt: 'desc' },
-      take: args.limit ?? 50,
+      take: limit + 1,
+      ...(args.cursor ? { cursor: { activityId: args.cursor }, skip: 1 } : {}),
     });
-    return activities.map((a: typeof activities[number]) => ({
-      ...a,
-      userEmail: a.user.email,
-      createdAt: a.createdAt.toISOString(),
-    }));
+    const hasMore = activities.length > limit;
+    const items = hasMore ? activities.slice(0, limit) : activities;
+    const nextCursor = hasMore ? items[items.length - 1].activityId : null;
+    return {
+      activities: items.map((a: typeof activities[number]) => ({
+        ...a,
+        userEmail: a.user.email,
+        createdAt: a.createdAt.toISOString(),
+      })),
+      hasMore,
+      nextCursor,
+    };
   },
 
   epics: async (_parent: unknown, args: { projectId: string }, context: Context) => {
@@ -388,14 +397,23 @@ export const taskMutations = {
 
   deleteComment: async (_parent: unknown, args: { commentId: string }, context: Context) => {
     const user = requireOrg(context);
-    const comment = await context.prisma.comment.findUnique({ where: { commentId: args.commentId } });
+    const comment = await context.prisma.comment.findUnique({
+      where: { commentId: args.commentId },
+      include: { user: { select: { email: true } } },
+    });
     if (!comment) throw new NotFoundError('Comment not found');
     if (comment.userId !== user.userId && user.role !== 'org:admin') {
       throw new AuthorizationError('Not authorized to delete this comment');
     }
     await context.prisma.comment.deleteMany({ where: { parentCommentId: args.commentId } });
     await context.prisma.comment.delete({ where: { commentId: args.commentId } });
-    return true;
+    return {
+      ...comment,
+      userEmail: comment.user.email,
+      createdAt: comment.createdAt.toISOString(),
+      updatedAt: comment.updatedAt.toISOString(),
+      replies: [],
+    };
   },
 };
 

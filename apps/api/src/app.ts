@@ -12,6 +12,7 @@ import { buildContext } from './graphql/context.js';
 import { handleGitHubWebhook } from './github/index.js';
 import { handleSlackCommand } from './slack/slackWebhookHandler.js';
 import { exportRouter } from './routes/export.js';
+import { docsRouter } from './routes/docs.js';
 import { logger } from './utils/logger.js';
 import { sseManager } from './utils/sseManager.js';
 import { jwtVerify } from 'jose';
@@ -106,6 +107,9 @@ app.get('/api/events', async (req, res) => {
 
 // Export REST endpoints (file downloads — not suited for GraphQL)
 app.use('/api/export', exportRouter);
+
+// API documentation
+app.use('/api/docs', docsRouter);
 
 // Global rate limit: 200 requests per minute per IP
 app.use(

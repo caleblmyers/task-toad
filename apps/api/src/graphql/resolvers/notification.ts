@@ -59,11 +59,11 @@ export const notificationMutations = {
 
   markAllNotificationsRead: async (_parent: unknown, _args: unknown, context: Context) => {
     const user = requireOrg(context);
-    await context.prisma.notification.updateMany({
+    const result = await context.prisma.notification.updateMany({
       where: { userId: user.userId, orgId: user.orgId, isRead: false },
       data: { isRead: true },
     });
-    return true;
+    return result.count;
   },
 
   updateNotificationPreference: async (

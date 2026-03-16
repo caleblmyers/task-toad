@@ -24,15 +24,21 @@ export const commentTypeDefs = /* GraphQL */ `
     newValue: String
     createdAt: String!
   }
+
+  type ActivityConnection {
+    activities: [Activity!]!
+    hasMore: Boolean!
+    nextCursor: String
+  }
 `;
 
 export const commentQueryFields = /* GraphQL */ `
   comments(taskId: ID!): [Comment!]!
-  activities(projectId: ID, taskId: ID, limit: Int): [Activity!]!
+  activities(projectId: ID, taskId: ID, limit: Int, cursor: String): ActivityConnection!
 `;
 
 export const commentMutationFields = /* GraphQL */ `
   createComment(taskId: ID!, content: String!, parentCommentId: ID): Comment!
   updateComment(commentId: ID!, content: String!): Comment!
-  deleteComment(commentId: ID!): Boolean!
+  deleteComment(commentId: ID!): Comment!
 `;

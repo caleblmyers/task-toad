@@ -43,10 +43,16 @@ export const reportTypeDefs = /* GraphQL */ `
     tasks: [ExtractedTask!]!
     summary: String!
   }
+
+  type ReportConnection {
+    reports: [Report!]!
+    hasMore: Boolean!
+    nextCursor: String
+  }
 `;
 
 export const reportQueryFields = /* GraphQL */ `
-  reports(projectId: ID!, type: String, limit: Int): [Report!]!
+  reports(projectId: ID!, type: String, limit: Int, cursor: String): ReportConnection!
   generateStandupReport(projectId: ID!): StandupReport!
   generateSprintReport(projectId: ID!, sprintId: ID!): SprintReportResult!
   analyzeProjectHealth(projectId: ID!): ProjectHealth!

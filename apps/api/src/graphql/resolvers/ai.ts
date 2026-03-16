@@ -836,18 +836,24 @@ export const aiQueries = {
 
   reports: async (
     _parent: unknown,
-    args: { projectId: string; type?: string | null; limit?: number | null },
+    args: { projectId: string; type?: string | null; limit?: number | null; cursor?: string | null },
     context: Context
   ) => {
     await requireProject(context, args.projectId);
-    return context.prisma.report.findMany({
+    const limit = args.limit ?? 20;
+    const reports = await context.prisma.report.findMany({
       where: {
         projectId: args.projectId,
         ...(args.type ? { type: args.type } : {}),
       },
       orderBy: { createdAt: 'desc' },
-      take: args.limit ?? 20,
+      take: limit + 1,
+      ...(args.cursor ? { cursor: { id: args.cursor }, skip: 1 } : {}),
     });
+    const hasMore = reports.length > limit;
+    const items = hasMore ? reports.slice(0, limit) : reports;
+    const nextCursor = hasMore ? items[items.length - 1].id : null;
+    return { reports: items, hasMore, nextCursor };
   },
 
   aiPromptHistory: async (

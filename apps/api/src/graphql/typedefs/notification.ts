@@ -25,6 +25,6 @@ export const notificationQueryFields = /* GraphQL */ `
 
 export const notificationMutationFields = /* GraphQL */ `
   markNotificationRead(notificationId: ID!): Notification!
-  markAllNotificationsRead: Boolean!
+  markAllNotificationsRead: Int!
   updateNotificationPreference(notificationType: String!, inApp: Boolean, email: Boolean): NotificationPreference!
 `;
