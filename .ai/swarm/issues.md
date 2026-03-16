@@ -168,3 +168,26 @@ Format:
 ### Reviewer — Positive (Wave 15)
 **Observation:** merge-worker.sh pnpm install fix (from Wave 14) worked flawlessly this wave — react-window dependency was auto-installed during validation. Zero manual workarounds needed.
 **Why it worked:** The script detects package.json changes and runs pnpm install before typecheck/lint.
+
+### Reviewer — task-004 (Wave 16)
+**Issue:** Worker-2's branch still contained task-003 commits that had been separately merged to main. Caused merge conflicts in ai.ts and task.ts typedefs.
+**Impact:** One review rejection, worker had to rebase. ~2 min delay.
+**Suggestion:** Workers should rebase onto main after their first task is merged (before marking second task complete), especially when both tasks touched the same branch.
+
+### Reviewer — task-002 (Wave 16, security)
+**Issue:** Upload filename uses `${Date.now()}-${file.originalname}` without sanitizing `originalname`. If a malicious client sends `../../etc/passwd` as the filename, `path.join(uploadDir, filename)` could resolve outside the upload directory.
+**Impact:** No immediate issue (auth required, local dev only), but a security concern for production.
+**Suggestion:** Use `path.basename(file.originalname)` to strip directory components. Added as follow-up todo.
+
+### Reviewer — task-002 (Wave 16, minor)
+**Issue:** upload.ts creates its own `new PrismaClient()` instead of using the app-level shared instance. This wastes a DB connection pool slot.
+**Impact:** Minor — functional but wasteful. Could cause connection exhaustion under load.
+**Suggestion:** Refactor to accept prisma via middleware or factory function. Added as follow-up todo.
+
+### Reviewer — Positive (Wave 16)
+**Observation:** 5 of 6 tasks passed review on first attempt. Worker-1 delivered both recurring tasks and file attachments (two complex vertical slices) cleanly. Worker-3 delivered all test tasks with proper mocking patterns.
+**Why it worked:** Tasks were well-scoped 30-60 min vertical slices. Acceptance criteria were specific. merge-worker.sh auto-detected Prisma changes and ran generate.
+
+### Reviewer — Positive (Wave 16)
+**Observation:** merge-worker.sh handled pnpm install (multer) and prisma generate automatically this wave. Zero manual workarounds needed for either new dependencies or schema changes.
+**Why it worked:** Script improvements from Wave 14/15 working as intended.

@@ -52,23 +52,30 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 ### Q1: Code Quality & Testing (Medium Priority)
 **Touches:** `apps/web/src/hooks/`, `apps/api/src/graphql/resolvers/`, `__tests__/` directories
 
-- [ ] TypeScript strictness (final) — remaining `any` types audit; add Zod for suggestedTools and dependsOn JSON parsing in taskHelpers.ts
-- [ ] Expand test coverage — add tests for useTaskCRUD, aiService, and web component tests
-- [ ] Integration test coverage — extend beyond auth/task/sprint to project, AI, and notification resolvers
+- [ ] TypeScript strictness (final) — remaining `any` types audit (suggestedTools now has runtime validation via parseSuggestedTools)
+- [ ] Expand test coverage — add tests for useTaskCRUD and web component tests
+- [x] AI service unit tests — 12 tests with mocked callAI covering generateProjectOptions, generateTaskPlan, expandTask, summarizeProject, retry-on-validation, isArraySchema
+- [x] Integration test coverage — project CRUD (13 tests) + notification resolvers (9 tests)
 
 ### W2: Advanced Tasks & Filters
 **Touches:** `prisma/schema/task.prisma`, `typedefs/task.ts`, `resolvers/task.ts`, `TaskDetailPanel.tsx`, `useProjectData.ts`, `useTaskFiltering.ts`, `FilterBar.tsx`
 
-- [ ] Recurring tasks — auto-recreate on schedule. Full slice: Prisma fields (recurrenceRule, recurrenceParentId), cron/scheduler utility, creation logic, UI toggle in TaskDetailPanel
-- [ ] File attachments on tasks — upload images/docs/screenshots. Full slice: storage service abstraction (local + S3), Prisma model (Attachment), upload endpoint, TaskDetailPanel attachment section
+- [x] Recurring tasks — cron scheduler (60s interval, 23h debounce), Prisma fields, recurrence presets UI in TaskDetailPanel
+- [x] File attachments on tasks — multer upload (10MB), REST endpoints, Attachment model, TaskDetailPanel UI
 - [ ] Shared types between API and web — evaluate graphql-codegen or shared package for type safety
+- [ ] Upload filename sanitization — use `path.basename()` on `file.originalname` in upload.ts to prevent path traversal (security)
+- [ ] Upload route PrismaClient — upload.ts creates its own `new PrismaClient()` instead of sharing the app-level instance; refactor to accept prisma via closure or middleware
+- [ ] Attachment DataLoader — Task.attachments field resolver does individual DB query per task; add to loaders.ts for batched loading
+- [ ] Recurrence scheduler tests — no unit tests for cron matching logic or processRecurrence; add tests for edge cases (debounce, invalid cron expressions)
 
 ### W6: Advanced Views & AI Extras (remaining)
 **Touches:** `resolvers/ai.ts`, `apps/web/src/components/`
 
-- [ ] AI auto-review trigger — auto-trigger review when task moves to `in_review` status (currently manual button only)
-- [ ] Subtask-level code generation — generate code per subtask instead of parent task to keep output within token limits; iterate in frontend (CodePreviewModal) or batch via backend
-- [ ] API docs operation descriptions — extract descriptions from SDL comments for each query/mutation (currently shows signature only)
+- [x] AI auto-review trigger — fire-and-forget review when task moves to in_review with linked PRs
+- [x] Subtask-level code generation — generateCodeFromSubtask mutation + per-subtask UI in CodePreviewModal
+- [x] API docs operation descriptions — ~40 SDL descriptions parsed and rendered in /api/docs
+- [ ] SDL descriptions for remaining operations — ~30 operations still lack descriptions (github, report, slack, webhook, projectrole mutations)
+- [ ] Subtask code gen abort support — CodePreviewModal subtask generation doesn't support AbortController cancellation mid-generation
 
 ### D1: Deployment & Observability (Medium Priority)
 **Touches:** `apps/api/src/app.ts`, `apps/api/src/index.ts`, Railway dashboard config
@@ -131,6 +138,15 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 ---
 
 ## Completed
+
+### W2+W6+Q1: Wave 16 (2026-03-16)
+- [x] Recurring tasks — Prisma schema (recurrenceRule, recurrenceParentId, recurrenceLastCreated), cron scheduler (60s interval, 23h debounce), TaskDetailPanel presets dropdown
+- [x] File attachments — Attachment model, multer REST upload/download/delete (10MB, rate-limited), TaskDetailPanel upload UI
+- [x] Subtask-level code generation — generateCodeFromSubtask mutation, per-subtask UI in CodePreviewModal with accumulation
+- [x] API docs SDL descriptions — ~40 operation descriptions in typedefs, docs parser extracts and renders them
+- [x] Project + notification integration tests — 13 project tests + 9 notification tests
+- [x] AI service unit tests — 12 tests with mocked callAI + parseSuggestedTools runtime validator
+- [x] AI auto-review trigger — fire-and-forget on status change to in_review with linked PRs
 
 ### Q1+F1+S1: Wave 15 (2026-03-16)
 - [x] AI module unit tests — 51 tests for tokenEstimator, responseParser, aiCache, promptBuilder

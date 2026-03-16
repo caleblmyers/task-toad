@@ -6,6 +6,41 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-16
 
+### Wave 16: W2 + W6 + Q1 (3 workers, 6 tasks)
+
+**W2 — Advanced Tasks & Filters (Worker 1):**
+- Recurring tasks: Prisma fields (recurrenceRule, recurrenceParentId, recurrenceLastCreated), cron scheduler utility with 60s interval and 23h debounce, TaskDetailPanel dropdown presets (Daily, Weekly Mon/Fri, Biweekly, Monthly), wired into index.ts startup/shutdown
+- File attachments: Attachment model + migration, multer REST upload endpoint (POST/GET/DELETE /api/uploads), 10MB limit, rate-limited, TaskDetailPanel upload UI with file list and delete
+- AI auto-review trigger: fire-and-forget reviewCode on status change to in_review when task has linked PRs
+
+**W6 — Advanced Views & AI Extras (Worker 2):**
+- Subtask-level code generation: generateCodeFromSubtask mutation using parent task context, per-subtask generation UI in CodePreviewModal with file accumulation across subtasks
+- API docs SDL descriptions: ~40 operation descriptions added as triple-quote SDL comments, docs parser updated to extract and render descriptions below each operation
+
+**Q1 — Code Quality & Testing (Worker 3):**
+- Project integration tests: 13 tests covering createProject, updateProject, archiveProject, project queries, auth checks
+- Notification integration tests: 9 tests covering queries (unreadOnly, limit), markRead, markAllRead, preferences
+- AI service unit tests: 12 tests with mocked callAI covering generateProjectOptions, generateTaskPlan, expandTask, summarizeProject, isArraySchema, validation retry
+- parseSuggestedTools runtime validator added to taskHelpers.ts
+
+**Post-wave: Multi-step code generation pipeline**
+- Redesigned code generation from single-call (truncation-prone) to plan-then-generate with context threading
+- Phase 1: planCodeGeneration mutation generates file plan (~2K tokens)
+- Phase 2: generatePlannedFile generates each file individually (~8K tokens) with completed file exports for cross-file consistency
+- CodePreviewModal updated with plan review UI, per-file progress indicators, retry on failure
+- handleGenerateCode now always uses multi-step flow
+
+**Process notes (Wave 16):**
+- 5 of 6 tasks passed review on first attempt
+- Worker-2 had merge conflict on task-004 (task-003 commits still on branch after merge — rebase needed)
+- merge-worker.sh handled pnpm install (multer) and prisma generate automatically
+
+**Open follow-ups:**
+- [ ] Upload filename sanitization — path.basename() on originalname to prevent path traversal
+- [ ] Upload route uses its own PrismaClient instead of shared instance
+- [ ] SDL descriptions for ~30 remaining operations (github, report, slack, webhook, projectrole)
+- [ ] Subtask code gen abort support (no AbortController in CodePreviewModal subtask flow)
+
 ### Wave 15: Q1 + F1 + S1 (3 workers, 6 tasks)
 
 **Q1 — Code Quality & Testing (Worker 1):**
