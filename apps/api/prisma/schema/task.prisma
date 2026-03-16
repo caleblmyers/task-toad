@@ -38,6 +38,7 @@ model Task {
   @@index([sprintId])
   @@index([assigneeId])
   @@index([orgId])
+  @@index([orgId, archived])
   @@index([projectId, sprintId, position])
   @@map("tasks")
 }

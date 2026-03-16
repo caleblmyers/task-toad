@@ -11,6 +11,7 @@ export const searchQueries = {
     const [projects, tasks] = await Promise.all([
       context.prisma.project.findMany({
         where: { orgId: user.orgId, name: { contains: args.query, mode: 'insensitive' }, archived: false },
+        orderBy: { createdAt: 'desc' },
         take,
       }),
       context.prisma.task.findMany({
@@ -23,6 +24,7 @@ export const searchQueries = {
           ],
         },
         include: { project: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' },
         take,
       }),
     ]);

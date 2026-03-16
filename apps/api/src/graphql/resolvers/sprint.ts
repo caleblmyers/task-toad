@@ -59,35 +59,41 @@ export const sprintQueries = {
     const totalScope = tasks.length;
 
     const taskIds = tasks.map((t: { taskId: string }) => t.taskId);
-    const activities = await context.prisma.activity.findMany({
-      where: {
-        taskId: { in: taskIds },
-        action: 'task.updated',
-        field: 'status',
-      },
-      orderBy: { createdAt: 'asc' },
-    });
 
     const startDate = new Date(sprint.startDate + 'T00:00:00');
     const endDateOrToday = sprint.closedAt
       ? new Date(sprint.endDate + 'T23:59:59')
       : new Date(Math.min(new Date().getTime(), new Date(sprint.endDate + 'T23:59:59').getTime()));
 
+    const activities = await context.prisma.activity.findMany({
+      where: {
+        taskId: { in: taskIds },
+        action: 'task.updated',
+        field: 'status',
+        createdAt: { gte: startDate, lte: endDateOrToday },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // Build per-day delta map in a single pass over sorted activities
+    const deltaByDay = new Map<string, number>();
+    for (const a of activities) {
+      const dayStr = (a as { createdAt: Date }).createdAt.toISOString().split('T')[0];
+      if (!deltaByDay.has(dayStr)) deltaByDay.set(dayStr, 0);
+      if ((a as { newValue: string | null }).newValue === 'done') {
+        deltaByDay.set(dayStr, deltaByDay.get(dayStr)! + 1);
+      }
+      if ((a as { oldValue: string | null }).oldValue === 'done') {
+        deltaByDay.set(dayStr, deltaByDay.get(dayStr)! - 1);
+      }
+    }
+
     const days: Array<{ date: string; remaining: number; completed: number; added: number }> = [];
     let completedSoFar = 0;
 
     for (let d = new Date(startDate); d <= endDateOrToday; d.setDate(d.getDate() + 1)) {
       const dayStr = d.toISOString().split('T')[0];
-      const dayEnd = new Date(dayStr + 'T23:59:59');
-
-      const completedByDay = activities.filter((a: { newValue: string | null; createdAt: Date }) =>
-        a.newValue === 'done' && a.createdAt <= dayEnd
-      ).length;
-      const uncompletedByDay = activities.filter((a: { oldValue: string | null; createdAt: Date }) =>
-        a.oldValue === 'done' && a.createdAt <= dayEnd
-      ).length;
-
-      completedSoFar = completedByDay - uncompletedByDay;
+      completedSoFar += deltaByDay.get(dayStr) ?? 0;
       if (completedSoFar < 0) completedSoFar = 0;
 
       days.push({

@@ -14,6 +14,7 @@ model Activity {
 
   @@index([projectId])
   @@index([taskId])
+  @@index([taskId, createdAt])
   @@index([orgId, createdAt])
   @@map("activities")
 }
