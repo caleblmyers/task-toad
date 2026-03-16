@@ -25,6 +25,7 @@ import { requireOrg, requireApiKey } from './auth.js';
 import { getProjectRepo, fetchProjectFileTree, fetchFileContent, getPullRequestDiff } from '../../github/index.js';
 import { listRecentCommits, listOpenPullRequests } from '../../github/githubFileService.js';
 import { requireProject, sanitizeForPrompt } from '../../utils/resolverHelpers.js';
+import { EpicsInputSchema } from '../../utils/zodSchemas.js';
 
 // ── AI mutations ──
 
@@ -535,8 +536,14 @@ export const aiMutations = {
     const { user } = await requireProject(context, args.projectId);
     let epics: Array<{ title: string; description: string; tasks: Array<{ title: string; description: string; priority: string; estimatedHours?: number; acceptanceCriteria?: string }> }>;
     try {
-      epics = JSON.parse(args.epics);
-    } catch {
+      const parsed = JSON.parse(args.epics);
+      const result = EpicsInputSchema.safeParse(parsed);
+      if (!result.success) {
+        throw new ValidationError(`Invalid epics structure: ${result.error.message}`);
+      }
+      epics = result.data;
+    } catch (err) {
+      if (err instanceof ValidationError) throw err;
       throw new ValidationError('Invalid epics JSON');
     }
     const allCreated: Array<Record<string, unknown>> = [];

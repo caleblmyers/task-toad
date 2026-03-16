@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import { createChildLogger } from './logger.js';
+import { StringArraySchema } from './zodSchemas.js';
 
 const log = createChildLogger('webhooks');
 
@@ -130,8 +131,12 @@ export async function dispatchWebhooks(
   });
 
   const matching = endpoints.filter((ep) => {
-    const events = JSON.parse(ep.events) as string[];
-    return events.includes(event);
+    const result = StringArraySchema.safeParse(JSON.parse(ep.events));
+    if (!result.success) {
+      log.warn({ endpointId: ep.id, error: result.error.message }, 'Invalid webhook events JSON');
+      return false;
+    }
+    return result.data.includes(event);
   });
 
   if (matching.length === 0) return;

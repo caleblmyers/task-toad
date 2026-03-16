@@ -9,6 +9,10 @@ import { dispatchWebhooks } from '../../utils/webhookDispatcher.js';
 import { dispatchSlackNotifications } from '../../utils/notificationUtils.js';
 import { sseManager } from '../../utils/sseManager.js';
 import { requireProject } from '../../utils/resolverHelpers.js';
+import { StringArraySchema } from '../../utils/zodSchemas.js';
+import { createChildLogger } from '../../utils/logger.js';
+
+const log = createChildLogger('sprint');
 
 // ── Sprint queries ──
 
@@ -218,7 +222,11 @@ export const sprintMutations = {
       } else if (item.action === 'sprint' && item.targetSprintId) {
         const target = await context.prisma.sprint.findUnique({ where: { sprintId: item.targetSprintId } });
         if (target && target.orgId === user.orgId) {
-          const cols = JSON.parse(target.columns) as string[];
+          const parseResult = StringArraySchema.safeParse(JSON.parse(target.columns));
+          const cols = parseResult.success ? parseResult.data : [];
+          if (!parseResult.success) {
+            log.warn({ sprintId: item.targetSprintId, error: parseResult.error.message }, 'Invalid sprint columns JSON');
+          }
           await context.prisma.task.update({
             where: { taskId: item.taskId },
             data: { sprintId: item.targetSprintId, sprintColumn: cols[0] ?? 'To Do' },

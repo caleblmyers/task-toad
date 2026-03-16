@@ -1,6 +1,7 @@
 import type { PrismaClient, SlackIntegration } from '@prisma/client';
 import { sendSlackWebhook, formatTaskEvent } from '../slack/slackClient.js';
 import { createChildLogger } from './logger.js';
+import { StringArraySchema } from './zodSchemas.js';
 
 const log = createChildLogger('slack-dispatch');
 
@@ -32,8 +33,12 @@ async function doDispatch(
   if (integrations.length === 0) return;
 
   const matching = integrations.filter((int: SlackIntegration) => {
-    const events = JSON.parse(int.events) as string[];
-    return events.includes(event);
+    const result = StringArraySchema.safeParse(JSON.parse(int.events));
+    if (!result.success) {
+      log.warn({ integrationId: int.id, error: result.error.message }, 'Invalid slack events JSON');
+      return false;
+    }
+    return result.data.includes(event);
   });
 
   if (matching.length === 0) return;

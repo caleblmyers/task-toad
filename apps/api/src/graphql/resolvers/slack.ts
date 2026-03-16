@@ -3,6 +3,10 @@ import { requireOrg } from './auth.js';
 import { AuthorizationError, NotFoundError, ValidationError } from '../errors.js';
 import { isValidWebhookEvent } from '../../utils/webhookDispatcher.js';
 import { sendSlackWebhook, buildTestMessage } from '../../slack/slackClient.js';
+import { StringArraySchema } from '../../utils/zodSchemas.js';
+import { createChildLogger } from '../../utils/logger.js';
+
+const log = createChildLogger('slack');
 
 function requireAdmin(context: Context) {
   const user = requireOrg(context);
@@ -203,7 +207,14 @@ export const slackMutations = {
 export const slackFieldResolvers = {
   SlackIntegration: {
     createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
-    events: (parent: { events: string }) => JSON.parse(parent.events) as string[],
+    events: (parent: { events: string }) => {
+      const result = StringArraySchema.safeParse(JSON.parse(parent.events));
+      if (!result.success) {
+        log.warn({ error: result.error.message }, 'Invalid slack integration events JSON');
+        return [];
+      }
+      return result.data;
+    },
   },
   SlackUserMapping: {
     createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),

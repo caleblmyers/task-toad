@@ -8,6 +8,10 @@ import { dispatchWebhooks } from '../../utils/webhookDispatcher.js';
 import { dispatchSlackNotifications } from '../../utils/notificationUtils.js';
 import { sseManager } from '../../utils/sseManager.js';
 import { requireTask, requireProject, validateStatus, parseInput, CreateTaskInput, UpdateTaskInput, CreateCommentInput } from '../../utils/resolverHelpers.js';
+import { StringArraySchema } from '../../utils/zodSchemas.js';
+import { createChildLogger } from '../../utils/logger.js';
+
+const log = createChildLogger('task');
 
 // ── Task queries ──
 
@@ -113,7 +117,11 @@ export const taskMutations = {
     parseInput(CreateTaskInput, { title: args.title });
     const { user, project } = await requireProject(context, args.projectId);
     const status = args.status ?? 'todo';
-    const validStatuses = JSON.parse(project.statuses) as string[];
+    const statusParse = StringArraySchema.safeParse(JSON.parse(project.statuses));
+    if (!statusParse.success) {
+      log.warn({ projectId: args.projectId, error: statusParse.error.message }, 'Invalid project statuses JSON');
+    }
+    const validStatuses = statusParse.success ? statusParse.data : ['todo', 'in_progress', 'in_review', 'done'];
     validateStatus(validStatuses, status);
     const validTaskTypes = ['epic', 'story', 'task', 'subtask'];
     const taskType = args.taskType ?? 'task';
@@ -153,7 +161,11 @@ export const taskMutations = {
     parseInput(UpdateTaskInput, { title: args.title, description: args.description, instructions: args.instructions, acceptanceCriteria: args.acceptanceCriteria });
     const { user, task } = await requireTask(context, args.taskId);
     if (args.status !== undefined) {
-      const validStatuses = JSON.parse(task.project.statuses) as string[];
+      const statusParse = StringArraySchema.safeParse(JSON.parse(task.project.statuses));
+      if (!statusParse.success) {
+        log.warn({ taskId: args.taskId, error: statusParse.error.message }, 'Invalid project statuses JSON');
+      }
+      const validStatuses = statusParse.success ? statusParse.data : ['todo', 'in_progress', 'in_review', 'done'];
       validateStatus(validStatuses, args.status);
     }
     const updated = await context.prisma.task.update({
@@ -589,8 +601,7 @@ export const taskFieldResolvers = {
       if (!parent.githubIssueNumber) return null;
       const project = await context.loaders.projectById.load(parent.projectId);
       if (!project) return null;
-      const owner = (project as unknown as { githubRepositoryOwner: string | null }).githubRepositoryOwner;
-      const name = (project as unknown as { githubRepositoryName: string | null }).githubRepositoryName;
+      const { githubRepositoryOwner: owner, githubRepositoryName: name } = project;
       if (!owner || !name) return null;
       return `https://github.com/${owner}/${name}/issues/${parent.githubIssueNumber}`;
     },

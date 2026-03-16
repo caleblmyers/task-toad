@@ -45,15 +45,16 @@ async function verifyProjectAccess(req: AuthRequest, res: Response): Promise<str
   return projectId;
 }
 
-function toCSV(rows: Record<string, string | number | null | undefined>[]): string {
+function toCSV(rows: object[]): string {
   if (rows.length === 0) return '';
   const headers = Object.keys(rows[0]);
   const lines = [headers.join(',')];
   for (const row of rows) {
+    const record = row as Record<string, unknown>;
     lines.push(
       headers
         .map((h) => {
-          const val = row[h] ?? '';
+          const val = record[h] ?? '';
           const str = String(val);
           return str.includes(',') || str.includes('"') || str.includes('\n')
             ? `"${str.replace(/"/g, '""')}"`
@@ -211,7 +212,7 @@ router.get('/project/:projectId/csv', requireAuth, async (req: AuthRequest, res:
     createdAt: t.createdAt.toISOString(),
   }));
 
-  const csv = toCSV(rows as unknown as Record<string, string | number | null>[]);
+  const csv = toCSV(rows);
   const filename = sanitizeFilename(project.name);
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}-tasks.csv"`);
@@ -308,7 +309,7 @@ router.get('/project/:projectId/activity/csv', requireAuth, async (req: AuthRequ
     taskId: a.taskId ?? '',
   }));
 
-  const csv = toCSV(rows as unknown as Record<string, string | number | null>[]);
+  const csv = toCSV(rows);
   const filename = sanitizeFilename(project.name);
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}-activity.csv"`);

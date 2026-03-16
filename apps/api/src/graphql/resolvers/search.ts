@@ -31,7 +31,7 @@ export const searchQueries = {
     ]);
     return {
       projects,
-      tasks: tasks.map((t: typeof tasks[number]) => ({ task: t, projectName: (t as unknown as { project: { name: string } }).project.name })),
+      tasks: tasks.map((t) => ({ task: t, projectName: t.project.name })),
     };
   },
 

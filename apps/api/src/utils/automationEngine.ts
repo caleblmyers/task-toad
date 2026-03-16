@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { createChildLogger } from './logger.js';
 import { createNotification } from './notification.js';
+import { TriggerConditionSchema, ActionSchema, type TriggerCondition, type AutomationAction } from './zodSchemas.js';
 
 const log = createChildLogger('automation');
 
@@ -11,18 +12,6 @@ interface AutomationEvent {
   taskId?: string;
   userId?: string;
   data: Record<string, unknown>;
-}
-
-interface TriggerCondition {
-  event: string;
-  condition?: Record<string, unknown>;
-}
-
-interface AutomationAction {
-  type: 'notify_assignee' | 'move_to_column' | 'set_status' | 'assign_to';
-  column?: string;
-  status?: string;
-  userId?: string;
 }
 
 export function executeAutomations(prisma: PrismaClient, event: AutomationEvent): void {
@@ -39,7 +28,12 @@ async function doExecuteAutomations(prisma: PrismaClient, event: AutomationEvent
 
   for (const rule of rules) {
     try {
-      const trigger = JSON.parse(rule.trigger) as TriggerCondition;
+      const triggerParse = TriggerConditionSchema.safeParse(JSON.parse(rule.trigger));
+      if (!triggerParse.success) {
+        log.warn({ ruleId: rule.id, error: triggerParse.error.message }, 'Invalid automation trigger JSON');
+        continue;
+      }
+      const trigger: TriggerCondition = triggerParse.data;
       if (trigger.event !== event.type) continue;
 
       // Check conditions
@@ -54,7 +48,12 @@ async function doExecuteAutomations(prisma: PrismaClient, event: AutomationEvent
         if (!matches) continue;
       }
 
-      const action = JSON.parse(rule.action) as AutomationAction;
+      const actionParse = ActionSchema.safeParse(JSON.parse(rule.action));
+      if (!actionParse.success) {
+        log.warn({ ruleId: rule.id, error: actionParse.error.message }, 'Invalid automation action JSON');
+        continue;
+      }
+      const action: AutomationAction = actionParse.data;
       await executeAction(prisma, event, action);
       log.info({ ruleId: rule.id, ruleName: rule.name, action: action.type }, 'Automation rule fired');
     } catch (err) {
