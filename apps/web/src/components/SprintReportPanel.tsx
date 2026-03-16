@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { gql } from '../api/client';
 import { IconClose } from './shared/Icons';
+import Modal from './shared/Modal';
 
 interface SprintReport {
   summary: string;
@@ -54,103 +55,98 @@ export default function SprintReportPanel({ projectId, sprintId, sprintName, onC
   };
 
   return (
-    <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div
-        className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between p-4 border-b border-slate-100">
-          <div>
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Sprint Report</p>
-            <p className="text-sm font-semibold text-slate-800">{sprintName}</p>
-          </div>
-          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">
-            <IconClose className="w-4 h-4" />
-          </button>
+    <Modal isOpen={true} onClose={onClose} title={`Sprint Report — ${sprintName}`} size="md">
+      <div className="flex items-center justify-between p-4 border-b border-slate-100">
+        <div>
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Sprint Report</p>
+          <p className="text-sm font-semibold text-slate-800">{sprintName}</p>
         </div>
-
-        <div className="p-4">
-          {loading && (
-            <div className="space-y-4">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="space-y-2">
-                  <div className="h-4 w-28 bg-slate-200 rounded animate-pulse" />
-                  <div className="h-3 w-full bg-slate-100 rounded animate-pulse" />
-                  <div className="h-3 w-3/4 bg-slate-100 rounded animate-pulse" />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {error && (
-            <div className="text-sm text-red-600 bg-red-50 rounded-lg p-3">
-              {error}
-              <button onClick={generate} className="ml-2 text-red-500 underline hover:text-red-700">Retry</button>
-            </div>
-          )}
-
-          {report && (
-            <div className="space-y-5">
-              {/* Summary */}
-              <div>
-                <p className="text-sm text-slate-700 leading-relaxed">{report.summary}</p>
-              </div>
-
-              {/* Completion Rate */}
-              <div>
-                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Completion</h3>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-emerald-500 rounded-full transition-all"
-                      style={{ width: `${Math.min(100, report.completionRate)}%` }}
-                    />
-                  </div>
-                  <span className={`text-sm font-semibold px-2 py-0.5 rounded ${rateColor(report.completionRate)}`}>
-                    {Math.round(report.completionRate)}%
-                  </span>
-                </div>
-              </div>
-
-              {/* Highlights */}
-              {report.highlights.length > 0 && (
-                <div>
-                  <h3 className="text-xs font-semibold text-emerald-700 uppercase tracking-wide mb-1.5">Highlights</h3>
-                  <ul className="space-y-1">
-                    {report.highlights.map((item, i) => (
-                      <li key={i} className="text-sm text-slate-700 pl-3 border-l-2 border-emerald-300">{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Concerns */}
-              {report.concerns.length > 0 && (
-                <div>
-                  <h3 className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1.5">Concerns</h3>
-                  <ul className="space-y-1">
-                    {report.concerns.map((item, i) => (
-                      <li key={i} className="text-sm text-slate-700 pl-3 border-l-2 border-amber-300">{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Recommendations */}
-              {report.recommendations.length > 0 && (
-                <div>
-                  <h3 className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1.5">Recommendations</h3>
-                  <ul className="space-y-1">
-                    {report.recommendations.map((item, i) => (
-                      <li key={i} className="text-sm text-slate-700 pl-3 border-l-2 border-blue-300">{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label="Close">
+          <IconClose className="w-4 h-4" />
+        </button>
       </div>
-    </div>
+
+      <div className="p-4 overflow-y-auto">
+        {loading && (
+          <div className="space-y-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="space-y-2">
+                <div className="h-4 w-28 bg-slate-200 rounded animate-pulse" />
+                <div className="h-3 w-full bg-slate-100 rounded animate-pulse" />
+                <div className="h-3 w-3/4 bg-slate-100 rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {error && (
+          <div className="text-sm text-red-600 bg-red-50 rounded-lg p-3">
+            {error}
+            <button onClick={generate} className="ml-2 text-red-500 underline hover:text-red-700">Retry</button>
+          </div>
+        )}
+
+        {report && (
+          <div className="space-y-5">
+            {/* Summary */}
+            <div>
+              <p className="text-sm text-slate-700 leading-relaxed">{report.summary}</p>
+            </div>
+
+            {/* Completion Rate */}
+            <div>
+              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Completion</h3>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 rounded-full transition-all"
+                    style={{ width: `${Math.min(100, report.completionRate)}%` }}
+                  />
+                </div>
+                <span className={`text-sm font-semibold px-2 py-0.5 rounded ${rateColor(report.completionRate)}`}>
+                  {Math.round(report.completionRate)}%
+                </span>
+              </div>
+            </div>
+
+            {/* Highlights */}
+            {report.highlights.length > 0 && (
+              <div>
+                <h3 className="text-xs font-semibold text-emerald-700 uppercase tracking-wide mb-1.5">Highlights</h3>
+                <ul className="space-y-1">
+                  {report.highlights.map((item, i) => (
+                    <li key={i} className="text-sm text-slate-700 pl-3 border-l-2 border-emerald-300">{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Concerns */}
+            {report.concerns.length > 0 && (
+              <div>
+                <h3 className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1.5">Concerns</h3>
+                <ul className="space-y-1">
+                  {report.concerns.map((item, i) => (
+                    <li key={i} className="text-sm text-slate-700 pl-3 border-l-2 border-amber-300">{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Recommendations */}
+            {report.recommendations.length > 0 && (
+              <div>
+                <h3 className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1.5">Recommendations</h3>
+                <ul className="space-y-1">
+                  {report.recommendations.map((item, i) => (
+                    <li key={i} className="text-sm text-slate-700 pl-3 border-l-2 border-blue-300">{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </Modal>
   );
 }

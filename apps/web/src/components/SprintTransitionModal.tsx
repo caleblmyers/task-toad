@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
 import { IconClose } from './shared/Icons';
+import Modal from './shared/Modal';
 
 interface TransitionTask {
   taskId: string;
@@ -85,103 +86,101 @@ export default function SprintTransitionModal({ sprintId, sprintName, onApply, o
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 flex-shrink-0">
-          <h2 className="text-base font-semibold text-slate-800">Sprint Transition: {sprintName}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
-            <IconClose className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-sm text-slate-500">Analyzing sprint...</div>
-            </div>
-          ) : error ? (
-            <div className="text-sm text-red-600">{error}</div>
-          ) : analysis ? (
-            <>
-              <div className="bg-slate-50 rounded-lg p-3">
-                <p className="text-sm text-slate-700">{analysis.summary}</p>
-              </div>
-
-              {analysis.carryOver.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-medium text-slate-700 mb-2">Carry Over to Next Sprint</h3>
-                  <div className="space-y-1.5">
-                    {analysis.carryOver.map((t) => (
-                      <label key={t.taskId} className="flex items-start gap-2 p-2 rounded hover:bg-slate-50 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={selectedCarryOver.has(t.taskId)}
-                          onChange={() => toggleCarryOver(t.taskId)}
-                          className="mt-0.5"
-                        />
-                        <div className="min-w-0">
-                          <p className="text-sm text-slate-700 font-medium">{t.taskId}</p>
-                          <p className="text-xs text-slate-500">{t.reason}</p>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {analysis.deprioritize.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-medium text-slate-700 mb-2">Deprioritize to Backlog</h3>
-                  <div className="space-y-1.5">
-                    {analysis.deprioritize.map((t) => (
-                      <label key={t.taskId} className="flex items-start gap-2 p-2 rounded hover:bg-slate-50 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={selectedDeprioritize.has(t.taskId)}
-                          onChange={() => toggleDeprioritize(t.taskId)}
-                          className="mt-0.5"
-                        />
-                        <div className="min-w-0">
-                          <p className="text-sm text-slate-700 font-medium">{t.taskId}</p>
-                          <p className="text-xs text-slate-500">{t.reason}</p>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {analysis.recommendations.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-medium text-slate-700 mb-2">Recommendations</h3>
-                  <ul className="list-disc list-inside space-y-1">
-                    {analysis.recommendations.map((r, i) => (
-                      <li key={i} className="text-sm text-slate-600">{r}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </>
-          ) : null}
-        </div>
-
-        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-100 flex-shrink-0">
-          <button
-            onClick={onClose}
-            className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800"
-            disabled={applying}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleApply}
-            disabled={loading || applying || !analysis}
-            className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {applying ? 'Applying...' : 'Apply Transition'}
-          </button>
-        </div>
+    <Modal isOpen={true} onClose={onClose} title={`Sprint Transition: ${sprintName}`} size="md">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 flex-shrink-0">
+        <h2 className="text-base font-semibold text-slate-800">Sprint Transition: {sprintName}</h2>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label="Close">
+          <IconClose className="w-4 h-4" />
+        </button>
       </div>
-    </div>
+
+      <div className="flex-1 overflow-y-auto p-5 space-y-5">
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-sm text-slate-500">Analyzing sprint...</div>
+          </div>
+        ) : error ? (
+          <div className="text-sm text-red-600">{error}</div>
+        ) : analysis ? (
+          <>
+            <div className="bg-slate-50 rounded-lg p-3">
+              <p className="text-sm text-slate-700">{analysis.summary}</p>
+            </div>
+
+            {analysis.carryOver.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-slate-700 mb-2">Carry Over to Next Sprint</h3>
+                <div className="space-y-1.5">
+                  {analysis.carryOver.map((t) => (
+                    <label key={t.taskId} className="flex items-start gap-2 p-2 rounded hover:bg-slate-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedCarryOver.has(t.taskId)}
+                        onChange={() => toggleCarryOver(t.taskId)}
+                        className="mt-0.5"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-sm text-slate-700 font-medium">{t.taskId}</p>
+                        <p className="text-xs text-slate-500">{t.reason}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {analysis.deprioritize.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-slate-700 mb-2">Deprioritize to Backlog</h3>
+                <div className="space-y-1.5">
+                  {analysis.deprioritize.map((t) => (
+                    <label key={t.taskId} className="flex items-start gap-2 p-2 rounded hover:bg-slate-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedDeprioritize.has(t.taskId)}
+                        onChange={() => toggleDeprioritize(t.taskId)}
+                        className="mt-0.5"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-sm text-slate-700 font-medium">{t.taskId}</p>
+                        <p className="text-xs text-slate-500">{t.reason}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {analysis.recommendations.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-slate-700 mb-2">Recommendations</h3>
+                <ul className="list-disc list-inside space-y-1">
+                  {analysis.recommendations.map((r, i) => (
+                    <li key={i} className="text-sm text-slate-600">{r}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </>
+        ) : null}
+      </div>
+
+      <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-100 flex-shrink-0">
+        <button
+          onClick={onClose}
+          className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800"
+          disabled={applying}
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleApply}
+          disabled={loading || applying || !analysis}
+          className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {applying ? 'Applying...' : 'Apply Transition'}
+        </button>
+      </div>
+    </Modal>
   );
 }

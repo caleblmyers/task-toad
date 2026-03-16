@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { gql } from '../api/client';
 import { IconClose } from './shared/Icons';
+import Modal from './shared/Modal';
 
 interface ExtractedTask {
   title: string;
@@ -100,145 +101,140 @@ export default function MeetingNotesDialog({ projectId, onTasksCreated, onClose 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div
-        className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[85vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-100 flex-shrink-0">
-          <p className="text-sm font-semibold text-slate-800">Extract Tasks from Meeting Notes</p>
-          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">
-            <IconClose className="w-4 h-4" />
-          </button>
-        </div>
+    <Modal isOpen={true} onClose={onClose} title="Extract Tasks from Meeting Notes" size="md">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-slate-100 flex-shrink-0">
+        <p className="text-sm font-semibold text-slate-800">Extract Tasks from Meeting Notes</p>
+        <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label="Close">
+          <IconClose className="w-4 h-4" />
+        </button>
+      </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {!result ? (
-            <>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Paste your meeting notes here..."
-                className="w-full h-48 px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 resize-y"
-                disabled={loading}
-              />
-              {error && (
-                <div className="text-sm text-red-600 bg-red-50 rounded-lg p-3">{error}</div>
-              )}
-            </>
-          ) : (
-            <>
-              {/* Summary */}
-              <div className="bg-slate-50 rounded-lg p-3">
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Meeting Summary</p>
-                <p className="text-sm text-slate-700">{result.summary}</p>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {!result ? (
+          <>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Paste your meeting notes here..."
+              className="w-full h-48 px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 resize-y"
+              disabled={loading}
+            />
+            {error && (
+              <div className="text-sm text-red-600 bg-red-50 rounded-lg p-3">{error}</div>
+            )}
+          </>
+        ) : (
+          <>
+            {/* Summary */}
+            <div className="bg-slate-50 rounded-lg p-3">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Meeting Summary</p>
+              <p className="text-sm text-slate-700">{result.summary}</p>
+            </div>
+
+            {/* Task list with checkboxes */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                  Extracted Tasks ({result.tasks.length})
+                </p>
+                <button
+                  type="button"
+                  onClick={toggleAll}
+                  className="text-xs text-slate-500 hover:text-slate-700"
+                >
+                  {selected.size === result.tasks.length ? 'Deselect all' : 'Select all'}
+                </button>
               </div>
 
-              {/* Task list with checkboxes */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
-                    Extracted Tasks ({result.tasks.length})
-                  </p>
-                  <button
-                    type="button"
-                    onClick={toggleAll}
-                    className="text-xs text-slate-500 hover:text-slate-700"
-                  >
-                    {selected.size === result.tasks.length ? 'Deselect all' : 'Select all'}
-                  </button>
-                </div>
-
-                {result.tasks.length === 0 ? (
-                  <p className="text-sm text-slate-400 italic">No actionable tasks found in the notes.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {result.tasks.map((task, i) => (
-                      <label
-                        key={i}
-                        className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                          selected.has(i)
-                            ? 'border-slate-300 bg-white'
-                            : 'border-slate-100 bg-slate-50 opacity-60'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selected.has(i)}
-                          onChange={() => toggleTask(i)}
-                          className="mt-0.5 rounded border-slate-300"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-800">{task.title}</p>
-                          {task.description && (
-                            <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{task.description}</p>
+              {result.tasks.length === 0 ? (
+                <p className="text-sm text-slate-400 italic">No actionable tasks found in the notes.</p>
+              ) : (
+                <div className="space-y-2">
+                  {result.tasks.map((task, i) => (
+                    <label
+                      key={i}
+                      className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                        selected.has(i)
+                          ? 'border-slate-300 bg-white'
+                          : 'border-slate-100 bg-slate-50 opacity-60'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected.has(i)}
+                        onChange={() => toggleTask(i)}
+                        className="mt-0.5 rounded border-slate-300"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-800">{task.title}</p>
+                        {task.description && (
+                          <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{task.description}</p>
+                        )}
+                        <div className="flex items-center gap-2 mt-1.5">
+                          {task.priority && (
+                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${priorityStyles[task.priority] ?? 'bg-slate-100 text-slate-500'}`}>
+                              {task.priority}
+                            </span>
                           )}
-                          <div className="flex items-center gap-2 mt-1.5">
-                            {task.priority && (
-                              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${priorityStyles[task.priority] ?? 'bg-slate-100 text-slate-500'}`}>
-                                {task.priority}
-                              </span>
-                            )}
-                            {task.assigneeName && (
-                              <span className="text-[10px] text-slate-400">
-                                {task.assigneeName}
-                              </span>
-                            )}
-                          </div>
+                          {task.assigneeName && (
+                            <span className="text-[10px] text-slate-400">
+                              {task.assigneeName}
+                            </span>
+                          )}
                         </div>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {error && (
-                <div className="text-sm text-red-600 bg-red-50 rounded-lg p-3">{error}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
               )}
-            </>
-          )}
-        </div>
+            </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-2 p-4 border-t border-slate-100 flex-shrink-0">
+            {error && (
+              <div className="text-sm text-red-600 bg-red-50 rounded-lg p-3">{error}</div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-end gap-2 p-4 border-t border-slate-100 flex-shrink-0">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800"
+        >
+          Cancel
+        </button>
+        {!result ? (
           <button
             type="button"
-            onClick={onClose}
-            className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800"
+            onClick={handleExtract}
+            disabled={loading || !notes.trim()}
+            className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Cancel
+            {loading ? 'Extracting...' : 'Extract Tasks'}
           </button>
-          {!result ? (
+        ) : (
+          <>
             <button
               type="button"
-              onClick={handleExtract}
-              disabled={loading || !notes.trim()}
+              onClick={() => { setResult(null); setError(null); }}
+              className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800 border border-slate-300 rounded-lg"
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={handleCreate}
+              disabled={creating || selected.size === 0}
               className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Extracting...' : 'Extract Tasks'}
+              {creating ? 'Creating...' : `Create ${selected.size} Task${selected.size !== 1 ? 's' : ''}`}
             </button>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => { setResult(null); setError(null); }}
-                className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800 border border-slate-300 rounded-lg"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                onClick={handleCreate}
-                disabled={creating || selected.size === 0}
-                className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {creating ? 'Creating...' : `Create ${selected.size} Task${selected.size !== 1 ? 's' : ''}`}
-              </button>
-            </>
-          )}
-        </div>
+          </>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }

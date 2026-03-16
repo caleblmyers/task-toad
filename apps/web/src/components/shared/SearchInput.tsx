@@ -26,6 +26,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
             type="button"
             onClick={() => onChange('')}
             className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            aria-label="Clear search"
           >
             <IconClose className="w-3 h-3" />
           </button>

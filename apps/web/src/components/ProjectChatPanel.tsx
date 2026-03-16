@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useProjectChat } from '../hooks/useProjectChat';
 import { IconClose } from './shared/Icons';
+import Modal from './shared/Modal';
 
 interface ProjectChatPanelProps {
   projectId: string;
@@ -28,8 +29,8 @@ export default function ProjectChatPanel({ projectId, onClose }: ProjectChatPane
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg h-[600px] flex flex-col" onClick={(e) => e.stopPropagation()}>
+    <Modal isOpen={true} onClose={onClose} title="Project Chat" size="md">
+      <div className="h-[600px] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 flex-shrink-0">
           <h2 className="text-sm font-semibold text-slate-800">Project Chat</h2>
@@ -42,7 +43,7 @@ export default function ProjectChatPanel({ projectId, onClose }: ProjectChatPane
                 Clear
               </button>
             )}
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label="Close">
               <IconClose className="w-4 h-4" />
             </button>
           </div>
@@ -113,6 +114,6 @@ export default function ProjectChatPanel({ projectId, onClose }: ProjectChatPane
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

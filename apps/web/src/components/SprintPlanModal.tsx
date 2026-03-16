@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { gql } from '../api/client';
 import type { Task, Sprint, SprintPlanItem } from '../types';
+import Modal from './shared/Modal';
 
 interface SprintPlanModalProps {
   projectId: string;
@@ -80,156 +81,153 @@ export default function SprintPlanModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
-      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 flex flex-col max-h-[85vh]">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 flex-shrink-0">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-800">AI Sprint Planning</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {backlogTasks.length} unassigned task{backlogTasks.length !== 1 ? 's' : ''} in backlog
-            </p>
-          </div>
-          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+    <Modal isOpen={true} onClose={onClose} title="AI Sprint Planning" size="md">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 flex-shrink-0">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-800">AI Sprint Planning</h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {backlogTasks.length} unassigned task{backlogTasks.length !== 1 ? 's' : ''} in backlog
+          </p>
         </div>
-
-        {/* Config row */}
-        <div className="px-6 py-4 border-b border-slate-100 flex-shrink-0">
-          <div className="flex gap-4 items-end">
-            <div>
-              <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Sprint Length</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min={1}
-                  max={8}
-                  value={sprintLengthWeeks}
-                  onChange={(e) => { setSprintLengthWeeks(Number(e.target.value)); setPlan(null); }}
-                  className="w-16 border border-slate-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400"
-                />
-                <span className="text-sm text-slate-500">weeks</span>
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Team Size</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={teamSize}
-                  onChange={(e) => { setTeamSize(Number(e.target.value)); setPlan(null); }}
-                  className="w-16 border border-slate-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400"
-                />
-                <span className="text-sm text-slate-500">devs</span>
-              </div>
-            </div>
-            <div className="flex-1 text-right">
-              <p className="text-xs text-slate-400 mb-1.5">~{capacity}h capacity/sprint</p>
-              <button
-                type="button"
-                onClick={handleGenerate}
-                disabled={loading || backlogTasks.length === 0}
-                className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50"
-              >
-                {loading ? '◌ Planning…' : plan ? '↺ Regenerate' : '✦ Generate Plan'}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Plan preview */}
-        {plan && (
-          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
-            {plan.map((sprint, idx) => {
-              const pct = Math.round((sprint.totalHours / capacity) * 100);
-              const barColor = pct > 100 ? 'bg-red-400' : pct > 85 ? 'bg-orange-400' : 'bg-blue-400';
-              return (
-                <div key={idx} className="border border-slate-200 rounded-lg overflow-hidden">
-                  <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="font-semibold text-slate-800 text-sm">{sprint.name}</span>
-                      <span className="text-xs text-slate-500">
-                        {formatHours(sprint.totalHours)} / {formatHours(capacity)}
-                        <span className={`ml-1 font-medium ${pct > 100 ? 'text-red-600' : pct > 85 ? 'text-orange-600' : 'text-slate-500'}`}>
-                          ({pct}%)
-                        </span>
-                      </span>
-                    </div>
-                    <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${barColor}`}
-                        style={{ width: `${Math.min(pct, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                  <ul className="px-4 py-2 space-y-1">
-                    {sprint.taskIds.map((taskId) => {
-                      const task = taskMap[taskId];
-                      return (
-                        <li key={taskId} className="flex items-center gap-2 text-sm py-0.5">
-                          <span className="text-slate-300 flex-shrink-0">–</span>
-                          <span className="text-slate-700 flex-1">{task?.title ?? taskId}</span>
-                          {task?.estimatedHours != null && (
-                            <span className="text-xs text-slate-400 flex-shrink-0">
-                              {formatHours(task.estimatedHours)}
-                            </span>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {!plan && !loading && (
-          <div className="flex-1 flex items-center justify-center px-6 py-10 text-center">
-            {backlogTasks.length === 0 ? (
-              <p className="text-orange-500 text-sm">No backlog tasks to plan. Add tasks to the backlog first.</p>
-            ) : (
-              <p className="text-slate-400 text-sm">
-                Set your sprint length and team size, then click Generate Plan.
-              </p>
-            )}
-          </div>
-        )}
-
-        {err && (
-          <div className="px-6 py-2 text-sm text-red-600 bg-red-50 border-t border-red-100 flex-shrink-0">
-            {err}
-          </div>
-        )}
-
-        {/* Footer */}
-        {plan && (
-          <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between flex-shrink-0">
-            <p className="text-xs text-slate-400">
-              {plan.length} sprint{plan.length !== 1 ? 's' : ''} · {plan.reduce((s, p) => s + p.taskIds.length, 0)} tasks
-            </p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-1.5 text-sm text-slate-600 border border-slate-300 rounded hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleCommit}
-                disabled={committing}
-                className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50"
-              >
-                {committing ? 'Creating…' : 'Accept Plan'}
-              </button>
-            </div>
-          </div>
-        )}
+        <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">✕</button>
       </div>
-    </div>
+
+      {/* Config row */}
+      <div className="px-6 py-4 border-b border-slate-100 flex-shrink-0">
+        <div className="flex gap-4 items-end">
+          <div>
+            <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Sprint Length</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={1}
+                max={8}
+                value={sprintLengthWeeks}
+                onChange={(e) => { setSprintLengthWeeks(Number(e.target.value)); setPlan(null); }}
+                className="w-16 border border-slate-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400"
+              />
+              <span className="text-sm text-slate-500">weeks</span>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Team Size</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={1}
+                max={20}
+                value={teamSize}
+                onChange={(e) => { setTeamSize(Number(e.target.value)); setPlan(null); }}
+                className="w-16 border border-slate-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400"
+              />
+              <span className="text-sm text-slate-500">devs</span>
+            </div>
+          </div>
+          <div className="flex-1 text-right">
+            <p className="text-xs text-slate-400 mb-1.5">~{capacity}h capacity/sprint</p>
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={loading || backlogTasks.length === 0}
+              className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50"
+            >
+              {loading ? '◌ Planning…' : plan ? '↺ Regenerate' : '✦ Generate Plan'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Plan preview */}
+      {plan && (
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+          {plan.map((sprint, idx) => {
+            const pct = Math.round((sprint.totalHours / capacity) * 100);
+            const barColor = pct > 100 ? 'bg-red-400' : pct > 85 ? 'bg-orange-400' : 'bg-blue-400';
+            return (
+              <div key={idx} className="border border-slate-200 rounded-lg overflow-hidden">
+                <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="font-semibold text-slate-800 text-sm">{sprint.name}</span>
+                    <span className="text-xs text-slate-500">
+                      {formatHours(sprint.totalHours)} / {formatHours(capacity)}
+                      <span className={`ml-1 font-medium ${pct > 100 ? 'text-red-600' : pct > 85 ? 'text-orange-600' : 'text-slate-500'}`}>
+                        ({pct}%)
+                      </span>
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${barColor}`}
+                      style={{ width: `${Math.min(pct, 100)}%` }}
+                    />
+                  </div>
+                </div>
+                <ul className="px-4 py-2 space-y-1">
+                  {sprint.taskIds.map((taskId) => {
+                    const task = taskMap[taskId];
+                    return (
+                      <li key={taskId} className="flex items-center gap-2 text-sm py-0.5">
+                        <span className="text-slate-300 flex-shrink-0">–</span>
+                        <span className="text-slate-700 flex-1">{task?.title ?? taskId}</span>
+                        {task?.estimatedHours != null && (
+                          <span className="text-xs text-slate-400 flex-shrink-0">
+                            {formatHours(task.estimatedHours)}
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {!plan && !loading && (
+        <div className="flex-1 flex items-center justify-center px-6 py-10 text-center">
+          {backlogTasks.length === 0 ? (
+            <p className="text-orange-500 text-sm">No backlog tasks to plan. Add tasks to the backlog first.</p>
+          ) : (
+            <p className="text-slate-400 text-sm">
+              Set your sprint length and team size, then click Generate Plan.
+            </p>
+          )}
+        </div>
+      )}
+
+      {err && (
+        <div className="px-6 py-2 text-sm text-red-600 bg-red-50 border-t border-red-100 flex-shrink-0">
+          {err}
+        </div>
+      )}
+
+      {/* Footer */}
+      {plan && (
+        <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between flex-shrink-0">
+          <p className="text-xs text-slate-400">
+            {plan.length} sprint{plan.length !== 1 ? 's' : ''} · {plan.reduce((s, p) => s + p.taskIds.length, 0)} tasks
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-1.5 text-sm text-slate-600 border border-slate-300 rounded hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleCommit}
+              disabled={committing}
+              className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50"
+            >
+              {committing ? 'Creating…' : 'Accept Plan'}
+            </button>
+          </div>
+        </div>
+      )}
+    </Modal>
   );
 }

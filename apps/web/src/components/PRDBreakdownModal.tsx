@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { IconClose } from './shared/Icons';
+import Modal from './shared/Modal';
 
 interface PRDTask {
   title: string;
@@ -79,115 +80,113 @@ export default function PRDBreakdownModal({ onPreview, onCommit, onClose }: PRDB
   const loading = analyzing || committing;
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 flex-shrink-0">
-          <h2 className="text-base font-semibold text-slate-800">PRD Breakdown</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
-            <IconClose className="w-4 h-4" />
-          </button>
-        </div>
+    <Modal isOpen={true} onClose={onClose} title="PRD Breakdown" size="md">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 flex-shrink-0">
+        <h2 className="text-base font-semibold text-slate-800">PRD Breakdown</h2>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label="Close">
+          <IconClose className="w-4 h-4" />
+        </button>
+      </div>
 
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          {!preview ? (
-            <>
-              <textarea
-                value={prd}
-                onChange={(e) => setPrd(e.target.value)}
-                placeholder="Paste your Product Requirements Document here..."
-                rows={12}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg resize-y focus:outline-none focus:ring-1 focus:ring-slate-400"
-                disabled={loading}
-                autoFocus
-              />
-            </>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-sm text-slate-500">
-                {preview.epics.length} epic{preview.epics.length !== 1 ? 's' : ''} with{' '}
-                {preview.epics.reduce((sum, e) => sum + e.tasks.length, 0)} tasks total
-              </p>
-              {preview.epics.map((epic, i) => (
-                <div key={i} className="border border-slate-200 rounded-lg">
-                  <button
-                    onClick={() => toggleEpic(i)}
-                    className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50"
-                  >
-                    <div>
-                      <span className="text-sm font-medium text-slate-800">{epic.title}</span>
-                      <span className="ml-2 text-xs text-slate-400">{epic.tasks.length} tasks</span>
-                    </div>
-                    <span className="text-slate-400 text-xs">{expandedEpics.has(i) ? '▼' : '▶'}</span>
-                  </button>
-                  {expandedEpics.has(i) && (
-                    <div className="border-t border-slate-100 px-4 py-2 space-y-2">
-                      <p className="text-xs text-slate-500">{epic.description}</p>
-                      {epic.tasks.map((task, j) => (
-                        <div key={j} className="flex items-start gap-2 py-1.5 border-t border-slate-50 first:border-0">
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${priorityColor(task.priority)}`}>
-                            {task.priority}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="text-sm text-slate-700">{task.title}</p>
-                            <p className="text-xs text-slate-400 truncate">{task.description}</p>
-                          </div>
-                          {task.estimatedHours != null && (
-                            <span className="text-[10px] text-slate-400 flex-shrink-0">{task.estimatedHours}h</span>
-                          )}
+      <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        {!preview ? (
+          <>
+            <textarea
+              value={prd}
+              onChange={(e) => setPrd(e.target.value)}
+              placeholder="Paste your Product Requirements Document here..."
+              rows={12}
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg resize-y focus:outline-none focus:ring-1 focus:ring-slate-400"
+              disabled={loading}
+              autoFocus
+            />
+          </>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-slate-500">
+              {preview.epics.length} epic{preview.epics.length !== 1 ? 's' : ''} with{' '}
+              {preview.epics.reduce((sum, e) => sum + e.tasks.length, 0)} tasks total
+            </p>
+            {preview.epics.map((epic, i) => (
+              <div key={i} className="border border-slate-200 rounded-lg">
+                <button
+                  onClick={() => toggleEpic(i)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50"
+                >
+                  <div>
+                    <span className="text-sm font-medium text-slate-800">{epic.title}</span>
+                    <span className="ml-2 text-xs text-slate-400">{epic.tasks.length} tasks</span>
+                  </div>
+                  <span className="text-slate-400 text-xs">{expandedEpics.has(i) ? '▼' : '▶'}</span>
+                </button>
+                {expandedEpics.has(i) && (
+                  <div className="border-t border-slate-100 px-4 py-2 space-y-2">
+                    <p className="text-xs text-slate-500">{epic.description}</p>
+                    {epic.tasks.map((task, j) => (
+                      <div key={j} className="flex items-start gap-2 py-1.5 border-t border-slate-50 first:border-0">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${priorityColor(task.priority)}`}>
+                          {task.priority}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-sm text-slate-700">{task.title}</p>
+                          <p className="text-xs text-slate-400 truncate">{task.description}</p>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {error && (
-            <p className="text-sm text-red-600">{error}</p>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 flex-shrink-0">
-          <div>
-            {preview && (
-              <button
-                onClick={() => { setPreview(null); setError(null); }}
-                className="text-sm text-slate-500 hover:text-slate-700"
-                disabled={loading}
-              >
-                Back to edit
-              </button>
-            )}
+                        {task.estimatedHours != null && (
+                          <span className="text-[10px] text-slate-400 flex-shrink-0">{task.estimatedHours}h</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
-          <div className="flex items-center gap-2">
+        )}
+
+        {error && (
+          <p className="text-sm text-red-600">{error}</p>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 flex-shrink-0">
+        <div>
+          {preview && (
             <button
-              onClick={onClose}
-              className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800"
+              onClick={() => { setPreview(null); setError(null); }}
+              className="text-sm text-slate-500 hover:text-slate-700"
               disabled={loading}
             >
-              Cancel
+              Back to edit
             </button>
-            {!preview ? (
-              <button
-                onClick={handleAnalyze}
-                disabled={loading || !prd.trim()}
-                className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {analyzing ? 'Analyzing...' : 'Analyze PRD'}
-              </button>
-            ) : (
-              <button
-                onClick={handleCommit}
-                disabled={loading}
-                className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {committing ? 'Creating...' : 'Create Tasks'}
-              </button>
-            )}
-          </div>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onClose}
+            className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800"
+            disabled={loading}
+          >
+            Cancel
+          </button>
+          {!preview ? (
+            <button
+              onClick={handleAnalyze}
+              disabled={loading || !prd.trim()}
+              className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {analyzing ? 'Analyzing...' : 'Analyze PRD'}
+            </button>
+          ) : (
+            <button
+              onClick={handleCommit}
+              disabled={loading}
+              className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {committing ? 'Creating...' : 'Create Tasks'}
+            </button>
+          )}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

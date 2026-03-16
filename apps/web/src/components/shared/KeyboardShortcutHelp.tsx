@@ -1,3 +1,5 @@
+import Modal from './Modal';
+
 interface KeyboardShortcutHelpProps {
   onClose: () => void;
 }
@@ -14,14 +16,11 @@ const shortcuts = [
 
 export default function KeyboardShortcutHelp({ onClose }: KeyboardShortcutHelpProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div
-        className="bg-white rounded-xl shadow-xl w-80 p-5 animate-fade-in"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal isOpen={true} onClose={onClose} title="Keyboard Shortcuts" size="sm">
+      <div className="p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-slate-800">Keyboard Shortcuts</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg leading-none">
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg leading-none" aria-label="Close">
             &times;
           </button>
         </div>
@@ -36,6 +35,6 @@ export default function KeyboardShortcutHelp({ onClose }: KeyboardShortcutHelpPr
           ))}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

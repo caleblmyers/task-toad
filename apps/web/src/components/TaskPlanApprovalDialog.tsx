@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { TaskPlanPreview } from '../types';
+import Modal from './shared/Modal';
 
 const PRIORITY_STYLES: Record<string, string> = {
   critical: 'bg-red-100 text-red-700',
@@ -231,176 +232,176 @@ export default function TaskPlanApprovalDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center overflow-y-auto py-8 px-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col">
-        {/* Header */}
-        <div className="flex items-start justify-between p-6 border-b border-slate-200">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-800">Review Task Plan</h2>
-            {!loading && !error && (
-              <p className="text-sm text-slate-500 mt-0.5">
-                {tasks.length} task{tasks.length !== 1 ? 's' : ''} generated based on project scope — deselect any you don&apos;t want, or use &lsquo;+ Add more&rsquo; below
-              </p>
+    <Modal isOpen={true} onClose={onCancel} title="Review Task Plan" size="lg" variant="top-aligned">
+      {/* Header */}
+      <div className="flex items-start justify-between p-6 border-b border-slate-200">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-800">Review Task Plan</h2>
+          {!loading && !error && (
+            <p className="text-sm text-slate-500 mt-0.5">
+              {tasks.length} task{tasks.length !== 1 ? 's' : ''} generated based on project scope — deselect any you don&apos;t want, or use &lsquo;+ Add more&rsquo; below
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={loading}
+          className="text-slate-400 hover:text-slate-600 text-lg leading-none ml-4 mt-0.5 disabled:opacity-30 disabled:cursor-not-allowed"
+          aria-label="Cancel"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Body */}
+      {loading ? (
+        <GeneratingProgress />
+      ) : error ? (
+        <div className="p-6 text-red-600 text-sm">{error}</div>
+      ) : (
+        <div className="overflow-y-auto max-h-[55vh] p-4 space-y-3">
+          {tasks.map((task) => (
+            <TaskPlanCard
+              key={task.title}
+              task={task}
+              checked={selected.has(task.title)}
+              onToggle={() => toggleTask(task.title)}
+            />
+          ))}
+
+          {/* Refine section */}
+          <div className="border border-slate-200 rounded-lg">
+            <button
+              type="button"
+              onClick={() => setRefineOpen(!refineOpen)}
+              className="w-full flex items-center justify-between px-3 py-2 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-50 rounded-lg"
+            >
+              <span className="flex items-center gap-1.5">
+                <span>{refineOpen ? '▾' : '▸'}</span>
+                <span>Refine</span>
+                {refinements.length > 0 && (
+                  <span className="text-xs bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-full font-medium">
+                    {refinements.length}
+                  </span>
+                )}
+              </span>
+            </button>
+            {refineOpen && (
+              <div className="px-3 pb-3 space-y-2">
+                <textarea
+                  value={refinementText}
+                  onChange={(e) => setRefinementText(e.target.value)}
+                  placeholder="e.g. Split the auth task into smaller pieces, add a testing task..."
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400 resize-none"
+                  rows={2}
+                />
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleRefineAndRegenerate}
+                    disabled={!refinementText.trim()}
+                    className="px-3 py-1.5 text-sm bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Regenerate with feedback
+                  </button>
+                </div>
+              </div>
             )}
           </div>
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={loading}
-            className="text-slate-400 hover:text-slate-600 text-lg leading-none ml-4 mt-0.5 disabled:opacity-30 disabled:cursor-not-allowed"
-            aria-label="Cancel"
-          >
-            ✕
-          </button>
         </div>
+      )}
 
-        {/* Body */}
-        {loading ? (
-          <GeneratingProgress />
-        ) : error ? (
-          <div className="p-6 text-red-600 text-sm">{error}</div>
-        ) : (
-          <div className="overflow-y-auto max-h-[55vh] p-4 space-y-3">
-            {tasks.map((task) => (
-              <TaskPlanCard
-                key={task.title}
-                task={task}
-                checked={selected.has(task.title)}
-                onToggle={() => toggleTask(task.title)}
-              />
-            ))}
-
-            {/* Refine section */}
-            <div className="border border-slate-200 rounded-lg">
-              <button
-                type="button"
-                onClick={() => setRefineOpen(!refineOpen)}
-                className="w-full flex items-center justify-between px-3 py-2 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-50 rounded-lg"
-              >
-                <span className="flex items-center gap-1.5">
-                  <span>{refineOpen ? '▾' : '▸'}</span>
-                  <span>Refine</span>
-                  {refinements.length > 0 && (
-                    <span className="text-xs bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-full font-medium">
-                      {refinements.length}
-                    </span>
-                  )}
-                </span>
-              </button>
-              {refineOpen && (
-                <div className="px-3 pb-3 space-y-2">
-                  <textarea
-                    value={refinementText}
-                    onChange={(e) => setRefinementText(e.target.value)}
-                    placeholder="e.g. Split the auth task into smaller pieces, add a testing task..."
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400 resize-none"
-                    rows={2}
-                  />
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onClick={handleRefineAndRegenerate}
-                      disabled={!refinementText.trim()}
-                      className="px-3 py-1.5 text-sm bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Regenerate with feedback
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Footer */}
-        <div className="p-4 border-t border-slate-200 space-y-3">
-          {/* Refine controls */}
-          {showContextInput ? (
-            <div className="space-y-2">
-              <p className="text-sm text-slate-600">
-                You've rejected multiple plans. Try providing more specific context to get better results.
-              </p>
-              <textarea
-                value={context}
-                onChange={(e) => setContext(e.target.value)}
-                placeholder="Describe what you're looking for in more detail…"
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400 resize-none"
-                rows={3}
-              />
-              <div className="flex gap-2 justify-end">
-                <button
-                  type="button"
-                  onClick={onCancel}
-                  className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleRetryWithContext}
-                  disabled={!context.trim()}
-                  className="px-4 py-1.5 text-sm bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Try with context →
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={context}
-                onChange={(e) => setContext(e.target.value)}
-                placeholder="Add context to redo or add more tasks…"
-                className="flex-1 px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:bg-slate-50 disabled:text-slate-400"
-                disabled={loading}
-                onKeyDown={(e) => { if (e.key === 'Enter' && e.metaKey && !loading) handleRedo(); }}
-              />
-              <button
-                type="button"
-                onClick={handleRedo}
-                disabled={loading}
-                className="px-3 py-1.5 text-sm border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-              >
-                ↺ Redo
-              </button>
-              <button
-                type="button"
-                onClick={handleAddMore}
-                disabled={loading}
-                className="px-3 py-1.5 text-sm border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-              >
-                + Add more
-              </button>
-            </div>
-          )}
-
-          {/* Action row */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-slate-500">
-              {loading ? 'Generating…' : `${selectedCount} of ${tasks.length} task${tasks.length !== 1 ? 's' : ''} selected`}
-            </span>
-            <div className="flex gap-3">
+      {/* Footer */}
+      <div className="p-4 border-t border-slate-200 space-y-3">
+        {/* Refine controls */}
+        {showContextInput ? (
+          <div className="space-y-2">
+            <p className="text-sm text-slate-600">
+              You've rejected multiple plans. Try providing more specific context to get better results.
+            </p>
+            <textarea
+              value={context}
+              onChange={(e) => setContext(e.target.value)}
+              placeholder="Describe what you're looking for in more detail…"
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400 resize-none"
+              rows={3}
+            />
+            <div className="flex gap-2 justify-end">
               <button
                 type="button"
                 onClick={onCancel}
-                disabled={loading}
-                className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={() => onApprove(selectedTasks)}
-                disabled={selectedCount === 0 || loading}
-                className="px-5 py-2 text-sm bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleRetryWithContext}
+                disabled={!context.trim()}
+                className="px-4 py-1.5 text-sm bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Approve & create {selectedCount} task{selectedCount !== 1 ? 's' : ''} →
+                Try with context →
               </button>
             </div>
           </div>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={context}
+              onChange={(e) => setContext(e.target.value)}
+              placeholder="Add context to redo or add more tasks…"
+              className="flex-1 px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:bg-slate-50 disabled:text-slate-400"
+              disabled={loading}
+              onKeyDown={(e) => { if (e.key === 'Enter' && e.metaKey && !loading) handleRedo(); }}
+            />
+            <button
+              type="button"
+              onClick={handleRedo}
+              disabled={loading}
+              className="px-3 py-1.5 text-sm border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              aria-label="Redo task generation"
+            >
+              ↺ Redo
+            </button>
+            <button
+              type="button"
+              onClick={handleAddMore}
+              disabled={loading}
+              className="px-3 py-1.5 text-sm border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              aria-label="Add more tasks"
+            >
+              + Add more
+            </button>
+          </div>
+        )}
+
+        {/* Action row */}
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-slate-500">
+            {loading ? 'Generating…' : `${selectedCount} of ${tasks.length} task${tasks.length !== 1 ? 's' : ''} selected`}
+          </span>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={loading}
+              className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => onApprove(selectedTasks)}
+              disabled={selectedCount === 0 || loading}
+              className="px-5 py-2 text-sm bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Approve & create {selectedCount} task{selectedCount !== 1 ? 's' : ''} →
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Modal from './shared/Modal';
 
 interface KnowledgeBaseModalProps {
   isOpen: boolean;
@@ -10,11 +11,9 @@ interface KnowledgeBaseModalProps {
 export default function KnowledgeBaseModal({ isOpen, onClose, knowledgeBase, onSave }: KnowledgeBaseModalProps) {
   const [value, setValue] = useState(knowledgeBase ?? '');
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6">
+    <Modal isOpen={isOpen} onClose={onClose} title="Project Knowledge Base" size="md">
+      <div className="p-6">
         <h2 className="text-lg font-semibold text-slate-800 mb-1">Project Knowledge Base</h2>
         <p className="text-xs text-slate-500 mb-4">
           This context is injected into all AI prompts for this project.
@@ -49,6 +48,6 @@ export default function KnowledgeBaseModal({ isOpen, onClose, knowledgeBase, onS
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

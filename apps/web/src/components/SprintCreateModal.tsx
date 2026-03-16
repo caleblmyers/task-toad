@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { gql } from '../api/client';
 import type { Sprint } from '../types';
+import Modal from './shared/Modal';
 
 interface SprintCreateModalProps {
   projectId: string;
@@ -101,12 +102,11 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
-      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+    <Modal isOpen={true} onClose={onClose} title={isEdit ? 'Edit Sprint' : 'Create Sprint'} size="sm">
+      <div className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-slate-800">{isEdit ? 'Edit Sprint' : 'Create Sprint'}</h2>
-          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">✕</button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -177,7 +177,7 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
                   >
                     <button type="button" onClick={() => startEditCol(idx)} className="hover:underline">{col}</button>
                     {columns.length > 1 && (
-                      <button type="button" onClick={() => removeColumn(idx)} className="text-slate-400 hover:text-red-500 ml-0.5">×</button>
+                      <button type="button" onClick={() => removeColumn(idx)} className="text-slate-400 hover:text-red-500 ml-0.5" aria-label={`Remove column ${col}`}>×</button>
                     )}
                   </span>
                 )
@@ -196,6 +196,7 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
                 type="button"
                 onClick={addColumn}
                 className="px-3 py-1 text-sm border border-slate-300 rounded hover:bg-slate-50"
+                aria-label="Add column"
               >
                 +
               </button>
@@ -218,6 +219,6 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
           </div>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 }

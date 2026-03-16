@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
 import type { GitHubInstallation, GitHubRepoLink, GitHubRepo } from '../types';
+import Modal from './shared/Modal';
 
 interface GitHubRepoModalProps {
   projectId: string;
@@ -88,11 +89,8 @@ export default function GitHubRepoModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div
-        className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 space-y-4"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal isOpen={true} onClose={onClose} title="GitHub Repository" size="sm">
+      <div className="p-6 space-y-4">
         <h2 className="text-lg font-semibold text-slate-800">GitHub Repository</h2>
 
         {currentRepo ? (
@@ -205,6 +203,6 @@ export default function GitHubRepoModal({
           </div>
         )}
       </div>
-    </div>
+    </Modal>
   );
 }
