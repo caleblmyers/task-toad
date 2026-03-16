@@ -179,20 +179,20 @@ Both `schema.prisma` and `schema.ts` have been **modularized into domain files**
 
 ## Completed
 
-### S3: Project Intelligence (Wave 4, 2026-03-16) — in progress
-- [ ] Project knowledge base — per-project context injected into AI prompts
-- [ ] Acceptance criteria in task generation — add acceptance criteria field to Task model
+### S3: Project Intelligence (Wave 4, 2026-03-16)
+- [x] Project knowledge base — per-project context injected into AI prompts
+- [x] Acceptance criteria in task generation — add acceptance criteria field to Task model
 
-### S4: GitHub Automation (Wave 4, 2026-03-16) — in progress
-- [ ] Code review feedback loop — AI reads PR review comments and generates fix commits
-- [ ] AI code review — AI reviews PRs linked to tasks, checks against requirements, suggests improvements
-- [ ] AI task decomposition from GitHub issues — import GitHub issue → AI breaks into TaskToad tasks with instructions
-- [ ] Generated code diff view — show diff against existing repo files in code preview modal
+### S4: GitHub Automation (Wave 4, 2026-03-16)
+- [x] Code review feedback loop — AI reads PR review comments and generates fix commits
+- [x] AI code review — AI reviews PRs linked to tasks, checks against requirements, suggests improvements
+- [x] AI task decomposition from GitHub issues — import GitHub issue → AI breaks into TaskToad tasks with instructions
+- [x] Generated code diff view — show diff against existing repo files in code preview modal
 
-### S5: Notifications & Email (Wave 4, 2026-03-16) — in progress
-- [ ] Email notifications — configurable email alerts (assigned, due date, mentioned, sprint events)
-- [ ] Notification preferences — per-user settings for notification channels (in-app, email, both)
-- [ ] Due date reminders — scheduled alerts before task due dates (1 day, 1 hour)
+### S5: Notifications & Email (Wave 4, 2026-03-16)
+- [x] Email notifications — configurable email alerts (assigned, due date, mentioned, sprint events)
+- [x] Notification preferences — per-user settings for notification channels (in-app, email, both)
+- [x] Due date reminders — scheduled alerts before task due dates (1 day, 1 hour)
 
 ### I6: Data Export (Wave 3, 2026-03-16)
 - [x] Activity / audit log export — REST endpoints for CSV/JSON
