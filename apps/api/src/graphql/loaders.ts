@@ -1,5 +1,7 @@
 import DataLoader from 'dataloader';
-import type { PrismaClient, Task, Project, Sprint, User, Label, GitHubPullRequestLink, GitHubCommitLink } from '@prisma/client';
+import type { PrismaClient, Task, Project, Sprint, User, Label, GitHubPullRequestLink, GitHubCommitLink, CustomFieldValue, CustomField } from '@prisma/client';
+
+export type CustomFieldValueWithField = CustomFieldValue & { customField: CustomField };
 
 export interface Loaders {
   taskById: DataLoader<string, Task | null>;
@@ -12,6 +14,7 @@ export interface Loaders {
   taskChildren: DataLoader<string, Task[]>;
   taskProgress: DataLoader<string, { total: number; completed: number } | null>;
   sprintTasks: DataLoader<string, Task[]>;
+  customFieldValuesByTask: DataLoader<string, CustomFieldValueWithField[]>;
 }
 
 export function createLoaders(prisma: PrismaClient): Loaders {
@@ -116,6 +119,19 @@ export function createLoaders(prisma: PrismaClient): Loaders {
         map.get(t.sprintId)!.push(t);
       }
       return sprintIds.map(id => map.get(id) ?? []);
+    }),
+
+    customFieldValuesByTask: new DataLoader(async (taskIds) => {
+      const values = await prisma.customFieldValue.findMany({
+        where: { taskId: { in: [...taskIds] } },
+        include: { customField: true },
+      });
+      const map = new Map<string, CustomFieldValueWithField[]>();
+      for (const v of values) {
+        if (!map.has(v.taskId)) map.set(v.taskId, []);
+        map.get(v.taskId)!.push(v);
+      }
+      return taskIds.map(id => map.get(id) ?? []);
     }),
   };
 }

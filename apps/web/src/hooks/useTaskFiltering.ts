@@ -23,8 +23,19 @@ export interface TaskFiltering {
 }
 
 interface CustomFieldValue {
-  field: { customFieldId: string };
+  field: { customFieldId: string; fieldType?: string };
   value: string;
+}
+
+function compareWithOperator(operator: string, actual: number, target: number): boolean {
+  switch (operator) {
+    case '<': return actual < target;
+    case '>': return actual > target;
+    case '<=': return actual <= target;
+    case '>=': return actual >= target;
+    case '=':
+    default: return actual === target;
+  }
 }
 
 export function useTaskFiltering(tasks: Task[]): TaskFiltering {
@@ -81,6 +92,29 @@ export function useTaskFiltering(tasks: Task[]): TaskFiltering {
         return activeCfFilters.every(([fieldId, filterVal]) => {
           const cfv = cfValues.find((v) => v.field.customFieldId === fieldId);
           if (!cfv) return false;
+          const fieldType = cfv.field.fieldType;
+
+          // NUMBER and DATE fields use operator:value format
+          if ((fieldType === 'NUMBER' || fieldType === 'DATE') && filterVal.includes(':')) {
+            const [operator, target] = filterVal.split(':', 2);
+            if (!target) return true; // no value yet, pass through
+
+            if (fieldType === 'NUMBER') {
+              const actualNum = parseFloat(cfv.value);
+              const targetNum = parseFloat(target);
+              if (isNaN(actualNum) || isNaN(targetNum)) return false;
+              return compareWithOperator(operator, actualNum, targetNum);
+            }
+
+            if (fieldType === 'DATE') {
+              const actualDate = new Date(cfv.value).getTime();
+              const targetDate = new Date(target).getTime();
+              if (isNaN(actualDate) || isNaN(targetDate)) return false;
+              return compareWithOperator(operator, actualDate, targetDate);
+            }
+          }
+
+          // TEXT and DROPDOWN: case-insensitive substring match
           return cfv.value.toLowerCase().includes(filterVal.toLowerCase());
         });
       });

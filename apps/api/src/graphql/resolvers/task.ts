@@ -525,10 +525,7 @@ export const taskFieldResolvers = {
       return context.loaders.taskLabels.load(parent.taskId);
     },
     customFieldValues: async (parent: { taskId: string }, _args: unknown, context: Context) => {
-      return context.prisma.customFieldValue.findMany({
-        where: { taskId: parent.taskId },
-        include: { customField: true },
-      });
+      return context.loaders.customFieldValuesByTask.load(parent.taskId);
     },
     githubIssueUrl: async (parent: { taskId: string; projectId: string; githubIssueNumber?: number | null }, _args: unknown, context: Context) => {
       if (!parent.githubIssueNumber) return null;

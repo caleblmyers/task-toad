@@ -213,6 +213,59 @@ export default function FilterBar({
               />
             );
           }
+          if (field.fieldType === 'NUMBER') {
+            const [numOp, numVal] = filterVal.includes(':') ? filterVal.split(':', 2) : ['=', filterVal];
+            return (
+              <span key={field.customFieldId} className="inline-flex items-center gap-0.5">
+                <select
+                  value={numOp || '='}
+                  onChange={(e) => onCustomFieldFilterChange(field.customFieldId, `${e.target.value}:${numVal || ''}`)}
+                  className={`${pillBase} ${filterVal ? pillActive : pillInactive}`}
+                  aria-label={`${field.name} comparison operator`}
+                >
+                  <option value="=">=</option>
+                  <option value="<">&lt;</option>
+                  <option value=">">&gt;</option>
+                  <option value="<=">&le;</option>
+                  <option value=">=">&ge;</option>
+                </select>
+                <input
+                  type="number"
+                  value={numVal || ''}
+                  onChange={(e) => onCustomFieldFilterChange(field.customFieldId, `${numOp || '='}:${e.target.value}`)}
+                  placeholder={field.name}
+                  aria-label={`Filter by ${field.name}`}
+                  className={`${pillBase} w-20 ${filterVal ? pillActive : pillInactive}`}
+                />
+              </span>
+            );
+          }
+          if (field.fieldType === 'DATE') {
+            const [dateOp, dateVal] = filterVal.includes(':') ? filterVal.split(':', 2) : ['=', filterVal];
+            return (
+              <span key={field.customFieldId} className="inline-flex items-center gap-0.5">
+                <select
+                  value={dateOp || '='}
+                  onChange={(e) => onCustomFieldFilterChange(field.customFieldId, `${e.target.value}:${dateVal || ''}`)}
+                  className={`${pillBase} ${filterVal ? pillActive : pillInactive}`}
+                  aria-label={`${field.name} date comparison operator`}
+                >
+                  <option value="=">=</option>
+                  <option value="<">&lt;</option>
+                  <option value=">">&gt;</option>
+                  <option value="<=">&le;</option>
+                  <option value=">=">&ge;</option>
+                </select>
+                <input
+                  type="date"
+                  value={dateVal || ''}
+                  onChange={(e) => onCustomFieldFilterChange(field.customFieldId, `${dateOp || '='}:${e.target.value}`)}
+                  aria-label={`Filter by ${field.name}`}
+                  className={`${pillBase} ${filterVal ? pillActive : pillInactive}`}
+                />
+              </span>
+            );
+          }
           return null;
         })}
 
