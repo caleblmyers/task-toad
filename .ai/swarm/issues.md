@@ -120,3 +120,15 @@ Format:
 **Issue:** Task files array listed `auth.prisma` for the Org relation, but the Org model is actually in `org.prisma`. Worker correctly modified `org.prisma` instead.
 **Impact:** None — worker made the right call.
 **Suggestion:** Verify file locations during task planning, especially for Prisma schema files where model-to-file mapping isn't always intuitive.
+
+### Reviewer — Positive (Wave 13)
+**Observation:** All 6 tasks passed review on first attempt — zero rejections this wave.
+**Why it worked:** Tasks had clear acceptance criteria, reasonable scope (30-60 min each), and non-overlapping file arrays. Workers adapted to actual backend types rather than task description suggestions (e.g. task-005 CodeReview type matched real GraphQL schema).
+
+### Reviewer — Positive
+**Observation:** Worker-2 adapted task-004 Zod validation cleanly — used safeParse with warning logs + fallbacks rather than throwing, consistent pattern across all 7 call sites.
+**Why it worked:** Task description explicitly specified the fallback strategy, reducing ambiguity.
+
+### Reviewer — Observation
+**Observation:** Worker-3 completed both tasks (005 + 006) on a single branch, requiring manual commit splitting during merge. This works but adds reviewer friction.
+**Suggestion:** Consider whether workers should create separate branches per task, or accept that squash merges from multi-task branches require manual splitting.

@@ -6,6 +6,32 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-16
 
+### Wave 13: S1 + Q1 + W6 (3 workers, 6 tasks)
+
+**S1 — Styling & Branding (Worker 1):**
+- Shared `<Button>` component with primary/secondary/ghost/danger variants, sm/md/lg sizes, loading spinner, forwardRef — 31 ad-hoc buttons converted across the codebase
+- Dark mode infrastructure: Tailwind `darkMode: 'class'`, CSS custom properties for dark brand colors, `dark:` variants on layout shell (AppLayout, sidebar, header) + Button + Modal components
+
+**Q1 — Code Quality & Testing (Worker 2):**
+- Integration test foundation: `tasktoad_test` database setup with `cleanDatabase()` helper, auth resolver tests covering signup, login, and createOrg flows
+- Zod validation for all unvalidated `JSON.parse` calls: `zodSchemas.ts` with 4 schemas (columns, options, statuses, suggestedTools), 7 bare `as` casts replaced with `safeParse` + warning log + fallback defaults
+
+**W6 — Advanced Views & AI Extras (Worker 3):**
+- AI code review UI: `TaskAIReviewSection` component with approval badge, review comments, code suggestions; AI Review button on tasks with linked PRs; `handleReviewPR` wired into `useTaskCRUD`
+- Enhanced API documentation: domain-grouped operations (Auth, Organization, Project, Task, Sprint, etc.), rate limits table, Quick Start curl examples, sidebar TOC, schema download endpoints (`/api/docs/schema.graphql`, `/api/docs/schema.json`)
+
+**Process notes (Wave 13):**
+- Zero rejections — all 6 tasks passed review on first attempt (best wave yet)
+- Worker-3 completed both tasks on single branch requiring manual commit splitting during merge (minor reviewer friction)
+
+**Open follow-ups:**
+- [ ] AI auto-review trigger — auto-trigger when task moves to `in_review` (currently manual button)
+- [ ] API docs operation descriptions — extract from SDL comments (currently signature only)
+- [ ] Dark mode rollout — extend `dark:` to remaining components + user toggle
+- [ ] Button component adoption — ~26 remaining ad-hoc buttons not yet converted
+- [ ] Integration test CI — test DB needs docker-compose or GH Actions step
+- [ ] Integration test coverage — extend beyond auth to task CRUD, sprint, project resolvers
+
 ### Wave 12: F1 + W2 + SW1 (3 workers, 6 tasks)
 
 **F1 — Frontend Performance (Worker 1):**

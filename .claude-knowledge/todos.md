@@ -95,11 +95,14 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 - [x] Base Modal component — shared `<Modal>` with focus trap, ARIA, Escape-to-close (completed as part of A11 Wave 9, 2026-03-16)
 - [x] Consistent error handling — NotificationCenter, GlobalSearchModal, FilterBar catch blocks now log errors / show UI feedback instead of silent swallowing (Wave 11, 2026-03-16)
 - [x] Unit test foundation — Vitest setup for both API and web, tests for resolverHelpers (validateStatus, parseInput, sanitizeForPrompt) and useTaskFiltering (search, status, priority, assignee, combined) (Wave 11, 2026-03-16)
-- [ ] Integration test foundation — set up test database, write resolver tests for auth flows and task CRUD
+- [x] Integration test foundation — test database setup (tasktoad_test), auth resolver tests for signup/login/createOrg (Wave 13, 2026-03-16)
 - [x] TypeScript strictness (partial) — export.ts `any` types replaced with Prisma-derived types, eslint-disable comments removed (Wave 11, 2026-03-16)
 - [x] Dead code cleanup — AppLayout SSE handler documented with TODO for future event dispatch (Wave 11, 2026-03-16)
-- [ ] TypeScript strictness (remaining) — eliminate remaining `any` types; add Zod validation for parsed JSON from DB fields (suggestedTools, dependsOn, columns)
+- [x] TypeScript strictness (remaining) — Zod validation for 7 JSON.parse calls, eliminated `as unknown` casts in task/search/export resolvers, shared zodSchemas.ts (Wave 13, 2026-03-16)
+- [ ] TypeScript strictness (final) — remaining `any` types audit; add Zod for suggestedTools and dependsOn JSON parsing in taskHelpers.ts
 - [ ] Expand test coverage — add tests for useTaskCRUD, tokenEstimator, aiService, and resolver integration tests
+- [ ] Integration test CI — tasktoad_test database needs to be created/available in CI; add docker-compose or GitHub Actions step for test DB
+- [ ] Integration test coverage — extend beyond auth to task CRUD, sprint, project resolvers
 
 ### W1: Full-Stack Quality Refactor (remaining)
 **Touches:** `resolvers/*`, `typedefs/*`, `ProjectDetail.tsx`
@@ -126,8 +129,10 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 ### W6: Advanced Views & AI Extras (remaining)
 **Touches:** new `apps/web/src/components/` files, `resolvers/ai.ts`
 
-- [ ] AI code review + auto-test for in-review tasks — when a task moves to `in_review` status, AI fetches the linked PR diff (or generated code), reviews it for bugs/quality, and runs or suggests tests automatically. Full slice: new `reviewTaskCode` mutation in AI resolvers, integrate with existing `reviewCode` prompt + GitHub PR diff fetching, add "AI Review" button/auto-trigger in TaskDetailPanel when status is `in_review`, display review results (pass/fail, comments, suggested fixes) inline
-- [ ] Public REST/GraphQL API docs — documented API for third-party use. Full slice: auto-generate from GraphQL schema using graphql-markdown or similar, serve at `/api/docs`, add auth token instructions
+- [x] AI code review UI — AI Review button on tasks with linked PRs, TaskAIReviewSection with approval badge/comments/suggestions, handleReviewPR in useTaskCRUD (Wave 13, 2026-03-16)
+- [x] Public REST/GraphQL API docs — domain-grouped operations, rate limits table, Quick Start curl examples, sidebar TOC, schema download endpoints (/api/docs/schema.graphql, /api/docs/schema.json) (Wave 13, 2026-03-16)
+- [ ] AI auto-review trigger — auto-trigger review when task moves to `in_review` status (currently manual button only)
+- [ ] API docs operation descriptions — extract descriptions from SDL comments for each query/mutation (currently shows signature only)
 
 ### D1: Deployment & Observability (Medium Priority)
 **Why:** No metrics, no APM, no external monitoring. Railway basic healthcheck is the only signal.
@@ -182,9 +187,11 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 - [x] Focus ring branding — all `focus:ring-slate-400` → `focus:ring-brand-green` across 19 files (2026-03-16)
 - [x] Active tab/toggle indicators — AIUsageDashboard, BurndownChart, ProjectChatPanel, TaskPlanApprovalDialog step indicators → brand-green (2026-03-16)
 - [x] Loading spinner branding — border-t-slate-700 → border-t-brand-green in App.tsx, OrgSettings, TaskPlanApprovalDialog (2026-03-16)
-- [ ] Button component library — standardize the ad-hoc button styles into reusable `<Button variant="primary|secondary|ghost|danger">` component
+- [x] Button component library — shared `<Button>` with primary/secondary/ghost/danger variants, sm/md/lg sizes, loading spinner; 31 ad-hoc buttons converted (Wave 13, 2026-03-16)
 - [ ] Consistent spacing/typography scale — audit and normalize padding, margin, font-size usage across components
-- [ ] Dark mode prep — use Tailwind `dark:` variants on base components so dark mode can be toggled when ready
+- [x] Dark mode prep — Tailwind `darkMode: 'class'`, CSS custom properties for dark brand colors, dark: variants on layout shell + Button + Modal (Wave 13, 2026-03-16)
+- [ ] Dark mode rollout — extend dark: variants to remaining components (ProjectDetail, modals, cards, tables, forms); add user-facing toggle with localStorage persistence
+- [ ] Button component adoption — ~26 remaining ad-hoc buttons not yet converted (cancel buttons, login/signup submit, some one-off styles)
 - [ ] SVG favicon — generate proper SVG favicon from T-Frog silhouette for sharp rendering at all sizes
 - [ ] Social preview image — proper og:image composite (logo + text on brand-dark background) for link sharing
 - [ ] PWA manifest — `manifest.json` with icon set for installable web app
@@ -228,6 +235,14 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 ---
 
 ## Completed
+
+### S1+Q1+W6 (partial): Wave 13 (2026-03-16)
+- [x] Shared Button component — primary/secondary/ghost/danger variants, sm/md/lg sizes, loading spinner, forwardRef; 31 buttons converted
+- [x] Dark mode infrastructure — Tailwind darkMode: 'class', .dark CSS vars, dark: on layout shell + Button + Modal
+- [x] Integration test foundation — tasktoad_test DB setup, cleanDatabase(), auth resolver tests (signup/login/createOrg)
+- [x] Zod validation for JSON.parse — zodSchemas.ts with 4 schemas, 7 bare casts replaced with safeParse + fallbacks
+- [x] AI code review UI — TaskAIReviewSection component, review button on tasks with linked PRs, useTaskCRUD wiring
+- [x] Enhanced API docs — domain-grouped ops, rate limits, Quick Start, sidebar, schema.graphql + schema.json endpoints
 
 ### F1 (partial): Frontend Performance (Wave 12, 2026-03-16)
 - [x] React.memo on TaskRow, CommentItem, ActivityItem with stable useCallback props
