@@ -5,6 +5,7 @@ import { logger } from './utils/logger.js';
 import { checkDueDateReminders } from './utils/dueDateReminder.js';
 import { startRetryProcessor, stopRetryProcessor } from './utils/webhookDispatcher.js';
 import { sseManager } from './utils/sseManager.js';
+import { startRecurrenceScheduler, stopRecurrenceScheduler } from './utils/recurrenceScheduler.js';
 
 const prisma = new PrismaClient();
 const PORT = Number(process.env.PORT) || 3001;
@@ -68,6 +69,7 @@ async function main() {
   });
 
   startRetryProcessor(prisma);
+  const recurrenceTimer = startRecurrenceScheduler(prisma);
 
   // Graceful shutdown
   const shutdown = async (signal: string) => {
@@ -82,6 +84,7 @@ async function main() {
 
     clearInterval(reminderInterval);
     stopRetryProcessor();
+    stopRecurrenceScheduler(recurrenceTimer);
     sseManager.closeAllConnections();
 
     server.close(() => {

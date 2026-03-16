@@ -120,6 +120,8 @@ export interface Task {
   commits?:           TaskCommit[];
   children?:          Task[];
   progress?:          { total: number; completed: number; percentage: number };
+  recurrenceRule?:    string | null;
+  recurrenceParentId?: string | null;
   assignees?:         TaskAssignee[];
 }
 

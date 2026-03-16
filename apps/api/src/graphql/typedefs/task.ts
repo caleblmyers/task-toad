@@ -29,6 +29,8 @@ export const taskTypeDefs = /* GraphQL */ `
     children: [Task!]!
     progress: TaskProgress
     customFieldValues: [CustomFieldValue!]!
+    recurrenceRule: String
+    recurrenceParentId: ID
     assignees: [TaskAssignee!]!
   }
 
@@ -123,7 +125,7 @@ export const taskQueryFields = /* GraphQL */ `
 
 export const taskMutationFields = /* GraphQL */ `
   createTask(projectId: ID!, title: String!, status: String, taskType: String): Task!
-  updateTask(taskId: ID!, title: String, status: String, description: String, instructions: String, acceptanceCriteria: String, dependsOn: String, sprintId: ID, sprintColumn: String, assigneeId: ID, dueDate: String, position: Float, archived: Boolean, storyPoints: Int, taskType: String): Task!
+  updateTask(taskId: ID!, title: String, status: String, description: String, instructions: String, acceptanceCriteria: String, dependsOn: String, sprintId: ID, sprintColumn: String, assigneeId: ID, dueDate: String, position: Float, archived: Boolean, storyPoints: Int, taskType: String, recurrenceRule: String): Task!
   createSubtask(parentTaskId: ID!, title: String!, taskType: String): Task!
   bulkUpdateTasks(taskIds: [ID!]!, status: String, assigneeId: ID, sprintId: ID, archived: Boolean): [Task!]!
 

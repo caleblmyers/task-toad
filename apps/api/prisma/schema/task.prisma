@@ -26,8 +26,13 @@ model Task {
   subtasks       Task[]   @relation("TaskSubtasks")
   sprint         Sprint?  @relation(fields: [sprintId], references: [sprintId])
   assignee       User?    @relation("TaskAssignee", fields: [assigneeId], references: [userId])
+  recurrenceRule        String?   @map("recurrence_rule")
+  recurrenceParentId    String?   @map("recurrence_parent_id")
+  recurrenceLastCreated DateTime? @map("recurrence_last_created")
   githubIssueNumber Int?    @map("github_issue_number")
   githubIssueNodeId  String? @map("github_issue_node_id")
+  recurrenceParent  Task?    @relation("RecurrenceChain", fields: [recurrenceParentId], references: [taskId])
+  recurrenceChildren Task[]   @relation("RecurrenceChain")
   comments          Comment[]
   labels            TaskLabel[]
   pullRequests      GitHubPullRequestLink[]
@@ -42,6 +47,7 @@ model Task {
   @@index([orgId])
   @@index([orgId, archived])
   @@index([projectId, sprintId, position])
+  @@index([recurrenceRule])
   @@map("tasks")
 }
 

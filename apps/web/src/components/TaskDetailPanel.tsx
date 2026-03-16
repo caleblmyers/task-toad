@@ -128,6 +128,35 @@ function PanelContent({
         onCreateLabel={onCreateLabel}
       />
 
+      {/* Recurrence */}
+      <div className="mb-4">
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
+          {task.recurrenceRule && <span className="mr-1">↻</span>}Recurrence
+        </p>
+        <select
+          value={task.recurrenceRule ?? ''}
+          onChange={(e) => {
+            const rule = e.target.value || null;
+            if (onUpdateTask) {
+              // The mutation builder in useTaskCRUD dynamically constructs from object keys
+              (onUpdateTask as (taskId: string, updates: Record<string, unknown>) => Promise<void>)(
+                task.taskId,
+                { recurrenceRule: rule },
+              );
+            }
+          }}
+          disabled={disabled}
+          className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 bg-white dark:bg-slate-800 dark:text-slate-200"
+        >
+          <option value="">None</option>
+          <option value="0 9 * * *">Daily (9am)</option>
+          <option value="0 9 * * 1">Weekly (Monday)</option>
+          <option value="0 9 * * 5">Weekly (Friday)</option>
+          <option value="0 9 1,15 * *">Biweekly (1st &amp; 15th)</option>
+          <option value="0 9 1 * *">Monthly (1st)</option>
+        </select>
+      </div>
+
       <TaskGitHubSection
         task={task}
         projectHasRepo={projectHasRepo}

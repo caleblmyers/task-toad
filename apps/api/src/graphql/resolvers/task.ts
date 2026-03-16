@@ -10,6 +10,9 @@ import { sseManager } from '../../utils/sseManager.js';
 import { requireTask, requireProject, validateStatus, parseInput, CreateTaskInput, UpdateTaskInput, CreateCommentInput } from '../../utils/resolverHelpers.js';
 import { StringArraySchema } from '../../utils/zodSchemas.js';
 import { createChildLogger } from '../../utils/logger.js';
+import { reviewCode } from '../../ai/aiService.js';
+import { decryptApiKey } from '../../utils/encryption.js';
+import { getPullRequestDiff } from '../../github/index.js';
 
 const log = createChildLogger('task');
 
@@ -155,7 +158,7 @@ export const taskMutations = {
 
   updateTask: async (
     _parent: unknown,
-    args: { taskId: string; title?: string; status?: string; description?: string; instructions?: string; acceptanceCriteria?: string; dependsOn?: string | null; sprintId?: string | null; sprintColumn?: string | null; assigneeId?: string | null; dueDate?: string | null; position?: number | null; archived?: boolean; storyPoints?: number | null; taskType?: string },
+    args: { taskId: string; title?: string; status?: string; description?: string; instructions?: string; acceptanceCriteria?: string; dependsOn?: string | null; sprintId?: string | null; sprintColumn?: string | null; assigneeId?: string | null; dueDate?: string | null; position?: number | null; archived?: boolean; storyPoints?: number | null; taskType?: string; recurrenceRule?: string | null },
     context: Context
   ) => {
     parseInput(UpdateTaskInput, { title: args.title, description: args.description, instructions: args.instructions, acceptanceCriteria: args.acceptanceCriteria });
@@ -185,6 +188,7 @@ export const taskMutations = {
         ...(args.archived !== undefined ? { archived: args.archived } : {}),
         ...(args.storyPoints !== undefined ? { storyPoints: args.storyPoints } : {}),
         ...(args.taskType !== undefined ? { taskType: args.taskType } : {}),
+        ...(args.recurrenceRule !== undefined ? { recurrenceRule: args.recurrenceRule || null } : {}),
       },
     });
     // Log each changed field
@@ -196,6 +200,7 @@ export const taskMutations = {
       ['dueDate', task.dueDate, args.dueDate],
       ['dependsOn', task.dependsOn, args.dependsOn],
       ['archived', String(task.archived), args.archived !== undefined ? String(args.archived) : undefined],
+      ['recurrenceRule', task.recurrenceRule ?? null, args.recurrenceRule !== undefined ? (args.recurrenceRule || null) : undefined],
     ];
     for (const [field, oldVal, newVal] of fields) {
       if (newVal !== undefined && newVal !== oldVal) {
@@ -240,6 +245,42 @@ export const taskMutations = {
         userId: user.userId,
         data: { oldStatus: task.status, newStatus: args.status },
       });
+    }
+    // Auto-review trigger: when status changes to in_review and task has linked PRs
+    if (args.status === 'in_review' && args.status !== task.status) {
+      const prs = await context.prisma.gitHubPullRequestLink.findMany({ where: { taskId: args.taskId } });
+      if (prs.length > 0) {
+        const org = await context.prisma.org.findUnique({ where: { orgId: user.orgId } });
+        const encrypted = org?.anthropicApiKeyEncrypted;
+        if (encrypted) {
+          try {
+            const apiKey = decryptApiKey(encrypted);
+            const project = await context.loaders.projectById.load(task.projectId);
+            if (project?.githubInstallationId && project.githubRepositoryOwner && project.githubRepositoryName) {
+              const pr = prs[0];
+              getPullRequestDiff(project.githubInstallationId, project.githubRepositoryOwner, project.githubRepositoryName, pr.prNumber)
+                .then(diff => reviewCode(apiKey, {
+                  taskTitle: task.title,
+                  taskDescription: task.description ?? '',
+                  taskInstructions: task.instructions ?? undefined,
+                  acceptanceCriteria: task.acceptanceCriteria ?? undefined,
+                  diff,
+                  projectName: project.name,
+                }))
+                .then(review => {
+                  log.info({ taskId: args.taskId, prNumber: pr.prNumber }, 'Auto-review completed');
+                  logActivity(context.prisma, {
+                    orgId: user.orgId, projectId: task.projectId, taskId: task.taskId, userId: user.userId,
+                    action: 'task.auto_reviewed', field: 'review', newValue: review.approved ? 'approved' : 'changes_requested',
+                  });
+                })
+                .catch(err => log.error({ err, taskId: args.taskId }, 'Auto-review failed'));
+            }
+          } catch (err) {
+            log.error({ err, taskId: args.taskId }, 'Failed to decrypt API key for auto-review');
+          }
+        }
+      }
     }
     const changes: Record<string, unknown> = {};
     for (const [field, oldVal, newVal] of fields) {
