@@ -19,13 +19,15 @@ interface BacklogSectionProps {
   onDragOver: (e: React.DragEvent<HTMLDivElement>, sectionId: string | null) => void;
   onDragLeave: (e: React.DragEvent<HTMLDivElement>, sectionId: string | null) => void;
   onDrop: (e: React.DragEvent<HTMLDivElement>, sectionId: string | null, tasks: Task[]) => void;
+  sprints?: Sprint[];
+  onAssignSprint?: (taskId: string, sprintId: string | null) => void;
 }
 
 function BacklogSection({
   tasks: sectionTasks, allTasks, orgUsers, selectedTask, selectedTaskIds,
   showCheckboxes, dragOverInfo, containerRef,
   onSelectTask, onToggleTaskId, onToggleAll, onDragStart,
-  onDragOver, onDragLeave, onDrop,
+  onDragOver, onDragLeave, onDrop, sprints, onAssignSprint,
 }: BacklogSectionProps) {
   const sectionIds = sectionTasks.map((t) => t.taskId);
   const allChecked = sectionIds.length > 0 && sectionIds.every((id) => selectedTaskIds.has(id));
@@ -73,6 +75,8 @@ function BacklogSection({
                   isChecked={selectedTaskIds.has(task.taskId)}
                   showCheckboxes={showCheckboxes}
                   onToggle={() => onToggleTaskId(task.taskId)}
+                  sprints={sprints}
+                  onAssignSprint={onAssignSprint}
                 />
                 {renderDropIndicator(i + 1)}
               </div>
@@ -130,7 +134,7 @@ export default function BacklogView({
   projectId, tasks, sprints, orgUsers, selectedTask, selectedTaskIds,
   onSelectTask, onToggleTaskId, onToggleAll,
   onCreateSprint, onEditSprint, onDeleteSprint, onActivateSprint, onCloseSprint,
-  onPlanSprints, onReorderTask, hasMore, onLoadMore, showArchived, onToggleShowArchived,
+  onAssignSprint, onPlanSprints, onReorderTask, hasMore, onLoadMore, showArchived, onToggleShowArchived,
 }: BacklogViewProps) {
   const openSprints = sprints.filter((s) => !s.closedAt);
   const bySprint: Record<string, Task[]> = Object.fromEntries(
@@ -237,6 +241,8 @@ export default function BacklogView({
             onActivateSprint={onActivateSprint}
             onCloseSprint={onCloseSprint}
             onSprintReport={setSprintReportId}
+            allSprints={openSprints}
+            onAssignSprint={onAssignSprint}
           />
         ))}
 
@@ -257,6 +263,8 @@ export default function BacklogView({
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
+          sprints={openSprints}
+          onAssignSprint={onAssignSprint}
         />
 
         {/* Load more */}

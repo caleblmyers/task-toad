@@ -41,14 +41,18 @@ interface TaskRowProps {
   isChecked: boolean;
   showCheckboxes: boolean;
   onToggle: () => void;
+  sprints?: Sprint[];
+  onAssignSprint?: (taskId: string, sprintId: string | null) => void;
 }
 
 export function TaskRow({
   task, orgUsers, allTasks, selectedTask, onSelectTask, onDragStart,
-  isChecked, showCheckboxes, onToggle,
+  isChecked, showCheckboxes, onToggle, sprints, onAssignSprint,
 }: TaskRowProps) {
   const isSelected = selectedTask?.taskId === task.taskId;
   const assignee = orgUsers.find((u) => u.userId === task.assigneeId);
+  const [showSprintPicker, setShowSprintPicker] = useState(false);
+  const [sprintMoveAnnouncement, setSprintMoveAnnouncement] = useState('');
 
   return (
     <div
@@ -59,12 +63,17 @@ export function TaskRow({
       onClick={() => onSelectTask(task)}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectTask(task); }
+        if (e.key === 'm' && onAssignSprint && sprints) {
+          e.preventDefault();
+          e.stopPropagation();
+          setShowSprintPicker((v) => !v);
+        }
       }}
       onDragStart={(e) => {
         onDragStart(task.taskId);
         e.dataTransfer.effectAllowed = 'move';
       }}
-      className={`w-full text-left px-3 py-2 rounded-lg border border-transparent hover:bg-slate-50 hover:border-slate-200 transition-colors flex items-center gap-2 cursor-grab active:cursor-grabbing group ${
+      className={`relative w-full text-left px-3 py-2 rounded-lg border border-transparent hover:bg-slate-50 hover:border-slate-200 transition-colors flex items-center gap-2 cursor-grab active:cursor-grabbing group ${
         isSelected ? 'bg-blue-50 border-blue-200' : ''
       } ${task.archived ? 'opacity-50' : ''}`}
     >
@@ -116,6 +125,56 @@ export function TaskRow({
             {assignee.email.charAt(0).toUpperCase()}
           </span>
         )}
+        {onAssignSprint && sprints && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setShowSprintPicker((v) => !v); }}
+            className="text-xs text-slate-400 hover:text-slate-600 px-1.5 py-0.5 border border-slate-200 rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+            aria-label={`Move task "${task.title}" to another sprint`}
+            title="Move to sprint (M)"
+          >
+            ⇅
+          </button>
+        )}
+      </div>
+      {showSprintPicker && onAssignSprint && sprints && (
+        <div
+          className="absolute right-0 top-full mt-1 z-10 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[160px]"
+          role="listbox"
+          aria-label="Select sprint"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            role="option"
+            aria-selected={!task.sprintId}
+            className={`w-full text-left px-3 py-1.5 text-xs hover:bg-slate-50 ${!task.sprintId ? 'font-medium text-slate-800' : 'text-slate-600'}`}
+            onClick={() => {
+              onAssignSprint(task.taskId, null);
+              setShowSprintPicker(false);
+              setSprintMoveAnnouncement(`Moved "${task.title}" to Backlog`);
+            }}
+          >
+            Backlog
+          </button>
+          {sprints.map((s) => (
+            <button
+              key={s.sprintId}
+              role="option"
+              aria-selected={task.sprintId === s.sprintId}
+              className={`w-full text-left px-3 py-1.5 text-xs hover:bg-slate-50 ${task.sprintId === s.sprintId ? 'font-medium text-slate-800' : 'text-slate-600'}`}
+              onClick={() => {
+                onAssignSprint(task.taskId, s.sprintId);
+                setShowSprintPicker(false);
+                setSprintMoveAnnouncement(`Moved "${task.title}" to ${s.name}`);
+              }}
+            >
+              {s.name}{s.isActive ? ' ★' : ''}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="sr-only" aria-live="assertive" role="status">
+        {sprintMoveAnnouncement}
       </div>
     </div>
   );
@@ -143,6 +202,8 @@ interface SprintSectionProps {
   onActivateSprint: (sprintId: string) => void;
   onCloseSprint: (sprintId: string) => void;
   onSprintReport: (sprintId: string) => void;
+  allSprints?: Sprint[];
+  onAssignSprint?: (taskId: string, sprintId: string | null) => void;
 }
 
 export default function SprintSection({
@@ -151,6 +212,7 @@ export default function SprintSection({
   onSelectTask, onToggleTaskId, onToggleAll, onDragStart,
   onDragOver, onDragLeave, onDrop,
   onEditSprint, onDeleteSprint, onActivateSprint, onCloseSprint, onSprintReport,
+  allSprints, onAssignSprint,
 }: SprintSectionProps) {
   const [burndownVisible, setBurndownVisible] = useState(false);
 
@@ -259,6 +321,8 @@ export default function SprintSection({
                   isChecked={selectedTaskIds.has(task.taskId)}
                   showCheckboxes={showCheckboxes}
                   onToggle={() => onToggleTaskId(task.taskId)}
+                  sprints={allSprints}
+                  onAssignSprint={onAssignSprint}
                 />
                 {renderDropIndicator(i + 1)}
               </div>

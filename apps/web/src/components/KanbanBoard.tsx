@@ -23,6 +23,7 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
   const draggedId = useRef<string | null>(null);
   const [movingTaskId, setMovingTaskId] = useState<string | null>(null);
   const [moveAnnouncement, setMoveAnnouncement] = useState('');
+  const [columnOrder, setColumnOrder] = useState<Map<string, string[]>>(new Map());
 
   // Memoize column grouping — O(n) map instead of O(n*columns) inline filter per render
   const tasksByColumn = useMemo(() => {
@@ -32,8 +33,18 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
       const col = task.sprintColumn && map.has(task.sprintColumn) ? task.sprintColumn : columns[0];
       map.get(col)!.push(task);
     }
+    // Apply local reorder overrides
+    for (const [col, orderedIds] of columnOrder) {
+      const colTasks = map.get(col);
+      if (!colTasks) continue;
+      const taskMap = new Map(colTasks.map((t) => [t.taskId, t]));
+      // Only apply if the ids still match the current column contents
+      if (orderedIds.length === colTasks.length && orderedIds.every((id) => taskMap.has(id))) {
+        map.set(col, orderedIds.map((id) => taskMap.get(id)!));
+      }
+    }
     return map;
-  }, [tasks, columns]);
+  }, [tasks, columns, columnOrder]);
 
   // Memoize blocked task set — O(n) instead of O(n^2) per-card check
   const blockedTasks = useMemo(() => {
@@ -63,7 +74,7 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
         // Enter move mode
         setMovingTaskId(task.taskId);
         const col = task.sprintColumn ?? columns[0];
-        setMoveAnnouncement(`Moving "${task.title}". Use Left and Right arrows to change column. Currently in ${col}. Press Enter or Escape to finish.`);
+        setMoveAnnouncement(`Moving "${task.title}". Use Left/Right arrows to change column, Up/Down arrows to reorder within column. Currently in ${col}. Press Enter or Escape to finish.`);
       }
       return;
     }
@@ -91,7 +102,22 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
         setMoveAnnouncement(`Moved "${task.title}" to ${newCol}`);
       }
     }
-  }, [movingTaskId, columns, onColumnChange]);
+
+    if (movingTaskId === task.taskId && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      e.preventDefault();
+      const currentCol = task.sprintColumn ?? columns[0];
+      const colTasks = tasksByColumn.get(currentCol) ?? [];
+      const taskIdx = colTasks.findIndex((t) => t.taskId === task.taskId);
+      if (taskIdx < 0) return;
+      const swapIdx = e.key === 'ArrowUp' ? taskIdx - 1 : taskIdx + 1;
+      if (swapIdx < 0 || swapIdx >= colTasks.length) return;
+      const newOrder = colTasks.map((t) => t.taskId);
+      [newOrder[taskIdx], newOrder[swapIdx]] = [newOrder[swapIdx], newOrder[taskIdx]];
+      setColumnOrder((prev) => new Map(prev).set(currentCol, newOrder));
+      const direction = e.key === 'ArrowUp' ? 'up' : 'down';
+      setMoveAnnouncement(`Moved "${task.title}" ${direction} to position ${swapIdx + 1} of ${colTasks.length} in ${currentCol}`);
+    }
+  }, [movingTaskId, columns, onColumnChange, tasksByColumn]);
 
   return (
     <div className="flex gap-4 h-full">
@@ -144,7 +170,7 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
                       tabIndex={0}
                       role="option"
                       aria-selected={isSelected}
-                      aria-description="Press Enter to move this task between columns"
+                      aria-description="Press Enter to move this task. Use Left/Right arrows to change column, Up/Down arrows to reorder within column."
                       onDragStart={() => { draggedId.current = task.taskId; }}
                       onClick={() => onSelectTask(task)}
                       onKeyDown={(e) => handleCardKeyDown(e, task)}
