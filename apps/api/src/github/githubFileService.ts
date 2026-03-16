@@ -2,6 +2,7 @@ import { githubRequest } from './githubAppClient.js';
 import { getInstallationToken } from './githubAppAuth.js';
 import type { GitHubRepoLink } from './githubTypes.js';
 import { createChildLogger } from '../utils/logger.js';
+import { getCached, setCache } from './githubCache.js';
 
 const log = createChildLogger('github');
 
@@ -117,6 +118,10 @@ export async function fetchFileContent(
 }
 
 export async function fetchProjectFileTree(repo: GitHubRepoLink): Promise<ProjectFile[]> {
+  const cacheKey = `filetree:${repo.repositoryOwner}:${repo.repositoryName}`;
+  const cached = getCached<ProjectFile[]>(cacheKey);
+  if (cached) return cached;
+
   try {
     const token = await getInstallationToken(repo.installationId);
     const branch = repo.defaultBranch;
@@ -159,7 +164,9 @@ export async function fetchProjectFileTree(repo: GitHubRepoLink): Promise<Projec
 
     // Sort by size descending, cap at MAX_FILES
     files.sort((a, b) => b.size - a.size);
-    return files.slice(0, MAX_FILES);
+    const result = files.slice(0, MAX_FILES);
+    setCache(cacheKey, result, 21_600_000); // 6 hour TTL
+    return result;
   } catch (error) {
     log.error({ error }, 'Failed to fetch project file tree');
     return [];

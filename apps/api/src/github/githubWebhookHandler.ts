@@ -12,6 +12,7 @@ import type { GitHubWebhookEvent } from './githubTypes.js';
 import { clearInstallationToken } from './githubAppAuth.js';
 import { logInstallation, logWebhookReceived, logApiError } from './githubLogger.js';
 import { linkCommitsToTasks } from './githubTaskLinker.js';
+import { invalidateCache } from './githubCache.js';
 
 const prisma = new PrismaClient();
 
@@ -106,6 +107,7 @@ async function handleInstallationEvent(payload: GitHubWebhookEvent): Promise<voi
         create: { installationId, accountLogin, accountType },
         update: { accountLogin, accountType },
       });
+      invalidateCache(`repos:${installationId}`);
       logInstallation('installed', installationId, accountLogin);
       break;
     }
@@ -115,6 +117,7 @@ async function handleInstallationEvent(payload: GitHubWebhookEvent): Promise<voi
       }).catch(() => {
         // Already deleted — no-op
       });
+      invalidateCache(`repos:${installationId}`);
       clearInstallationToken(installationId);
       logInstallation('uninstalled', installationId, accountLogin);
       break;
@@ -217,6 +220,8 @@ async function handlePushEvent(payload: GitHubWebhookEvent): Promise<void> {
   const owner = payload.repository.owner?.login ?? payload.repository.owner?.name;
   const repoName = payload.repository.name;
   if (!owner || !repoName) return;
+
+  invalidateCache(`filetree:${owner}:${repoName}`);
 
   const project = await prisma.project.findFirst({
     where: { githubRepositoryOwner: owner, githubRepositoryName: repoName },

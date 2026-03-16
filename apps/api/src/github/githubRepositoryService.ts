@@ -7,6 +7,7 @@ import { githubRequest } from './githubAppClient.js';
 import { getInstallationToken } from './githubAppAuth.js';
 import type { GitHubRepoLink, GitHubRepo } from './githubTypes.js';
 import { logRepoCreation, logApiError } from './githubLogger.js';
+import { getCached, setCache } from './githubCache.js';
 
 const prisma = new PrismaClient();
 
@@ -219,6 +220,10 @@ export async function createRepoForProject(
  * Uses the REST API (no GraphQL equivalent for this endpoint).
  */
 export async function listInstallationRepos(installationId: string): Promise<GitHubRepo[]> {
+  const cacheKey = `repos:${installationId}`;
+  const cached = getCached<GitHubRepo[]>(cacheKey);
+  if (cached) return cached;
+
   const token = await getInstallationToken(installationId);
 
   const response = await fetch('https://api.github.com/installation/repositories?per_page=100', {
@@ -248,7 +253,7 @@ export async function listInstallationRepos(installationId: string): Promise<Git
     }>;
   };
 
-  return data.repositories.map((r) => ({
+  const repos = data.repositories.map((r) => ({
     id: String(r.id),
     name: r.name,
     owner: r.owner.login,
@@ -256,4 +261,7 @@ export async function listInstallationRepos(installationId: string): Promise<Git
     isPrivate: r.private,
     defaultBranch: r.default_branch,
   }));
+
+  setCache(cacheKey, repos, 3_600_000); // 1 hour TTL
+  return repos;
 }
