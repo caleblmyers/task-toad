@@ -18,7 +18,9 @@ export const notificationTypeDefs = /* GraphQL */ `
 `;
 
 export const notificationQueryFields = /* GraphQL */ `
+  """List notifications for the current user, optionally filtering to unread only."""
   notifications(unreadOnly: Boolean, limit: Int): [Notification!]!
+  """Get the count of unread notifications for the current user."""
   unreadNotificationCount: Int!
   notificationPreferences: [NotificationPreference!]!
 `;

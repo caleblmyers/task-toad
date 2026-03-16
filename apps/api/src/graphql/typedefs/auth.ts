@@ -25,12 +25,16 @@ export const authTypeDefs = /* GraphQL */ `
 `;
 
 export const authQueryFields = /* GraphQL */ `
+  """Return the currently authenticated user, or null if not logged in."""
   me: User
+  """List pending organization invites sent by the current user's org."""
   orgInvites: [OrgInvite!]!
 `;
 
 export const authMutationFields = /* GraphQL */ `
+  """Register a new account. Sends a verification email."""
   signup(email: String!, password: String!): Boolean!
+  """Authenticate with email and password. Returns a JWT valid for 7 days."""
   login(email: String!, password: String!): AuthPayload!
 
   sendVerificationEmail: Boolean!

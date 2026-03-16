@@ -117,16 +117,24 @@ export const taskTypeDefs = /* GraphQL */ `
 `;
 
 export const taskQueryFields = /* GraphQL */ `
+  """List tasks for a project with optional pagination and parent filter."""
   tasks(projectId: ID!, parentTaskId: ID, limit: Int, offset: Int): TaskConnection!
+  """List epic-type tasks for a project."""
   epics(projectId: ID!): [Task!]!
+  """List all labels in the organization."""
   labels: [Label!]!
+  """List custom fields defined for a project."""
   customFields(projectId: ID!): [CustomField!]!
 `;
 
 export const taskMutationFields = /* GraphQL */ `
+  """Create a new task in a project. Defaults to 'todo' status."""
   createTask(projectId: ID!, title: String!, status: String, taskType: String): Task!
+  """Update one or more fields on an existing task."""
   updateTask(taskId: ID!, title: String, status: String, description: String, instructions: String, acceptanceCriteria: String, dependsOn: String, sprintId: ID, sprintColumn: String, assigneeId: ID, dueDate: String, position: Float, archived: Boolean, storyPoints: Int, taskType: String, recurrenceRule: String): Task!
+  """Create a subtask under a parent task."""
   createSubtask(parentTaskId: ID!, title: String!, taskType: String): Task!
+  """Update multiple tasks at once (status, assignee, sprint, or archive)."""
   bulkUpdateTasks(taskIds: [ID!]!, status: String, assigneeId: ID, sprintId: ID, archived: Boolean): [Task!]!
 
   createLabel(name: String!, color: String): Label!

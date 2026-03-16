@@ -13,7 +13,7 @@ const domainKeywords: Record<string, string[]> = {
   Task: ['tasks', 'createTask', 'updateTask', 'createSubtask', 'bulkUpdateTasks', 'createLabel', 'deleteLabel', 'addTaskLabel', 'removeTaskLabel', 'labels', 'epics', 'customField', 'setCustomFieldValue', 'addTaskAssignee', 'removeTaskAssignee', 'expandTask'],
   Sprint: ['sprint', 'createSprint', 'updateSprint', 'deleteSprint', 'closeSprint', 'sprintVelocity', 'sprintBurndown', 'previewSprintPlan', 'commitSprintPlan'],
   Comment: ['comment', 'createComment', 'updateComment', 'deleteComment', 'activities'],
-  AI: ['ai', 'generateTaskPlan', 'previewTaskPlan', 'commitTaskPlan', 'generateTaskInstructions', 'generateCodeFromTask', 'regenerateCodeFile', 'reviewPullRequest', 'parseBugReport', 'previewPRDBreakdown', 'commitPRDBreakdown', 'bootstrapProjectFromRepo', 'batchGenerateCode', 'analyzeTrends', 'analyzeSprintTransition', 'projectChat', 'analyzeRepoDrift', 'summarizeProject'],
+  AI: ['ai', 'generateTaskPlan', 'previewTaskPlan', 'commitTaskPlan', 'generateTaskInstructions', 'generateCodeFromTask', 'generateCodeFromSubtask', 'regenerateCodeFile', 'reviewPullRequest', 'parseBugReport', 'previewPRDBreakdown', 'commitPRDBreakdown', 'bootstrapProjectFromRepo', 'batchGenerateCode', 'analyzeTrends', 'analyzeSprintTransition', 'projectChat', 'analyzeRepoDrift', 'summarizeProject'],
   Search: ['globalSearch'],
   Notification: ['notification', 'markNotificationRead', 'markAllNotificationsRead', 'updateNotificationPreference', 'unreadNotificationCount', 'notificationPreferences'],
   GitHub: ['github', 'linkGitHubInstallation', 'connectGitHubRepo', 'disconnectGitHubRepo', 'createGitHubRepo', 'createPullRequestFromTask', 'syncTaskToGitHub', 'decomposeGitHubIssue', 'generateFixFromReview', 'fetchRepoFileContent'],
@@ -26,15 +26,40 @@ const domainKeywords: Record<string, string[]> = {
 interface ParsedOperation {
   name: string;
   signature: string;
+  description?: string;
 }
 
 function parseOperations(block: string): ParsedOperation[] {
-  const lines = block.split('\n').filter((l) => l.trim() && !l.trim().startsWith('#'));
-  return lines.map((line) => {
+  const ops: ParsedOperation[] = [];
+  const lines = block.split('\n');
+  let pendingDescription: string | undefined;
+
+  for (const line of lines) {
     const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+
+    // Check for triple-quote description (single-line form: """...""")
+    const descMatch = trimmed.match(/^"""(.+)"""$/);
+    if (descMatch) {
+      pendingDescription = descMatch[1].trim();
+      continue;
+    }
+
+    // Skip multi-line triple-quote delimiters
+    if (trimmed === '"""') {
+      continue;
+    }
+
     const nameMatch = trimmed.match(/^(\w+)/);
-    return { name: nameMatch?.[1] ?? trimmed, signature: trimmed };
-  });
+    ops.push({
+      name: nameMatch?.[1] ?? trimmed,
+      signature: trimmed,
+      description: pendingDescription,
+    });
+    pendingDescription = undefined;
+  }
+
+  return ops;
 }
 
 function classifyOperation(op: ParsedOperation): string {
@@ -68,7 +93,12 @@ function renderDomainSections(grouped: Record<string, ParsedOperation[]>, kind: 
     .map((domain) => {
       const ops = grouped[domain]!;
       const opsHtml = ops
-        .map((op) => `<div class="op-entry"><code>${escapeHtml(op.signature)}</code></div>`)
+        .map((op) => {
+          const descHtml = op.description
+            ? `<p class="op-desc">${escapeHtml(op.description)}</p>`
+            : '';
+          return `<div class="op-entry"><code>${escapeHtml(op.signature)}</code>${descHtml}</div>`;
+        })
         .join('\n');
       return `<div class="domain-group" id="${kind.toLowerCase()}-${domain.toLowerCase()}">
         <h3>${domain} <span class="count">(${ops.length})</span></h3>
@@ -162,6 +192,7 @@ docsRouter.get('/', (_req, res) => {
     .op-entry { padding: 0.35rem 0; border-bottom: 1px solid #f0f0f0; font-size: 0.85rem; }
     .op-entry:last-child { border-bottom: none; }
     .op-entry code { color: #1a2332; background: none; }
+    .op-desc { color: #666; font-size: 0.8rem; margin-top: 0.15rem; }
 
     /* Rate limits table */
     table { border-collapse: collapse; width: 100%; margin: 0.75rem 0; font-size: 0.9rem; }

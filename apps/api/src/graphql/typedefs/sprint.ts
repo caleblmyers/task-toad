@@ -62,12 +62,16 @@ export const sprintTypeDefs = /* GraphQL */ `
 `;
 
 export const sprintQueryFields = /* GraphQL */ `
+  """List all sprints for a project, ordered by creation date."""
   sprints(projectId: ID!): [Sprint!]!
+  """Get velocity data across completed sprints for a project."""
   sprintVelocity(projectId: ID!): [SprintVelocityPoint!]!
+  """Get daily burndown data for a specific sprint."""
   sprintBurndown(sprintId: ID!): SprintBurndownData!
 `;
 
 export const sprintMutationFields = /* GraphQL */ `
+  """Create a new sprint in a project."""
   createSprint(projectId: ID!, name: String!, goal: String, columns: String, startDate: String, endDate: String): Sprint!
   updateSprint(sprintId: ID!, name: String, goal: String, columns: String, isActive: Boolean, startDate: String, endDate: String): Sprint!
   deleteSprint(sprintId: ID!): Boolean!

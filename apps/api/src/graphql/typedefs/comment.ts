@@ -33,11 +33,14 @@ export const commentTypeDefs = /* GraphQL */ `
 `;
 
 export const commentQueryFields = /* GraphQL */ `
+  """List comments on a task, with nested replies."""
   comments(taskId: ID!): [Comment!]!
+  """List activity log entries for a project or task."""
   activities(projectId: ID, taskId: ID, limit: Int, cursor: String): ActivityConnection!
 `;
 
 export const commentMutationFields = /* GraphQL */ `
+  """Add a comment to a task. Optionally nest under a parent comment."""
   createComment(taskId: ID!, content: String!, parentCommentId: ID): Comment!
   updateComment(commentId: ID!, content: String!): Comment!
   deleteComment(commentId: ID!): Comment!

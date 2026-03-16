@@ -64,15 +64,21 @@ export const projectTypeDefs = /* GraphQL */ `
 `;
 
 export const projectQueryFields = /* GraphQL */ `
+  """List all projects in the user's organization."""
   projects(includeArchived: Boolean): [Project!]!
+  """Get a single project by ID."""
   project(projectId: ID!): Project
+  """Get task statistics for a project (counts, completion, etc.)."""
   projectStats(projectId: ID!): ProjectStats!
+  """Get a summary of all projects for the portfolio dashboard."""
   portfolioOverview: [ProjectSummary!]!
   savedFilters(projectId: ID!): [SavedFilter!]!
 `;
 
 export const projectMutationFields = /* GraphQL */ `
+  """Create a new project in the user's organization."""
   createProject(name: String!): Project!
+  """Update project settings (name, description, prompt, statuses, etc.)."""
   updateProject(projectId: ID!, name: String, description: String, prompt: String, knowledgeBase: String, statuses: String): Project!
   archiveProject(projectId: ID!, archived: Boolean!): Project!
   generateProjectOptions(prompt: String!): [ProjectOption!]!
