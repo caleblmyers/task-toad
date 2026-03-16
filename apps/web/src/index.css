@@ -11,6 +11,13 @@
   --brand-green-hover: #43A047;
 }
 
+.dark {
+  --brand-green: #66BB6A;
+  --brand-green-hover: #4CAF50;
+  --brand-green-light: #1B3A1B;
+  --brand-dark: #0F1A24;
+}
+
 body {
   margin: 0;
   font-family: system-ui, -apple-system, sans-serif;

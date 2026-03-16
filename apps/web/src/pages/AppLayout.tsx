@@ -75,7 +75,7 @@ export default function AppLayout() {
     : 'Notifications';
 
   return (
-    <div className="min-h-screen flex bg-slate-50">
+    <div className="min-h-screen flex bg-slate-50 dark:bg-slate-900">
       {/* Skip to main content link */}
       <a
         href="#main-content"
@@ -84,7 +84,7 @@ export default function AppLayout() {
         Skip to main content
       </a>
 
-      <aside className="w-56 bg-slate-800 text-white flex flex-col relative">
+      <aside className="w-56 bg-slate-800 dark:bg-brand-dark text-white flex flex-col relative">
         <div className="p-4 border-b border-slate-700 flex items-center justify-between">
           <Link to="/app" className="flex items-center gap-2 font-semibold text-lg">
             <img src="/logo.png" alt="" className="w-7 h-7" aria-hidden="true" />
@@ -212,7 +212,7 @@ export default function AppLayout() {
           </div>
         )}
       </aside>
-      <main id="main-content" className="flex-1 p-6 overflow-auto">
+      <main id="main-content" className="flex-1 p-6 overflow-auto dark:text-slate-200">
         <Outlet />
       </main>
       {showSearch && <GlobalSearchModal onClose={() => setShowSearch(false)} />}

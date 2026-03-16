@@ -116,7 +116,7 @@ export default function Modal({
   return createPortal(
     <div
       ref={overlayRef}
-      className={`fixed inset-0 z-50 flex ${alignmentClass} bg-black/40 p-4`}
+      className={`fixed inset-0 z-50 flex ${alignmentClass} bg-black/40 dark:bg-black/60 p-4`}
       onClick={handleOverlayClick}
       role="dialog"
       aria-modal="true"
@@ -125,7 +125,7 @@ export default function Modal({
     >
       <div
         ref={contentRef}
-        className={`bg-white rounded-xl shadow-xl w-full ${SIZE_MAP[size]} flex flex-col max-h-[85vh]`}
+        className={`bg-white dark:bg-slate-800 dark:text-slate-200 rounded-xl shadow-xl w-full ${SIZE_MAP[size]} flex flex-col max-h-[85vh]`}
         onClick={(e) => e.stopPropagation()}
       >
         <span id={titleId} className="sr-only">{title}</span>

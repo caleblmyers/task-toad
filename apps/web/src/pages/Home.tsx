@@ -34,10 +34,10 @@ export default function Home() {
     <div className="flex flex-col items-center justify-center min-h-full py-16">
       <div className="w-full max-w-2xl">
         <img src="/logo.png" alt="TaskToad" className="w-16 h-16 mx-auto mb-4" />
-        <h1 className="text-3xl font-semibold text-slate-800 mb-2 text-center">
+        <h1 className="text-3xl font-semibold text-slate-800 dark:text-slate-100 mb-2 text-center">
           What's on your task list today?
         </h1>
-        <p className="text-slate-500 text-center mb-8">
+        <p className="text-slate-500 dark:text-slate-400 text-center mb-8">
           Describe a project or task and we'll help you break it down.
         </p>
 
@@ -47,7 +47,7 @@ export default function Home() {
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="e.g. Build a recipe sharing app where users can post, discover, and save recipes…"
             rows={4}
-            className="w-full px-4 py-3 border border-slate-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-brand-green text-slate-800 placeholder-slate-400"
+            className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-brand-green text-slate-800 placeholder-slate-400"
             disabled={loading}
           />
           {err && (
