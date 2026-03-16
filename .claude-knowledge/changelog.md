@@ -6,6 +6,59 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-16
 
+### Wave 14: P1 + P2 + A11 + F1 (3 workers, 6 tasks)
+
+**P1 — Sentry Error Tracking (Worker 1, task-001):**
+- @sentry/node integration: init in index.ts with SENTRY_DSN env var, graceful skip when unset
+- Express requestHandler/errorHandler middleware, custom yoga plugin for GraphQL error capture (filters expected user errors)
+- AI failure capture with prompt type/token context in aiService.ts
+- User context (id, email) set per authenticated request in context.ts
+- Graceful flush on shutdown via Sentry.close(2000)
+
+**P2 — GraphQL Query Complexity Limits (Worker 1, task-002):**
+- Custom AST-based cost analysis validation rule alongside existing depth limit
+- Per-field cost multipliers (projects: 20, tasks: 50, comments: 30, etc.) with nested multiplication
+- MAX_QUERY_COST configurable via env var (default 10,000)
+- 50% threshold warning logs, introspection queries exempt
+- Clear error message with actual vs max cost
+
+**A11 — KanbanBoard Reorder Persistence (Worker 2, task-003):**
+- `reorderTask(taskId, position)` GraphQL mutation with fractional positioning
+- Keyboard Up/Down reorder calls mutation and survives page reload
+- Drag-and-drop reorder also persists position
+- Tasks sorted by position within columns (nulls last, then createdAt)
+- `position` field added to TASK_FIELDS query constant
+
+**A11 — Sprint Picker Keyboard UX (Worker 2, task-004):**
+- Escape key closes dropdown and restores focus to trigger
+- Click-outside closes dropdown via mousedown listener
+- Full ARIA listbox pattern: role=listbox/option, aria-expanded, aria-activedescendant
+- Up/Down arrow navigation between sprint options
+- Focus management: first option focused on open, trigger refocused on close
+
+**F1 — Lazy-Load Heavy Modals + Route Error Boundaries (Worker 3, task-005):**
+- Lazy-loaded GanttChart, ProjectSettingsModal, TaskPlanApprovalDialog, CloseSprintModal via React.lazy
+- Per-route RouteErrorBoundary with "Reload" and "Go Home" recovery options
+- lazyWithRetry helper for chunk load retry (2 retries with 1s delay)
+
+**F1 — Template UX Improvements (Worker 3, task-006):**
+- Template dropdown closes on Escape key and click-outside
+- Create/edit template forms now include instructions, acceptanceCriteria, estimatedHours, storyPoints fields
+- Save as Template pre-fills instructions and acceptanceCriteria from source task
+
+**Post-wave fix:** AI response parser hardening — capped task plan to 5-10 tasks (was up to 15, caused token truncation), rewrote stripFences() for robust JSON extraction, added assistant prefill to force structured output, improved error logging (500 char preview + response length)
+
+**Process notes (Wave 14):**
+- All 6 tasks passed review on first attempt — zero rejections (2nd consecutive zero-rejection wave)
+- merge-worker.sh still doesn't run `pnpm install` — recurring issue since Wave 11, required manual merge for task-001 (@sentry/node)
+- lazyWithRetry has a runtime bug in retry path (recursive call returns LazyExoticComponent instead of retrying importFn) — happy path works fine
+- BatchCodeGenModal not lazy-loaded (minor gap from task description)
+
+**Open follow-ups:**
+- [ ] Fix lazyWithRetry retry bug (already tracked in F1 todos)
+- [ ] Lazy-load BatchCodeGenModal (already tracked in F1 todos)
+- [ ] merge-worker.sh pnpm install (already tracked in SW1 todos)
+
 ### Wave 13: S1 + Q1 + W6 (3 workers, 6 tasks)
 
 **S1 — Styling & Branding (Worker 1):**

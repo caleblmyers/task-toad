@@ -44,22 +44,10 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 
 ## Work Sets — Uncompleted
 
-### P1: Production Hardening (High Priority)
-**Touches:** `apps/api/src/index.ts`, `apps/api/src/app.ts`, `apps/web/src/App.tsx`
-
-- [ ] Sentry error tracking integration — capture unhandled exceptions, GraphQL errors, and AI failures
-
-### P2: Security Hardening (High Priority)
-**Touches:** `apps/api/src/graphql/schema.ts`, `apps/api/src/app.ts`
-
-- [ ] GraphQL query complexity/cost limits — add `costLimit` plugin to prevent expensive queries (depth limit done, complexity not yet)
-
 ### A11: Accessibility Foundation (High Priority)
 **Touches:** `apps/web/src/components/`
 
 - [ ] Color contrast audit — full WCAG AA 4.5:1 audit of remaining Tailwind color pairings across all components
-- [ ] KanbanBoard reorder persistence — Up/Down reorder is local state only; needs a `reorderTask` mutation to persist order to DB
-- [ ] BacklogView sprint picker: close on Escape key and click-outside for better keyboard UX
 
 ### Q1: Code Quality & Testing (Medium Priority)
 **Touches:** `apps/web/src/hooks/`, `apps/api/src/graphql/resolvers/`, `__tests__/` directories
@@ -101,10 +89,10 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 
 - [ ] Virtualize long lists — use `react-window` or `@tanstack/virtual` for task lists (BacklogView, TableView) and activity feeds when > 100 items
 - [ ] dependsOnCache memory management — parseDependsOn in taskHelpers.ts uses a module-level Map that never clears; add TTL or WeakRef-based eviction if task counts grow large
-- [ ] Template dropdown click-outside close — ProjectDetail template menu doesn't close on click-outside, only via Close button
-- [ ] Template instructions/acceptanceCriteria in create UI — createTaskTemplate form only has name/description/priority/type but the model supports instructions and acceptanceCriteria fields
-- [ ] Route lazy-load error boundaries — React.lazy chunks can fail to load (network issues); add retry logic or per-route error boundaries with refresh prompt
-- [ ] Lazy-load heavy view components — GanttChart, BatchCodeGenModal, DriftAnalysisModal with `React.lazy()` (route-level lazy loading done, but these in-page modals still eagerly loaded)
+- [ ] Fix lazyWithRetry retry bug — recursive call returns LazyExoticComponent instead of retrying importFn() directly; `as never` cast hides the type mismatch
+- [ ] Lazy-load BatchCodeGenModal and DriftAnalysisModal — still eagerly imported in ProjectDetail
+- [ ] Fractional position rebalancing — when positions converge (many reorders in same spot), rebalance by reassigning evenly-spaced positions across the column
+- [ ] Cost limit rule: apply DEFAULT_LIST_MULTIPLIER to unknown fields with selection sets — currently only known COST_MAP fields get list multipliers
 
 ### S1: Styling & Branding
 **Touches:** `apps/web/src/components/shared/`, `apps/web/tailwind.config.js`, `apps/web/index.html`, `apps/web/public/`
@@ -122,6 +110,7 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 - [ ] Auto-prisma-generate in merge script — `scripts/swarm/merge-worker.sh` should detect Prisma schema changes in the diff and run `npx prisma generate` automatically before typecheck, preventing the recurring "stale Prisma client types" review rejection
 - [ ] Task file array validation — add a pre-flight check in the swarm skill that cross-references task description file paths against the `files` array, flagging any mentioned files that aren't listed (recurring issue: Prisma relation files, resolver index, entry point files)
 - [ ] Auto-strip worker role from CLAUDE.md commits — swarm setup appends worker role to CLAUDE.md but workers accidentally commit it; need .gitignore or pre-commit hook to strip the role section before commit
+- [ ] merge-worker.sh pnpm install — add `pnpm install` after staging merge and before typecheck/lint/build; currently fails validation when tasks add new npm packages (reported Wave 11, still unfixed)
 
 ---
 
@@ -146,6 +135,14 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 ---
 
 ## Completed
+
+### P1+P2+A11+F1 (partial): Wave 14 (2026-03-16)
+- [x] Sentry error tracking — @sentry/node init, GraphQL error capture (filters expected codes), AI failure capture, user context, graceful shutdown flush
+- [x] GraphQL query complexity cost limits — custom AST-based cost analysis rule with configurable MAX_QUERY_COST, per-field multipliers, 50% warning threshold
+- [x] KanbanBoard reorder persistence — reorderTask mutation with fractional positioning, keyboard + drag-and-drop reorder persisted to DB
+- [x] BacklogView sprint picker keyboard UX — Escape/click-outside close, ARIA listbox pattern, arrow key navigation, focus management
+- [x] Lazy-load heavy modals (GanttChart, TaskPlanApprovalDialog, CloseSprintModal, ProjectSettingsModal) + per-route error boundaries with RouteErrorBoundary
+- [x] Template dropdown close behavior (Escape + click-outside) + template form field gaps (instructions, acceptanceCriteria, estimatedHours, storyPoints)
 
 ### S1+Q1+W6 (partial): Wave 13 (2026-03-16)
 - [x] Shared Button component — primary/secondary/ghost/danger variants, sm/md/lg sizes, loading spinner, forwardRef; 31 buttons converted

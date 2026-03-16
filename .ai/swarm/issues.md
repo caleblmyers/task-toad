@@ -132,3 +132,26 @@ Format:
 ### Reviewer — Observation
 **Observation:** Worker-3 completed both tasks (005 + 006) on a single branch, requiring manual commit splitting during merge. This works but adds reviewer friction.
 **Suggestion:** Consider whether workers should create separate branches per task, or accept that squash merges from multi-task branches require manual splitting.
+
+### Reviewer — task-001 (Wave 14)
+**Issue:** merge-worker.sh still doesn't run `pnpm install` after merging, causing `Cannot find module '@sentry/node'` typecheck failures. Had to manually merge, install, and validate.
+**Impact:** False validation failure on first attempt. Required manual workaround for all tasks with new npm deps.
+**Suggestion:** This was reported in Wave 11 — merge-worker.sh needs `pnpm install` added after staging the merge and before validation. Should be fixed before next wave.
+
+### Reviewer — task-005 (Wave 14)
+**Issue:** `lazyWithRetry` has a bug in the retry path — recursively calls itself (returning `LazyExoticComponent`) instead of retrying `importFn()` directly. The `as never` cast hides the type mismatch. Retry would fail at runtime.
+**Impact:** Minor — only affects chunk load failures on bad networks. Happy path (lazy loading) works fine.
+**Suggestion:** Add as follow-up: fix `lazyWithRetry` to retry `importFn()` directly instead of recursively creating new lazy components.
+
+### Reviewer — task-005 (Wave 14, minor)
+**Issue:** Task description mentions lazy-loading `BatchCodeGenModal` but worker didn't include it. Minor gap.
+**Impact:** None — BatchCodeGenModal is still eagerly imported.
+**Suggestion:** Minor follow-up item.
+
+### Reviewer — Positive (Wave 14)
+**Observation:** All 6 tasks merged on first review pass — zero rejections. Workers ran full validation before marking complete.
+**Why it worked:** Clean task scoping, non-overlapping files between workers (except worker-3's own tasks which shared ProjectDetail.tsx). Acceptance criteria were specific and verifiable.
+
+### Reviewer — Positive (Wave 14)
+**Observation:** Worker-2's sprint picker accessibility work (task-004) was exemplary — full ARIA listbox pattern with proper focus management, keyboard navigation, and click-outside handling.
+**Why it worked:** Task description was highly detailed with specific ARIA attributes and interaction patterns spelled out.
