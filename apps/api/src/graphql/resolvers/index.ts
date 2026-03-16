@@ -10,6 +10,7 @@ import { searchQueries, searchMutations } from './search.js';
 import { projectRoleQueries, projectRoleMutations } from './projectrole.js';
 import { webhookQueries, webhookMutations } from './webhook.js';
 import { slackQueries, slackMutations, slackFieldResolvers } from './slack.js';
+import { templateQueries, templateMutations } from './template.js';
 
 export const resolvers = {
   Query: {
@@ -25,6 +26,7 @@ export const resolvers = {
     ...projectRoleQueries,
     ...webhookQueries,
     ...slackQueries,
+    ...templateQueries,
   },
   Mutation: {
     ...authMutations,
@@ -39,6 +41,7 @@ export const resolvers = {
     ...projectRoleMutations,
     ...webhookMutations,
     ...slackMutations,
+    ...templateMutations,
   },
   // Field resolvers
   User: { ...authFieldResolvers.User },

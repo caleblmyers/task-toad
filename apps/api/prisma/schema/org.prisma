@@ -18,6 +18,7 @@ model Org {
   slackIntegrations SlackIntegration[]
   slackUserMappings SlackUserMapping[]
   customFields    CustomField[]
+  taskTemplates   TaskTemplate[]
 
   @@map("orgs")
 }

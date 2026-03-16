@@ -72,6 +72,10 @@ export default function ProjectDetail() {
   const [showProjectSettings, setShowProjectSettings] = useState(false);
   const [timelineView, setTimelineView] = useState(false);
   const [showTrends, setShowTrends] = useState(false);
+  const [showTemplateMenu, setShowTemplateMenu] = useState(false);
+  const [templateList, setTemplateList] = useState<Array<{ taskTemplateId: string; name: string; description: string | null; priority: string; taskType: string }>>([]);
+  const [templateTitle, setTemplateTitle] = useState('');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
 
   useKeyboardShortcuts({
     tasks: filtering.filteredTasks,
@@ -198,6 +202,52 @@ export default function ProjectDetail() {
     await d.handleBulkCreateTasks(tasks);
     addToast('success', `Imported ${tasks.length} tasks`);
     setShowCSVImport(false);
+  };
+
+  const loadTemplates = async () => {
+    if (!d.projectId) return;
+    try {
+      const data = await gql<{ taskTemplates: typeof templateList }>(
+        `query TaskTemplates($projectId: ID) { taskTemplates(projectId: $projectId) { taskTemplateId name description priority taskType } }`,
+        { projectId: d.projectId },
+      );
+      setTemplateList(data.taskTemplates);
+    } catch { /* non-critical */ }
+  };
+
+  const handleCreateFromTemplate = async () => {
+    if (!selectedTemplateId || !templateTitle.trim() || !d.projectId) return;
+    try {
+      await gql<{ createTaskFromTemplate: { taskId: string } }>(
+        `mutation CreateFromTemplate($templateId: ID!, $projectId: ID!, $title: String!) {
+          createTaskFromTemplate(templateId: $templateId, projectId: $projectId, title: $title) { taskId }
+        }`,
+        { templateId: selectedTemplateId, projectId: d.projectId, title: templateTitle.trim() },
+      );
+      addToast('success', 'Task created from template');
+      setShowTemplateMenu(false);
+      setTemplateTitle('');
+      setSelectedTemplateId(null);
+      d.loadTasks();
+    } catch (err) {
+      addToast('error', err instanceof Error ? err.message : 'Failed to create task');
+    }
+  };
+
+  const handleSaveAsTemplate = async () => {
+    if (!d.selectedTask || !d.projectId) return;
+    const t = d.selectedTask;
+    try {
+      await gql<{ createTaskTemplate: { taskTemplateId: string } }>(
+        `mutation SaveAsTemplate($projectId: ID, $name: String!, $description: String, $priority: String, $taskType: String) {
+          createTaskTemplate(projectId: $projectId, name: $name, description: $description, priority: $priority, taskType: $taskType) { taskTemplateId }
+        }`,
+        { projectId: d.projectId, name: `Template: ${t.title}`, description: t.description, priority: t.priority, taskType: t.taskType },
+      );
+      addToast('success', 'Saved as template');
+    } catch (err) {
+      addToast('error', err instanceof Error ? err.message : 'Failed to save template');
+    }
   };
 
   if (!d.projectId) return null;
@@ -478,6 +528,62 @@ export default function ProjectDetail() {
           <div className="relative">
             <button
               type="button"
+              onClick={() => { setShowTemplateMenu((v) => !v); if (!showTemplateMenu) loadTemplates(); }}
+              disabled={d.isGenerating}
+              className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Template
+            </button>
+            {showTemplateMenu && (
+              <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg py-2 z-50 min-w-[260px] p-3 space-y-2">
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Create from template</p>
+                {templateList.length === 0 ? (
+                  <p className="text-xs text-slate-400">No templates. Create one in Project Settings.</p>
+                ) : (
+                  <>
+                    <select
+                      value={selectedTemplateId ?? ''}
+                      onChange={(e) => setSelectedTemplateId(e.target.value || null)}
+                      className="w-full text-sm border border-slate-300 rounded px-2 py-1"
+                    >
+                      <option value="">Select template...</option>
+                      {templateList.map((t) => (
+                        <option key={t.taskTemplateId} value={t.taskTemplateId}>{t.name}</option>
+                      ))}
+                    </select>
+                    {selectedTemplateId && (
+                      <>
+                        <input
+                          type="text"
+                          value={templateTitle}
+                          onChange={(e) => setTemplateTitle(e.target.value)}
+                          placeholder="Task title"
+                          className="w-full text-sm border border-slate-300 rounded px-2 py-1.5"
+                          autoFocus
+                        />
+                        <button
+                          onClick={handleCreateFromTemplate}
+                          disabled={!templateTitle.trim()}
+                          className="w-full px-3 py-1.5 bg-brand-green text-white text-sm rounded hover:bg-brand-green-hover disabled:opacity-50"
+                        >
+                          Create Task
+                        </button>
+                      </>
+                    )}
+                  </>
+                )}
+                <button
+                  onClick={() => setShowTemplateMenu(false)}
+                  className="text-xs text-slate-400 hover:text-slate-600"
+                >
+                  Close
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="relative">
+            <button
+              type="button"
               onClick={() => setShowExportMenu((v) => !v)}
               className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1"
             >
@@ -725,6 +831,15 @@ export default function ProjectDetail() {
         {/* Right: task detail panel */}
         {d.selectedTask && (
           <div className="w-[440px] flex-shrink-0 border-l border-slate-200 bg-white flex flex-col overflow-hidden">
+            <div className="px-4 pt-2 pb-1 border-b border-slate-100 flex-shrink-0">
+              <button
+                type="button"
+                onClick={handleSaveAsTemplate}
+                className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1 border border-slate-200 rounded hover:bg-slate-50"
+              >
+                Save as Template
+              </button>
+            </div>
             <div className="flex-1 overflow-y-auto">
               <TaskDetailPanel
                 task={d.selectedTask}

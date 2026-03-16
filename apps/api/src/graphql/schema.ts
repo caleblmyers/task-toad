@@ -16,6 +16,7 @@ import { searchTypeDefs, searchQueryFields } from './typedefs/search.js';
 import { projectRoleTypeDefs, projectRoleQueryFields, projectRoleMutationFields } from './typedefs/projectrole.js';
 import { webhookTypeDefs, webhookQueryFields, webhookMutationFields } from './typedefs/webhook.js';
 import { slackTypeDefs, slackQueryFields, slackMutationFields } from './typedefs/slack.js';
+import { templateTypeDefs, templateQueryFields, templateMutationFields } from './typedefs/template.js';
 
 const typeDefs = /* GraphQL */ `
   ${authTypeDefs}
@@ -32,6 +33,7 @@ const typeDefs = /* GraphQL */ `
   ${projectRoleTypeDefs}
   ${webhookTypeDefs}
   ${slackTypeDefs}
+  ${templateTypeDefs}
 
   type Query {
     ${authQueryFields}
@@ -48,6 +50,7 @@ const typeDefs = /* GraphQL */ `
     ${projectRoleQueryFields}
     ${webhookQueryFields}
     ${slackQueryFields}
+    ${templateQueryFields}
   }
 
   type Mutation {
@@ -64,6 +67,7 @@ const typeDefs = /* GraphQL */ `
     ${projectRoleMutationFields}
     ${webhookMutationFields}
     ${slackMutationFields}
+    ${templateMutationFields}
   }
 `;
 

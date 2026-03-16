@@ -29,6 +29,20 @@ interface CustomFieldDef {
   position: number;
 }
 
+interface TaskTemplateDef {
+  taskTemplateId: string;
+  name: string;
+  description: string | null;
+  instructions: string | null;
+  acceptanceCriteria: string | null;
+  priority: string;
+  taskType: string;
+  estimatedHours: number | null;
+  storyPoints: number | null;
+  projectId: string | null;
+  createdAt: string;
+}
+
 interface Props {
   projectId: string;
   orgUsers: OrgUser[];
@@ -48,10 +62,11 @@ const ACTION_TYPES = [
 ];
 
 export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: Props) {
-  const [tab, setTab] = useState<'members' | 'automation' | 'fields'>('members');
+  const [tab, setTab] = useState<'members' | 'automation' | 'fields' | 'templates'>('members');
   const [members, setMembers] = useState<ProjectMember[]>([]);
   const [rules, setRules] = useState<AutomationRule[]>([]);
   const [customFields, setCustomFields] = useState<CustomFieldDef[]>([]);
+  const [templates, setTemplates] = useState<TaskTemplateDef[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,6 +79,13 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
   const [cfType, setCfType] = useState('TEXT');
   const [cfOptions, setCfOptions] = useState('');
   const [cfRequired, setCfRequired] = useState(false);
+
+  // Template form
+  const [tplName, setTplName] = useState('');
+  const [tplDescription, setTplDescription] = useState('');
+  const [tplPriority, setTplPriority] = useState('medium');
+  const [tplTaskType, setTplTaskType] = useState('task');
+  const [editingTemplate, setEditingTemplate] = useState<TaskTemplateDef | null>(null);
 
   // Rule form
   const [ruleName, setRuleName] = useState('');
@@ -80,7 +102,7 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
   const loadData = async () => {
     setLoading(true);
     try {
-      const [membersData, rulesData, fieldsData] = await Promise.all([
+      const [membersData, rulesData, fieldsData, templatesData] = await Promise.all([
         gql<{ projectMembers: ProjectMember[] }>(
           `query ProjectMembers($projectId: ID!) { projectMembers(projectId: $projectId) { id userId email role createdAt } }`,
           { projectId },
@@ -93,10 +115,15 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
           `query CustomFields($projectId: ID!) { customFields(projectId: $projectId) { customFieldId name fieldType options required position } }`,
           { projectId },
         ),
+        gql<{ taskTemplates: TaskTemplateDef[] }>(
+          `query TaskTemplates($projectId: ID) { taskTemplates(projectId: $projectId) { taskTemplateId name description instructions acceptanceCriteria priority taskType estimatedHours storyPoints projectId createdAt } }`,
+          { projectId },
+        ),
       ]);
       setMembers(membersData.projectMembers);
       setRules(rulesData.automationRules);
       setCustomFields(fieldsData.customFields);
+      setTemplates(templatesData.taskTemplates);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load');
     } finally {
@@ -240,6 +267,56 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
     }
   };
 
+  const handleCreateTemplate = async () => {
+    if (!tplName.trim()) return;
+    setError(null);
+    try {
+      const { createTaskTemplate } = await gql<{ createTaskTemplate: TaskTemplateDef }>(
+        `mutation CreateTemplate($projectId: ID, $name: String!, $description: String, $priority: String, $taskType: String) {
+          createTaskTemplate(projectId: $projectId, name: $name, description: $description, priority: $priority, taskType: $taskType) { taskTemplateId name description instructions acceptanceCriteria priority taskType estimatedHours storyPoints projectId createdAt }
+        }`,
+        { projectId, name: tplName.trim(), description: tplDescription.trim() || null, priority: tplPriority, taskType: tplTaskType },
+      );
+      setTemplates((prev) => [createTaskTemplate, ...prev]);
+      setTplName('');
+      setTplDescription('');
+      setTplPriority('medium');
+      setTplTaskType('task');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create template');
+    }
+  };
+
+  const handleUpdateTemplate = async () => {
+    if (!editingTemplate || !editingTemplate.name.trim()) return;
+    setError(null);
+    try {
+      const { updateTaskTemplate } = await gql<{ updateTaskTemplate: TaskTemplateDef }>(
+        `mutation UpdateTemplate($taskTemplateId: ID!, $name: String, $description: String, $priority: String, $taskType: String) {
+          updateTaskTemplate(taskTemplateId: $taskTemplateId, name: $name, description: $description, priority: $priority, taskType: $taskType) { taskTemplateId name description instructions acceptanceCriteria priority taskType estimatedHours storyPoints projectId createdAt }
+        }`,
+        { taskTemplateId: editingTemplate.taskTemplateId, name: editingTemplate.name, description: editingTemplate.description, priority: editingTemplate.priority, taskType: editingTemplate.taskType },
+      );
+      setTemplates((prev) => prev.map((t) => (t.taskTemplateId === updateTaskTemplate.taskTemplateId ? updateTaskTemplate : t)));
+      setEditingTemplate(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update template');
+    }
+  };
+
+  const handleDeleteTemplate = async (templateId: string) => {
+    setError(null);
+    try {
+      await gql<{ deleteTaskTemplate: boolean }>(
+        `mutation DeleteTemplate($taskTemplateId: ID!) { deleteTaskTemplate(taskTemplateId: $taskTemplateId) }`,
+        { taskTemplateId: templateId },
+      );
+      setTemplates((prev) => prev.filter((t) => t.taskTemplateId !== templateId));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete template');
+    }
+  };
+
   const describeTrigger = (triggerJson: string) => {
     try {
       const t = JSON.parse(triggerJson) as { event: string; condition?: Record<string, string> };
@@ -300,6 +377,12 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
         >
           Custom Fields
         </button>
+        <button
+          className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === 'templates' ? 'border-slate-800 text-slate-800' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+          onClick={() => setTab('templates')}
+        >
+          Templates
+        </button>
       </div>
 
       {error && <p className="text-sm text-red-600 px-4 pt-2">{error}</p>}
@@ -307,6 +390,129 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {loading ? (
           <p className="text-sm text-slate-500">Loading...</p>
+        ) : tab === 'templates' ? (
+          editingTemplate ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-slate-500 uppercase tracking-wide">Edit Template</p>
+                <button onClick={() => setEditingTemplate(null)} className="text-xs text-slate-500 hover:text-slate-700">Cancel</button>
+              </div>
+              <input
+                type="text"
+                value={editingTemplate.name}
+                onChange={(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
+                placeholder="Template name"
+                className="w-full text-sm border border-slate-300 rounded px-2 py-1.5"
+              />
+              <textarea
+                value={editingTemplate.description ?? ''}
+                onChange={(e) => setEditingTemplate({ ...editingTemplate, description: e.target.value || null })}
+                placeholder="Description"
+                className="w-full text-sm border border-slate-300 rounded px-2 py-1.5 h-20 resize-none"
+              />
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-slate-500">Priority:</label>
+                <select
+                  value={editingTemplate.priority}
+                  onChange={(e) => setEditingTemplate({ ...editingTemplate, priority: e.target.value })}
+                  className="flex-1 text-sm border border-slate-300 rounded px-2 py-1"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="critical">Critical</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-slate-500">Type:</label>
+                <select
+                  value={editingTemplate.taskType}
+                  onChange={(e) => setEditingTemplate({ ...editingTemplate, taskType: e.target.value })}
+                  className="flex-1 text-sm border border-slate-300 rounded px-2 py-1"
+                >
+                  <option value="task">Task</option>
+                  <option value="bug">Bug</option>
+                  <option value="feature">Feature</option>
+                  <option value="chore">Chore</option>
+                </select>
+              </div>
+              <button
+                onClick={handleUpdateTemplate}
+                disabled={!editingTemplate.name.trim()}
+                className="px-3 py-1.5 bg-brand-green text-white text-sm rounded hover:bg-brand-green-hover disabled:opacity-50"
+              >
+                Save Changes
+              </button>
+            </div>
+          ) : (
+            <>
+              <ul className="divide-y divide-slate-100">
+                {templates.map((t) => (
+                  <li key={t.taskTemplateId} className="py-2 flex items-center justify-between">
+                    <div>
+                      <span className="text-sm font-medium text-slate-800">{t.name}</span>
+                      <span className="ml-2 text-xs text-slate-400">{t.priority} / {t.taskType}</span>
+                      {!t.projectId && <span className="ml-1 text-xs text-blue-400">org-wide</span>}
+                      {t.description && <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{t.description}</p>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setEditingTemplate(t)} className="text-slate-500 hover:text-slate-700 text-xs">Edit</button>
+                      <button onClick={() => handleDeleteTemplate(t.taskTemplateId)} className="text-red-500 hover:text-red-700 text-xs">Delete</button>
+                    </div>
+                  </li>
+                ))}
+                {templates.length === 0 && <li className="py-2 text-sm text-slate-500">No templates yet.</li>}
+              </ul>
+
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <p className="text-sm font-medium text-slate-500 uppercase tracking-wide">Create template</p>
+                <input
+                  type="text"
+                  value={tplName}
+                  onChange={(e) => setTplName(e.target.value)}
+                  placeholder="Template name"
+                  className="w-full text-sm border border-slate-300 rounded px-2 py-1.5"
+                />
+                <textarea
+                  value={tplDescription}
+                  onChange={(e) => setTplDescription(e.target.value)}
+                  placeholder="Description (optional)"
+                  className="w-full text-sm border border-slate-300 rounded px-2 py-1.5 h-16 resize-none"
+                />
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-slate-500">Priority:</label>
+                  <select
+                    value={tplPriority}
+                    onChange={(e) => setTplPriority(e.target.value)}
+                    className="flex-1 text-sm border border-slate-300 rounded px-2 py-1"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                  <label className="text-xs text-slate-500">Type:</label>
+                  <select
+                    value={tplTaskType}
+                    onChange={(e) => setTplTaskType(e.target.value)}
+                    className="flex-1 text-sm border border-slate-300 rounded px-2 py-1"
+                  >
+                    <option value="task">Task</option>
+                    <option value="bug">Bug</option>
+                    <option value="feature">Feature</option>
+                    <option value="chore">Chore</option>
+                  </select>
+                </div>
+                <button
+                  onClick={handleCreateTemplate}
+                  disabled={!tplName.trim()}
+                  className="px-3 py-1.5 bg-brand-green text-white text-sm rounded hover:bg-brand-green-hover disabled:opacity-50"
+                >
+                  Create Template
+                </button>
+              </div>
+            </>
+          )
         ) : tab === 'fields' ? (
           <>
             <ul className="divide-y divide-slate-100">
