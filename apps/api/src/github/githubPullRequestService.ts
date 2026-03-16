@@ -7,6 +7,40 @@ import { getInstallationToken } from './githubAppAuth.js';
 import type { CreatePullRequestInput, PullRequestResult, GitHubRepoLink } from './githubTypes.js';
 import { logPullRequest, logApiError } from './githubLogger.js';
 
+/**
+ * Fetch the unified diff for a pull request via GitHub REST API.
+ */
+export async function getPullRequestDiff(
+  installationId: string,
+  owner: string,
+  repo: string,
+  prNumber: number
+): Promise<string> {
+  const token = await getInstallationToken(installationId);
+
+  const response = await fetch(
+    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github.v3.diff',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const body = await response.text();
+    logApiError('getPullRequestDiff', new Error(`HTTP ${response.status}: ${body}`), {
+      repo: `${owner}/${repo}`,
+      prNumber,
+    });
+    throw new Error(`Failed to fetch PR diff: ${response.status}`);
+  }
+
+  return response.text();
+}
+
 const CREATE_PULL_REQUEST = `
   mutation CreatePullRequest(
     $repositoryId: ID!,

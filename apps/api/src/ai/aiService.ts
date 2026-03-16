@@ -15,8 +15,10 @@ import {
   MeetingNotesExtractionSchema,
   CodeGenerationSchema,
   GeneratedFileSchema,
+  CodeReviewSchema,
+  IssueDecompositionSchema,
 } from './aiTypes.js';
-import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile } from './aiTypes.js';
+import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition } from './aiTypes.js';
 import { FEATURE_CONFIG } from './aiConfig.js';
 import { callAI } from './aiClient.js';
 import { parseJSON } from './responseParser.js';
@@ -35,6 +37,8 @@ import {
   buildMeetingNotesPrompt,
   buildCommitMessagePrompt,
   buildEnrichPRDescriptionPrompt,
+  buildCodeReviewPrompt,
+  buildDecomposeIssuePrompt,
 } from './promptBuilder.js';
 
 // ---------------------------------------------------------------------------
@@ -279,6 +283,36 @@ export async function generateCommitMessage(
     cacheTTLMs: config.cacheTTLMs,
   });
   return result.raw.trim();
+}
+
+export async function reviewCode(
+  apiKey: string,
+  data: {
+    taskTitle: string;
+    taskDescription: string;
+    taskInstructions?: string;
+    acceptanceCriteria?: string;
+    diff: string;
+    projectName: string;
+  }
+): Promise<CodeReview> {
+  const p = buildCodeReviewPrompt(data);
+  return callAndParse(apiKey, 'reviewCode', p, CodeReviewSchema);
+}
+
+export async function decomposeIssue(
+  apiKey: string,
+  data: {
+    issueTitle: string;
+    issueBody: string;
+    issueLabels: string[];
+    projectName: string;
+    projectDescription?: string;
+    existingTaskTitles: string[];
+  }
+): Promise<IssueDecomposition> {
+  const p = buildDecomposeIssuePrompt(data);
+  return callAndParse(apiKey, 'decomposeIssue', p, IssueDecompositionSchema);
 }
 
 export async function enrichPRDescription(

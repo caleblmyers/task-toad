@@ -58,6 +58,7 @@ export const githubQueryFields = /* GraphQL */ `
   githubInstallations: [GitHubInstallation!]!
   githubInstallationRepos(installationId: ID!): [GitHubRepo!]!
   githubProjectRepo(projectId: ID!): GitHubRepoLink
+  fetchRepoFileContent(projectId: ID!, filePath: String!): String
 `;
 
 export const githubMutationFields = /* GraphQL */ `
@@ -67,4 +68,5 @@ export const githubMutationFields = /* GraphQL */ `
   createGitHubRepo(projectId: ID!, installationId: ID!, ownerLogin: String!): GitHubRepoLink!
   createPullRequestFromTask(projectId: ID!, taskId: ID!, files: [GitHubFileInput!]!): GitHubPullRequest!
   syncTaskToGitHub(taskId: ID!): Task!
+  decomposeGitHubIssue(projectId: ID!, issueNumber: Int!): [Task!]!
 `;

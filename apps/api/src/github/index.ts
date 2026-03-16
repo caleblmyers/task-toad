@@ -18,10 +18,10 @@ export { getProjectRepo, connectRepoToProject, disconnectRepo, createRepoForProj
 export { createBranch, commitFiles } from './githubCommitService.js';
 
 // Pull requests
-export { createPullRequest } from './githubPullRequestService.js';
+export { createPullRequest, getPullRequestDiff } from './githubPullRequestService.js';
 
 // Issues
-export { createGitHubIssue, updateGitHubIssueState, getGitHubIssue } from './githubIssueService.js';
+export { createGitHubIssue, updateGitHubIssueState, getGitHubIssue, getGitHubIssueByNumber } from './githubIssueService.js';
 
 // Task linking
 export { extractTaskIds, linkCommitsToTasks } from './githubTaskLinker.js';
@@ -30,7 +30,7 @@ export { extractTaskIds, linkCommitsToTasks } from './githubTaskLinker.js';
 export { createPullRequestFromTask } from './githubService.js';
 
 // File tree
-export { fetchProjectFileTree } from './githubFileService.js';
+export { fetchProjectFileTree, fetchFileContent } from './githubFileService.js';
 export type { ProjectFile } from './githubFileService.js';
 
 // Types

@@ -1,4 +1,18 @@
 export const aiTypeDefs = /* GraphQL */ `
+  type CodeReviewComment {
+    file: String!
+    line: Int
+    severity: String!
+    comment: String!
+  }
+
+  type CodeReview {
+    summary: String!
+    approved: Boolean!
+    comments: [CodeReviewComment!]!
+    suggestions: [String!]!
+  }
+
   type GeneratedFile {
     path: String!
     content: String!
@@ -49,4 +63,5 @@ export const aiQueryFields = /* GraphQL */ `
 export const aiMutationFields = /* GraphQL */ `
   generateCodeFromTask(taskId: ID!, styleGuide: String): CodeGeneration!
   regenerateCodeFile(taskId: ID!, filePath: String!, feedback: String): GeneratedFile!
+  reviewPullRequest(taskId: ID!, prNumber: Int!): CodeReview!
 `;

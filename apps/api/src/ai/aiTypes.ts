@@ -124,6 +124,37 @@ export const CodeGenerationSchema = z.object({
 export type GeneratedFile = z.infer<typeof GeneratedFileSchema>;
 export type CodeGeneration = z.infer<typeof CodeGenerationSchema>;
 
+export const CodeReviewCommentSchema = z.object({
+  file: z.string().describe('file path'),
+  line: z.number().optional().describe('line number if applicable'),
+  severity: z.enum(['info', 'warning', 'error']).describe('severity level'),
+  comment: z.string().describe('review comment'),
+});
+
+export const CodeReviewSchema = z.object({
+  summary: z.string().describe('overall review summary'),
+  approved: z.boolean().describe('whether the changes look good overall'),
+  comments: z.array(CodeReviewCommentSchema).describe('specific code comments'),
+  suggestions: z.array(z.string()).optional().default([]).describe('general improvement suggestions'),
+});
+
+export type CodeReview = z.infer<typeof CodeReviewSchema>;
+
+export const IssueDecompositionTaskSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  priority: z.enum(['low', 'medium', 'high', 'critical']),
+  estimatedHours: z.number().optional(),
+  instructions: z.string().optional(),
+  acceptanceCriteria: z.string().optional(),
+});
+
+export const IssueDecompositionSchema = z.object({
+  tasks: z.array(IssueDecompositionTaskSchema),
+});
+
+export type IssueDecomposition = z.infer<typeof IssueDecompositionSchema>;
+
 // ---------------------------------------------------------------------------
 // AI subsystem internal types
 // ---------------------------------------------------------------------------
@@ -142,7 +173,9 @@ export type AIFeature =
   | 'generateCode'
   | 'generateCommitMessage'
   | 'enrichPRDescription'
-  | 'regenerateFile';
+  | 'regenerateFile'
+  | 'reviewCode'
+  | 'decomposeIssue';
 
 export interface AIUsage {
   inputTokens: number;

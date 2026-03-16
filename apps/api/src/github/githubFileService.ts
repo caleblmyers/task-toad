@@ -80,6 +80,42 @@ async function fetchTreeEntries(
   return result.repository.object?.entries ?? [];
 }
 
+/**
+ * Fetch the content of a single file from a GitHub repository.
+ * Returns null if the file doesn't exist.
+ */
+export async function fetchFileContent(
+  installationId: string,
+  owner: string,
+  repo: string,
+  path: string,
+  ref?: string
+): Promise<string | null> {
+  const token = await getInstallationToken(installationId);
+  const refParam = ref ? `?ref=${encodeURIComponent(ref)}` : '';
+  const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${path}${refParam}`;
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+  });
+
+  if (response.status === 404) return null;
+
+  if (!response.ok) {
+    log.error({ status: response.status, path }, 'Failed to fetch file content');
+    return null;
+  }
+
+  const data = (await response.json()) as { content?: string; encoding?: string };
+  if (!data.content || data.encoding !== 'base64') return null;
+
+  return Buffer.from(data.content, 'base64').toString('utf8');
+}
+
 export async function fetchProjectFileTree(repo: GitHubRepoLink): Promise<ProjectFile[]> {
   try {
     const token = await getInstallationToken(repo.installationId);

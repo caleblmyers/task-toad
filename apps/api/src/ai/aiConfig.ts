@@ -32,6 +32,8 @@ export const FEATURE_CONFIG: Record<AIFeature, FeatureConfig> = {
   generateCommitMessage:    { maxTokens: 256,  cacheTTLMs: 0,       retryOnValidationFailure: false },
   enrichPRDescription:      { maxTokens: 1024, cacheTTLMs: 0,       retryOnValidationFailure: false },
   regenerateFile:           { maxTokens: 4096, cacheTTLMs: 0,       retryOnValidationFailure: true },
+  reviewCode:               { maxTokens: 4096, cacheTTLMs: 0,       retryOnValidationFailure: true },
+  decomposeIssue:           { maxTokens: 4096, cacheTTLMs: 0,       retryOnValidationFailure: true },
 };
 
 // ---------------------------------------------------------------------------

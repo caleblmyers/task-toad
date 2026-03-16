@@ -490,6 +490,90 @@ Include: ## Summary (2-3 sentences), ## Changes (bullet list), ## Testing (how t
   };
 }
 
+export function buildDecomposeIssuePrompt(data: {
+  issueTitle: string;
+  issueBody: string;
+  issueLabels: string[];
+  projectName: string;
+  projectDescription?: string;
+  existingTaskTitles: string[];
+}): Prompt {
+  const labelsLine = data.issueLabels.length > 0
+    ? `\nLabels: ${data.issueLabels.join(', ')}`
+    : '';
+  const descLine = data.projectDescription
+    ? `\nProject description: ${userInput('projectDescription', truncate(data.projectDescription, MAX_PROJECT_DESCRIPTION_CHARS))}`
+    : '';
+  const existingLine = data.existingTaskTitles.length > 0
+    ? `\nDo NOT create tasks that duplicate these existing titles: ${data.existingTaskTitles.map((t) => JSON.stringify(t)).join(', ')}`
+    : '';
+
+  return {
+    systemPrompt: SYSTEM_JSON,
+    userPrompt: `Break this GitHub issue into implementable tasks. Each task should be self-contained and actionable. Include acceptance criteria for each task.
+
+Issue: ${userInput('title', data.issueTitle)}${labelsLine}
+Project: ${userInput('project', data.projectName)}${descLine}${existingLine}
+
+Issue body:
+<user_input label="issue_body">
+${truncate(data.issueBody, 3000)}
+</user_input>
+
+Return JSON:
+{
+  "tasks": [{
+    "title": string,
+    "description": string,
+    "priority": "low" | "medium" | "high" | "critical",
+    "estimatedHours": number,
+    "instructions": string,
+    "acceptanceCriteria": string
+  }]
+}
+Generate 1-8 tasks. Each task should be a concrete, actionable work item.`,
+  };
+}
+
+export function buildCodeReviewPrompt(data: {
+  taskTitle: string;
+  taskDescription: string;
+  taskInstructions?: string;
+  acceptanceCriteria?: string;
+  diff: string;
+  projectName: string;
+}): Prompt {
+  const instructionsLine = data.taskInstructions
+    ? `\nInstructions: ${userInput('instructions', truncate(data.taskInstructions, 800))}`
+    : '';
+  const acLine = data.acceptanceCriteria
+    ? `\nAcceptance Criteria: ${userInput('acceptance_criteria', truncate(data.acceptanceCriteria, 400))}`
+    : '';
+
+  return {
+    systemPrompt: SYSTEM_JSON,
+    userPrompt: `Review the following code changes for a task. Check for: bugs, security issues, performance problems, missing error handling, deviation from task requirements. The diff is in unified format.
+
+Task: ${userInput('title', data.taskTitle)}
+Description: ${userInput('description', truncate(data.taskDescription, MAX_DESCRIPTION_CHARS))}${instructionsLine}${acLine}
+Project: ${userInput('project', data.projectName)}
+
+Diff:
+<user_input label="diff">
+${truncate(data.diff, 6000)}
+</user_input>
+
+Return JSON:
+{
+  "summary": string,
+  "approved": boolean,
+  "comments": [{ "file": string, "line": number | null, "severity": "info" | "warning" | "error", "comment": string }],
+  "suggestions": string[]
+}
+Focus on actionable feedback. Be specific about file paths and line numbers when possible.`,
+  };
+}
+
 export function buildGenerateTaskInstructionsPrompt(
   taskTitle: string,
   taskDescription: string,

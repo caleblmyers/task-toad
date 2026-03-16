@@ -8,7 +8,10 @@ import {
   listInstallationRepos,
   createGitHubIssue,
   updateGitHubIssueState,
+  getGitHubIssueByNumber,
+  fetchFileContent,
 } from '../../github/index.js';
+import { decomposeIssue as aiDecomposeIssue } from '../../ai/index.js';
 import { NotFoundError, AuthorizationError, ValidationError } from '../errors.js';
 import { requireOrg, requireProjectAccess, requireApiKey } from './auth.js';
 
@@ -37,6 +40,23 @@ export const githubQueries = {
   githubProjectRepo: async (_parent: unknown, args: { projectId: string }, context: Context) => {
     await requireProjectAccess(context, args.projectId);
     return getProjectRepo(args.projectId);
+  },
+
+  fetchRepoFileContent: async (_parent: unknown, args: { projectId: string; filePath: string }, context: Context) => {
+    await requireProjectAccess(context, args.projectId);
+    const project = await context.prisma.project.findUnique({
+      where: { projectId: args.projectId },
+      select: { githubInstallationId: true, githubRepositoryOwner: true, githubRepositoryName: true },
+    });
+    if (!project?.githubInstallationId || !project?.githubRepositoryOwner || !project?.githubRepositoryName) {
+      return null;
+    }
+    return fetchFileContent(
+      project.githubInstallationId,
+      project.githubRepositoryOwner,
+      project.githubRepositoryName,
+      args.filePath
+    );
   },
 };
 
@@ -110,6 +130,65 @@ export const githubMutations = {
     });
 
     return result;
+  },
+
+  decomposeGitHubIssue: async (
+    _parent: unknown,
+    args: { projectId: string; issueNumber: number },
+    context: Context
+  ) => {
+    const user = requireOrg(context);
+    const apiKey = requireApiKey(context);
+    const project = await context.prisma.project.findFirst({
+      where: { projectId: args.projectId, orgId: user.orgId },
+    });
+    if (!project) throw new NotFoundError('Project not found');
+    if (!project.githubInstallationId || !project.githubRepositoryOwner || !project.githubRepositoryName) {
+      throw new ValidationError('Project has no linked GitHub repository');
+    }
+
+    const issue = await getGitHubIssueByNumber(
+      project.githubInstallationId,
+      project.githubRepositoryOwner,
+      project.githubRepositoryName,
+      args.issueNumber
+    );
+
+    const existingTasks = await context.prisma.task.findMany({
+      where: { projectId: args.projectId, parentTaskId: null },
+      select: { title: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const decomposition = await aiDecomposeIssue(apiKey, {
+      issueTitle: issue.title,
+      issueBody: issue.body,
+      issueLabels: issue.labels,
+      projectName: project.name,
+      projectDescription: project.description ?? undefined,
+      existingTaskTitles: existingTasks.map((t) => t.title),
+    });
+
+    const created = await Promise.all(
+      decomposition.tasks.map((t) =>
+        context.prisma.task.create({
+          data: {
+            title: t.title,
+            description: t.description,
+            priority: t.priority,
+            estimatedHours: t.estimatedHours ?? null,
+            instructions: t.instructions ?? null,
+            status: 'todo',
+            projectId: args.projectId,
+            orgId: user.orgId,
+            githubIssueNumber: args.issueNumber,
+            githubIssueNodeId: issue.nodeId,
+          },
+        })
+      )
+    );
+
+    return created;
   },
 
   syncTaskToGitHub: async (_parent: unknown, args: { taskId: string }, context: Context) => {

@@ -16,6 +16,8 @@ export {
   extractTasksFromNotes,
   generateCommitMessage,
   enrichPRDescription,
+  reviewCode,
+  decomposeIssue,
 } from './aiService.js';
 
 export { logUsageToDB, checkBudget } from './aiUsageTracker.js';
@@ -33,5 +35,7 @@ export type {
   SprintReport,
   HealthAnalysis,
   MeetingNotesExtraction,
+  CodeReview,
+  IssueDecomposition,
   AIFeature,
 } from './aiTypes.js';

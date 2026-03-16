@@ -26,7 +26,20 @@ interface GetIssueResponse {
   node: {
     state: string;
     title: string;
+    body: string;
     labels: { nodes: Array<{ name: string }> };
+  };
+}
+
+interface GetIssueByNumberResponse {
+  repository: {
+    issue: {
+      id: string;
+      state: string;
+      title: string;
+      body: string;
+      labels: { nodes: Array<{ name: string }> };
+    };
   };
 }
 
@@ -96,14 +109,14 @@ export async function updateGitHubIssueState(
 export async function getGitHubIssue(
   installationId: string,
   issueNodeId: string
-): Promise<{ state: string; title: string; labels: string[] }> {
+): Promise<{ state: string; title: string; body: string; labels: string[] }> {
   const token = await getInstallationToken(installationId);
   const result = await githubRequest<GetIssueResponse>(
     token,
     `query($id: ID!) {
       node(id: $id) {
         ... on Issue {
-          state title
+          state title body
           labels(first: 20) { nodes { name } }
         }
       }
@@ -113,6 +126,39 @@ export async function getGitHubIssue(
   return {
     state: result.node.state,
     title: result.node.title,
+    body: result.node.body ?? '',
     labels: result.node.labels.nodes.map((l) => l.name),
+  };
+}
+
+/**
+ * Fetch a GitHub Issue by repository and issue number.
+ */
+export async function getGitHubIssueByNumber(
+  installationId: string,
+  owner: string,
+  repo: string,
+  issueNumber: number
+): Promise<{ nodeId: string; state: string; title: string; body: string; labels: string[] }> {
+  const token = await getInstallationToken(installationId);
+  const result = await githubRequest<GetIssueByNumberResponse>(
+    token,
+    `query($owner: String!, $name: String!, $number: Int!) {
+      repository(owner: $owner, name: $name) {
+        issue(number: $number) {
+          id state title body
+          labels(first: 20) { nodes { name } }
+        }
+      }
+    }`,
+    { owner, name: repo, number: issueNumber }
+  );
+  const issue = result.repository.issue;
+  return {
+    nodeId: issue.id,
+    state: issue.state,
+    title: issue.title,
+    body: issue.body ?? '',
+    labels: issue.labels.nodes.map((l) => l.name),
   };
 }

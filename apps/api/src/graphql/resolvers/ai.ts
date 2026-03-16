@@ -11,10 +11,11 @@ import {
   generateSprintReport as aiGenerateSprintReport,
   analyzeProjectHealth as aiAnalyzeProjectHealth,
   extractTasksFromNotes as aiExtractTasksFromNotes,
+  reviewCode as aiReviewCode,
 } from '../../ai/index.js';
 import { NotFoundError, ValidationError, AuthorizationError } from '../errors.js';
 import { requireOrg, requireApiKey } from './auth.js';
-import { getProjectRepo, fetchProjectFileTree } from '../../github/index.js';
+import { getProjectRepo, fetchProjectFileTree, getPullRequestDiff } from '../../github/index.js';
 
 // ── AI mutations ──
 
@@ -436,6 +437,43 @@ export const aiMutations = {
       task.project.name,
       args.feedback
     );
+  },
+
+  reviewPullRequest: async (
+    _parent: unknown,
+    args: { taskId: string; prNumber: number },
+    context: Context
+  ) => {
+    const user = requireOrg(context);
+    const apiKey = requireApiKey(context);
+    const task = await context.prisma.task.findUnique({
+      where: { taskId: args.taskId },
+      include: { project: true },
+    });
+    if (!task || task.orgId !== user.orgId) {
+      throw new NotFoundError('Task not found');
+    }
+
+    const project = task.project;
+    if (!project.githubInstallationId || !project.githubRepositoryOwner || !project.githubRepositoryName) {
+      throw new ValidationError('Project has no linked GitHub repository');
+    }
+
+    const diff = await getPullRequestDiff(
+      project.githubInstallationId,
+      project.githubRepositoryOwner,
+      project.githubRepositoryName,
+      args.prNumber
+    );
+
+    return aiReviewCode(apiKey, {
+      taskTitle: task.title,
+      taskDescription: task.description ?? '',
+      taskInstructions: task.instructions ?? undefined,
+      acceptanceCriteria: (task as Record<string, unknown>).acceptanceCriteria as string | undefined,
+      diff,
+      projectName: project.name,
+    });
   },
 
   summarizeProject: async (_parent: unknown, args: { projectId: string }, context: Context) => {
