@@ -86,7 +86,10 @@ export default function AppLayout() {
 
       <aside className="w-56 bg-slate-800 text-white flex flex-col relative">
         <div className="p-4 border-b border-slate-700 flex items-center justify-between">
-          <Link to="/app" className="font-semibold text-lg">TaskToad</Link>
+          <Link to="/app" className="flex items-center gap-2 font-semibold text-lg">
+            <img src="/logo.png" alt="" className="w-7 h-7" aria-hidden="true" />
+            TaskToad
+          </Link>
           {sseConnected && (
             <span className="flex items-center gap-1 text-[10px] text-green-400" role="status" aria-live="polite">
               <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />

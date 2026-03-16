@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --brand-green: #4CAF50;
+  --brand-lime: #8BC34A;
+  --brand-dark: #1B2631;
+  --brand-cyan: #00BCD4;
+  --brand-green-light: #E8F5E9;
+  --brand-green-hover: #43A047;
+}
+
 body {
   margin: 0;
   font-family: system-ui, -apple-system, sans-serif;

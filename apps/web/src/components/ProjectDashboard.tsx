@@ -108,6 +108,12 @@ export default function ProjectDashboard({ stats, activities, loading, projectId
   return (
     <div className="flex-1 overflow-y-auto px-6 py-4">
       <div className="max-w-4xl mx-auto space-y-6">
+        {/* Dashboard header */}
+        <div className="flex items-center gap-3">
+          <img src="/logo-data.png" alt="" className="w-8 h-8 opacity-60" aria-hidden="true" />
+          <h2 className="text-lg font-semibold text-slate-800">Project Dashboard</h2>
+        </div>
+
         {/* Stat cards */}
         <div className="grid grid-cols-4 gap-4">
           <StatCard label="Total Tasks" value={stats.totalTasks} />

@@ -23,7 +23,10 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100">
       <div className="w-full max-w-sm p-6 bg-white rounded-lg shadow">
-        <h1 className="text-xl font-semibold text-slate-800 mb-4">TaskToad</h1>
+        <div className="flex items-center justify-center gap-2 mb-6">
+          <img src="/logo.png" alt="TaskToad" className="w-10 h-10" />
+          <h1 className="text-xl font-semibold text-slate-800">TaskToad</h1>
+        </div>
         {successMessage && <p className="mb-3 text-sm text-green-700">{successMessage}</p>}
         <form onSubmit={handleSubmit} className="space-y-3">
           <input
@@ -43,7 +46,7 @@ export default function Login() {
             required
           />
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <button type="submit" className="w-full py-2 bg-slate-800 text-white rounded">
+          <button type="submit" className="w-full py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover">
             Sign in
           </button>
         </form>

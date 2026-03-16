@@ -145,14 +145,14 @@ export default function BurndownChart(props: BurndownChartProps) {
           <button
             type="button"
             onClick={() => setMode('burndown')}
-            className={`px-2.5 py-1 ${mode === 'burndown' ? 'bg-slate-700 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+            className={`px-2.5 py-1 ${mode === 'burndown' ? 'bg-brand-green text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
           >
             Burndown
           </button>
           <button
             type="button"
             onClick={() => setMode('burnup')}
-            className={`px-2.5 py-1 ${mode === 'burnup' ? 'bg-slate-700 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+            className={`px-2.5 py-1 ${mode === 'burnup' ? 'bg-brand-green text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
           >
             Burnup
           </button>

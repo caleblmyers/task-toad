@@ -21,7 +21,10 @@ export default function Signup() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100">
       <div className="w-full max-w-sm p-6 bg-white rounded-lg shadow">
-        <h1 className="text-xl font-semibold text-slate-800 mb-4">TaskToad – Sign up</h1>
+        <div className="flex items-center justify-center gap-2 mb-6">
+          <img src="/logo.png" alt="TaskToad" className="w-10 h-10" />
+          <h1 className="text-xl font-semibold text-slate-800">TaskToad</h1>
+        </div>
         <form onSubmit={handleSubmit} className="space-y-3">
           <input
             type="email"
@@ -40,7 +43,7 @@ export default function Signup() {
             required
           />
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <button type="submit" className="w-full py-2 bg-slate-800 text-white rounded">
+          <button type="submit" className="w-full py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover">
             Create account
           </button>
         </form>

@@ -150,7 +150,7 @@ export default function BatchCodeGenModal({ projectId, tasks, onClose }: BatchCo
             <button
               onClick={handleGenerate}
               disabled={generating || selectedIds.size === 0}
-              className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-1.5 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {generating ? 'Generating...' : `Generate Code (${selectedIds.size})`}
             </button>

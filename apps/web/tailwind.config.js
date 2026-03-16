@@ -4,6 +4,14 @@ export default {
   theme: {
     extend: {
       colors: {
+        brand: {
+          green: 'var(--brand-green)',
+          lime: 'var(--brand-lime)',
+          dark: 'var(--brand-dark)',
+          cyan: 'var(--brand-cyan)',
+          'green-light': 'var(--brand-green-light)',
+          'green-hover': 'var(--brand-green-hover)',
+        },
         status: {
           todo: '#94a3b8',        // slate-400
           'in-progress': '#3b82f6', // blue-500

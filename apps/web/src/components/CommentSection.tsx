@@ -71,7 +71,7 @@ function CommentItem({
               <textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
-                className="w-full text-sm border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-slate-400 resize-none"
+                className="w-full text-sm border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-green resize-none"
                 rows={2}
                 autoFocus
               />
@@ -199,7 +199,7 @@ export default function CommentSection({
           value={newComment}
           onChange={handleCommentInput}
           placeholder="Add a comment... (use @ to mention)"
-          className="flex-1 text-sm border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-slate-400 resize-none"
+          className="flex-1 text-sm border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-green resize-none"
           rows={2}
           onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit(); }}
         />
@@ -214,7 +214,7 @@ export default function CommentSection({
         <button
           onClick={handleSubmit}
           disabled={!newComment.trim() || submitting}
-          className="self-end px-3 py-1.5 text-sm bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50"
+          className="self-end px-3 py-1.5 text-sm bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50"
         >
           Post
         </button>
@@ -253,7 +253,7 @@ export default function CommentSection({
                   value={replyContent}
                   onChange={(e) => setReplyContent(e.target.value)}
                   placeholder="Write a reply…"
-                  className="w-full text-sm border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-slate-400 resize-none"
+                  className="w-full text-sm border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-green resize-none"
                   rows={2}
                   autoFocus
                   onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleReplySubmit(); }}

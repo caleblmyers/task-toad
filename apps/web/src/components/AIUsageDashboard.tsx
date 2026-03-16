@@ -127,7 +127,7 @@ export default function AIUsageDashboard() {
             onClick={() => setDays(r.days)}
             className={`px-3 py-1 text-xs rounded font-medium ${
               days === r.days
-                ? 'bg-slate-800 text-white'
+                ? 'bg-brand-green text-white'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
@@ -248,7 +248,7 @@ export default function AIUsageDashboard() {
           <button
             type="submit"
             disabled={savingBudget}
-            className="px-3 py-1.5 bg-slate-800 text-white rounded text-sm hover:bg-slate-700 disabled:opacity-50"
+            className="px-3 py-1.5 bg-brand-green text-white rounded text-sm hover:bg-brand-green-hover disabled:opacity-50"
           >
             {savingBudget ? 'Saving...' : 'Save budget'}
           </button>

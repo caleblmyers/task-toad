@@ -219,7 +219,7 @@ export default function TaskFieldsPanel({
                       value={newLabelName}
                       onChange={(e) => setNewLabelName(e.target.value)}
                       placeholder="New label…"
-                      className="flex-1 text-xs border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                      className="flex-1 text-xs border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-green"
                       onKeyDown={async (e) => {
                         if (e.key === 'Enter' && newLabelName.trim()) {
                           const label = await onCreateLabel(newLabelName.trim(), newLabelColor);

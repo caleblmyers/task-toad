@@ -541,7 +541,7 @@ export default function ProjectDetail() {
               onChange={(e) => setNewStatusValue(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleAddStatus(); }}
               placeholder="Add status…"
-              className="text-xs border border-slate-300 rounded px-2 py-0.5 w-28 focus:outline-none focus:ring-1 focus:ring-slate-400"
+              className="text-xs border border-slate-300 rounded px-2 py-0.5 w-28 focus:outline-none focus:ring-1 focus:ring-brand-green"
             />
             <button onClick={handleAddStatus} className="text-xs text-slate-500 hover:text-slate-700">Add</button>
           </div>
@@ -578,11 +578,11 @@ export default function ProjectDetail() {
               value={d.newTaskTitle}
               onChange={(e) => d.setNewTaskTitle(e.target.value)}
               placeholder="Task title"
-              className="flex-1 max-w-sm px-2 py-1.5 text-sm border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-slate-400"
+              className="flex-1 max-w-sm px-2 py-1.5 text-sm border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-brand-green"
               required
               autoFocus
             />
-            <button type="submit" className="px-3 py-1.5 bg-slate-700 text-white text-sm rounded hover:bg-slate-600">
+            <button type="submit" className="px-3 py-1.5 bg-brand-green text-white text-sm rounded hover:bg-brand-green-hover">
               Add
             </button>
             {d.addErr && <p className="text-xs text-red-600">{d.addErr}</p>}

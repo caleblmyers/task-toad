@@ -230,7 +230,7 @@ export default function FilterBar({
                 value={saveName}
                 onChange={(e) => setSaveName(e.target.value)}
                 placeholder="Filter name"
-                className="text-xs border border-slate-300 rounded px-2 py-1 w-28 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                className="text-xs border border-slate-300 rounded px-2 py-1 w-28 focus:outline-none focus:ring-1 focus:ring-brand-green"
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSaveFilter(); }}
                 autoFocus
               />

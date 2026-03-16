@@ -41,7 +41,7 @@ export default function BugReportModal({ onSubmit, onClose }: BugReportModalProp
           onChange={(e) => setBugReport(e.target.value)}
           placeholder="Paste bug report, error log, or user feedback..."
           rows={10}
-          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg resize-y focus:outline-none focus:ring-1 focus:ring-slate-400"
+          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg resize-y focus:outline-none focus:ring-1 focus:ring-brand-green"
           disabled={loading}
           autoFocus
         />
@@ -62,7 +62,7 @@ export default function BugReportModal({ onSubmit, onClose }: BugReportModalProp
         <button
           onClick={handleSubmit}
           disabled={loading || !bugReport.trim()}
-          className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-1.5 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? 'Parsing...' : 'Create Task from Bug Report'}
         </button>

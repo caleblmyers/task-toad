@@ -117,7 +117,7 @@ export default function MeetingNotesDialog({ projectId, onTasksCreated, onClose 
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Paste your meeting notes here..."
-              className="w-full h-48 px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 resize-y"
+              className="w-full h-48 px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-green resize-y"
               disabled={loading}
             />
             {error && (
@@ -211,7 +211,7 @@ export default function MeetingNotesDialog({ projectId, onTasksCreated, onClose 
             type="button"
             onClick={handleExtract}
             disabled={loading || !notes.trim()}
-            className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-1.5 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Extracting...' : 'Extract Tasks'}
           </button>
@@ -228,7 +228,7 @@ export default function MeetingNotesDialog({ projectId, onTasksCreated, onClose 
               type="button"
               onClick={handleCreate}
               disabled={creating || selected.size === 0}
-              className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-1.5 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {creating ? 'Creating...' : `Create ${selected.size} Task${selected.size !== 1 ? 's' : ''}`}
             </button>

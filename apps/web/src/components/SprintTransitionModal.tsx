@@ -176,7 +176,7 @@ export default function SprintTransitionModal({ sprintId, sprintName, onApply, o
         <button
           onClick={handleApply}
           disabled={loading || applying || !analysis}
-          className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-1.5 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {applying ? 'Applying...' : 'Apply Transition'}
         </button>

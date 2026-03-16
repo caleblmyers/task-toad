@@ -37,7 +37,7 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 4. **W2** — Advanced tasks & filters (feature work)
 5. **I1 + D1** — Integration completeness & observability
 6. **F1** — Frontend performance (only matters at scale)
-7. **S1** — Styling & branding (waiting on style guide)
+7. **S1** — Styling & branding (brand tokens deployed, remaining items are polish)
 
 ---
 
@@ -117,6 +117,7 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 ### W6: Advanced Views & AI Extras (remaining)
 **Touches:** new `apps/web/src/components/` files, `resolvers/ai.ts`
 
+- [ ] AI code review + auto-test for in-review tasks — when a task moves to `in_review` status, AI fetches the linked PR diff (or generated code), reviews it for bugs/quality, and runs or suggests tests automatically. Full slice: new `reviewTaskCode` mutation in AI resolvers, integrate with existing `reviewCode` prompt + GitHub PR diff fetching, add "AI Review" button/auto-trigger in TaskDetailPanel when status is `in_review`, display review results (pass/fail, comments, suggested fixes) inline
 - [ ] Public REST/GraphQL API docs — documented API for third-party use. Full slice: auto-generate from GraphQL schema using graphql-markdown or similar, serve at `/api/docs`, add auth token instructions
 
 ### D1: Deployment & Observability (Medium Priority)
@@ -154,16 +155,24 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 - [ ] Lazy-load heavy view components — GanttChart, BatchCodeGenModal, DriftAnalysisModal with `React.lazy()`
 - [ ] Portfolio query optimization — batch sprint queries instead of sequential per-project in `portfolioOverview` resolver
 
-### S1: Styling & Branding (Low Priority — pending style guide)
-**Why:** User is working on logos and a style guide. These items prep the codebase for a design system.
-**Touches:** `apps/web/src/components/shared/`, `apps/web/tailwind.config.ts`, `apps/web/index.html`, `apps/web/public/`
+### S1: Styling & Branding
+**Why:** Brand identity system fully deployed. Remaining items are polish and component abstraction.
+**Touches:** `apps/web/src/components/shared/`, `apps/web/tailwind.config.js`, `apps/web/index.html`, `apps/web/public/`
 
-- [ ] PWA manifest + favicon + meta tags — `manifest.json`, `<meta>` description/theme-color/og:image, favicon.svg
-- [ ] Design token system — extract hardcoded Tailwind colors into CSS custom properties or Tailwind theme tokens for easy rebrand when style guide is ready
-- [ ] Button component library — standardize the 20+ ad-hoc button styles (`px-3 py-1.5 text-sm border rounded` repeated everywhere) into reusable `<Button variant="primary|secondary|ghost|danger">` component
+- [x] Favicon + meta tags — favicon.png, `<meta>` description/theme-color/og:image (2026-03-16)
+- [x] Design token system — CSS custom properties (`--brand-*`) + Tailwind `brand.*` tokens (2026-03-16)
+- [x] Logo integration — sidebar, login, signup, home page, dashboard (2026-03-16)
+- [x] Primary CTA button branding — brand-green on key CTAs (2026-03-16)
+- [x] Full button color migration — all action buttons across 35 files migrated from slate-800/700 to brand-green/brand-green-hover (2026-03-16)
+- [x] Focus ring branding — all `focus:ring-slate-400` → `focus:ring-brand-green` across 19 files (2026-03-16)
+- [x] Active tab/toggle indicators — AIUsageDashboard, BurndownChart, ProjectChatPanel, TaskPlanApprovalDialog step indicators → brand-green (2026-03-16)
+- [x] Loading spinner branding — border-t-slate-700 → border-t-brand-green in App.tsx, OrgSettings, TaskPlanApprovalDialog (2026-03-16)
+- [ ] Button component library — standardize the ad-hoc button styles into reusable `<Button variant="primary|secondary|ghost|danger">` component
 - [ ] Consistent spacing/typography scale — audit and normalize padding, margin, font-size usage across components
 - [ ] Dark mode prep — use Tailwind `dark:` variants on base components so dark mode can be toggled when ready
-- [ ] Social preview image — og:image for link sharing (once logo is finalized)
+- [ ] SVG favicon — generate proper SVG favicon from T-Frog silhouette for sharp rendering at all sizes
+- [ ] Social preview image — proper og:image composite (logo + text on brand-dark background) for link sharing
+- [ ] PWA manifest — `manifest.json` with icon set for installable web app
 
 ---
 
@@ -186,6 +195,15 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 ---
 
 ## Completed
+
+### S1 (partial): Styling & Branding (2026-03-16)
+- [x] CSS custom properties + Tailwind brand tokens (--brand-green, --brand-lime, --brand-dark, --brand-cyan, --brand-green-light, --brand-green-hover)
+- [x] Logo assets deployed (logo.png, logo-data.png, favicon.png) + meta tags (favicon, og:*, theme-color)
+- [x] Logo placements: sidebar, login, signup, home page, project dashboard
+- [x] Full button color migration: all action buttons (35 files) → brand-green
+- [x] Focus ring migration: all focus:ring-slate-400 (19 files) → focus:ring-brand-green
+- [x] Active tab/toggle indicators → brand-green (4 components)
+- [x] Loading spinner borders → border-t-brand-green (3 files)
 
 ### P1 (partial): Production Hardening (Wave 9, 2026-03-16)
 - [x] Graceful shutdown handlers (SIGTERM/SIGINT) — close Prisma, clear intervals, force-kill timeout

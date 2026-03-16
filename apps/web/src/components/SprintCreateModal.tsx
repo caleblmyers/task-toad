@@ -119,7 +119,7 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
               placeholder="Sprint 1"
               required
               autoFocus
-              className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400"
+              className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green"
             />
           </div>
 
@@ -130,7 +130,7 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
               onChange={(e) => setGoal(e.target.value)}
               placeholder="What is this sprint's objective?"
               rows={2}
-              className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400 resize-none"
+              className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green resize-none"
             />
           </div>
 
@@ -141,7 +141,7 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400"
+                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green"
               />
             </div>
             <div className="flex-1">
@@ -150,7 +150,7 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400"
+                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green"
               />
             </div>
           </div>
@@ -190,7 +190,7 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
                 onChange={(e) => setNewCol(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addColumn(); }}}
                 placeholder="Add column…"
-                className="flex-1 border border-slate-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400"
+                className="flex-1 border border-slate-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green"
               />
               <button
                 type="button"
@@ -212,7 +212,7 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
             <button
               type="submit"
               disabled={loading || !name.trim()}
-              className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50"
+              className="px-4 py-1.5 text-sm bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50"
             >
               {loading ? (isEdit ? 'Saving…' : 'Creating…') : (isEdit ? 'Save Changes' : 'Create Sprint')}
             </button>

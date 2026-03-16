@@ -63,7 +63,7 @@ export default function AcceptInvite() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2 bg-slate-800 text-white rounded hover:bg-slate-700 disabled:opacity-50"
+            className="w-full py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50"
           >
             {loading ? 'Joining…' : 'Join team'}
           </button>

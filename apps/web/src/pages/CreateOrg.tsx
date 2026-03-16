@@ -49,7 +49,7 @@ export default function CreateOrg() {
             <p className="text-xs text-slate-400 mt-1">You can add this later in Settings.</p>
           </div>
           {err && <p className="text-sm text-red-600">{err}</p>}
-          <button type="submit" className="w-full py-2 bg-slate-800 text-white rounded">
+          <button type="submit" className="w-full py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover">
             Create
           </button>
         </form>

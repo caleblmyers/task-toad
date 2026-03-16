@@ -371,7 +371,7 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
               <button
                 onClick={handleCreateCustomField}
                 disabled={!cfName.trim()}
-                className="px-3 py-1.5 bg-slate-800 text-white text-sm rounded hover:bg-slate-700 disabled:opacity-50"
+                className="px-3 py-1.5 bg-brand-green text-white text-sm rounded hover:bg-brand-green-hover disabled:opacity-50"
               >
                 Create Field
               </button>
@@ -425,7 +425,7 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
                 <button
                   onClick={handleAddMember}
                   disabled={!addUserId}
-                  className="px-3 py-1.5 bg-slate-800 text-white text-sm rounded hover:bg-slate-700 disabled:opacity-50"
+                  className="px-3 py-1.5 bg-brand-green text-white text-sm rounded hover:bg-brand-green-hover disabled:opacity-50"
                 >
                   Add
                 </button>
@@ -541,7 +541,7 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
               <button
                 onClick={handleCreateRule}
                 disabled={!ruleName.trim()}
-                className="px-3 py-1.5 bg-slate-800 text-white text-sm rounded hover:bg-slate-700 disabled:opacity-50"
+                className="px-3 py-1.5 bg-brand-green text-white text-sm rounded hover:bg-brand-green-hover disabled:opacity-50"
               >
                 Create Rule
               </button>

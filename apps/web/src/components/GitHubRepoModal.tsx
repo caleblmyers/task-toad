@@ -194,7 +194,7 @@ export default function GitHubRepoModal({
                 <button
                   onClick={handleConnect}
                   disabled={connecting || !selectedRepo}
-                  className="px-4 py-1.5 text-sm bg-slate-800 text-white rounded hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-1.5 text-sm bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {connecting ? 'Connecting…' : 'Connect'}
                 </button>

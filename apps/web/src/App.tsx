@@ -33,7 +33,7 @@ export default function App() {
       <Suspense
         fallback={
           <div className="flex items-center justify-center h-screen">
-            <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-slate-300 border-t-brand-green rounded-full animate-spin" />
           </div>
         }
       >

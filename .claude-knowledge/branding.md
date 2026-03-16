@@ -36,6 +36,7 @@ Think of it as "three outfits for the same character" — like Discord's Clyde a
 
 ## Color Palette
 
+### Logo Colors (reference)
 | Role | Hex | Usage |
 |------|-----|-------|
 | Primary green | `#7ED321` | Main frog color (bright lime) |
@@ -44,6 +45,21 @@ Think of it as "three outfits for the same character" — like Discord's Clyde a
 | Accent cyan | `#00BCD4` | Node dots, highlights, checkmarks |
 | Light/cream | `#F1F8E9` | Belly, mouth area |
 | Near-black | `#1A1A2E` | Eyes, outlines |
+
+### App Brand Tokens (CSS + Tailwind)
+
+Defined as CSS custom properties in `apps/web/src/index.css` and Tailwind tokens in `tailwind.config.js`:
+
+| Token | CSS Variable | Hex | Tailwind Class | Usage |
+|-------|-------------|-----|----------------|-------|
+| Brand Green | `--brand-green` | `#4CAF50` | `bg-brand-green` | Primary CTA buttons |
+| Brand Lime | `--brand-lime` | `#8BC34A` | `bg-brand-lime` | Accent highlights |
+| Brand Dark | `--brand-dark` | `#1B2631` | `bg-brand-dark` | Dark backgrounds |
+| Brand Cyan | `--brand-cyan` | `#00BCD4` | `bg-brand-cyan` | Data/analytics accents |
+| Brand Green Light | `--brand-green-light` | `#E8F5E9` | `bg-brand-green-light` | Light green backgrounds |
+| Brand Green Hover | `--brand-green-hover` | `#43A047` | `hover:bg-brand-green-hover` | Hover state for brand-green buttons |
+
+To change a brand color, update the CSS variable in `index.css` — Tailwind classes reference the vars automatically.
 
 ## Typography
 
@@ -86,20 +102,35 @@ Think of it as "three outfits for the same character" — like Discord's Clyde a
 - Typography scale
 - Voice & tone guide
 
+## Deployed Assets
+
+| Public Path | Source | Where Used |
+|-------------|--------|------------|
+| `/logo.png` | `frog-t.png` | Sidebar, login, signup, home page |
+| `/logo-data.png` | `frog-data.png` | Project dashboard header |
+| `/favicon.png` | `frog-t.png` | Browser tab favicon |
+
+### Logo Placements in UI
+- **Sidebar header** (`AppLayout.tsx`): 28x28px logo next to "TaskToad" text
+- **Login page** (`Login.tsx`): 40x40px centered logo above form
+- **Signup page** (`Signup.tsx`): 40x40px centered logo above form
+- **Home page** (`Home.tsx`): 64x64px centered logo above heading
+- **Project Dashboard** (`ProjectDashboard.tsx`): 32x32px data logo at 60% opacity
+
+### Brand-Green CTA Buttons
+- Home page "Generate project options"
+- Login "Sign in"
+- Signup "Create account"
+- TaskPlanApprovalDialog "Approve & create"
+
+### What Stays Slate
+- Sidebar background (`bg-slate-800`)
+- Secondary/ghost buttons
+- Status and priority color tokens
+
 ## Current Status
 
-- **Round 1:** Generated initial concepts via ChatGPT — 6 styles explored
-- **Favorites selected:** Pixel Frog, T-Frog, Node Frog
-- **Round 2:** Refined with cohesion prompt — silhouette and palette now unified
-- **Outstanding issues:**
-  - T-Frog lost its eyes in round 2 — needs eyes on/above the T crossbar
-  - Pixel Frog not chunky enough — needs bigger, more obvious pixels
-  - T-Frog 3D shading is heavier than other variants — flatten to match
-- **Reference images:** `.claude-knowledge/images/` (favorites.png, favorites2.png, and ChatGPT generations)
-
-## Next Steps
-
-1. Iterate with ChatGPT to fix T-Frog eyes and Pixel Frog chunkiness
-2. Once concepts are locked, get a designer to produce proper SVG/AI vector files (~$200-500 freelancer)
-3. Build out favicon set and basic brand assets
-4. Integrate chosen marks into the app (favicon, loading states, etc.)
+- **Logos finalized:** T-Frog (`frog-t.png`), Node Frog (`frog-data.png`), Pixel Frog (`frog-bot.png`)
+- **Brand system deployed:** CSS custom properties + Tailwind tokens, favicon, meta tags, logo placements
+- **Not yet deployed:** `frog-bot.png` (reserved for GitHub bot avatar), `frog-minimal.webp` (future use)
+- **Future:** SVG favicon, proper OG social preview image, PWA manifest icons

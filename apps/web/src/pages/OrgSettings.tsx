@@ -228,7 +228,7 @@ export default function OrgSettings() {
           <button
             type="submit"
             disabled={saving || !apiKey.trim()}
-            className="px-4 py-2 bg-slate-800 text-white rounded hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? 'Saving…' : 'Save'}
           </button>
@@ -306,7 +306,7 @@ export default function OrgSettings() {
             <button
               type="submit"
               disabled={inviting || !inviteEmail.trim()}
-              className="px-4 py-2 bg-slate-800 text-white rounded hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              className="px-4 py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               {inviting ? 'Sending…' : 'Send invite'}
             </button>
@@ -347,7 +347,7 @@ export default function OrgSettings() {
 
         {linkingInstallation && (
           <div className="flex items-center gap-2 text-sm text-slate-500">
-            <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" />
+            <div className="w-4 h-4 border-2 border-slate-300 border-t-brand-green rounded-full animate-spin" />
             Linking installation…
           </div>
         )}
@@ -357,7 +357,7 @@ export default function OrgSettings() {
             type="button"
             onClick={handleInstallGitHubApp}
             disabled={linkingInstallation}
-            className="px-4 py-2 bg-slate-800 text-white rounded hover:bg-slate-700 disabled:opacity-50 text-sm"
+            className="px-4 py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50 text-sm"
           >
             {installations.length > 0 ? 'Add another installation' : 'Install GitHub App'}
           </button>

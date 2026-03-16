@@ -72,7 +72,7 @@ export default function TaskDependenciesSection({
             value={depSearch}
             onChange={(e) => setDepSearch(e.target.value)}
             placeholder="Search tasks…"
-            className="w-full text-sm border border-slate-300 rounded px-2 py-1 mb-1 focus:outline-none focus:ring-1 focus:ring-slate-400"
+            className="w-full text-sm border border-slate-300 rounded px-2 py-1 mb-1 focus:outline-none focus:ring-1 focus:ring-brand-green"
             autoFocus
           />
           <div className="max-h-32 overflow-y-auto border border-slate-200 rounded">

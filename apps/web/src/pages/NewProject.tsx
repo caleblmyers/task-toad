@@ -116,7 +116,7 @@ export default function NewProject() {
               type="button"
               onClick={handleCreate}
               disabled={creating}
-              className="flex-1 py-2.5 bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-700 disabled:opacity-50"
+              className="flex-1 py-2.5 bg-brand-green text-white rounded-lg font-medium hover:bg-brand-green-hover disabled:opacity-50"
             >
               {creating ? 'Creating project…' : 'Create this project →'}
             </button>
@@ -139,13 +139,13 @@ export default function NewProject() {
                 onChange={(e) => setRefineText(e.target.value)}
                 placeholder="e.g. Focus on mobile-first design, use React Native…"
                 rows={3}
-                className="w-full px-3 py-2 border border-slate-300 rounded resize-none text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                className="w-full px-3 py-2 border border-slate-300 rounded resize-none text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
                 disabled={refining}
               />
               <button
                 type="submit"
                 disabled={refining}
-                className="px-4 py-2 bg-slate-700 text-white rounded text-sm hover:bg-slate-600 disabled:opacity-50"
+                className="px-4 py-2 bg-brand-green text-white rounded text-sm hover:bg-brand-green-hover disabled:opacity-50"
               >
                 {refining ? 'Regenerating…' : 'Regenerate options'}
               </button>

@@ -204,7 +204,7 @@ export default function CloseSprintModal({
                   <button
                     type="button"
                     onClick={applyGlobalAction}
-                    className="text-xs px-2.5 py-1 bg-slate-700 text-white rounded hover:bg-slate-600 flex-shrink-0"
+                    className="text-xs px-2.5 py-1 bg-brand-green text-white rounded hover:bg-brand-green-hover flex-shrink-0"
                   >
                     Apply
                   </button>
@@ -272,7 +272,7 @@ export default function CloseSprintModal({
               type="button"
               onClick={handleClose}
               disabled={loading}
-              className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50"
+              className="px-4 py-1.5 text-sm bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50"
             >
               {loading ? 'Closing…' : 'Close Sprint'}
             </button>
@@ -296,7 +296,7 @@ export default function CloseSprintModal({
                 <button
                   type="button"
                   onClick={() => { onActivateNext(result.nextSprint!.sprintId); onClose(); }}
-                  className="w-full px-4 py-2 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-600"
+                  className="w-full px-4 py-2 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-hover"
                 >
                   Activate {result.nextSprint.name}
                 </button>
@@ -314,7 +314,7 @@ export default function CloseSprintModal({
                 <button
                   type="button"
                   onClick={() => { onCreateSprint(); onClose(); }}
-                  className="w-full px-4 py-2 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-600"
+                  className="w-full px-4 py-2 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-hover"
                 >
                   + Create Next Sprint
                 </button>

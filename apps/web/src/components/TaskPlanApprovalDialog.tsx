@@ -35,13 +35,13 @@ function GeneratingProgress() {
 
   return (
     <div className="flex flex-col items-center justify-center py-12 gap-6">
-      <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" />
+      <div className="w-8 h-8 border-2 border-slate-300 border-t-brand-green rounded-full animate-spin" />
       <div className="w-full max-w-xs space-y-3">
         {PROGRESS_STEPS.map((label, i) => (
           <div key={i} className="flex items-center gap-3">
             <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-medium transition-colors duration-300 ${
               i < step ? 'bg-green-500 text-white' :
-              i === step ? 'bg-slate-700 text-white' :
+              i === step ? 'bg-brand-green text-white' :
               'bg-slate-200 text-slate-400'
             }`}>
               {i < step ? '✓' : i + 1}
@@ -293,7 +293,7 @@ export default function TaskPlanApprovalDialog({
                   value={refinementText}
                   onChange={(e) => setRefinementText(e.target.value)}
                   placeholder="e.g. Split the auth task into smaller pieces, add a testing task..."
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400 resize-none"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green resize-none"
                   rows={2}
                 />
                 <div className="flex justify-end">
@@ -301,7 +301,7 @@ export default function TaskPlanApprovalDialog({
                     type="button"
                     onClick={handleRefineAndRegenerate}
                     disabled={!refinementText.trim()}
-                    className="px-3 py-1.5 text-sm bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-1.5 text-sm bg-brand-green text-white rounded-lg font-medium hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Regenerate with feedback
                   </button>
@@ -324,7 +324,7 @@ export default function TaskPlanApprovalDialog({
               value={context}
               onChange={(e) => setContext(e.target.value)}
               placeholder="Describe what you're looking for in more detail…"
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400 resize-none"
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green resize-none"
               rows={3}
             />
             <div className="flex gap-2 justify-end">
@@ -339,7 +339,7 @@ export default function TaskPlanApprovalDialog({
                 type="button"
                 onClick={handleRetryWithContext}
                 disabled={!context.trim()}
-                className="px-4 py-1.5 text-sm bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-1.5 text-sm bg-brand-green text-white rounded-lg font-medium hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Try with context →
               </button>
@@ -352,7 +352,7 @@ export default function TaskPlanApprovalDialog({
               value={context}
               onChange={(e) => setContext(e.target.value)}
               placeholder="Add context to redo or add more tasks…"
-              className="flex-1 px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:bg-slate-50 disabled:text-slate-400"
+              className="flex-1 px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green disabled:bg-slate-50 disabled:text-slate-400"
               disabled={loading}
               onKeyDown={(e) => { if (e.key === 'Enter' && e.metaKey && !loading) handleRedo(); }}
             />
@@ -395,7 +395,7 @@ export default function TaskPlanApprovalDialog({
               type="button"
               onClick={() => onApprove(selectedTasks)}
               disabled={selectedCount === 0 || loading}
-              className="px-5 py-2 text-sm bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-5 py-2 text-sm bg-brand-green text-white rounded-lg font-medium hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Approve & create {selectedCount} task{selectedCount !== 1 ? 's' : ''} →
             </button>

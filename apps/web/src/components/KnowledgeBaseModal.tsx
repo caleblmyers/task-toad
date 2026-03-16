@@ -23,7 +23,7 @@ export default function KnowledgeBaseModal({ isOpen, onClose, knowledgeBase, onS
           value={value}
           onChange={(e) => setValue(e.target.value)}
           rows={8}
-          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 resize-y"
+          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-green resize-y"
           placeholder="Describe tech stack, coding conventions, architecture, etc. This is injected into all AI prompts for this project."
         />
 

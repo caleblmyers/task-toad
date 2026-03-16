@@ -133,10 +133,10 @@ export default function TaskSubtasksSection({
               value={newSubtaskTitle}
               onChange={(e) => setNewSubtaskTitle(e.target.value)}
               placeholder={task.taskType === 'epic' ? 'New story title…' : 'New subtask title…'}
-              className="flex-1 text-sm border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-slate-400"
+              className="flex-1 text-sm border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-green"
               autoFocus
             />
-            <button type="submit" className="text-sm px-3 py-1 bg-slate-700 text-white rounded hover:bg-slate-600">Add</button>
+            <button type="submit" className="text-sm px-3 py-1 bg-brand-green text-white rounded hover:bg-brand-green-hover">Add</button>
             <button type="button" onClick={() => setShowSubtaskForm(false)} className="text-xs text-slate-400 hover:text-slate-600">Cancel</button>
           </form>
         ) : (

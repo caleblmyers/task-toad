@@ -96,7 +96,7 @@ export default function PRDBreakdownModal({ onPreview, onCommit, onClose }: PRDB
               onChange={(e) => setPrd(e.target.value)}
               placeholder="Paste your Product Requirements Document here..."
               rows={12}
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg resize-y focus:outline-none focus:ring-1 focus:ring-slate-400"
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg resize-y focus:outline-none focus:ring-1 focus:ring-brand-green"
               disabled={loading}
               autoFocus
             />
@@ -172,7 +172,7 @@ export default function PRDBreakdownModal({ onPreview, onCommit, onClose }: PRDB
             <button
               onClick={handleAnalyze}
               disabled={loading || !prd.trim()}
-              className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-1.5 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {analyzing ? 'Analyzing...' : 'Analyze PRD'}
             </button>
@@ -180,7 +180,7 @@ export default function PRDBreakdownModal({ onPreview, onCommit, onClose }: PRDB
             <button
               onClick={handleCommit}
               disabled={loading}
-              className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-1.5 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {committing ? 'Creating...' : 'Create Tasks'}
             </button>

@@ -6,6 +6,20 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-16
 
+### S1: Branding & Design System
+
+- **CSS custom properties** + **Tailwind brand tokens**: `--brand-green`, `--brand-lime`, `--brand-dark`, `--brand-cyan`, `--brand-green-light`, `--brand-green-hover` — defined in `:root` and referenced via `brand.*` in tailwind.config.js
+- **Logo deployed** to `apps/web/public/`: `logo.png` (T-Frog), `logo-data.png` (Node Frog), `favicon.png`
+- **Meta tags**: favicon, description, theme-color, og:title/description/image/type in `index.html`
+- **Logo placements**: sidebar header (28px), login/signup (40px centered), home page (64px centered), project dashboard (32px data logo)
+- **Brand-green CTA buttons**: Home page generate, login sign-in, signup create account, TaskPlanApprovalDialog approve
+- **Full button color migration**: all action buttons across 35 files converted from `bg-slate-800/700` to `bg-brand-green`/`hover:bg-brand-green-hover` — pages (ProfilePage, ResetPassword, NewProject, CreateOrg, VerifyEmail, OrgSettings, Projects, AcceptInvite, ForgotPassword, ProjectDetail) and components (ProjectSettingsModal, WebhookSettings, SlackSettings, GitHubRepoModal, AIUsageDashboard, ErrorBoundary, SprintPlanModal, CSVImportModal, PRDBreakdownModal, BugReportModal, CommentSection, SprintCreateModal, SprintTransitionModal, MeetingNotesDialog, CloseSprintModal, BatchCodeGenModal, ProjectChatPanel, MarkdownEditor, TaskSubtasksSection)
+- **Focus ring migration**: all `focus:ring-slate-400` → `focus:ring-brand-green` across 19 files (inputs, textareas, selects)
+- **Active tab/toggle indicators** → `bg-brand-green`: AIUsageDashboard, BurndownChart, ProjectChatPanel, TaskPlanApprovalDialog step indicator
+- **Loading spinner branding**: `border-t-slate-700` → `border-t-brand-green` in App.tsx, OrgSettings, TaskPlanApprovalDialog
+- **Unchanged (intentional)**: sidebar bg-slate-800 (dark chrome), BulkActionBar (dark floating toolbar), text colors (semantic), status/priority colors (separate system)
+- **Branding knowledge base** updated: `.claude-knowledge/branding.md` with deployed assets, color tokens, and UI placement reference
+
 ### Wave 9: P1 + A11 + I1 (3 workers, 6 tasks)
 
 **P1 — Production Hardening (Worker 1):**

@@ -87,7 +87,7 @@ export default function TaskCustomFieldsSection({ taskId, projectId, customField
                   value={currentValue}
                   onChange={(e) => setValues((prev) => new Map(prev).set(field.customFieldId, e.target.value))}
                   onBlur={(e) => handleSave(field.customFieldId, e.target.value)}
-                  className="block mt-0.5 w-full border border-slate-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400"
+                  className="block mt-0.5 w-full border border-slate-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green"
                   disabled={disabled || saving === field.customFieldId}
                 />
               )}
@@ -97,7 +97,7 @@ export default function TaskCustomFieldsSection({ taskId, projectId, customField
                   value={currentValue}
                   onChange={(e) => setValues((prev) => new Map(prev).set(field.customFieldId, e.target.value))}
                   onBlur={(e) => handleSave(field.customFieldId, e.target.value)}
-                  className="block mt-0.5 w-32 border border-slate-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400"
+                  className="block mt-0.5 w-32 border border-slate-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green"
                   disabled={disabled || saving === field.customFieldId}
                 />
               )}
@@ -109,7 +109,7 @@ export default function TaskCustomFieldsSection({ taskId, projectId, customField
                     setValues((prev) => new Map(prev).set(field.customFieldId, e.target.value));
                     handleSave(field.customFieldId, e.target.value);
                   }}
-                  className="block mt-0.5 border border-slate-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400"
+                  className="block mt-0.5 border border-slate-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green"
                   disabled={disabled || saving === field.customFieldId}
                 />
               )}

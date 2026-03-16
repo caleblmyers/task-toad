@@ -105,7 +105,7 @@ export default function SprintPlanModal({
                 max={8}
                 value={sprintLengthWeeks}
                 onChange={(e) => { setSprintLengthWeeks(Number(e.target.value)); setPlan(null); }}
-                className="w-16 border border-slate-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400"
+                className="w-16 border border-slate-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green"
               />
               <span className="text-sm text-slate-500">weeks</span>
             </div>
@@ -119,7 +119,7 @@ export default function SprintPlanModal({
                 max={20}
                 value={teamSize}
                 onChange={(e) => { setTeamSize(Number(e.target.value)); setPlan(null); }}
-                className="w-16 border border-slate-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400"
+                className="w-16 border border-slate-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green"
               />
               <span className="text-sm text-slate-500">devs</span>
             </div>
@@ -130,7 +130,7 @@ export default function SprintPlanModal({
               type="button"
               onClick={handleGenerate}
               disabled={loading || backlogTasks.length === 0}
-              className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50"
+              className="px-4 py-1.5 text-sm bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50"
             >
               {loading ? '◌ Planning…' : plan ? '↺ Regenerate' : '✦ Generate Plan'}
             </button>
@@ -221,7 +221,7 @@ export default function SprintPlanModal({
               type="button"
               onClick={handleCommit}
               disabled={committing}
-              className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50"
+              className="px-4 py-1.5 text-sm bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50"
             >
               {committing ? 'Creating…' : 'Accept Plan'}
             </button>

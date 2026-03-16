@@ -177,7 +177,7 @@ export default function CSVImportModal({ onImport, onClose }: CSVImportModalProp
                     <select
                       value={mapping[i]}
                       onChange={(e) => handleMappingChange(i, e.target.value as TaskField)}
-                      className="flex-1 text-sm border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                      className="flex-1 text-sm border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-green"
                     >
                       {FIELD_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -252,7 +252,7 @@ export default function CSVImportModal({ onImport, onClose }: CSVImportModalProp
             type="button"
             onClick={handleImport}
             disabled={!hasTitleMapping || importing}
-            className="px-4 py-1.5 text-sm bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-1.5 text-sm bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {importing ? `Importing...` : `Import ${parsed.rows.length} tasks`}
           </button>

@@ -81,7 +81,7 @@ export default function MarkdownEditor({ value, onChange, onSave, onCancel, plac
         <span className="text-[10px] text-slate-400">Markdown supported</span>
         <div className="flex gap-1">
           <button type="button" onClick={onCancel} className="text-xs text-slate-500 hover:text-slate-700 px-2 py-0.5">Cancel</button>
-          <button type="button" onClick={onSave} className="text-xs bg-slate-700 text-white px-3 py-0.5 rounded hover:bg-slate-600">Save</button>
+          <button type="button" onClick={onSave} className="text-xs bg-brand-green text-white px-3 py-0.5 rounded hover:bg-brand-green-hover">Save</button>
         </div>
       </div>
     </div>
