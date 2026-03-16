@@ -1,0 +1,17 @@
+model Org {
+  orgId           String    @id @default(uuid()) @map("org_id")
+  name            String
+  createdAt       DateTime  @default(now()) @map("created_at")
+  anthropicApiKeyEncrypted String?   @map("anthropic_api_key_encrypted")
+  monthlyBudgetCentsUSD    Int?      @map("monthly_budget_cents_usd")
+  budgetAlertThreshold     Int       @default(80) @map("budget_alert_threshold")
+  users           User[]
+  projects        Project[]
+  sprints         Sprint[]
+  invites         OrgInvite[]
+  labels          Label[]
+  aiUsageLogs     AIUsageLog[]
+  reports         Report[]
+
+  @@map("orgs")
+}

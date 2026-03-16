@@ -1,0 +1,19 @@
+model Sprint {
+  sprintId  String    @id @default(uuid()) @map("sprint_id")
+  orgId     String    @map("org_id")
+  projectId String    @map("project_id")
+  name      String
+  goal      String?   @map("goal")
+  isActive  Boolean   @default(false) @map("is_active")
+  columns   String    @default("[\"To Do\",\"In Progress\",\"In Review\",\"Done\"]")
+  startDate String?   @map("start_date")
+  endDate   String?   @map("end_date")
+  createdAt DateTime  @default(now()) @map("created_at")
+  closedAt  DateTime? @map("closed_at")
+  org       Org       @relation(fields: [orgId], references: [orgId])
+  project   Project   @relation(fields: [projectId], references: [projectId])
+  tasks     Task[]
+
+  @@index([projectId])
+  @@map("sprints")
+}

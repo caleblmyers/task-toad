@@ -1,0 +1,19 @@
+model Activity {
+  activityId String   @id @default(uuid()) @map("activity_id")
+  orgId      String   @map("org_id")
+  projectId  String?  @map("project_id")
+  taskId     String?  @map("task_id")
+  sprintId   String?  @map("sprint_id")
+  userId     String   @map("user_id")
+  action     String
+  field      String?
+  oldValue   String?  @map("old_value")
+  newValue   String?  @map("new_value")
+  createdAt  DateTime @default(now()) @map("created_at")
+  user       User     @relation("UserActivities", fields: [userId], references: [userId])
+
+  @@index([projectId])
+  @@index([taskId])
+  @@index([orgId, createdAt])
+  @@map("activities")
+}

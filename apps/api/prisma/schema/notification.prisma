@@ -1,0 +1,17 @@
+model Notification {
+  notificationId   String   @id @default(uuid()) @map("notification_id")
+  orgId            String   @map("org_id")
+  userId           String   @map("user_id")
+  type             String
+  title            String
+  body             String?
+  linkUrl          String?  @map("link_url")
+  relatedTaskId    String?  @map("related_task_id")
+  relatedProjectId String?  @map("related_project_id")
+  isRead           Boolean  @default(false) @map("is_read")
+  createdAt        DateTime @default(now()) @map("created_at")
+  user             User     @relation("UserNotifications", fields: [userId], references: [userId])
+  @@index([userId, isRead, createdAt])
+  @@index([orgId])
+  @@map("notifications")
+}

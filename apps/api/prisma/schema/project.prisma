@@ -1,0 +1,22 @@
+model Project {
+  projectId             String   @id @default(uuid()) @map("project_id")
+  orgId                 String   @map("org_id")
+  name                  String
+  description           String?
+  prompt                String?
+  statuses              String   @default("[\"todo\",\"in_progress\",\"in_review\",\"done\"]")
+  createdAt             DateTime @default(now()) @map("created_at")
+  archived              Boolean  @default(false)
+  githubRepositoryId    String?  @map("github_repository_id")
+  githubRepositoryName  String?  @map("github_repository_name")
+  githubRepositoryOwner String?  @map("github_repository_owner")
+  githubInstallationId  String?  @map("github_installation_id")
+  githubDefaultBranch   String?  @map("github_default_branch")
+  org                   Org      @relation(fields: [orgId], references: [orgId])
+  tasks                 Task[]
+  sprints               Sprint[]
+  reports               Report[]
+
+  @@index([orgId])
+  @@map("projects")
+}

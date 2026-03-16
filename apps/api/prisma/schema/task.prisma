@@ -1,0 +1,66 @@
+model Task {
+  taskId         String   @id @default(uuid()) @map("task_id")
+  orgId          String   @map("org_id")
+  projectId      String   @map("project_id")
+  parentTaskId   String?  @map("parent_task_id")
+  title          String
+  description    String?
+  instructions   String?
+  suggestedTools String?  @map("suggested_tools")
+  estimatedHours Float?   @map("estimated_hours")
+  storyPoints    Int?     @map("story_points")
+  priority       String   @default("medium")
+  dependsOn      String?  @map("depends_on")
+  status         String   @default("todo")
+  taskType       String   @default("task") @map("task_type")
+  sprintId       String?  @map("sprint_id")
+  sprintColumn   String?  @map("sprint_column")
+  assigneeId     String?  @map("assignee_id")
+  position       Float?   @map("position")
+  dueDate        String?  @map("due_date")
+  createdAt      DateTime @default(now()) @map("created_at")
+  archived       Boolean  @default(false)
+  project        Project  @relation(fields: [projectId], references: [projectId])
+  parentTask     Task?    @relation("TaskSubtasks", fields: [parentTaskId], references: [taskId])
+  subtasks       Task[]   @relation("TaskSubtasks")
+  sprint         Sprint?  @relation(fields: [sprintId], references: [sprintId])
+  assignee       User?    @relation("TaskAssignee", fields: [assigneeId], references: [userId])
+  githubIssueNumber Int?    @map("github_issue_number")
+  githubIssueNodeId  String? @map("github_issue_node_id")
+  comments       Comment[]
+  labels         TaskLabel[]
+  pullRequests   GitHubPullRequestLink[]
+  commits        GitHubCommitLink[]
+
+  @@index([projectId])
+  @@index([parentTaskId])
+  @@index([sprintId])
+  @@index([assigneeId])
+  @@index([orgId])
+  @@index([projectId, sprintId, position])
+  @@map("tasks")
+}
+
+model Label {
+  labelId   String      @id @default(uuid()) @map("label_id")
+  orgId     String      @map("org_id")
+  name      String
+  color     String      @default("#6b7280")
+  createdAt DateTime    @default(now()) @map("created_at")
+  org       Org         @relation(fields: [orgId], references: [orgId])
+  tasks     TaskLabel[]
+  @@unique([orgId, name])
+  @@index([orgId])
+  @@map("labels")
+}
+
+model TaskLabel {
+  taskId    String   @map("task_id")
+  labelId   String   @map("label_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  task      Task     @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
+  label     Label    @relation(fields: [labelId], references: [labelId], onDelete: Cascade)
+  @@id([taskId, labelId])
+  @@index([labelId])
+  @@map("task_labels")
+}

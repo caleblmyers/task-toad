@@ -1,0 +1,20 @@
+model AIUsageLog {
+  id             String   @id @default(uuid())
+  orgId          String   @map("org_id")
+  userId         String   @map("user_id")
+  feature        String
+  model          String
+  inputTokens    Int      @map("input_tokens")
+  outputTokens   Int      @map("output_tokens")
+  costUSD        Float    @map("cost_usd")
+  latencyMs      Int      @map("latency_ms")
+  cached         Boolean  @default(false)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  org  Org  @relation(fields: [orgId], references: [orgId])
+  user User @relation(fields: [userId], references: [userId])
+
+  @@index([orgId, createdAt])
+  @@index([userId, createdAt])
+  @@map("ai_usage_logs")
+}

@@ -1,0 +1,36 @@
+model User {
+  userId              String    @id @default(uuid()) @map("user_id")
+  email               String    @unique
+  passwordHash        String    @map("password_hash")
+  orgId               String?   @map("org_id")
+  role                String?
+  emailVerifiedAt     DateTime? @map("email_verified_at")
+  verificationToken   String?   @unique @map("verification_token")
+  resetToken          String?   @unique @map("reset_token")
+  resetTokenExpiry    DateTime? @map("reset_token_expiry")
+  org                 Org?      @relation(fields: [orgId], references: [orgId])
+  assignedTasks       Task[]    @relation("TaskAssignee")
+  comments            Comment[] @relation("UserComments")
+  activities          Activity[] @relation("UserActivities")
+  notifications       Notification[] @relation("UserNotifications")
+  aiUsageLogs         AIUsageLog[]
+  reports             Report[]
+
+  @@map("users")
+}
+
+model OrgInvite {
+  inviteId   String    @id @default(uuid()) @map("invite_id")
+  orgId      String    @map("org_id")
+  email      String
+  token      String    @unique
+  role       String    @default("org:member")
+  expiresAt  DateTime  @map("expires_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  acceptedAt DateTime? @map("accepted_at")
+  org        Org       @relation(fields: [orgId], references: [orgId])
+
+  @@index([token])
+  @@index([orgId])
+  @@map("org_invites")
+}

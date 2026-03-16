@@ -1,0 +1,19 @@
+model Report {
+  id         String   @id @default(uuid())
+  orgId      String   @map("org_id")
+  projectId  String   @map("project_id")
+  sprintId   String?  @map("sprint_id")
+  type       String
+  title      String
+  data       String
+  createdBy  String   @map("created_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  org     Org     @relation(fields: [orgId], references: [orgId])
+  project Project @relation(fields: [projectId], references: [projectId])
+  user    User    @relation(fields: [createdBy], references: [userId])
+
+  @@index([projectId, type, createdAt])
+  @@index([orgId, createdAt])
+  @@map("reports")
+}
