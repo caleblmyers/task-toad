@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
+import compression from 'compression';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
@@ -48,6 +49,9 @@ app.use(
 
 // GitHub webhook endpoint needs raw body for signature verification — must be before JSON parser
 app.post('/api/github/webhooks', express.raw({ type: 'application/json' }), handleGitHubWebhook);
+
+// Compress responses
+app.use(compression());
 
 // Body size limit
 app.use(express.json({ limit: '1mb' }));
