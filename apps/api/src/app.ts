@@ -14,6 +14,7 @@ import { handleGitHubWebhook } from './github/index.js';
 import { handleSlackCommand } from './slack/slackWebhookHandler.js';
 import { exportRouter } from './routes/export.js';
 import { docsRouter } from './routes/docs.js';
+import { uploadRouter } from './routes/upload.js';
 import { logger } from './utils/logger.js';
 import { sseManager } from './utils/sseManager.js';
 import { jwtVerify } from 'jose';
@@ -193,6 +194,9 @@ const exportLimiter = rateLimit({
 
 // Export REST endpoints (file downloads — not suited for GraphQL)
 app.use('/api/export', exportLimiter, exportRouter);
+
+// File uploads (multipart — before JSON body parser would conflict, but self-contained via multer)
+app.use('/api/uploads', uploadRouter);
 
 // API documentation
 app.use('/api/docs', docsRouter);

@@ -31,7 +31,19 @@ export const taskTypeDefs = /* GraphQL */ `
     customFieldValues: [CustomFieldValue!]!
     recurrenceRule: String
     recurrenceParentId: ID
+    attachments: [Attachment!]!
     assignees: [TaskAssignee!]!
+  }
+
+  type Attachment {
+    attachmentId: ID!
+    taskId: ID!
+    fileName: String!
+    fileKey: String!
+    mimeType: String!
+    sizeBytes: Int!
+    uploadedById: ID!
+    createdAt: String!
   }
 
   type TaskAssignee {
@@ -157,4 +169,6 @@ export const taskMutationFields = /* GraphQL */ `
 
   addTaskAssignee(taskId: ID!, userId: ID!): TaskAssignee!
   removeTaskAssignee(taskId: ID!, userId: ID!): Boolean!
+
+  deleteAttachment(attachmentId: ID!): Boolean!
 `;

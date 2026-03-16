@@ -24,6 +24,7 @@ model User {
   savedFilters      SavedFilter[]
   slackUserMappings SlackUserMapping[]
   taskAssignments   TaskAssignee[] @relation("TaskAssignees")
+  attachments       Attachment[]   @relation("UserAttachments")
 
   @@map("users")
 }

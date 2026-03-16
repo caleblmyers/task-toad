@@ -13,6 +13,8 @@ import { createChildLogger } from '../../utils/logger.js';
 import { reviewCode } from '../../ai/aiService.js';
 import { decryptApiKey } from '../../utils/encryption.js';
 import { getPullRequestDiff } from '../../github/index.js';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const log = createChildLogger('task');
 
@@ -632,12 +634,41 @@ export const taskMutations = {
     });
     return true;
   },
+
+  deleteAttachment: async (
+    _parent: unknown,
+    args: { attachmentId: string },
+    context: Context
+  ) => {
+    const user = requireOrg(context);
+    const attachment = await context.prisma.attachment.findUnique({
+      where: { attachmentId: args.attachmentId },
+      include: { task: { select: { orgId: true } } },
+    });
+    if (!attachment || attachment.task.orgId !== user.orgId) {
+      throw new NotFoundError('Attachment not found');
+    }
+    // Delete file from disk
+    const uploadDir = path.resolve(process.cwd(), 'uploads');
+    const filePath = path.join(uploadDir, attachment.fileKey);
+    try { fs.unlinkSync(filePath); } catch { /* file may already be gone */ }
+    // Delete DB record
+    await context.prisma.attachment.delete({ where: { attachmentId: args.attachmentId } });
+    return true;
+  },
 };
 
 // ── Task field resolvers ──
 
 export const taskFieldResolvers = {
   Task: {
+    attachments: async (parent: { taskId: string }, _args: unknown, context: Context) => {
+      const attachments = await context.prisma.attachment.findMany({
+        where: { taskId: parent.taskId },
+        orderBy: { createdAt: 'desc' },
+      });
+      return attachments.map(a => ({ ...a, createdAt: a.createdAt.toISOString() }));
+    },
     labels: async (parent: { taskId: string }, _args: unknown, context: Context) => {
       return context.loaders.taskLabels.load(parent.taskId);
     },

@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import type { Task, Sprint, OrgUser, Comment, Activity, Label, CodeReview } from '../types';
+import { useState, useCallback } from 'react';
+import type { Task, Sprint, OrgUser, Comment, Activity, Label, CodeReview, Attachment } from '../types';
+import { gql, TOKEN_KEY } from '../api/client';
 import CommentSection from './CommentSection';
 import ActivityFeed from './ActivityFeed';
 import MarkdownRenderer from './shared/MarkdownRenderer';
@@ -95,6 +96,41 @@ function PanelContent({
   const [editInstrValue, setEditInstrValue] = useState('');
   const [editingAC, setEditingAC] = useState(false);
   const [editACValue, setEditACValue] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [localAttachments, setLocalAttachments] = useState<Attachment[]>(task.attachments ?? []);
+
+  const handleUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const token = localStorage.getItem(TOKEN_KEY);
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`/api/uploads/${task.taskId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (res.ok) {
+        const attachment = await res.json() as Attachment;
+        setLocalAttachments(prev => [attachment, ...prev]);
+      }
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  }, [task.taskId]);
+
+  const handleDeleteAttachment = useCallback(async (attachmentId: string) => {
+    try {
+      await gql<{ deleteAttachment: boolean }>(
+        `mutation($attachmentId: ID!) { deleteAttachment(attachmentId: $attachmentId) }`,
+        { attachmentId },
+      );
+      setLocalAttachments(prev => prev.filter(a => a.attachmentId !== attachmentId));
+    } catch { /* ignore */ }
+  }, []);
 
   return (
     <div className="p-6 max-w-2xl">
@@ -203,6 +239,42 @@ function PanelContent({
             + Add description
           </button>
         )}
+      </div>
+
+      {/* Attachments */}
+      <div className="mb-4">
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Attachments</p>
+        {localAttachments.length > 0 && (
+          <ul className="space-y-1 mb-2">
+            {localAttachments.map(a => (
+              <li key={a.attachmentId} className="flex items-center justify-between text-sm bg-slate-50 dark:bg-slate-800 rounded px-2 py-1">
+                <a
+                  href={`/api/uploads/${a.attachmentId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 dark:text-blue-400 hover:underline truncate mr-2"
+                >
+                  {a.fileName}
+                </a>
+                <span className="flex items-center gap-2 text-xs text-slate-400 flex-shrink-0">
+                  {a.sizeBytes < 1024 ? `${a.sizeBytes} B` : a.sizeBytes < 1048576 ? `${(a.sizeBytes / 1024).toFixed(1)} KB` : `${(a.sizeBytes / 1048576).toFixed(1)} MB`}
+                  <button
+                    onClick={() => handleDeleteAttachment(a.attachmentId)}
+                    className="text-red-400 hover:text-red-600"
+                    disabled={disabled}
+                    title="Delete attachment"
+                  >
+                    ✕
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <label className={`inline-flex items-center gap-1 text-xs px-2 py-1 border border-slate-300 dark:border-slate-600 rounded cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 ${disabled || uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+          {uploading ? 'Uploading…' : '+ Attach file'}
+          <input type="file" className="hidden" onChange={handleUpload} disabled={disabled || uploading} />
+        </label>
       </div>
 
       {/* Acceptance Criteria */}

@@ -29,7 +29,7 @@ export function statusLabel(status: string): string {
 }
 
 export const TASK_FIELDS = `
-  taskId title description instructions acceptanceCriteria suggestedTools estimatedHours storyPoints priority dependsOn status taskType projectId parentTaskId createdAt sprintId sprintColumn assigneeId archived position dueDate recurrenceRule recurrenceParentId labels { labelId name color } customFieldValues { customFieldValueId field { customFieldId name fieldType options required position } value } assignees { id user { userId email } assignedAt } githubIssueNumber githubIssueUrl pullRequests { id prNumber prUrl prTitle state } commits { id sha message author url createdAt }
+  taskId title description instructions acceptanceCriteria suggestedTools estimatedHours storyPoints priority dependsOn status taskType projectId parentTaskId createdAt sprintId sprintColumn assigneeId archived position dueDate recurrenceRule recurrenceParentId labels { labelId name color } customFieldValues { customFieldValueId field { customFieldId name fieldType options required position } value } attachments { attachmentId taskId fileName fileKey mimeType sizeBytes uploadedById createdAt } assignees { id user { userId email } assignedAt } githubIssueNumber githubIssueUrl pullRequests { id prNumber prUrl prTitle state } commits { id sha message author url createdAt }
 `;
 
 export const STATUS_TO_COLUMN: Record<string, string> = {

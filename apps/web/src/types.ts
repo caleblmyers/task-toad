@@ -122,7 +122,19 @@ export interface Task {
   progress?:          { total: number; completed: number; percentage: number };
   recurrenceRule?:    string | null;
   recurrenceParentId?: string | null;
+  attachments?:       Attachment[];
   assignees?:         TaskAssignee[];
+}
+
+export interface Attachment {
+  attachmentId: string;
+  taskId: string;
+  fileName: string;
+  fileKey: string;
+  mimeType: string;
+  sizeBytes: number;
+  uploadedById: string;
+  createdAt: string;
 }
 
 export interface TaskAssignee {

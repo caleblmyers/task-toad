@@ -33,6 +33,7 @@ model Task {
   githubIssueNodeId  String? @map("github_issue_node_id")
   recurrenceParent  Task?    @relation("RecurrenceChain", fields: [recurrenceParentId], references: [taskId])
   recurrenceChildren Task[]   @relation("RecurrenceChain")
+  attachments       Attachment[]
   comments          Comment[]
   labels            TaskLabel[]
   pullRequests      GitHubPullRequestLink[]
@@ -121,4 +122,19 @@ model TaskAssignee {
   @@index([taskId])
   @@index([userId])
   @@map("task_assignees")
+}
+
+model Attachment {
+  attachmentId String   @id @default(uuid()) @map("attachment_id")
+  taskId       String   @map("task_id")
+  task         Task     @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
+  fileName     String   @map("file_name")
+  fileKey      String   @map("file_key")
+  mimeType     String   @map("mime_type")
+  sizeBytes    Int      @map("size_bytes")
+  uploadedById String   @map("uploaded_by_id")
+  uploadedBy   User     @relation("UserAttachments", fields: [uploadedById], references: [userId])
+  createdAt    DateTime @default(now()) @map("created_at")
+  @@index([taskId])
+  @@map("attachments")
 }
