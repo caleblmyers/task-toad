@@ -1,4 +1,4 @@
-import { useState, useMemo, memo } from 'react';
+import { useState, useMemo, memo, useRef, useEffect, useCallback } from 'react';
 import type { Task, Sprint, OrgUser } from '../types';
 import BurndownChart from './BurndownChart';
 import DependencyBadge from './shared/DependencyBadge';
@@ -53,6 +53,83 @@ export const TaskRow = memo(function TaskRow({
   const assignee = useMemo(() => orgUsers.find((u) => u.userId === task.assigneeId), [orgUsers, task.assigneeId]);
   const [showSprintPicker, setShowSprintPicker] = useState(false);
   const [sprintMoveAnnouncement, setSprintMoveAnnouncement] = useState('');
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // Build the list of options: [Backlog, ...sprints]
+  const sprintOptions = useMemo(() => {
+    if (!sprints) return [];
+    return [
+      { id: null, label: 'Backlog', isActive: false, isCurrent: !task.sprintId },
+      ...sprints.map((s) => ({ id: s.sprintId, label: s.name + (s.isActive ? ' ★' : ''), isActive: s.isActive, isCurrent: task.sprintId === s.sprintId })),
+    ];
+  }, [sprints, task.sprintId]);
+
+  const closePicker = useCallback(() => {
+    setShowSprintPicker(false);
+    setActiveIndex(0);
+    triggerRef.current?.focus();
+  }, []);
+
+  // Click-outside handler
+  useEffect(() => {
+    if (!showSprintPicker) return;
+    const handleMouseDown = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node) && !triggerRef.current?.contains(e.target as Node)) {
+        closePicker();
+      }
+    };
+    document.addEventListener('mousedown', handleMouseDown);
+    return () => document.removeEventListener('mousedown', handleMouseDown);
+  }, [showSprintPicker, closePicker]);
+
+  // Focus dropdown container when it opens
+  useEffect(() => {
+    if (showSprintPicker && dropdownRef.current) {
+      dropdownRef.current.focus();
+    }
+  }, [showSprintPicker]);
+
+  const selectOption = useCallback((optionId: string | null) => {
+    if (onAssignSprint) {
+      onAssignSprint(task.taskId, optionId);
+      const label = optionId ? sprintOptions.find((o) => o.id === optionId)?.label ?? 'sprint' : 'Backlog';
+      setSprintMoveAnnouncement(`Moved "${task.title}" to ${label}`);
+    }
+    closePicker();
+  }, [onAssignSprint, task.taskId, task.title, sprintOptions, closePicker]);
+
+  const handleDropdownKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      closePicker();
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      e.stopPropagation();
+      setActiveIndex((prev) => Math.min(prev + 1, sprintOptions.length - 1));
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      e.stopPropagation();
+      setActiveIndex((prev) => Math.max(prev - 1, 0));
+      return;
+    }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      e.stopPropagation();
+      const option = sprintOptions[activeIndex];
+      if (option) selectOption(option.id);
+      return;
+    }
+  }, [closePicker, sprintOptions, activeIndex, selectOption]);
+
+  const activeOptionId = `sprint-option-${task.taskId}-${activeIndex}`;
 
   return (
     <div
@@ -66,7 +143,13 @@ export const TaskRow = memo(function TaskRow({
         if (e.key === 'm' && onAssignSprint && sprints) {
           e.preventDefault();
           e.stopPropagation();
-          setShowSprintPicker((v) => !v);
+          setShowSprintPicker((v) => {
+            if (!v) {
+              const currentIdx = sprintOptions.findIndex((o) => o.isCurrent);
+              setActiveIndex(currentIdx >= 0 ? currentIdx : 0);
+            }
+            return !v;
+          });
         }
       }}
       onDragStart={(e) => {
@@ -127,10 +210,22 @@ export const TaskRow = memo(function TaskRow({
         )}
         {onAssignSprint && sprints && (
           <button
+            ref={triggerRef}
             type="button"
-            onClick={(e) => { e.stopPropagation(); setShowSprintPicker((v) => !v); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowSprintPicker((v) => {
+                if (!v) {
+                  const currentIdx = sprintOptions.findIndex((o) => o.isCurrent);
+                  setActiveIndex(currentIdx >= 0 ? currentIdx : 0);
+                }
+                return !v;
+              });
+            }}
             className="text-xs text-slate-400 hover:text-slate-600 px-1.5 py-0.5 border border-slate-200 rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
             aria-label={`Move task "${task.title}" to another sprint`}
+            aria-expanded={showSprintPicker}
+            aria-haspopup="listbox"
             title="Move to sprint (M)"
           >
             ⇅
@@ -139,36 +234,27 @@ export const TaskRow = memo(function TaskRow({
       </div>
       {showSprintPicker && onAssignSprint && sprints && (
         <div
-          className="absolute right-0 top-full mt-1 z-10 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[160px]"
+          ref={dropdownRef}
+          tabIndex={-1}
+          className="absolute right-0 top-full mt-1 z-10 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[160px] outline-none"
           role="listbox"
           aria-label="Select sprint"
+          aria-activedescendant={activeOptionId}
           onClick={(e) => e.stopPropagation()}
+          onKeyDown={handleDropdownKeyDown}
         >
-          <button
-            role="option"
-            aria-selected={!task.sprintId}
-            className={`w-full text-left px-3 py-1.5 text-xs hover:bg-slate-50 ${!task.sprintId ? 'font-medium text-slate-800' : 'text-slate-600'}`}
-            onClick={() => {
-              onAssignSprint(task.taskId, null);
-              setShowSprintPicker(false);
-              setSprintMoveAnnouncement(`Moved "${task.title}" to Backlog`);
-            }}
-          >
-            Backlog
-          </button>
-          {sprints.map((s) => (
+          {sprintOptions.map((option, i) => (
             <button
-              key={s.sprintId}
+              key={option.id ?? 'backlog'}
+              id={`sprint-option-${task.taskId}-${i}`}
               role="option"
-              aria-selected={task.sprintId === s.sprintId}
-              className={`w-full text-left px-3 py-1.5 text-xs hover:bg-slate-50 ${task.sprintId === s.sprintId ? 'font-medium text-slate-800' : 'text-slate-600'}`}
-              onClick={() => {
-                onAssignSprint(task.taskId, s.sprintId);
-                setShowSprintPicker(false);
-                setSprintMoveAnnouncement(`Moved "${task.title}" to ${s.name}`);
-              }}
+              aria-selected={option.isCurrent}
+              className={`w-full text-left px-3 py-1.5 text-xs hover:bg-slate-50 ${
+                option.isCurrent ? 'font-medium text-slate-800' : 'text-slate-600'
+              } ${i === activeIndex ? 'bg-blue-50 outline-none' : ''}`}
+              onClick={() => selectOption(option.id)}
             >
-              {s.name}{s.isActive ? ' ★' : ''}
+              {option.label}
             </button>
           ))}
         </div>
