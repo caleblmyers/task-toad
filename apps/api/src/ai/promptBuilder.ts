@@ -79,13 +79,7 @@ export function buildTaskPlanPrompt(
 ): Prompt {
   const contextLine = context ? `\nAdditional context: ${userInput('context', context)}` : '';
   const kbLine = knowledgeBase ? `\nProject Knowledge Base (use for context):\n${userInput('knowledge_base', truncate(knowledgeBase, 800))}` : '';
-  return {
-    systemPrompt: SYSTEM_JSON,
-    userPrompt: `Break this project into implementation tasks.
-
-Project: ${userInput('title', projectTitle)}
-Description: ${userInput('description', truncate(projectDescription, MAX_PROJECT_DESCRIPTION_CHARS))}
-Original request: ${userInput('prompt', truncate(projectPrompt, MAX_PROJECT_DESCRIPTION_CHARS))}${contextLine}${kbLine}
+  const taskPlanSchema = `
 
 Return a JSON array of 4–8 tasks. Each item:
 {
@@ -105,7 +99,15 @@ List 1–3 tools per task. Be specific (e.g. "Claude Sonnet", "Figma", "Vercel",
 "estimatedHours" is a realistic work estimate (e.g. 1, 2, 4, 8, 16). "priority" reflects business impact.
 "dependsOn" lists titles of OTHER tasks in this same list that must be completed first (empty array if none).
 "subtasks" is 2–6 concrete implementation steps that break down this task.
-"acceptanceCriteria" is a bullet list of testable conditions that define when the task is complete.`,
+"acceptanceCriteria" is a bullet list of testable conditions that define when the task is complete.`;
+
+  return {
+    systemPrompt: SYSTEM_JSON + taskPlanSchema,
+    userPrompt: `Break this project into implementation tasks.
+
+Project: ${userInput('title', projectTitle)}
+Description: ${userInput('description', truncate(projectDescription, MAX_PROJECT_DESCRIPTION_CHARS))}
+Original request: ${userInput('prompt', truncate(projectPrompt, MAX_PROJECT_DESCRIPTION_CHARS))}${contextLine}${kbLine}`,
   };
 }
 
@@ -379,7 +381,7 @@ export function buildGenerateCodePrompt(data: {
   styleGuide?: string | null;
   knowledgeBase?: string | null;
 }): Prompt {
-  const cappedFiles = (data.existingFiles ?? []).slice(0, 30);
+  const cappedFiles = (data.existingFiles ?? []).slice(0, 15);
   const filesLine =
     cappedFiles.length > 0
       ? `\nExisting project files (for context — do NOT regenerate these):\n${cappedFiles.map((f) => `- ${f.path} (${f.language}, ${f.size} bytes)`).join('\n')}`

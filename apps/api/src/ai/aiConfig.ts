@@ -19,11 +19,11 @@ interface FeatureConfig {
 
 export const FEATURE_CONFIG: Record<AIFeature, FeatureConfig> = {
   generateProjectOptions:   { maxTokens: 512,  cacheTTLMs: 0,       retryOnValidationFailure: true },
-  generateTaskPlan:         { maxTokens: 6144, cacheTTLMs: 0,       retryOnValidationFailure: true },
-  expandTask:               { maxTokens: 2048, cacheTTLMs: 0,       retryOnValidationFailure: true },
+  generateTaskPlan:         { maxTokens: 6144, cacheTTLMs: 86_400_000, retryOnValidationFailure: true },
+  expandTask:               { maxTokens: 2048, cacheTTLMs: 43_200_000, retryOnValidationFailure: true },
   summarizeProject:         { maxTokens: 512,  cacheTTLMs: 300_000, retryOnValidationFailure: false },
   planSprints:              { maxTokens: 2048, cacheTTLMs: 0,       retryOnValidationFailure: true },
-  generateTaskInstructions: { maxTokens: 2048, cacheTTLMs: 0,       retryOnValidationFailure: true },
+  generateTaskInstructions: { maxTokens: 2048, cacheTTLMs: 3_600_000, retryOnValidationFailure: true },
   generateStandupReport:    { maxTokens: 1024, cacheTTLMs: 300_000, retryOnValidationFailure: true },
   generateSprintReport:     { maxTokens: 2048, cacheTTLMs: 0,       retryOnValidationFailure: true },
   analyzeProjectHealth:     { maxTokens: 2048, cacheTTLMs: 300_000, retryOnValidationFailure: true },

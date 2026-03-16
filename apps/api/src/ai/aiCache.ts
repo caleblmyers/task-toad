@@ -59,5 +59,5 @@ export function hashPrompt(systemPrompt: string, userPrompt: string): string {
     .slice(0, 16); // 16 hex chars = 64 bits, sufficient for cache keys
 }
 
-/** Singleton cache for raw AI response strings. 50 entries, 5-minute default TTL. */
-export const aiCache = new LRUCache<string>(50, 300_000);
+/** Singleton cache for raw AI response strings. 500 entries, 5-minute default TTL. */
+export const aiCache = new LRUCache<string>(500, 300_000);
