@@ -64,6 +64,15 @@ import {
 // Retry-on-validation-failure helper
 // ---------------------------------------------------------------------------
 
+/** Detect whether a Zod schema expects an array at the top level. */
+function isArraySchema(schema: z.ZodType<unknown>): boolean {
+  const def = schema._def as { type?: string; in?: z.ZodType<unknown> };
+  if (def.type === 'array') return true;
+  // Unwrap ZodPipe (e.g. .transform(), .refine() in Zod v4)
+  if (def.type === 'pipe' && def.in) return isArraySchema(def.in);
+  return false;
+}
+
 async function callAndParse<T>(
   apiKey: string,
   feature: AIFeature,
@@ -71,6 +80,7 @@ async function callAndParse<T>(
   schema: z.ZodType<T>
 ): Promise<T> {
   const config = FEATURE_CONFIG[feature];
+  const prefill = isArraySchema(schema as z.ZodType<unknown>) ? '[' : '{';
   try {
     const result = await callAI({
       apiKey,
@@ -79,6 +89,7 @@ async function callAndParse<T>(
       maxTokens: config.maxTokens,
       feature,
       cacheTTLMs: config.cacheTTLMs,
+      prefill,
     });
 
     try {
@@ -93,6 +104,7 @@ async function callAndParse<T>(
           maxTokens: config.maxTokens,
           feature,
           cacheTTLMs: 0, // skip cache on retry
+          prefill,
         });
         return parseJSON(retry.raw, schema);
       }

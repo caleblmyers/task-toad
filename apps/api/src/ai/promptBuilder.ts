@@ -85,7 +85,7 @@ export function buildTaskPlanPrompt(
     : '';
   const taskPlanSchema = `
 
-Return a JSON array of tasks — as many as the project scope requires. For simple projects, 3–5 tasks may suffice; for complex ones, up to 15. Prefer fewer, well-scoped tasks over many trivial ones. Each item:
+Return a JSON array of 5–10 tasks (NEVER more than 10). For simple projects, 5 tasks; for complex ones, up to 10. Prefer fewer, well-scoped tasks over many trivial ones. Each item:
 {
   "title": string,
   "description": string,

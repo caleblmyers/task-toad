@@ -76,6 +76,8 @@ export interface CallAIParams {
   feature: AIFeature;
   cacheTTLMs?: number;
   promptLogContext?: PromptLogContext;
+  /** Prefill the assistant response to force structured output (e.g. '[' for arrays, '{' for objects). */
+  prefill?: string;
 }
 
 export interface CallAIResult {
@@ -85,7 +87,7 @@ export interface CallAIResult {
 }
 
 export async function callAI(params: CallAIParams): Promise<CallAIResult> {
-  const { apiKey, systemPrompt, userPrompt, maxTokens, feature, cacheTTLMs = 0, promptLogContext } = params;
+  const { apiKey, systemPrompt, userPrompt, maxTokens, feature, cacheTTLMs = 0, promptLogContext, prefill } = params;
 
   // Check cache first
   if (cacheTTLMs > 0) {
@@ -112,7 +114,10 @@ export async function callAI(params: CallAIParams): Promise<CallAIResult> {
       model: AI_MODEL,
       max_tokens: maxTokens,
       system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
+      messages: [
+        { role: 'user', content: userPrompt },
+        ...(prefill ? [{ role: 'assistant' as const, content: prefill }] : []),
+      ],
     });
 
     const latencyMs = Date.now() - start;
@@ -126,7 +131,8 @@ export async function callAI(params: CallAIParams): Promise<CallAIResult> {
 
     const block = response.content[0];
     if (block.type !== 'text') throw new Error('Unexpected response type');
-    const raw = block.text;
+    // Prepend the prefill so the full JSON is intact
+    const raw = prefill ? prefill + block.text : block.text;
 
     // Store in cache if configured
     if (cacheTTLMs > 0) {
