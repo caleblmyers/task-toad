@@ -6,6 +6,31 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-16
 
+### Wave 7: W1 + W5 + W6 (3 workers, 5 tasks)
+
+**W1 — API Refactor & Security Hardening + Frontend Cleanup:**
+- Extracted `requireTask`/`requireProject`/`validateStatus` resolver utilities (eliminated 20+ duplicated blocks)
+- Added GraphQL error codes in extensions, Zod input validation at resolver boundaries
+- Sanitized AI prompt injection, added CSP headers, rate-limited password reset/verification
+- Decomposed BacklogView, lazy-loaded react-markdown, refactored setState injection
+
+**W5 — Slack Integration:**
+- Full vertical slice: SlackIntegration model, Slack client with Block Kit formatting
+- Notification dispatch alongside webhooks, slash command endpoint for task creation
+- GraphQL CRUD + SlackSettings UI in OrgSettings
+
+**W6 — Views & AI History:**
+- Timeline/Gantt SVG chart with dependency arrows and day/week/month zoom
+- Portfolio overview page with cross-project health scores and metrics
+- AIPromptLog model with automatic persistence in AI client
+- Historical trend analysis (analyzeTrends query + TrendAnalysisPanel)
+
+**Process notes:**
+- Worker-3 had merge conflict after first task merged (multi-task same branch). Future: workers should rebase between tasks.
+- Missing Prisma migration caught by reviewer. Future: always include "run prisma migrate" in task descriptions for schema changes.
+
+---
+
 ### Wave 6: W1 + W3 + W4 + W5 + W6 (3 workers, 10 tasks)
 
 **W1 — Frontend Architecture Refactor (partial):**

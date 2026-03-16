@@ -31,28 +31,12 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 
 ## Work Sets
 
-### W1: Full-Stack Quality Refactor (partially completed)
-**Touches:** `useProjectData.ts`, `TaskDetailPanel.tsx`, `BacklogView.tsx`, `KanbanBoard.tsx`, `ProjectDetail.tsx`, `resolvers/*`, `typedefs/*`, `context.ts`, `utils/`, `promptBuilder.ts`, `app.ts`
-
-**Frontend architecture (remaining):**
-- [ ] Decompose `BacklogView.tsx` (~533 lines) — extract `SprintSection` component with its own DnD logic
-- [ ] Replace direct `setState` exports with action functions that enforce invariants
-- [ ] Lazy-load `react-markdown` + `remark-gfm` (~60KB gzipped) — only import on pages that render markdown
+### W1: Full-Stack Quality Refactor (remaining)
+**Touches:** `resolvers/*`, `typedefs/*`, `ProjectDetail.tsx`
 
 **API design & error handling:**
-- [ ] Extract `requireTask(context, taskId)` and `requireProject(context, projectId)` utilities — same fetch + org validation pattern repeated 15+ times across resolvers
-- [ ] Extract `validateStatus(statuses, proposed)` utility — duplicated in `task.ts` and `project.ts`
-- [ ] Add GraphQL error codes — `ERR_NOT_FOUND`, `ERR_VALIDATION`, `ERR_UNAUTHORIZED` etc. for client-side handling
 - [ ] Fix inconsistent mutation return types — `deleteComment` and `markAllNotificationsRead` return `Boolean`; all mutations should return affected objects
 - [ ] Add cursor-based pagination — `reports` and `activities` queries use `take` without offset/cursor
-- [ ] Add input validation with Zod at resolver boundaries — string length limits (title: 500, description: 10000), URL format, JSON schema validation
-- [ ] Wrap `Promise.all` task creation with error handling — `commitTaskPlan` silently fails if one create errors
-
-**Security:**
-- [ ] Sanitize `appendToTitles` in `previewTaskPlan` — currently injected directly into prompt without escaping (`resolvers/ai.ts`)
-- [ ] Add string length limits at resolver boundaries — task titles, descriptions, knowledge base, comments
-- [ ] Rate-limit password reset and email verification endpoints
-- [ ] Add Content-Security-Policy headers via helmet config
 
 ### W2: Advanced Tasks & Filters
 **Touches:** `prisma/schema/task.prisma`, `typedefs/task.ts`, `resolvers/task.ts`, `TaskDetailPanel.tsx`, `useProjectData.ts`, `useTaskFiltering.ts`, `FilterBar.tsx`
@@ -73,23 +57,47 @@ _Moved to Completed section_
 ### W4: AI Power Features — COMPLETED (Wave 6, 2026-03-16)
 _Moved to Completed section_
 
-### W5: External Integrations & Real-time (partially completed)
-**Touches:** `prisma/schema/org.prisma`, `typedefs/org.ts`, new backend services, `OrgSettings.tsx`, `app.ts`, new client-side hooks
+### W5: External Integrations & Real-time — COMPLETED (Wave 7, 2026-03-16)
+_Moved to Completed section_
 
-- [ ] Slack integration — channel notifications for task events, create tasks from Slack. Full slice: Prisma model (SlackIntegration with webhookUrl, channelId), Slack webhook client service, notification utility integration (send to Slack when creating notifications), slash command endpoint for task creation, OrgSettings UI for connecting Slack workspace
+### W6: Advanced Views & AI Extras (remaining)
+**Touches:** new `apps/web/src/components/` files, `resolvers/ai.ts`
 
-### W6: Advanced Views & AI Extras (partially completed)
-**Touches:** new `apps/web/src/components/` files, `ProjectDetail.tsx`, `useProjectData.ts`, `ai/*`, `resolvers/ai.ts`
-
-- [ ] Timeline / Gantt view — horizontal bars showing task duration + dependencies. Full slice: GanttChart component with SVG rendering, task bars positioned by start/due date, dependency arrows, zoom/scroll, integrated as new view tab in ProjectDetail
-- [ ] Portfolio / multi-project overview — cross-project summary with health, progress, overdue counts. Full slice: `portfolioOverview` query aggregating stats across projects, Portfolio page component with project cards showing health scores and progress bars, route in App.tsx
 - [ ] Public REST/GraphQL API docs — documented API for third-party use. Full slice: auto-generate from GraphQL schema using graphql-markdown or similar, serve at `/api/docs`, add auth token instructions
-- [ ] Historical summary analysis — trend analysis over persisted reports. Full slice: query past reports, prompt builder for trend analysis, `analyzeTrends` query, trend chart component
-- [ ] Prompt replay / history — save AI prompts + responses per task for debugging and cost tracking. Full slice: Prisma model (AIPromptLog with input/output/tokens/cost), persist in AI service layer, UI panel in task detail showing prompt history
 
 ---
 
 ## Completed
+
+### W1 (partial): API Refactor & Security Hardening (Wave 7, 2026-03-16)
+- [x] Extract `requireTask`/`requireProject` resolver utilities — eliminated 20+ duplicated validation blocks
+- [x] Extract `validateStatus` utility — deduplicated from task.ts
+- [x] Add GraphQL error codes (`ERR_NOT_FOUND`, `ERR_VALIDATION`, etc.) in error extensions
+- [x] Add Zod input validation at resolver boundaries (title, description, comment length limits)
+- [x] Wrap `commitTaskPlan` Promise.all with error handling
+- [x] Sanitize `appendToTitles` in AI prompts
+- [x] Add string length limits at resolver boundaries
+- [x] Rate-limit password reset and email verification endpoints
+- [x] Add Content-Security-Policy headers via helmet config
+
+### W1 (partial): Frontend Cleanup (Wave 7, 2026-03-16)
+- [x] Decompose BacklogView — extracted BacklogSection component
+- [x] Lazy-load react-markdown + remark-gfm with Suspense
+- [x] Replace direct setState injection in useSprintManagement with action callbacks
+
+### W5: Slack Integration (Wave 7, 2026-03-16)
+- [x] SlackIntegration Prisma model with migration
+- [x] Slack client service with Block Kit message formatting
+- [x] Slack notification dispatch (fire-and-forget alongside webhooks)
+- [x] Slash command endpoint (`POST /api/slack/commands`) for task creation
+- [x] GraphQL CRUD (connectSlack, updateSlackIntegration, disconnectSlack, testSlackIntegration)
+- [x] SlackSettings UI in OrgSettings
+
+### W6 (partial): Views & AI History (Wave 7, 2026-03-16)
+- [x] Timeline / Gantt view — SVG chart with dependency arrows, day/week/month zoom
+- [x] Portfolio overview page — cross-project metrics with health scores
+- [x] AI prompt history — AIPromptLog model, automatic persistence, task detail UI
+- [x] Historical trend analysis — analyzeTrends query with TrendAnalysisPanel
 
 ### W1 (partial): Frontend Architecture Refactor (Wave 6, 2026-03-16)
 - [x] Split `useProjectData.ts` into focused hooks: `useTasks()`, `useSprintManagement()`, `useAIGeneration()`, `useProjectUI()`
@@ -154,12 +162,6 @@ _Moved to Completed section_
 
 ## Parallelism Matrix (which sets can run together)
 
-**Remaining sets:** W1 (partial), W2, W5 (partial — Slack only), W6 (partial)
+**Remaining sets:** W1 (2 items), W2, W6 (1 item — API docs only)
 
-Sets that **conflict** (share domain files):
-- W1 + W2 (both touch `resolvers/*`, `useProjectData.ts`, `TaskDetailPanel.tsx`)
-- W1 + W6 (both touch `useProjectData.ts`, `ProjectDetail.tsx`)
-
-Sets that **can run in parallel** (no file overlap):
-- W1 (API refactor) + W5 (Slack) + W6 (views)
-- W2 (task domain) + W5 (Slack) + W6 (views)
+All remaining sets can run in parallel — no file overlap between them.
