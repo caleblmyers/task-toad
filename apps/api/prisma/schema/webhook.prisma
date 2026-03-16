@@ -10,8 +10,29 @@ model WebhookEndpoint {
   lastError   String?   @map("last_error")
   lastFiredAt DateTime? @map("last_fired_at")
 
-  org Org @relation(fields: [orgId], references: [orgId], onDelete: Cascade)
+  org        Org                @relation(fields: [orgId], references: [orgId], onDelete: Cascade)
+  deliveries WebhookDelivery[]
 
   @@index([orgId, enabled])
   @@map("webhook_endpoints")
+}
+
+model WebhookDelivery {
+  id           String    @id @default(uuid())
+  endpointId   String    @map("endpoint_id")
+  event        String
+  payload      String    // JSON string
+  status       String    @default("pending") // pending, success, failed, retrying
+  statusCode   Int?      @map("status_code")
+  responseBody String?   @map("response_body") // first 500 chars
+  attemptCount Int       @default(0) @map("attempt_count")
+  nextRetryAt  DateTime? @map("next_retry_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  completedAt  DateTime? @map("completed_at")
+
+  endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@index([endpointId, status])
+  @@index([status, nextRetryAt])
+  @@map("webhook_deliveries")
 }

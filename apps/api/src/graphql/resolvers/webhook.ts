@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import type { Context } from '../context.js';
 import { requireOrg } from './auth.js';
 import { ValidationError, NotFoundError, AuthorizationError } from '../errors.js';
-import { isValidWebhookEvent } from '../../utils/webhookDispatcher.js';
+import { isValidWebhookEvent, replayDelivery } from '../../utils/webhookDispatcher.js';
 
 function requireAdmin(context: Context) {
   const user = requireOrg(context);
@@ -23,6 +23,34 @@ export const webhookQueries = {
       ...ep,
       createdAt: ep.createdAt.toISOString(),
       lastFiredAt: ep.lastFiredAt?.toISOString() ?? null,
+    }));
+  },
+
+  webhookDeliveries: async (
+    _parent: unknown,
+    args: { endpointId: string; limit?: number | null },
+    context: Context
+  ) => {
+    const user = requireAdmin(context);
+    const endpoint = await context.prisma.webhookEndpoint.findUnique({
+      where: { id: args.endpointId },
+    });
+    if (!endpoint || endpoint.orgId !== user.orgId) {
+      throw new NotFoundError('Webhook endpoint not found');
+    }
+
+    const limit = args.limit ?? 50;
+    const deliveries = await context.prisma.webhookDelivery.findMany({
+      where: { endpointId: args.endpointId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+
+    return deliveries.map((d) => ({
+      ...d,
+      createdAt: d.createdAt.toISOString(),
+      completedAt: d.completedAt?.toISOString() ?? null,
+      nextRetryAt: d.nextRetryAt?.toISOString() ?? null,
     }));
   },
 };
@@ -197,5 +225,37 @@ export const webhookMutations = {
       });
       return false;
     }
+  },
+
+  replayWebhookDelivery: async (
+    _parent: unknown,
+    args: { deliveryId: string },
+    context: Context
+  ) => {
+    const user = requireAdmin(context);
+
+    const delivery = await context.prisma.webhookDelivery.findUnique({
+      where: { id: args.deliveryId },
+      include: { endpoint: true },
+    });
+    if (!delivery || delivery.endpoint.orgId !== user.orgId) {
+      throw new NotFoundError('Webhook delivery not found');
+    }
+
+    await replayDelivery(context.prisma, args.deliveryId);
+
+    const updated = await context.prisma.webhookDelivery.findUnique({
+      where: { id: args.deliveryId },
+    });
+    if (!updated) {
+      throw new NotFoundError('Webhook delivery not found after replay');
+    }
+
+    return {
+      ...updated,
+      createdAt: updated.createdAt.toISOString(),
+      completedAt: updated.completedAt?.toISOString() ?? null,
+      nextRetryAt: updated.nextRetryAt?.toISOString() ?? null,
+    };
   },
 };

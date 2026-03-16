@@ -372,6 +372,11 @@ export const taskMutations = {
         });
       }
     }
+    dispatchWebhooks(context.prisma, user.orgId, 'comment.created', {
+      comment: { commentId: comment.commentId, taskId: args.taskId, content: args.content },
+      task: { taskId: task.taskId, title: task.title, projectId: task.projectId },
+    });
+    sseManager.broadcast(user.orgId, 'comment.created', { comment: { commentId: comment.commentId, taskId: args.taskId } });
     return {
       ...comment,
       userEmail: comment.user.email,

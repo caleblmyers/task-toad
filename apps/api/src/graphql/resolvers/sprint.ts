@@ -137,6 +137,8 @@ export const sprintMutations = {
       orgId: user.orgId, projectId: args.projectId, sprintId: sprint.sprintId, userId: user.userId,
       action: 'sprint.created',
     });
+    dispatchWebhooks(context.prisma, user.orgId, 'sprint.created', { sprint });
+    dispatchSlackNotifications(context.prisma, user.orgId, 'sprint.created', { sprint });
     sseManager.broadcast(user.orgId, 'sprint.created', { sprint });
     return sprint;
   },
