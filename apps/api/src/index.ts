@@ -13,6 +13,17 @@ async function main() {
   try {
     await prisma.$queryRaw`SELECT 1`;
     logger.info('Database connection verified');
+
+    // Log connection pool configuration from DATABASE_URL
+    const dbUrl = process.env.DATABASE_URL ?? '';
+    try {
+      const params = new URL(dbUrl).searchParams;
+      const connectionLimit = params.get('connection_limit') ?? 'default';
+      const poolTimeout = params.get('pool_timeout') ?? 'default';
+      logger.info({ connectionLimit, poolTimeout }, 'Prisma pool configuration');
+    } catch {
+      logger.debug('Could not parse DATABASE_URL for pool config logging');
+    }
   } catch (err) {
     logger.fatal({ err }, 'Failed to connect to database — exiting');
     process.exit(1);

@@ -19,8 +19,10 @@ import { jwtVerify } from 'jose';
 import { JWT_SECRET } from './graphql/context.js';
 import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
+import { register, httpRequestDuration, httpRequestsTotal } from './utils/metrics.js';
 
 const ssePrisma = new PrismaClient();
+const healthPrisma = new PrismaClient();
 
 // Validate required environment variables at startup
 const envSchema = z.object({
@@ -65,6 +67,80 @@ app.use(
     credentials: true,
   })
 );
+
+// Health check — before rate limiting so monitoring isn't rate-limited
+app.get('/api/health', async (_req, res) => {
+  try {
+    await healthPrisma.$queryRaw`SELECT 1`;
+    res.json({
+      status: 'ok',
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+    });
+  } catch {
+    res.status(503).json({
+      status: 'error',
+      error: 'database unreachable',
+    });
+  }
+});
+
+// Prometheus metrics endpoint — before rate limiting so scraping isn't rate-limited
+app.get('/api/metrics', async (_req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
+});
+
+// Request logging + metrics middleware
+app.use((req, res, next) => {
+  const url = req.originalUrl ?? req.url;
+  const requestId = crypto.randomUUID();
+  const start = process.hrtime.bigint();
+  req.headers['x-request-id'] = requestId;
+
+  res.on('finish', () => {
+    const durationNs = Number(process.hrtime.bigint() - start);
+    const durationSec = durationNs / 1e9;
+
+    // Extract GraphQL operation name for both metrics and logging
+    let operationName: string | undefined;
+    const isGraphQL = url === '/graphql' || url.startsWith('/graphql?');
+    if (isGraphQL) {
+      const body = req.body as { query?: string; operationName?: string } | undefined;
+      operationName = body?.operationName
+        ?? body?.query?.match(/(?:query|mutation|subscription)\s+(\w+)/)?.[1]
+        ?? undefined;
+    }
+
+    // Record Prometheus metrics
+    const route = isGraphQL ? `/graphql:${operationName ?? 'anonymous'}` : url;
+    const labels = { method: req.method, route, status_code: String(res.statusCode) };
+    httpRequestDuration.observe(labels, durationSec);
+    httpRequestsTotal.inc(labels);
+
+    // Skip request logging for health and metrics endpoints
+    if (url === '/api/health' || url === '/api/metrics') return;
+
+    const logData: Record<string, unknown> = {
+      requestId,
+      method: req.method,
+      url,
+      statusCode: res.statusCode,
+      responseTime: Math.round(durationNs / 1e4) / 100, // ms with 2 decimal places
+      contentLength: res.getHeader('content-length'),
+    };
+    if (operationName) logData.operationName = operationName;
+
+    if (res.statusCode >= 500) {
+      logger.error(logData, 'request completed');
+    } else if (res.statusCode >= 400) {
+      logger.warn(logData, 'request completed');
+    } else {
+      logger.info(logData, 'request completed');
+    }
+  });
+  next();
+});
 
 // GitHub webhook endpoint needs raw body for signature verification — must be before JSON parser
 app.post('/api/github/webhooks', express.raw({ type: 'application/json' }), handleGitHubWebhook);

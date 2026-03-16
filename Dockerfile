@@ -1,5 +1,5 @@
 FROM node:22-slim AS base
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -y && apt-get install -y openssl curl && rm -rf /var/lib/apt/lists/*
 RUN corepack enable && corepack prepare pnpm@9 --activate
 WORKDIR /app
 
@@ -29,4 +29,6 @@ FROM api-build AS production
 COPY --from=web-build /app/apps/web/dist apps/web/dist
 COPY apps/api/prisma apps/api/prisma
 EXPOSE 3001
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:3001/api/health || exit 1
 CMD ["node", "apps/api/dist/index.js"]
