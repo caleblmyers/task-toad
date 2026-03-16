@@ -243,10 +243,18 @@ let retryInterval: ReturnType<typeof setInterval> | null = null;
 
 export function startRetryProcessor(prisma: PrismaClient): void {
   if (retryInterval) return;
-  retryInterval = setInterval(() => {
-    processRetryQueue(prisma).catch((err) =>
-      log.error({ err }, 'Webhook retry queue processing failed')
-    );
+  retryInterval = setInterval(async () => {
+    const { tryAdvisoryLock, releaseAdvisoryLock, LOCK_IDS } = await import('./advisoryLock.js');
+    let acquired = false;
+    try {
+      acquired = await tryAdvisoryLock(prisma, LOCK_IDS.WEBHOOK_RETRY);
+      if (!acquired) return; // another replica is handling it
+      await processRetryQueue(prisma);
+    } catch (err) {
+      log.error({ err }, 'Webhook retry queue processing failed');
+    } finally {
+      if (acquired) await releaseAdvisoryLock(prisma, LOCK_IDS.WEBHOOK_RETRY);
+    }
   }, 30_000);
   log.info('Webhook retry processor started (30s interval)');
 }

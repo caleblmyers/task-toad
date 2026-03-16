@@ -1,11 +1,10 @@
 import crypto from 'crypto';
 import type { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { createChildLogger } from '../utils/logger.js';
 import { formatTaskList, formatProjectStatus } from './slackClient.js';
+import { prisma } from '../graphql/context.js';
 
 const log = createChildLogger('slack-commands');
-const prisma = new PrismaClient();
 
 /**
  * Verify that a request came from Slack by checking the HMAC signature.

@@ -1,10 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { PrismaClient, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { jwtVerify } from 'jose';
-import { JWT_SECRET } from '../graphql/context.js';
+import { JWT_SECRET, prisma } from '../graphql/context.js';
 
 const router: ReturnType<typeof Router> = Router();
-const prisma = new PrismaClient();
 
 interface AuthRequest extends Request {
   user?: { userId: string; email: string; orgId: string | null };

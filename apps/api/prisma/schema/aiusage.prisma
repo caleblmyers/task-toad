@@ -35,9 +35,11 @@ model AIPromptLog {
   model        String
   cached       Boolean  @default(false)
   createdAt    DateTime @default(now()) @map("created_at")
+  expiresAt    DateTime @map("expires_at")
 
   @@index([orgId, createdAt])
   @@index([taskId])
   @@index([projectId, createdAt])
+  @@index([expiresAt])
   @@map("ai_prompt_logs")
 }

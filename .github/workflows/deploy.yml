@@ -9,7 +9,7 @@ on:
       - 'pnpm-lock.yaml'
 
 jobs:
-  deploy:
+  build-and-test:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
     steps:
@@ -23,4 +23,17 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - run: echo 'Deployment target not configured yet.'
+      - run: pnpm typecheck
+      - run: pnpm lint
+
+  # Railway auto-deploys on push to main when configured.
+  # This workflow validates the build before Railway picks it up.
+  # To enable Railway deploy hook, add RAILWAY_DEPLOY_WEBHOOK secret
+  # and uncomment the deploy job below.
+  #
+  # deploy:
+  #   needs: build-and-test
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Trigger Railway deploy
+  #       run: curl -X POST "${{ secrets.RAILWAY_DEPLOY_WEBHOOK }}"

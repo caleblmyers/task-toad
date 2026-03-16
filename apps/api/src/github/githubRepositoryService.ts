@@ -2,14 +2,12 @@
  * Repository management: create repos, connect/disconnect from projects.
  */
 
-import { PrismaClient } from '@prisma/client';
 import { githubRequest } from './githubAppClient.js';
 import { getInstallationToken } from './githubAppAuth.js';
 import type { GitHubRepoLink, GitHubRepo } from './githubTypes.js';
 import { logRepoCreation, logApiError } from './githubLogger.js';
 import { getCached, setCache } from './githubCache.js';
-
-const prisma = new PrismaClient();
+import { prisma } from '../graphql/context.js';
 
 // -- GraphQL queries and mutations --
 

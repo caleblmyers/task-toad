@@ -114,10 +114,19 @@ async function processRecurrence(prisma: PrismaClient): Promise<void> {
 let schedulerTimer: NodeJS.Timeout | null = null;
 
 export function startRecurrenceScheduler(prisma: PrismaClient): NodeJS.Timeout {
-  const timer = setInterval(
-    () => processRecurrence(prisma).catch(err => log.error({ err }, 'Recurrence processing failed')),
-    60_000,
-  );
+  const timer = setInterval(async () => {
+    const { tryAdvisoryLock, releaseAdvisoryLock, LOCK_IDS } = await import('./advisoryLock.js');
+    let acquired = false;
+    try {
+      acquired = await tryAdvisoryLock(prisma, LOCK_IDS.RECURRENCE_SCHEDULER);
+      if (!acquired) return; // another replica is handling it
+      await processRecurrence(prisma);
+    } catch (err) {
+      log.error({ err }, 'Recurrence processing failed');
+    } finally {
+      if (acquired) await releaseAdvisoryLock(prisma, LOCK_IDS.RECURRENCE_SCHEDULER);
+    }
+  }, 60_000);
   schedulerTimer = timer;
   log.info('Recurrence scheduler started (60s interval)');
   return timer;

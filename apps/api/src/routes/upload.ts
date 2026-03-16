@@ -3,12 +3,31 @@ import fs from 'node:fs';
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import rateLimit from 'express-rate-limit';
-import { PrismaClient } from '@prisma/client';
 import { jwtVerify } from 'jose';
 import { JWT_SECRET } from '../graphql/context.js';
+import { getPrisma } from './sharedPrisma.js';
 
 const router: ReturnType<typeof Router> = Router();
-const prisma = new PrismaClient();
+
+// Safe MIME types that can be displayed inline (no XSS risk)
+const SAFE_INLINE_MIME_TYPES = new Set([
+  'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml',
+  'application/pdf',
+  'text/plain',
+]);
+
+// Allowed upload MIME types (reject executables, scripts, etc.)
+const ALLOWED_UPLOAD_MIME_TYPES = new Set([
+  'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml',
+  'application/pdf',
+  'text/plain', 'text/csv', 'text/markdown',
+  'application/json',
+  'application/zip', 'application/gzip',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+]);
 
 interface AuthRequest extends Request {
   user?: { userId: string; email: string; orgId: string };
@@ -21,6 +40,7 @@ async function requireAuth(req: AuthRequest, res: Response, next: NextFunction):
     return;
   }
   try {
+    const prisma = getPrisma();
     const { payload } = await jwtVerify(token, JWT_SECRET);
     const user = await prisma.user.findUnique({ where: { userId: payload.sub as string } });
     if (!user || !user.orgId) {
@@ -38,11 +58,31 @@ async function requireAuth(req: AuthRequest, res: Response, next: NextFunction):
 const uploadDir = path.resolve(process.cwd(), 'uploads');
 fs.mkdirSync(uploadDir, { recursive: true });
 
+// Sanitize filenames: strip path traversal, null bytes, and non-alphanumeric chars (except .-_)
+function sanitizeFilename(name: string): string {
+  return name
+    .replace(/\0/g, '')                    // null bytes
+    .replace(/[/\\]/g, '')                 // path separators
+    .replace(/\.\./g, '')                  // directory traversal
+    .replace(/[^a-zA-Z0-9._-]/g, '_')     // non-safe chars → underscore
+    .slice(0, 200);                        // length limit
+}
+
 const storage = multer.diskStorage({
   destination: uploadDir,
-  filename: (_req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
+  filename: (_req, file, cb) => cb(null, `${Date.now()}-${sanitizeFilename(file.originalname)}`),
 });
-const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB max
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+  fileFilter: (_req, file, cb) => {
+    if (!ALLOWED_UPLOAD_MIME_TYPES.has(file.mimetype)) {
+      cb(new Error(`File type ${file.mimetype} is not allowed`));
+      return;
+    }
+    cb(null, true);
+  },
+});
 
 // Rate limiter: 10 uploads per minute per IP
 const uploadLimiter = rateLimit({
@@ -56,6 +96,7 @@ const uploadLimiter = rateLimit({
 // POST /api/uploads/:taskId — upload a file attachment
 router.post('/:taskId', requireAuth, uploadLimiter, upload.single('file'), async (req: AuthRequest, res: Response) => {
   try {
+    const prisma = getPrisma();
     const { taskId } = req.params;
     const user = req.user!;
 
@@ -74,7 +115,7 @@ router.post('/:taskId', requireAuth, uploadLimiter, upload.single('file'), async
     const attachment = await prisma.attachment.create({
       data: {
         taskId,
-        fileName: req.file.originalname,
+        fileName: sanitizeFilename(req.file.originalname),
         fileKey: req.file.filename,
         mimeType: req.file.mimetype,
         sizeBytes: req.file.size,
@@ -83,14 +124,17 @@ router.post('/:taskId', requireAuth, uploadLimiter, upload.single('file'), async
     });
 
     res.status(201).json(attachment);
-  } catch {
-    res.status(500).json({ error: 'Upload failed' });
+  } catch (err) {
+    const message = err instanceof Error && err.message.startsWith('File type')
+      ? err.message : 'Upload failed';
+    res.status(400).json({ error: message });
   }
 });
 
 // GET /api/uploads/:attachmentId — serve the file
 router.get('/:attachmentId', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
+    const prisma = getPrisma();
     const { attachmentId } = req.params;
     const user = req.user!;
 
@@ -109,8 +153,14 @@ router.get('/:attachmentId', requireAuth, async (req: AuthRequest, res: Response
       return;
     }
 
-    res.setHeader('Content-Type', attachment.mimeType);
-    res.setHeader('Content-Disposition', `inline; filename="${attachment.fileName}"`);
+    // Only serve safe MIME types inline; everything else forces download
+    const disposition = SAFE_INLINE_MIME_TYPES.has(attachment.mimeType) ? 'inline' : 'attachment';
+    // Use application/octet-stream for non-whitelisted MIME types to prevent browser interpretation
+    const contentType = ALLOWED_UPLOAD_MIME_TYPES.has(attachment.mimeType)
+      ? attachment.mimeType : 'application/octet-stream';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `${disposition}; filename="${sanitizeFilename(attachment.fileName)}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     res.sendFile(filePath);
   } catch {
     res.status(500).json({ error: 'Failed to serve file' });
@@ -120,6 +170,7 @@ router.get('/:attachmentId', requireAuth, async (req: AuthRequest, res: Response
 // DELETE /api/uploads/:attachmentId — delete attachment
 router.delete('/:attachmentId', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
+    const prisma = getPrisma();
     const { attachmentId } = req.params;
     const user = req.user!;
 

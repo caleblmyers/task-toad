@@ -115,6 +115,15 @@ export default function AppLayout() {
           <Link to="/app/projects" className="block px-3 py-2 rounded hover:bg-slate-700">
             Projects
           </Link>
+          <Link to="/app/portfolio" className="flex items-center gap-2 px-3 py-2 rounded hover:bg-slate-700 text-sm">
+            <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+              <rect x="1.5" y="3" width="5" height="4" rx="0.5" />
+              <rect x="9.5" y="3" width="5" height="4" rx="0.5" />
+              <rect x="1.5" y="9" width="5" height="4" rx="0.5" />
+              <rect x="9.5" y="9" width="5" height="4" rx="0.5" />
+            </svg>
+            Portfolio
+          </Link>
           <Link to="/app/search" className="flex items-center gap-2 px-3 py-2 rounded hover:bg-slate-700 text-sm">
             <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
               <circle cx="7" cy="7" r="4.5" />

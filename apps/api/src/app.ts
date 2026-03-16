@@ -19,12 +19,9 @@ import { logger } from './utils/logger.js';
 import { sseManager } from './utils/sseManager.js';
 import { jwtVerify } from 'jose';
 import { JWT_SECRET } from './graphql/context.js';
-import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
 import { register, httpRequestDuration, httpRequestsTotal } from './utils/metrics.js';
-
-const ssePrisma = new PrismaClient();
-const healthPrisma = new PrismaClient();
+import { prisma as sharedPrisma } from './graphql/context.js';
 
 // Validate required environment variables at startup
 const envSchema = z.object({
@@ -73,7 +70,7 @@ app.use(
 // Health check — before rate limiting so monitoring isn't rate-limited
 app.get('/api/health', async (_req, res) => {
   try {
-    await healthPrisma.$queryRaw`SELECT 1`;
+    await sharedPrisma.$queryRaw`SELECT 1`;
     res.json({
       status: 'ok',
       uptime: process.uptime(),
@@ -162,7 +159,7 @@ app.get(['/events', '/api/events'], async (req, res) => {
   if (!token) { res.status(401).json({ error: 'No token' }); return; }
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
-    const user = await ssePrisma.user.findUnique({ where: { userId: payload.sub as string } });
+    const user = await sharedPrisma.user.findUnique({ where: { userId: payload.sub as string } });
     if (!user?.orgId) { res.status(401).json({ error: 'Unauthorized' }); return; }
 
     res.writeHead(200, {

@@ -6,6 +6,8 @@ import { checkDueDateReminders } from './utils/dueDateReminder.js';
 import { startRetryProcessor, stopRetryProcessor } from './utils/webhookDispatcher.js';
 import { sseManager } from './utils/sseManager.js';
 import { startRecurrenceScheduler, stopRecurrenceScheduler } from './utils/recurrenceScheduler.js';
+import { cleanExpiredPromptLogs } from './utils/promptRetention.js';
+import { withAdvisoryLock, LOCK_IDS } from './utils/advisoryLock.js';
 
 const prisma = new PrismaClient();
 const PORT = Number(process.env.PORT) || 3001;
@@ -59,10 +61,22 @@ async function main() {
     }
   }
 
+  // Wrap background jobs with advisory locks so only one replica runs each
+  const lockedReminders = withAdvisoryLock(prisma, LOCK_IDS.DUE_DATE_REMINDERS, checkDueDateReminders);
+  const lockedPromptCleanup = withAdvisoryLock(prisma, LOCK_IDS.PROMPT_CLEANUP, cleanExpiredPromptLogs);
+
   const reminderInterval = setInterval(
-    () => checkDueDateReminders(prisma).catch(err => logger.error({ err }, 'Due date reminder check failed')),
+    () => lockedReminders().catch(err => logger.error({ err }, 'Due date reminder check failed')),
     15 * 60 * 1000,
   );
+
+  // Clean expired AI prompt logs every 6 hours
+  const promptCleanupInterval = setInterval(
+    () => lockedPromptCleanup().catch(err => logger.error({ err }, 'Prompt log cleanup failed')),
+    6 * 60 * 60 * 1000,
+  );
+  // Run once at startup too
+  lockedPromptCleanup().catch(err => logger.error({ err }, 'Initial prompt log cleanup failed'));
 
   const server = app.listen(PORT, () => {
     logger.info({ port: PORT }, `TaskToad API listening on http://localhost:${PORT}`);
@@ -83,6 +97,7 @@ async function main() {
     forceKillTimeout.unref();
 
     clearInterval(reminderInterval);
+    clearInterval(promptCleanupInterval);
     stopRetryProcessor();
     stopRecurrenceScheduler(recurrenceTimer);
     sseManager.closeAllConnections();

@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, Suspense } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useProjectData } from '../hooks/useProjectData';
 import { useTaskFiltering } from '../hooks/useTaskFiltering';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
@@ -90,6 +90,8 @@ export default function ProjectDetail() {
   const templateMenuRef = useRef<HTMLDivElement>(null);
   const templateBtnRef = useRef<HTMLButtonElement>(null);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+
   useKeyboardShortcuts({
     tasks: filtering.filteredTasks,
     selectedTask: d.selectedTask,
@@ -100,6 +102,22 @@ export default function ProjectDetail() {
     onShowHelp: () => setShowShortcutHelp((v) => !v),
     enabled: !d.isGenerating,
   });
+
+  // Handle ?task=<taskId> deep-link from search results
+  useEffect(() => {
+    const taskId = searchParams.get('task');
+    if (taskId && d.rootTasks.length > 0) {
+      const task = d.rootTasks.find((t) => t.taskId === taskId);
+      if (task) {
+        d.selectTask(task);
+        // Clear the param so it doesn't re-trigger
+        setSearchParams((prev) => {
+          prev.delete('task');
+          return prev;
+        }, { replace: true });
+      }
+    }
+  }, [searchParams, d.rootTasks]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load GitHub repo link + installations
   useEffect(() => {

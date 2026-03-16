@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
 import { JWT_SECRET, type Context } from '../context.js';
-import { generateToken } from '../../utils/token.js';
+import { generateToken, hashToken } from '../../utils/token.js';
 import {
   sendEmail,
   verifyEmailText,
@@ -81,15 +81,18 @@ export const authMutations = {
     const existing = await context.prisma.user.findUnique({ where: { email: args.email } });
     if (existing) throw new ConflictError('Email already in use');
     const passwordHash = await bcrypt.hash(args.password, 10);
-    const verificationToken = generateToken();
+    const rawToken = generateToken();
+    const verificationToken = hashToken(rawToken);
+    const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
     await context.prisma.user.create({
-      data: { email: args.email, passwordHash, verificationToken },
+      data: { email: args.email, passwordHash, verificationToken, verificationTokenExpiry },
     });
+    // Send the raw (unhashed) token to the user via email
     await sendEmail(
       args.email,
       'Verify your TaskToad account',
-      verifyEmailText(verificationToken),
-      buildVerifyEmailHtml(verificationToken)
+      verifyEmailText(rawToken),
+      buildVerifyEmailHtml(rawToken)
     );
     return true;
   },
@@ -99,6 +102,10 @@ export const authMutations = {
     if (!user) throw new AuthenticationError('Invalid email or password');
     const valid = await bcrypt.compare(args.password, user.passwordHash);
     if (!valid) throw new AuthenticationError('Invalid email or password');
+    // Require email verification before allowing login
+    if (!user.emailVerifiedAt) {
+      throw new AuthenticationError('Please verify your email before logging in. Check your inbox for a verification link.');
+    }
     const token = await new SignJWT({ sub: user.userId, email: user.email })
       .setProtectedHeader({ alg: 'HS256' })
       .setExpirationTime('7d')
@@ -111,28 +118,34 @@ export const authMutations = {
     const dbUser = await context.prisma.user.findUnique({ where: { userId: user.userId } });
     if (!dbUser) throw new NotFoundError('User not found');
     if (dbUser.emailVerifiedAt) return true;
-    const verificationToken = generateToken();
+    const rawToken = generateToken();
+    const verificationToken = hashToken(rawToken);
+    const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
     await context.prisma.user.update({
       where: { userId: user.userId },
-      data: { verificationToken },
+      data: { verificationToken, verificationTokenExpiry },
     });
     await sendEmail(
       dbUser.email,
       'Verify your TaskToad account',
-      verifyEmailText(verificationToken),
-      buildVerifyEmailHtml(verificationToken)
+      verifyEmailText(rawToken),
+      buildVerifyEmailHtml(rawToken)
     );
     return true;
   },
 
   verifyEmail: async (_parent: unknown, args: { token: string }, context: Context) => {
-    const user = await context.prisma.user.findUnique({
-      where: { verificationToken: args.token },
+    const hashedToken = hashToken(args.token);
+    const user = await context.prisma.user.findFirst({
+      where: {
+        verificationToken: hashedToken,
+        verificationTokenExpiry: { gt: new Date() },
+      },
     });
     if (!user) throw new ValidationError('Invalid or expired verification token');
     await context.prisma.user.update({
       where: { userId: user.userId },
-      data: { emailVerifiedAt: new Date(), verificationToken: null },
+      data: { emailVerifiedAt: new Date(), verificationToken: null, verificationTokenExpiry: null },
     });
     return true;
   },
@@ -140,17 +153,19 @@ export const authMutations = {
   requestPasswordReset: async (_parent: unknown, args: { email: string }, context: Context) => {
     const user = await context.prisma.user.findUnique({ where: { email: args.email } });
     if (!user) return true; // silent - no enumeration
-    const resetToken = generateToken();
+    const rawToken = generateToken();
+    const resetToken = hashToken(rawToken);
     const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
     await context.prisma.user.update({
       where: { userId: user.userId },
       data: { resetToken, resetTokenExpiry },
     });
+    // Send the raw (unhashed) token to the user via email
     await sendEmail(
       user.email,
       'Reset your TaskToad password',
-      resetPasswordText(resetToken),
-      buildResetPasswordHtml(resetToken)
+      resetPasswordText(rawToken),
+      buildResetPasswordHtml(rawToken)
     );
     return true;
   },
@@ -159,9 +174,10 @@ export const authMutations = {
     if (args.newPassword.length < 8) {
       throw new ValidationError('Password must be at least 8 characters');
     }
+    const hashedToken = hashToken(args.token);
     const user = await context.prisma.user.findFirst({
       where: {
-        resetToken: args.token,
+        resetToken: hashedToken,
         resetTokenExpiry: { gt: new Date() },
       },
     });

@@ -8,15 +8,13 @@
  *   4. Open pull request
  */
 
-import { PrismaClient } from '@prisma/client';
 import { getProjectRepo, createRepoForProject } from './githubRepositoryService.js';
 import { createBranch, commitFiles } from './githubCommitService.js';
 import { createPullRequest } from './githubPullRequestService.js';
 import type { CreatePullRequestFromTaskInput, PullRequestResult, GitHubRepoLink } from './githubTypes.js';
 import { logApiError } from './githubLogger.js';
 import { generateCommitMessage, enrichPRDescription } from '../ai/index.js';
-
-const prisma = new PrismaClient();
+import { prisma } from '../graphql/context.js';
 
 function buildDefaultPRBody(
   task: { title: string; description: string | null },

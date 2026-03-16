@@ -14,23 +14,18 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 
 ## Priority Order
 
-1. **Security fixes** — upload filename sanitization, shared PrismaClient
-2. **Q1** — Code quality & testing
-3. **A11** — Accessibility
-4. **W2** — Advanced tasks & filters
-5. **I1 + D1** — Integration completeness & observability
-6. **F1** — Frontend performance
-7. **S1** — Styling & branding
-8. **W6** — AI extras
-9. **SW1** — Swarm workflow optimization
+1. **Q1** — Code quality & testing (authz regression tests, e2e suite)
+2. **A11** — Accessibility
+3. **W2** — Advanced tasks & filters
+4. **I1 + D1** — Integration completeness & observability
+5. **F1** — Frontend performance
+6. **S1** — Styling & branding
+7. **W6** — AI extras
+8. **SW1** — Swarm workflow optimization
 
 ---
 
 ## Remaining Work
-
-### Security (High Priority)
-- [ ] Upload filename sanitization — use `path.basename()` on `file.originalname` in `apps/api/src/routes/upload.ts` to prevent path traversal
-- [ ] Upload route shared PrismaClient — `upload.ts` creates its own `new PrismaClient()` instead of sharing the app-level instance; refactor to accept prisma via closure or middleware
 
 ### Q1: Code Quality & Testing
 **Touches:** `apps/web/src/hooks/`, `apps/api/src/__tests__/`
@@ -38,6 +33,8 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 - [ ] Expand test coverage — useTaskCRUD hook tests, web component tests
 - [ ] Recurrence scheduler tests — unit tests for cron matching logic, processRecurrence edge cases
 - [ ] Attachment DataLoader — Task.attachments does individual DB query per task; add to loaders.ts
+- [ ] **Authorization regression tests** — test all multi-tenant boundary checks added in production hardening (cross-org assignment, cross-project custom fields, cross-tenant comment deletion, automation assign_to org validation)
+- [ ] **End-to-end test suite** — basic happy-path flows (signup → create org → create project → create/update task → assign → comment → export)
 
 ### A11: Accessibility
 **Touches:** `apps/web/src/components/`
@@ -51,6 +48,7 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 **Touches:** `resolvers/ai.ts`, `apps/web/src/components/`
 - [ ] SDL descriptions for remaining ~30 operations (github, report, slack, webhook, projectrole)
 - [ ] Subtask code gen abort support — CodePreviewModal subtask generation lacks AbortController
+- [ ] AI prompt log admin toggle — per-org setting to disable prompt logging entirely
 
 ### D1: Deployment & Observability
 **Touches:** `apps/api/src/app.ts`, `apps/api/src/index.ts`, Railway config
@@ -58,6 +56,8 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 - [ ] Railway alerting — restart loops, memory spikes, high CPU
 - [ ] Staging environment — Railway preview deployments from PRs
 - [ ] Database backup strategy — verify Railway automated backups, document restore
+- [ ] Wire Prometheus resolver duration metrics — some paths don't emit `graphql_resolver_duration`
+- [ ] Enable Railway deploy webhook in GitHub Actions (uncomment in deploy.yml)
 
 ### I1: Integration Completeness
 **Touches:** `apps/api/src/utils/webhookDispatcher.ts`, `apps/api/src/slack/`, `apps/api/src/github/`
@@ -88,11 +88,9 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 ## Parallelism Matrix
 
 **Safe parallel combos:**
-- Security + any set (2 files, no overlap)
 - Q1 (tests) + I1 (integrations) + F1 (performance)
 - W2 (tasks) + any non-W set
 - S1 (styling) + D1 (deployment)
 
 **Conflicts:**
 - A11 + S1 (both touch component styling)
-- D1 + Security (both touch app.ts)

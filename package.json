@@ -13,7 +13,7 @@
     "dev": "concurrently -n api,web -c cyan,magenta \"pnpm dev:api\" \"pnpm dev:web\"",
     "dev:web": "pnpm --filter web dev",
     "dev:api": "pnpm --filter api dev",
-    "deploy": "pnpm --filter infra cdk deploy"
+    "deploy": "echo 'Deploy via Railway — see DEPLOY.md'"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.57.0",

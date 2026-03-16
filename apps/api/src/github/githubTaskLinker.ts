@@ -3,9 +3,7 @@
  * then links commits to tasks in the database.
  */
 
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../graphql/context.js';
 
 /**
  * Extract task IDs from a branch name and/or commit message.

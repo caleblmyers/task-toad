@@ -6,6 +6,25 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-16
 
+### Production Hardening Sprint (GPT-5.4 Audit Response)
+
+**Phase 1 — Security Sprint:**
+- Multi-tenant authorization hardening: added `requireOrgUser()` and `requireProjectField()` validators; applied to `updateTask`, `addTaskAssignee`, `removeTaskAssignee`, `bulkUpdateTasks`, `setCustomFieldValue`, `deleteComment`, and automation `assign_to` action
+- Upload serving safety: Content-Disposition defaults to `attachment` (only whitelisted MIME types served inline), file type validation on upload, filename sanitization (path traversal, null bytes, non-safe chars), X-Content-Type-Options: nosniff header
+- Auth hardening: email verification required on login, verification/reset tokens hashed with SHA-256 before storage, verification tokens now expire after 24 hours
+- AI prompt retention: 30-day retention TTL on AIPromptLog, automated cleanup job (every 6 hours), sensitive pattern redaction (emails, API keys, tokens) before storage
+
+**Phase 2 — Operational Safety:**
+- Background job distributed locking: `pg_try_advisory_lock` wrapper ensures only one replica runs due-date reminders, webhook retries, recurrence scheduler, and prompt cleanup
+- Removed stale AWS infra: deleted `infra/` CDK directory, replaced CDK deploy script with Railway reference, updated deploy.yml to build+typecheck+lint validation
+- Centralized PrismaClient: eliminated 7 duplicate `new PrismaClient()` instances across upload.ts, export.ts, github/, slack/ — all now share the singleton from context.ts
+- Fixed railway.toml healthcheck: changed from `/` to `/api/health`
+
+**Phase 3 — Quality & UX:**
+- Added Portfolio to sidebar navigation
+- Wired `?task=<taskId>` deep-link parameter in ProjectDetail (auto-selects task from search results)
+- Prisma migration for `verification_token_expiry` and `ai_prompt_logs.expires_at` fields
+
 ### Wave 16: W2 + W6 + Q1 (3 workers, 6 tasks)
 
 **W2 — Advanced Tasks & Filters (Worker 1):**

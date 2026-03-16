@@ -7,7 +7,7 @@ import { executeAutomations } from '../../utils/automationEngine.js';
 import { dispatchWebhooks } from '../../utils/webhookDispatcher.js';
 import { dispatchSlackNotifications } from '../../utils/notificationUtils.js';
 import { sseManager } from '../../utils/sseManager.js';
-import { requireTask, requireProject, validateStatus, parseInput, CreateTaskInput, UpdateTaskInput, CreateCommentInput } from '../../utils/resolverHelpers.js';
+import { requireTask, requireProject, requireOrgUser, requireProjectField, validateStatus, parseInput, CreateTaskInput, UpdateTaskInput, CreateCommentInput } from '../../utils/resolverHelpers.js';
 import { StringArraySchema } from '../../utils/zodSchemas.js';
 import { createChildLogger } from '../../utils/logger.js';
 import { reviewCode } from '../../ai/aiService.js';
@@ -165,6 +165,10 @@ export const taskMutations = {
   ) => {
     parseInput(UpdateTaskInput, { title: args.title, description: args.description, instructions: args.instructions, acceptanceCriteria: args.acceptanceCriteria });
     const { user, task } = await requireTask(context, args.taskId);
+    // Verify assignee belongs to same org
+    if (args.assigneeId) {
+      await requireOrgUser(context, args.assigneeId);
+    }
     if (args.status !== undefined) {
       const statusParse = StringArraySchema.safeParse(JSON.parse(task.project.statuses));
       if (!statusParse.success) {
@@ -314,6 +318,10 @@ export const taskMutations = {
     const projectIds = [...new Set(tasks.map((t) => t.projectId))];
     for (const projectId of projectIds) {
       await requireProjectAccess(context, projectId);
+    }
+    // Verify assignee belongs to same org
+    if (args.assigneeId) {
+      await requireOrgUser(context, args.assigneeId);
     }
     const data: Record<string, unknown> = {};
     if (args.status !== undefined && args.status !== null) data.status = args.status;
@@ -480,9 +488,13 @@ export const taskMutations = {
     const user = requireOrg(context);
     const comment = await context.prisma.comment.findUnique({
       where: { commentId: args.commentId },
-      include: { user: { select: { email: true } } },
+      include: { user: { select: { email: true } }, task: { select: { orgId: true } } },
     });
     if (!comment) throw new NotFoundError('Comment not found');
+    // Validate tenant ownership — comment's task must belong to user's org
+    if (comment.task.orgId !== user.orgId) {
+      throw new NotFoundError('Comment not found');
+    }
     if (comment.userId !== user.userId && user.role !== 'org:admin') {
       throw new AuthorizationError('Not authorized to delete this comment');
     }
@@ -560,9 +572,9 @@ export const taskMutations = {
     args: { taskId: string; customFieldId: string; value: string },
     context: Context
   ) => {
-    await requireTask(context, args.taskId);
-    const field = await context.prisma.customField.findUnique({ where: { customFieldId: args.customFieldId } });
-    if (!field) throw new NotFoundError('Custom field not found');
+    const { task } = await requireTask(context, args.taskId);
+    // Verify custom field belongs to the task's project
+    await requireProjectField(context, args.customFieldId, task.projectId);
     return context.prisma.customFieldValue.upsert({
       where: { customFieldId_taskId: { customFieldId: args.customFieldId, taskId: args.taskId } },
       create: { customFieldId: args.customFieldId, taskId: args.taskId, value: args.value },
@@ -591,6 +603,8 @@ export const taskMutations = {
     context: Context
   ) => {
     const { user, task } = await requireTask(context, args.taskId);
+    // Verify target user belongs to same org
+    await requireOrgUser(context, args.userId);
     const assignee = await context.prisma.taskAssignee.upsert({
       where: { taskId_userId: { taskId: args.taskId, userId: args.userId } },
       create: { taskId: args.taskId, userId: args.userId },
@@ -625,6 +639,8 @@ export const taskMutations = {
     context: Context
   ) => {
     const { user, task } = await requireTask(context, args.taskId);
+    // Verify target user belongs to same org
+    await requireOrgUser(context, args.userId);
     await context.prisma.taskAssignee.deleteMany({
       where: { taskId: args.taskId, userId: args.userId },
     });

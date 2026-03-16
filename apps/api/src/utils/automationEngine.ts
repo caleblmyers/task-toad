@@ -103,6 +103,15 @@ async function executeAction(
     }
     case 'assign_to': {
       if (!taskId || !action.userId) return;
+      // Verify target user belongs to same org before assigning
+      const targetUser = await prisma.user.findUnique({
+        where: { userId: action.userId },
+        select: { orgId: true },
+      });
+      if (!targetUser || targetUser.orgId !== orgId) {
+        log.warn({ userId: action.userId, orgId }, 'Automation assign_to: target user not in org');
+        return;
+      }
       await prisma.task.update({
         where: { taskId },
         data: { assigneeId: action.userId },

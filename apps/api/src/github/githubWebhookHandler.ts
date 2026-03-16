@@ -7,14 +7,12 @@
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
 import type { GitHubWebhookEvent } from './githubTypes.js';
 import { clearInstallationToken } from './githubAppAuth.js';
 import { logInstallation, logWebhookReceived, logApiError } from './githubLogger.js';
 import { linkCommitsToTasks } from './githubTaskLinker.js';
 import { invalidateCache } from './githubCache.js';
-
-const prisma = new PrismaClient();
+import { prisma } from '../graphql/context.js';
 
 function getWebhookSecret(): string {
   const secret = process.env.GITHUB_WEBHOOK_SECRET;

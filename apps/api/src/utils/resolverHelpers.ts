@@ -1,9 +1,37 @@
 import { z } from 'zod';
 import type { Context } from '../graphql/context.js';
-import { NotFoundError, ValidationError } from '../graphql/errors.js';
+import { AuthorizationError, NotFoundError, ValidationError } from '../graphql/errors.js';
 import { requireOrg } from '../graphql/resolvers/auth.js';
 
 // ── Resource helpers ──
+
+/**
+ * Verify a target userId belongs to the same org as the authenticated user.
+ * Prevents cross-tenant assignment/manipulation.
+ */
+export async function requireOrgUser(context: Context, userId: string) {
+  const user = requireOrg(context);
+  const target = await context.prisma.user.findUnique({
+    where: { userId },
+    select: { userId: true, orgId: true },
+  });
+  if (!target || target.orgId !== user.orgId) {
+    throw new AuthorizationError('Target user is not a member of your organization');
+  }
+  return { user, target };
+}
+
+/**
+ * Verify a custom field belongs to the specified project.
+ */
+export async function requireProjectField(context: Context, customFieldId: string, projectId: string) {
+  const field = await context.prisma.customField.findUnique({ where: { customFieldId } });
+  if (!field) throw new NotFoundError('Custom field not found');
+  if (field.projectId !== projectId) {
+    throw new AuthorizationError('Custom field does not belong to this task\'s project');
+  }
+  return field;
+}
 
 /**
  * Fetch a task by ID, validate org ownership, return task with project included.
