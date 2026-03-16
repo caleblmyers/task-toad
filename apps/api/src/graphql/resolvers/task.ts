@@ -528,6 +528,20 @@ export const taskMutations = {
     });
   },
 
+  reorderTask: async (
+    _parent: unknown,
+    args: { taskId: string; position: number },
+    context: Context
+  ) => {
+    const { task } = await requireTask(context, args.taskId);
+    const updated = await context.prisma.task.update({
+      where: { taskId: args.taskId },
+      data: { position: args.position },
+    });
+    sseManager.broadcast(task.orgId, 'task.updated', { task: updated });
+    return updated;
+  },
+
   addTaskAssignee: async (
     _parent: unknown,
     args: { taskId: string; userId: string },

@@ -143,6 +143,8 @@ export const taskMutationFields = /* GraphQL */ `
   deleteCustomField(customFieldId: ID!): Boolean!
   setCustomFieldValue(taskId: ID!, customFieldId: ID!, value: String!): CustomFieldValue!
 
+  reorderTask(taskId: ID!, position: Float!): Task!
+
   addTaskAssignee(taskId: ID!, userId: ID!): TaskAssignee!
   removeTaskAssignee(taskId: ID!, userId: ID!): Boolean!
 `;

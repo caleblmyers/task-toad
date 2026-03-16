@@ -68,6 +68,7 @@ export interface ProjectData {
   handleAssignUser: (taskId: string, assigneeId: string | null) => Promise<void>;
   handleDueDateChange: (taskId: string, dueDate: string | null) => Promise<void>;
   handleReorderTask: (taskId: string, beforeTaskId: string | null, afterTaskId: string | null, targetSprintId: string | null) => Promise<void>;
+  handleKanbanReorderTask: (taskId: string, position: number) => Promise<void>;
   handleActivateSprint: (sprintId: string) => Promise<void>;
   handleCreateSprint: (sprint: Sprint) => void;
   handleSprintPlanCreated: (newSprints: Sprint[]) => void;
@@ -291,6 +292,20 @@ export function useProjectData(): ProjectData {
     sprintMgmt.handleSprintClosed(result, taskCrud.loadTasks);
   }, [sprintMgmt.handleSprintClosed, taskCrud.loadTasks]);
 
+  // ── Kanban reorder (direct position update) ──
+  const handleKanbanReorderTask = useCallback(async (taskId: string, position: number) => {
+    taskCrud.setTasks((prev) => prev.map((t) => t.taskId === taskId ? { ...t, position } : t));
+    taskCrud.setSelectedTask((t) => t?.taskId === taskId ? { ...t, position } : t);
+    try {
+      await gql<{ reorderTask: { taskId: string } }>(
+        `mutation ReorderTask($taskId: ID!, $position: Float!) { reorderTask(taskId: $taskId, position: $position) { taskId } }`,
+        { taskId, position },
+      );
+    } catch {
+      taskCrud.loadTasks();
+    }
+  }, [taskCrud]);
+
   // ── Return unified interface ──
   return {
     projectId,
@@ -342,6 +357,7 @@ export function useProjectData(): ProjectData {
     handleAssignUser: taskCrud.handleAssignUser,
     handleDueDateChange: taskCrud.handleDueDateChange,
     handleReorderTask: taskCrud.handleReorderTask,
+    handleKanbanReorderTask,
     handleActivateSprint: sprintMgmt.handleActivateSprint,
     handleCreateSprint: sprintMgmt.handleCreateSprint,
     handleSprintPlanCreated: sprintMgmt.handleSprintPlanCreated,

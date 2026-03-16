@@ -11,6 +11,28 @@ const COLUMN_ACCENTS = [
   { accent: 'border-t-orange-500', barColor: 'border-l-orange-400', pillClass: 'bg-orange-100 text-orange-700' },
 ];
 
+function sortByPosition(a: Task, b: Task): number {
+  if (a.position != null && b.position != null) return a.position - b.position;
+  if (a.position != null) return -1;
+  if (b.position != null) return 1;
+  return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+}
+
+function computePosition(sorted: Task[], targetIndex: number): number {
+  const before = targetIndex > 0 ? sorted[targetIndex - 1] : null;
+  const after = targetIndex < sorted.length ? sorted[targetIndex] : null;
+  const getPos = (t: Task, fallbackIdx: number) => t.position ?? fallbackIdx * 1000;
+
+  if (before && after) {
+    return (getPos(before, targetIndex - 1) + getPos(after, targetIndex)) / 2;
+  } else if (before) {
+    return getPos(before, targetIndex - 1) + 1000;
+  } else if (after) {
+    return getPos(after, targetIndex) - 1000;
+  }
+  return 0;
+}
+
 interface KanbanBoardProps {
   columns: string[];
   tasks: Task[];
@@ -18,9 +40,10 @@ interface KanbanBoardProps {
   selectedTask: Task | null;
   onSelectTask: (task: Task) => void;
   onColumnChange: (taskId: string, columnName: string) => void;
+  onReorderTask?: (taskId: string, position: number) => Promise<void>;
 }
 
-export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, onSelectTask, onColumnChange }: KanbanBoardProps) {
+export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, onSelectTask, onColumnChange, onReorderTask }: KanbanBoardProps) {
   const draggedId = useRef<string | null>(null);
   const [movingTaskId, setMovingTaskId] = useState<string | null>(null);
   const [moveAnnouncement, setMoveAnnouncement] = useState('');
@@ -33,6 +56,10 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
     for (const task of tasks) {
       const col = task.sprintColumn && map.has(task.sprintColumn) ? task.sprintColumn : columns[0];
       map.get(col)!.push(task);
+    }
+    // Sort each column by position
+    for (const [col, colTasks] of map) {
+      map.set(col, colTasks.sort(sortByPosition));
     }
     // Apply local reorder overrides
     for (const [col, orderedIds] of columnOrder) {
@@ -110,13 +137,26 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
       if (taskIdx < 0) return;
       const swapIdx = e.key === 'ArrowUp' ? taskIdx - 1 : taskIdx + 1;
       if (swapIdx < 0 || swapIdx >= colTasks.length) return;
+
+      // Swap in local order
       const newOrder = colTasks.map((t) => t.taskId);
       [newOrder[taskIdx], newOrder[swapIdx]] = [newOrder[swapIdx], newOrder[taskIdx]];
       setColumnOrder((prev) => new Map(prev).set(currentCol, newOrder));
+
+      // Compute fractional position and persist
+      if (onReorderTask) {
+        const reordered = newOrder.map((id) => colTasks.find((t) => t.taskId === id)!);
+        const newTaskIdx = reordered.findIndex((t) => t.taskId === task.taskId);
+        // Remove the moved task to compute position between neighbors
+        const others = reordered.filter((t) => t.taskId !== task.taskId);
+        const position = computePosition(others, newTaskIdx);
+        onReorderTask(task.taskId, position);
+      }
+
       const direction = e.key === 'ArrowUp' ? 'up' : 'down';
       setMoveAnnouncement(`Moved "${task.title}" ${direction} to position ${swapIdx + 1} of ${colTasks.length} in ${currentCol}`);
     }
-  }, [movingTaskId, columns, onColumnChange, tasksByColumn]);
+  }, [movingTaskId, columns, onColumnChange, tasksByColumn, onReorderTask]);
 
   return (
     <div className="flex gap-4 h-full">
@@ -138,9 +178,20 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
               const id = draggedId.current;
               if (!id) return;
               const task = tasks.find((t) => t.taskId === id);
-              if (task && task.sprintColumn !== col) {
+              if (!task) { draggedId.current = null; return; }
+
+              // Persist column change if moving to a different column
+              if (task.sprintColumn !== col) {
                 onColumnChange(id, col);
               }
+
+              // Compute drop position (drop at end of column)
+              if (onReorderTask) {
+                const targetColTasks = (tasksByColumn.get(col) ?? []).filter((t) => t.taskId !== id);
+                const position = computePosition(targetColTasks, targetColTasks.length);
+                onReorderTask(id, position);
+              }
+
               draggedId.current = null;
             }}
           >
