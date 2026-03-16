@@ -255,6 +255,11 @@ export const taskMutations = {
     if (tasks.length !== args.taskIds.length) {
       throw new NotFoundError('One or more tasks not found');
     }
+    // Verify per-project access for all tasks
+    const projectIds = [...new Set(tasks.map((t) => t.projectId))];
+    for (const projectId of projectIds) {
+      await requireProjectAccess(context, projectId);
+    }
     const data: Record<string, unknown> = {};
     if (args.status !== undefined && args.status !== null) data.status = args.status;
     if (args.assigneeId !== undefined) data.assigneeId = args.assigneeId;
@@ -352,24 +357,32 @@ export const taskMutations = {
         relatedProjectId: task.projectId,
       });
     }
-    const mentionPattern = /@(\S+@\S+)/g;
+    // Extract mentions with tighter email regex, capped at 20
+    const mentionPattern = /@([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
+    const mentionedEmails: string[] = [];
     let mentionMatch: RegExpExecArray | null;
     while ((mentionMatch = mentionPattern.exec(args.content)) !== null) {
-      const mentionedEmail = mentionMatch[1];
-      const mentionedUser = await context.prisma.user.findFirst({
-        where: { email: mentionedEmail, orgId: user.orgId },
+      mentionedEmails.push(mentionMatch[1]);
+      if (mentionedEmails.length >= 20) break;
+    }
+    // Batch DB lookup — single findMany instead of N queries
+    if (mentionedEmails.length > 0) {
+      const mentionedUsers = await context.prisma.user.findMany({
+        where: { email: { in: mentionedEmails }, orgId: user.orgId },
       });
-      if (mentionedUser && mentionedUser.userId !== user.userId) {
-        createNotification(context.prisma, {
-          orgId: user.orgId,
-          userId: mentionedUser.userId,
-          type: 'mentioned',
-          title: `You were mentioned in a comment on "${task.title}"`,
-          body: args.content.length > 100 ? args.content.slice(0, 100) + '\u2026' : args.content,
-          linkUrl: `/app/projects/${task.projectId}`,
-          relatedTaskId: task.taskId,
-          relatedProjectId: task.projectId,
-        });
+      for (const mentionedUser of mentionedUsers) {
+        if (mentionedUser.userId !== user.userId) {
+          createNotification(context.prisma, {
+            orgId: user.orgId,
+            userId: mentionedUser.userId,
+            type: 'mentioned',
+            title: `You were mentioned in a comment on "${task.title}"`,
+            body: args.content.length > 100 ? args.content.slice(0, 100) + '\u2026' : args.content,
+            linkUrl: `/app/projects/${task.projectId}`,
+            relatedTaskId: task.taskId,
+            relatedProjectId: task.projectId,
+          });
+        }
       }
     }
     dispatchWebhooks(context.prisma, user.orgId, 'comment.created', {

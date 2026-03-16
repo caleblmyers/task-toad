@@ -1,4 +1,5 @@
 import { createSchema } from 'graphql-yoga';
+import { GraphQLError, Kind, type ValidationContext, type ASTVisitor, type SelectionSetNode } from 'graphql';
 import type { Context } from './context.js';
 import { resolvers } from './resolvers/index.js';
 import { authTypeDefs, authQueryFields, authMutationFields } from './typedefs/auth.js';
@@ -70,3 +71,39 @@ export const schema = createSchema<Context>({
   typeDefs,
   resolvers,
 });
+
+// GraphQL depth limit validation rule — prevents nested query attacks
+function measureDepth(selectionSet: SelectionSetNode, depth: number): number {
+  let max = depth;
+  for (const selection of selectionSet.selections) {
+    if ('selectionSet' in selection && selection.selectionSet) {
+      max = Math.max(max, measureDepth(selection.selectionSet, depth + 1));
+    }
+  }
+  return max;
+}
+
+export function depthLimitRule(maxDepth: number) {
+  return (context: ValidationContext): ASTVisitor => ({
+    Document: {
+      enter(node) {
+        for (const definition of node.definitions) {
+          if (
+            (definition.kind === Kind.OPERATION_DEFINITION ||
+              definition.kind === Kind.FRAGMENT_DEFINITION) &&
+            definition.selectionSet
+          ) {
+            const depth = measureDepth(definition.selectionSet, 1);
+            if (depth > maxDepth) {
+              context.reportError(
+                new GraphQLError(
+                  `Query depth ${depth} exceeds maximum allowed depth of ${maxDepth}`
+                )
+              );
+            }
+          }
+        }
+      },
+    },
+  });
+}

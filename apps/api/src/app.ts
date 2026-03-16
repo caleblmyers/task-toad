@@ -7,7 +7,7 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { createYoga } from 'graphql-yoga';
 import { z } from 'zod';
-import { schema } from './graphql/schema.js';
+import { schema, depthLimitRule } from './graphql/schema.js';
 import { buildContext } from './graphql/context.js';
 import { handleGitHubWebhook } from './github/index.js';
 import { handleSlackCommand } from './slack/slackWebhookHandler.js';
@@ -78,9 +78,9 @@ app.use(compression());
 // Body size limit
 app.use(express.json({ limit: '1mb' }));
 
-// SSE endpoint for real-time events
+// SSE endpoint for real-time events — reads token from Authorization header
 app.get('/api/events', async (req, res) => {
-  const token = req.query.token as string;
+  const token = req.headers.authorization?.replace('Bearer ', '') ?? (req.query.token as string);
   if (!token) { res.status(401).json({ error: 'No token' }); return; }
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
@@ -105,8 +105,17 @@ app.get('/api/events', async (req, res) => {
   }
 });
 
+// Export rate limit: 5 requests per 10 minutes per IP
+const exportLimiter = rateLimit({
+  windowMs: 10 * 60_000,
+  limit: 5,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Too many export requests. Please try again later.' },
+});
+
 // Export REST endpoints (file downloads — not suited for GraphQL)
-app.use('/api/export', exportRouter);
+app.use('/api/export', exportLimiter, exportRouter);
 
 // API documentation
 app.use('/api/docs', docsRouter);
@@ -153,7 +162,14 @@ const sensitiveAuthLimiter = rateLimit({
 app.use('/graphql', sensitiveAuthLimiter);
 
 
-const yoga = createYoga({ schema, context: buildContext, graphqlEndpoint: '/graphql' });
+const yoga = createYoga({
+  schema,
+  context: buildContext,
+  graphqlEndpoint: '/graphql',
+  plugins: [
+    { onValidate({ addValidationRule }: { addValidationRule: (rule: unknown) => void }) { addValidationRule(depthLimitRule(10)); } },
+  ],
+});
 // graphql-yoga's server adapter is compatible with Express but requires a type cast
 app.use('/graphql', yoga as unknown as express.RequestHandler);
 
