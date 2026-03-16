@@ -850,6 +850,56 @@ export const aiQueries = {
     });
   },
 
+  aiPromptHistory: async (
+    _parent: unknown,
+    args: { taskId?: string | null; projectId?: string | null; limit?: number | null },
+    context: Context
+  ) => {
+    const user = requireOrg(context);
+    const where: Record<string, unknown> = { orgId: user.orgId };
+    if (args.taskId) where.taskId = args.taskId;
+    if (args.projectId) where.projectId = args.projectId;
+    const logs = await context.prisma.aIPromptLog.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: args.limit ?? 20,
+    });
+    return logs.map((l: { id: string; feature: string; taskId: string | null; projectId: string | null; input: string; output: string; inputTokens: number; outputTokens: number; costUSD: number; latencyMs: number; model: string; cached: boolean; createdAt: Date }) => ({
+      ...l,
+      createdAt: l.createdAt.toISOString(),
+    }));
+  },
+
+  analyzeTrends: async (
+    _parent: unknown,
+    args: { projectId: string; period?: string | null },
+    context: Context
+  ) => {
+    const { project } = await requireProject(context, args.projectId);
+    const apiKey = requireApiKey(context);
+
+    const reports = await context.prisma.report.findMany({
+      where: { projectId: args.projectId },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: { type: true, title: true, data: true, createdAt: true },
+    });
+
+    const formattedReports = reports.map((r: { type: string; title: string; data: string; createdAt: Date }) => ({
+      type: r.type,
+      title: r.title,
+      data: r.data,
+      createdAt: r.createdAt.toISOString(),
+    }));
+
+    const { analyzeTrends: aiAnalyzeTrends } = await import('../../ai/aiService.js');
+    return aiAnalyzeTrends(apiKey, {
+      projectName: project.name,
+      reports: formattedReports,
+      period: args.period,
+    });
+  },
+
   aiUsage: async (_parent: unknown, args: { days?: number | null }, context: Context) => {
     const user = requireOrg(context);
     const days = args.days ?? 30;

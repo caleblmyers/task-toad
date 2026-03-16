@@ -9,6 +9,7 @@ import TaskFieldsPanel from './taskdetail/TaskFieldsPanel';
 import TaskGitHubSection from './taskdetail/TaskGitHubSection';
 import TaskDependenciesSection from './taskdetail/TaskDependenciesSection';
 import TaskSubtasksSection from './taskdetail/TaskSubtasksSection';
+import TaskAIHistory from './taskdetail/TaskAIHistory';
 
 function parseTools(raw?: string | null): Array<{ name: string; category: string; reason?: string }> {
   if (!raw) return [];
@@ -291,6 +292,9 @@ function PanelContent({
           onDeleteComment={onDeleteComment}
         />
       </div>
+
+      {/* AI History */}
+      <TaskAIHistory taskId={task.taskId} />
 
       {/* Activity */}
       <div>

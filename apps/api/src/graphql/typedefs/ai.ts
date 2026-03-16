@@ -119,10 +119,37 @@ export const aiTypeDefs = /* GraphQL */ `
     untrackedWork: [DriftUntrackedWork!]!
     completedButOpen: [DriftCompletedButOpen!]!
   }
+
+  type AIPromptLog {
+    id: String!
+    feature: String!
+    taskId: String
+    projectId: String
+    input: String!
+    output: String!
+    inputTokens: Int!
+    outputTokens: Int!
+    costUSD: Float!
+    latencyMs: Int!
+    model: String!
+    cached: Boolean!
+    createdAt: String!
+  }
+
+  type TrendAnalysis {
+    period: String!
+    completionTrend: String!
+    velocityTrend: String!
+    healthTrend: String!
+    insights: [String!]!
+    recommendations: [String!]!
+  }
 `;
 
 export const aiQueryFields = /* GraphQL */ `
   aiUsage(days: Int): AIUsageSummary!
+  aiPromptHistory(taskId: String, projectId: String, limit: Int): [AIPromptLog!]!
+  analyzeTrends(projectId: ID!, period: String): TrendAnalysis!
   analyzeSprintTransition(sprintId: ID!): SprintTransitionAnalysis!
   projectChat(projectId: ID!, question: String!): ProjectChatResponse!
   analyzeRepoDrift(projectId: ID!): DriftAnalysis!

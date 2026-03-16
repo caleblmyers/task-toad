@@ -25,8 +25,9 @@ import {
   ProjectChatResponseSchema,
   DriftAnalysisSchema,
   BatchCodeGenerationSchema,
+  TrendAnalysisSchema,
 } from './aiTypes.js';
-import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse, DriftAnalysis, BatchCodeGeneration } from './aiTypes.js';
+import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse, DriftAnalysis, BatchCodeGeneration, TrendAnalysis } from './aiTypes.js';
 import { FEATURE_CONFIG } from './aiConfig.js';
 import { callAI } from './aiClient.js';
 import { parseJSON } from './responseParser.js';
@@ -55,6 +56,7 @@ import {
   buildProjectChatPrompt,
   buildRepoDriftPrompt,
   buildBatchCodeGenerationPrompt,
+  buildTrendAnalysisPrompt,
 } from './promptBuilder.js';
 
 // ---------------------------------------------------------------------------
@@ -453,4 +455,16 @@ export async function batchGenerateCode(
 ): Promise<BatchCodeGeneration> {
   const p = buildBatchCodeGenerationPrompt(data);
   return callAndParse(apiKey, 'batchGenerateCode', p, BatchCodeGenerationSchema);
+}
+
+export async function analyzeTrends(
+  apiKey: string,
+  data: {
+    projectName: string;
+    reports: Array<{ type: string; title: string; data: string; createdAt: string }>;
+    period?: string | null;
+  }
+): Promise<TrendAnalysis> {
+  const p = buildTrendAnalysisPrompt(data);
+  return callAndParse(apiKey, 'analyzeTrends', p, TrendAnalysisSchema);
 }

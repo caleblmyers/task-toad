@@ -232,7 +232,19 @@ export const RepoBootstrapSchema = z.object({
 
 export type RepoBootstrap = z.infer<typeof RepoBootstrapSchema>;
 
+export const TrendAnalysisSchema = z.object({
+  period: z.string(),
+  completionTrend: z.string(),
+  velocityTrend: z.string(),
+  healthTrend: z.string(),
+  insights: z.array(z.string()),
+  recommendations: z.array(z.string()),
+});
+
+export type TrendAnalysis = z.infer<typeof TrendAnalysisSchema>;
+
 export type AIFeature =
+  | 'analyzeTrends'
   | 'generateProjectOptions'
   | 'generateTaskPlan'
   | 'expandTask'

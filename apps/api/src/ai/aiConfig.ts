@@ -18,6 +18,7 @@ interface FeatureConfig {
 }
 
 export const FEATURE_CONFIG: Record<AIFeature, FeatureConfig> = {
+  analyzeTrends:            { maxTokens: 2048, cacheTTLMs: 300_000, retryOnValidationFailure: true },
   generateProjectOptions:   { maxTokens: 512,  cacheTTLMs: 0,       retryOnValidationFailure: true },
   generateTaskPlan:         { maxTokens: 6144, cacheTTLMs: 86_400_000, retryOnValidationFailure: true },
   expandTask:               { maxTokens: 2048, cacheTTLMs: 43_200_000, retryOnValidationFailure: true },

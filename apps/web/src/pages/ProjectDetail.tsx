@@ -28,6 +28,7 @@ import KeyboardShortcutHelp from '../components/shared/KeyboardShortcutHelp';
 import GitHubRepoModal from '../components/GitHubRepoModal';
 import StandupReportPanel from '../components/StandupReportPanel';
 import ProjectHealthPanel from '../components/ProjectHealthPanel';
+import TrendAnalysisPanel from '../components/TrendAnalysisPanel';
 import MeetingNotesDialog from '../components/MeetingNotesDialog';
 import CSVImportModal from '../components/CSVImportModal';
 import KnowledgeBaseModal from '../components/KnowledgeBaseModal';
@@ -70,6 +71,7 @@ export default function ProjectDetail() {
   const [bootstrapping, setBootstrapping] = useState(false);
   const [showProjectSettings, setShowProjectSettings] = useState(false);
   const [timelineView, setTimelineView] = useState(false);
+  const [showTrends, setShowTrends] = useState(false);
 
   useKeyboardShortcuts({
     tasks: filtering.filteredTasks,
@@ -396,7 +398,7 @@ export default function ProjectDetail() {
           </button>
           <button
             type="button"
-            onClick={() => { setShowStandup(true); setShowHealth(false); d.setSummary(null); }}
+            onClick={() => { setShowStandup(true); setShowHealth(false); setShowTrends(false); d.setSummary(null); }}
             disabled={d.isGenerating}
             className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -404,11 +406,19 @@ export default function ProjectDetail() {
           </button>
           <button
             type="button"
-            onClick={() => { setShowHealth(true); setShowStandup(false); d.setSummary(null); }}
+            onClick={() => { setShowHealth(true); setShowStandup(false); setShowTrends(false); d.setSummary(null); }}
             disabled={d.isGenerating}
             className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Health
+          </button>
+          <button
+            type="button"
+            onClick={() => { setShowTrends(true); setShowHealth(false); setShowStandup(false); d.setSummary(null); }}
+            disabled={d.isGenerating}
+            className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Trends
           </button>
           {d.activeSprint && (
             <button
@@ -605,6 +615,12 @@ export default function ProjectDetail() {
               projectId={d.projectId}
               disabled={d.isGenerating}
               onClose={() => setShowHealth(false)}
+            />
+          ) : showTrends && d.projectId ? (
+            <TrendAnalysisPanel
+              projectId={d.projectId}
+              disabled={d.isGenerating}
+              onClose={() => setShowTrends(false)}
             />
           ) : d.summary ? (
             <div className="flex-1 flex items-center justify-center px-8">

@@ -60,6 +60,14 @@ function mapAnthropicError(err: unknown): never {
 // Core API call with caching, size check, logging
 // ---------------------------------------------------------------------------
 
+export interface PromptLogContext {
+  prisma: { aIPromptLog: { create: (args: { data: Record<string, unknown> }) => Promise<unknown> } };
+  orgId: string;
+  userId: string;
+  taskId?: string | null;
+  projectId?: string | null;
+}
+
 export interface CallAIParams {
   apiKey: string;
   systemPrompt: string;
@@ -67,6 +75,7 @@ export interface CallAIParams {
   maxTokens: number;
   feature: AIFeature;
   cacheTTLMs?: number;
+  promptLogContext?: PromptLogContext;
 }
 
 export interface CallAIResult {
@@ -76,7 +85,7 @@ export interface CallAIResult {
 }
 
 export async function callAI(params: CallAIParams): Promise<CallAIResult> {
-  const { apiKey, systemPrompt, userPrompt, maxTokens, feature, cacheTTLMs = 0 } = params;
+  const { apiKey, systemPrompt, userPrompt, maxTokens, feature, cacheTTLMs = 0, promptLogContext } = params;
 
   // Check cache first
   if (cacheTTLMs > 0) {
@@ -123,6 +132,28 @@ export async function callAI(params: CallAIParams): Promise<CallAIResult> {
     if (cacheTTLMs > 0) {
       const cacheKey = hashPrompt(systemPrompt, userPrompt);
       aiCache.set(cacheKey, raw, cacheTTLMs);
+    }
+
+    // Persist prompt log (fire-and-forget)
+    if (promptLogContext) {
+      const costUSD = usage.inputTokens * 0.000001 + usage.outputTokens * 0.000005;
+      promptLogContext.prisma.aIPromptLog.create({
+        data: {
+          orgId: promptLogContext.orgId,
+          userId: promptLogContext.userId,
+          feature,
+          taskId: promptLogContext.taskId ?? null,
+          projectId: promptLogContext.projectId ?? null,
+          input: userPrompt.slice(0, 10000),
+          output: raw.slice(0, 10000),
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          costUSD,
+          latencyMs,
+          model: AI_MODEL,
+          cached: false,
+        },
+      }).catch((err: unknown) => log.warn({ err }, 'Failed to persist AI prompt log'));
     }
 
     return { raw, usage, cached: false };

@@ -18,3 +18,26 @@ model AIUsageLog {
   @@index([userId, createdAt])
   @@map("ai_usage_logs")
 }
+
+model AIPromptLog {
+  id           String   @id @default(uuid())
+  orgId        String   @map("org_id")
+  userId       String   @map("user_id")
+  feature      String
+  taskId       String?  @map("task_id")
+  projectId    String?  @map("project_id")
+  input        String   @db.Text
+  output       String   @db.Text
+  inputTokens  Int      @map("input_tokens")
+  outputTokens Int      @map("output_tokens")
+  costUSD      Float    @map("cost_usd")
+  latencyMs    Int      @map("latency_ms")
+  model        String
+  cached       Boolean  @default(false)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([orgId, createdAt])
+  @@index([taskId])
+  @@index([projectId, createdAt])
+  @@map("ai_prompt_logs")
+}

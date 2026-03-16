@@ -932,6 +932,45 @@ Return JSON:
   };
 }
 
+export function buildTrendAnalysisPrompt(data: {
+  projectName: string;
+  reports: Array<{ type: string; title: string; data: string; createdAt: string }>;
+  period?: string | null;
+}): Prompt {
+  const reportLines = data.reports
+    .slice(0, 20)
+    .map((r) => `[${r.createdAt}] ${r.type}: ${r.title}\n${truncate(r.data, 500)}`)
+    .join('\n\n');
+
+  return {
+    systemPrompt: SYSTEM_JSON,
+    userPrompt: `Analyze historical trends from these saved reports for a project. Identify patterns in completion rates, velocity, and project health over time.
+
+Project: ${userInput('project', data.projectName)}
+Period: ${data.period ?? 'all time'}
+
+Historical reports (${data.reports.length} total, most recent first):
+<user_input label="reports">
+${reportLines || '(no reports)'}
+</user_input>
+
+Return JSON:
+{
+  "period": string,
+  "completionTrend": string,
+  "velocityTrend": string,
+  "healthTrend": string,
+  "insights": string[],
+  "recommendations": string[]
+}
+"completionTrend" — "improving" | "declining" | "stable" with a brief explanation.
+"velocityTrend" — "increasing" | "decreasing" | "stable" with a brief explanation.
+"healthTrend" — "improving" | "declining" | "stable" with a brief explanation.
+"insights" — 3-5 specific observations based on the data.
+"recommendations" — 2-4 actionable suggestions to improve the project.`,
+  };
+}
+
 export function buildBatchCodeGenerationPrompt(data: {
   tasks: Array<{ title: string; description: string; instructions: string }>;
   projectName: string;
