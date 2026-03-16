@@ -47,12 +47,14 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 **Why:** Missing critical production infrastructure — no graceful shutdown, no error tracking, no connection pooling.
 **Touches:** `apps/api/src/index.ts`, `apps/api/src/app.ts`, `apps/api/prisma/schema/`, `apps/web/src/App.tsx`
 
-- [ ] Graceful shutdown handlers (SIGTERM/SIGINT) — close Prisma, SSE connections, clear intervals on redeploy
+- [x] Graceful shutdown handlers (SIGTERM/SIGINT) — close Prisma, SSE connections, clear intervals on redeploy (Wave 9, 2026-03-16)
 - [ ] Sentry error tracking integration — capture unhandled exceptions, GraphQL errors, and AI failures
 - [ ] Prisma connection pooling — configure pool size or add PgBouncer for Railway's PostgreSQL
-- [ ] Environment validation improvements — warn if SMTP not configured in production, validate ANTHROPIC_API_KEY
-- [ ] Static asset caching headers — `Cache-Control: max-age=31536000, immutable` for hashed assets, `no-cache` for index.html
-- [ ] React Error Boundary — global error boundary at App root with fallback UI
+- [x] Environment validation improvements — warn if SMTP not configured in production, validate ANTHROPIC_API_KEY (Wave 9, 2026-03-16)
+- [x] Static asset caching headers — `Cache-Control: max-age=31536000, immutable` for hashed assets, `no-cache` for index.html (Wave 9, 2026-03-16)
+- [x] React Error Boundary — global error boundary at App root with fallback UI (Wave 9, 2026-03-16)
+- [ ] Wire up webhook retry processor — `startRetryProcessor()` / `stopRetryProcessor()` exported but not called from `index.ts` (needs graceful shutdown integration)
+- [ ] SSE connection cleanup in graceful shutdown — `closeAllConnections` from sseManager not called in shutdown handler
 
 ### P2: Security Hardening (High Priority)
 **Why:** Several medium-severity security gaps: unbounded GraphQL depth, missing CSRF, bulk mutation auth gaps, SSE token in query string.
@@ -69,19 +71,21 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 **Why:** App fails WCAG 2.1 Level A on multiple criteria — keyboard nav, focus management, ARIA labels, color contrast.
 **Touches:** `apps/web/src/components/` (most component files), `apps/web/src/pages/AppLayout.tsx`
 
-- [ ] Modal accessibility — add focus trap, `aria-modal`, `aria-labelledby`, Escape-to-close, focus return on close. Create a reusable `<Modal>` base component to replace 15+ duplicated modal patterns
-- [ ] ARIA labels on all icon-only buttons — close buttons (✕), settings icons, notification bells, toolbar actions. Audit all `<button>` elements without text content
+- [x] Modal accessibility — shared `<Modal>` with focus trap, aria-modal, aria-labelledby, Escape-to-close, focus restore. 19 modals converted (Wave 9, 2026-03-16)
+- [x] ARIA labels on all icon-only buttons — close/clear/dismiss buttons, all 22 SVG icons have aria-hidden (Wave 9, 2026-03-16)
 - [ ] Form label associations — connect all `<label>` elements to inputs via `htmlFor`/`id` in TaskFieldsPanel, SprintCreateModal, filter inputs
-- [ ] Screen reader live regions — add `aria-live="polite"` to ToastContainer, progress indicators, notification count updates
-- [ ] Skip-to-content link — add at top of AppLayout for keyboard users to bypass sidebar navigation
+- [x] Screen reader live regions — ToastContainer has aria-live="polite", error toasts use role="alert" (Wave 9, 2026-03-16)
+- [x] Skip-to-content link — sr-only visible on focus, jumps to #main-content (Wave 9, 2026-03-16)
 - [ ] Color contrast fixes — upgrade `text-slate-300/400` to `text-slate-600/700` on light backgrounds throughout. Audit all Tailwind color pairings against WCAG AA (4.5:1 ratio)
-- [ ] Drag-and-drop keyboard alternative — add keyboard shortcuts (arrow keys + Enter) for moving tasks between kanban columns and sprint sections. Add `aria-grabbed`, `aria-dropeffect` attributes
+- [x] Drag-and-drop keyboard alternative — Enter/Space to enter move mode, arrow keys to move between columns, Escape to exit (Wave 9, 2026-03-16)
+- [ ] Backlog keyboard navigation — backlog sprint sections don't have keyboard move support yet (only KanbanBoard does)
+- [ ] KanbanBoard move mode: Up/Down arrow keys for reordering within a column (only Left/Right cross-column moves implemented)
 
 ### Q1: Code Quality & Testing (Medium Priority)
 **Why:** Zero test coverage, inconsistent error handling, duplicated modal patterns, dead code.
 **Touches:** `apps/web/src/components/`, `apps/web/src/hooks/`, `apps/api/src/graphql/resolvers/`, new `__tests__/` directories
 
-- [ ] Base Modal component — extract duplicated modal container/header/close-button pattern (15+ instances) into a reusable `<Modal>` component with built-in a11y
+- [x] Base Modal component — shared `<Modal>` with focus trap, ARIA, Escape-to-close (completed as part of A11 Wave 9, 2026-03-16)
 - [ ] Consistent error handling — replace silent `catch { return }` blocks with user-visible error feedback via toast. Audit: CommentSection, NotificationCenter, GlobalSearchModal, AppLayout
 - [ ] Unit test foundation — set up Jest + React Testing Library, write tests for critical hooks (useTaskFiltering, useTaskCRUD) and utility functions (resolverHelpers, tokenEstimator)
 - [ ] Integration test foundation — set up test database, write resolver tests for auth flows and task CRUD
@@ -130,11 +134,13 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 **Why:** Webhooks lack retry/delivery tracking, Slack only has one command, email has no HTML templates.
 **Touches:** `apps/api/src/utils/webhookDispatcher.ts`, `apps/api/src/slack/`, `apps/api/src/utils/email.ts`, `apps/api/src/github/`
 
-- [ ] Webhook retry queue — exponential backoff (1s, 5s, 30s, 5m) with delivery log table showing status, attempts, next retry
-- [ ] Webhook delivery dashboard — UI in OrgSettings showing delivery history per endpoint with success/failure counts
-- [ ] Slack command expansion — add `/tasktoad list` (my tasks), `/tasktoad assign <task> <user>`, project picker for multi-project orgs
+- [x] Webhook retry queue — exponential backoff with delivery log table showing status, attempts, next retry (Wave 9, 2026-03-16)
+- [x] Webhook delivery dashboard — UI in OrgSettings showing delivery history per endpoint with success/failure counts (Wave 9, 2026-03-16)
+- [x] Slack command expansion — added `/tasktoad list` and `/tasktoad status` with Block Kit formatting (Wave 9, 2026-03-16)
 - [ ] Slack user mapping — link Slack user ID to TaskToad user for auto-assignment on slash commands
-- [ ] Email HTML templates — branded templates for verification, password reset, invite, and notification emails
+- [x] Email HTML templates — branded templates for verification, password reset, invite (Wave 9, 2026-03-16)
+- [ ] Wire HTML email templates into sendEmail callers — `buildVerifyEmailHtml`/`buildResetPasswordHtml`/`buildInviteHtml` exist but auth resolvers still only pass plain text
+- [ ] Slack `/tasktoad list` assignee filtering — currently shows all tasks from first project, not user-specific (blocked on Slack user mapping)
 - [ ] Email retry queue — retry failed SMTP sends with backoff instead of silent failure
 - [ ] GitHub webhook retry — dead letter queue for failed webhook processing with manual replay
 
@@ -180,6 +186,25 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 ---
 
 ## Completed
+
+### P1 (partial): Production Hardening (Wave 9, 2026-03-16)
+- [x] Graceful shutdown handlers (SIGTERM/SIGINT) — close Prisma, clear intervals, force-kill timeout
+- [x] Environment validation improvements — production warnings for missing SMTP, API keys
+- [x] Static asset caching headers — immutable for hashed assets, no-cache for index.html
+- [x] React Error Boundary — global error boundary with fallback UI and Suspense wrapper
+
+### A11 (partial): Accessibility Foundation (Wave 9, 2026-03-16)
+- [x] Shared Modal component — focus trap, aria-modal, aria-labelledby, Escape-to-close, focus restore; 19 modals converted
+- [x] ARIA labels on icon-only buttons — all close/clear/dismiss buttons, 22 SVG icons with aria-hidden
+- [x] Screen reader live regions — ToastContainer with aria-live, error toasts with role="alert"
+- [x] Skip-to-content link — sr-only visible on focus, jumps to #main-content
+- [x] KanbanBoard keyboard navigation — Enter/Space move mode, arrow keys between columns, Escape to exit
+
+### I1 (partial): Integration Completeness (Wave 9, 2026-03-16)
+- [x] Webhook retry queue — WebhookDelivery model, exponential backoff (5s→1hr, 5 attempts), background processor
+- [x] Webhook delivery dashboard — per-endpoint delivery history UI with status badges and replay button
+- [x] Slack command expansion — `/tasktoad list` and `/tasktoad status` with Block Kit formatting
+- [x] Email HTML templates — branded templates for verification, password reset, invite
 
 ### W1 (partial): API Refactor & Security Hardening (Wave 7, 2026-03-16)
 - [x] Extract `requireTask`/`requireProject` resolver utilities — eliminated 20+ duplicated validation blocks

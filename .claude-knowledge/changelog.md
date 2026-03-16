@@ -6,6 +6,40 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-16
 
+### Wave 9: P1 + A11 + I1 (3 workers, 6 tasks)
+
+**P1 — Production Hardening (Worker 1):**
+- Graceful shutdown handlers (SIGTERM/SIGINT) with Prisma disconnect, interval cleanup, 10s force-kill timeout
+- Startup DB connectivity check, production env warnings for missing SMTP/API keys
+- React Error Boundary with fallback UI + Suspense wrapper for lazy routes
+- Static asset caching: immutable for hashed assets, no-cache for index.html
+
+**A11 — Accessibility Foundation (Worker 2):**
+- Shared `<Modal>` component with focus trap, aria-modal, aria-labelledby, Escape-to-close, focus restoration
+- All 19 modal/dialog components converted to use shared Modal
+- ARIA labels on icon-only buttons, aria-hidden on decorative SVGs
+- ToastContainer live regions (aria-live="polite", role="alert" for errors)
+- Skip-to-content link, sidebar nav aria-label, notification badge announcements
+- KanbanBoard keyboard navigation: Enter/Space move mode, arrow keys between columns
+
+**I1 — Integration Completeness (Worker 3):**
+- WebhookDelivery model + migration, exponential backoff retry queue (5s→1hr, 5 attempts max)
+- Webhook delivery dashboard UI with status badges, replay button for failed deliveries
+- Fixed missing webhook dispatches for comment.created and sprint.created events
+- Slack slash commands: `/tasktoad list` (assigned tasks) and `/tasktoad status` (project summary) with Block Kit
+- Branded HTML email templates for verification, password reset, and invite emails
+
+**Pre-wave:** Adaptive AI generation limits — replaced hardcoded output count ranges with scope-aware guidance, added delegationHint to code generation, bumped token ceilings
+
+**Open follow-ups:**
+- Wire `startRetryProcessor()` into `index.ts` (exported but not called — retry processor won't run until integrated)
+- Wire HTML email templates into auth resolver `sendEmail()` calls (templates built but callers still pass plain text)
+- Slack `/tasktoad list` shows all tasks, not user-specific (blocked on Slack user mapping)
+
+**Process notes:**
+- Worker-3 couldn't wire retry processor into index.ts because it wasn't in their files array. Future: include entry point files when tasks add background processors.
+- Worker-1 delivered both tasks cleanly — zero type errors, no lint regressions across 13 files.
+
 ### Wave 8: W1 + W2 (2 workers, 2 tasks completed, 1 deferred)
 
 **W1 — API Quality (Worker 1):**

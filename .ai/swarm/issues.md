@@ -36,3 +36,8 @@ Format:
 **Issue:** Worker modified 3 files not in the task's `files` array: auth.prisma, org.prisma, resolvers/index.ts. These were necessary for Prisma relations and resolver registration.
 **Impact:** None — changes were appropriate and necessary.
 **Suggestion:** When task files include Prisma schema additions with relations, include the related model files (auth.prisma, org.prisma etc.) in the files array.
+
+### worker-3 — task-005
+**Issue:** Task description says to add `processRetryQueue` on a 30-second `setInterval` in `index.ts`, but `index.ts` is not in the task's `files` array (it belongs to task-001/worker-1).
+**Impact:** The retry processor is implemented as exported `startRetryProcessor(prisma)` / `stopRetryProcessor()` functions but not wired into the server startup. Someone needs to call `startRetryProcessor(prisma)` in `index.ts`.
+**Suggestion:** Either add `index.ts` to this task's files list, or create a follow-up task for the integration. When a task involves background processors, ensure the entry point file is in the files array.
