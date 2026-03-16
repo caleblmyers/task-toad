@@ -50,6 +50,16 @@ if [ "$VALIDATE" = true ]; then
     exit 1
   }
 
+  # Install deps if any package.json changed (new npm packages)
+  if git -C "$MAIN_REPO" diff --cached --name-only | grep -q 'package.json'; then
+    echo "package.json changes detected — running pnpm install..."
+    if ! (cd "$MAIN_REPO" && pnpm install --frozen-lockfile 2>&1 || pnpm install 2>&1); then
+      echo "pnpm install failed — aborting merge"
+      git -C "$MAIN_REPO" merge --abort
+      exit 1
+    fi
+  fi
+
   # Regenerate Prisma client if schema files changed
   if git -C "$MAIN_REPO" diff --cached --name-only | grep -q 'prisma/schema/'; then
     echo "Prisma schema changes detected — running prisma generate..."

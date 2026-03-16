@@ -38,7 +38,7 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 5. **I1 + D1** — Integration completeness & observability
 6. **F1** — Frontend performance (only matters at scale)
 7. **S1** — Styling & branding (brand tokens deployed, remaining items are polish)
-8. **SW1** — Swarm workflow & knowledge base optimization (meta — improves all future waves)
+8. **SW1** — Swarm workflow optimization (meta — `merge-worker.sh pnpm install` is HIGH priority, blocking every wave since W11)
 
 ---
 
@@ -89,7 +89,7 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 
 - [ ] Virtualize long lists — use `react-window` or `@tanstack/virtual` for task lists (BacklogView, TableView) and activity feeds when > 100 items
 - [ ] dependsOnCache memory management — parseDependsOn in taskHelpers.ts uses a module-level Map that never clears; add TTL or WeakRef-based eviction if task counts grow large
-- [ ] Fix lazyWithRetry retry bug — recursive call returns LazyExoticComponent instead of retrying importFn() directly; `as never` cast hides the type mismatch
+- [ ] **[MEDIUM]** Fix lazyWithRetry retry bug — recursive call returns LazyExoticComponent instead of retrying importFn() directly; `as never` cast hides the type mismatch. Only affects chunk load failures on bad networks; happy path works.
 - [ ] Lazy-load BatchCodeGenModal and DriftAnalysisModal — still eagerly imported in ProjectDetail
 - [ ] Fractional position rebalancing — when positions converge (many reorders in same spot), rebalance by reassigning evenly-spaced positions across the column
 - [ ] Cost limit rule: apply DEFAULT_LIST_MULTIPLIER to unknown fields with selection sets — currently only known COST_MAP fields get list multipliers
@@ -110,7 +110,7 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 - [ ] Auto-prisma-generate in merge script — `scripts/swarm/merge-worker.sh` should detect Prisma schema changes in the diff and run `npx prisma generate` automatically before typecheck, preventing the recurring "stale Prisma client types" review rejection
 - [ ] Task file array validation — add a pre-flight check in the swarm skill that cross-references task description file paths against the `files` array, flagging any mentioned files that aren't listed (recurring issue: Prisma relation files, resolver index, entry point files)
 - [ ] Auto-strip worker role from CLAUDE.md commits — swarm setup appends worker role to CLAUDE.md but workers accidentally commit it; need .gitignore or pre-commit hook to strip the role section before commit
-- [ ] merge-worker.sh pnpm install — add `pnpm install` after staging merge and before typecheck/lint/build; currently fails validation when tasks add new npm packages (reported Wave 11, still unfixed)
+- [x] merge-worker.sh pnpm install — add `pnpm install` after staging merge and before typecheck/lint/build (fixed: detects package.json changes, runs pnpm install before typecheck)
 
 ---
 
