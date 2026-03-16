@@ -46,10 +46,7 @@ export const githubQueries = {
 
   fetchRepoFileContent: async (_parent: unknown, args: { projectId: string; filePath: string }, context: Context) => {
     await requireProjectAccess(context, args.projectId);
-    const project = await context.prisma.project.findUnique({
-      where: { projectId: args.projectId },
-      select: { githubInstallationId: true, githubRepositoryOwner: true, githubRepositoryName: true },
-    });
+    const project = await context.loaders.projectById.load(args.projectId);
     if (!project?.githubInstallationId || !project?.githubRepositoryOwner || !project?.githubRepositoryName) {
       return null;
     }
@@ -256,10 +253,7 @@ export const githubMutations = {
     });
     if (!task) throw new NotFoundError('Task not found');
 
-    const project = await context.prisma.project.findUnique({
-      where: { projectId: task.projectId },
-      select: { githubRepositoryOwner: true, githubRepositoryName: true, githubInstallationId: true },
-    });
+    const project = await context.loaders.projectById.load(task.projectId);
     if (!project?.githubInstallationId || !project?.githubRepositoryOwner || !project?.githubRepositoryName) {
       throw new ValidationError('Project has no linked GitHub repository');
     }

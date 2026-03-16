@@ -289,21 +289,20 @@ export const aiMutations = {
   ) => {
     const user = requireOrg(context);
     const apiKey = requireApiKey(context);
-    const task = await context.prisma.task.findUnique({
-      where: { taskId: args.taskId },
-      include: { project: true },
-    });
+    const task = await context.loaders.taskById.load(args.taskId);
     if (!task || task.orgId !== user.orgId) {
       throw new NotFoundError('Task not found');
     }
+    const project = await context.loaders.projectById.load(task.projectId);
+    if (!project) throw new NotFoundError('Project not found');
     await context.prisma.task.deleteMany({ where: { parentTaskId: args.taskId } });
     const subtaskPlans = await aiExpandTask(
       apiKey,
       task.title,
       task.description ?? '',
-      task.project.name,
+      project.name,
       args.context,
-      task.project.knowledgeBase
+      project.knowledgeBase
     );
     return Promise.all(
       subtaskPlans.map((t) =>
@@ -326,13 +325,12 @@ export const aiMutations = {
   generateTaskInstructions: async (_parent: unknown, args: { taskId: string }, context: Context) => {
     const user = requireOrg(context);
     const apiKey = requireApiKey(context);
-    const task = await context.prisma.task.findUnique({
-      where: { taskId: args.taskId },
-      include: { project: true },
-    });
+    const task = await context.loaders.taskById.load(args.taskId);
     if (!task || task.orgId !== user.orgId) {
       throw new NotFoundError('Task not found');
     }
+    const project = await context.loaders.projectById.load(task.projectId);
+    if (!project) throw new NotFoundError('Project not found');
     const siblings = await context.prisma.task.findMany({
       where: { projectId: task.projectId, parentTaskId: null, NOT: { taskId: task.taskId } },
       select: { taskId: true, title: true },
@@ -342,9 +340,9 @@ export const aiMutations = {
       apiKey,
       task.title,
       task.description ?? '',
-      task.project.name,
+      project.name,
       siblings.map((s: { title: string }) => s.title),
-      task.project.knowledgeBase
+      project.knowledgeBase
     );
     const titleToId = new Map(siblings.map((s: { title: string; taskId: string }) => [s.title, s.taskId]));
     const resolvedDeps = result.dependsOn
@@ -379,16 +377,15 @@ export const aiMutations = {
   generateCodeFromTask: async (_parent: unknown, args: { taskId: string; styleGuide?: string | null }, context: Context) => {
     const user = requireOrg(context);
     const apiKey = requireApiKey(context);
-    const task = await context.prisma.task.findUnique({
-      where: { taskId: args.taskId },
-      include: { project: true },
-    });
+    const task = await context.loaders.taskById.load(args.taskId);
     if (!task || task.orgId !== user.orgId) {
       throw new NotFoundError('Task not found');
     }
     if (!task.instructions) {
       throw new ValidationError('Task has no instructions. Generate instructions first.');
     }
+    const project = await context.loaders.projectById.load(task.projectId);
+    if (!project) throw new NotFoundError('Project not found');
 
     // Fetch project file tree for context if repo is connected
     let projectFiles: Array<{ path: string; language: string; size: number }> | undefined;
@@ -402,11 +399,11 @@ export const aiMutations = {
       task.title,
       task.description ?? '',
       task.instructions,
-      task.project.name,
-      task.project.description ?? '',
+      project.name,
+      project.description ?? '',
       projectFiles,
       args.styleGuide,
-      task.project.knowledgeBase,
+      project.knowledgeBase,
     );
   },
 
@@ -417,16 +414,15 @@ export const aiMutations = {
   ) => {
     const user = requireOrg(context);
     const apiKey = requireApiKey(context);
-    const task = await context.prisma.task.findUnique({
-      where: { taskId: args.taskId },
-      include: { project: true },
-    });
+    const task = await context.loaders.taskById.load(args.taskId);
     if (!task || task.orgId !== user.orgId) {
       throw new NotFoundError('Task not found');
     }
     if (!task.instructions) {
       throw new ValidationError('Task has no instructions. Generate instructions first.');
     }
+    const project = await context.loaders.projectById.load(task.projectId);
+    if (!project) throw new NotFoundError('Project not found');
     return aiRegenerateFile(
       apiKey,
       task.title,
@@ -434,7 +430,7 @@ export const aiMutations = {
       task.instructions,
       args.filePath,
       '', // original content will be passed from frontend in feedback if needed
-      task.project.name,
+      project.name,
       args.feedback
     );
   },
@@ -446,15 +442,13 @@ export const aiMutations = {
   ) => {
     const user = requireOrg(context);
     const apiKey = requireApiKey(context);
-    const task = await context.prisma.task.findUnique({
-      where: { taskId: args.taskId },
-      include: { project: true },
-    });
+    const task = await context.loaders.taskById.load(args.taskId);
     if (!task || task.orgId !== user.orgId) {
       throw new NotFoundError('Task not found');
     }
 
-    const project = task.project;
+    const project = await context.loaders.projectById.load(task.projectId);
+    if (!project) throw new NotFoundError('Project not found');
     if (!project.githubInstallationId || !project.githubRepositoryOwner || !project.githubRepositoryName) {
       throw new ValidationError('Project has no linked GitHub repository');
     }
@@ -479,9 +473,7 @@ export const aiMutations = {
   summarizeProject: async (_parent: unknown, args: { projectId: string }, context: Context) => {
     const user = requireOrg(context);
     const apiKey = requireApiKey(context);
-    const project = await context.prisma.project.findUnique({
-      where: { projectId: args.projectId },
-    });
+    const project = await context.loaders.projectById.load(args.projectId);
     if (!project || project.orgId !== user.orgId) {
       throw new NotFoundError('Project not found');
     }

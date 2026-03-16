@@ -23,13 +23,13 @@ export const sprintQueries = {
       where: { projectId: args.projectId, orgId: user.orgId, closedAt: { not: null } },
       orderBy: { closedAt: 'asc' },
     });
-    const results = [];
-    for (const sprint of closedSprints) {
-      const tasks = await context.prisma.task.findMany({
-        where: { sprintId: sprint.sprintId, parentTaskId: null },
-      });
+    const sprintIds = closedSprints.map((s) => s.sprintId);
+    const allSprintTasks = await context.loaders.sprintTasks.loadMany(sprintIds);
+    return closedSprints.map((sprint, i) => {
+      const loaded = allSprintTasks[i];
+      const tasks = loaded instanceof Error ? [] : (loaded ?? []);
       const doneTasks = tasks.filter((t: { status: string }) => t.status === 'done');
-      results.push({
+      return {
         sprintId: sprint.sprintId,
         sprintName: sprint.name,
         completedTasks: doneTasks.length,
@@ -38,9 +38,8 @@ export const sprintQueries = {
         totalHours: tasks.reduce((s: number, t: { estimatedHours: number | null }) => s + (t.estimatedHours ?? 0), 0),
         pointsCompleted: doneTasks.reduce((s: number, t: { storyPoints: number | null }) => s + (t.storyPoints ?? 0), 0),
         pointsTotal: tasks.reduce((s: number, t: { storyPoints: number | null }) => s + (t.storyPoints ?? 0), 0),
-      });
-    }
-    return results;
+      };
+    });
   },
 
   sprintBurndown: async (_parent: unknown, args: { sprintId: string }, context: Context) => {
