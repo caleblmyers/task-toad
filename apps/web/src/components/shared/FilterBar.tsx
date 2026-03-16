@@ -97,7 +97,7 @@ export default function FilterBar({
       {/* Saved filters pills */}
       {savedFilters && savedFilters.length > 0 && onLoadFilter && (
         <div className="flex items-center gap-1 flex-wrap">
-          <span className="text-xs text-slate-400 mr-1">Saved:</span>
+          <span className="text-xs text-slate-500 mr-1">Saved:</span>
           {savedFilters.map((sf) => (
             <span key={sf.savedFilterId} className="inline-flex items-center gap-1">
               <button
@@ -108,7 +108,7 @@ export default function FilterBar({
               </button>
               <button
                 onClick={() => handleDeleteFilter(sf.savedFilterId)}
-                className="text-xs text-slate-300 hover:text-red-400 -ml-1"
+                className="text-xs text-slate-500 hover:text-red-400 -ml-1"
                 title="Delete filter"
               >
                 &times;
@@ -123,6 +123,7 @@ export default function FilterBar({
           value={statusFilter}
           onChange={(e) => onStatusChange(e.target.value)}
           className={`${pillBase} ${statusFilter !== 'all' ? pillActive : pillInactive}`}
+          aria-label="Filter by status"
         >
           <option value="all">Status</option>
           {statusOptions.map((s) => (
@@ -134,6 +135,7 @@ export default function FilterBar({
           value={priorityFilter}
           onChange={(e) => onPriorityChange(e.target.value)}
           className={`${pillBase} ${priorityFilter !== 'all' ? pillActive : pillInactive}`}
+          aria-label="Filter by priority"
         >
           <option value="all">Priority</option>
           <option value="critical">Critical</option>
@@ -146,6 +148,7 @@ export default function FilterBar({
           value={assigneeFilter}
           onChange={(e) => onAssigneeChange(e.target.value)}
           className={`${pillBase} ${assigneeFilter !== 'all' ? pillActive : pillInactive}`}
+          aria-label="Filter by assignee"
         >
           <option value="all">Assignee</option>
           <option value="unassigned">Unassigned</option>
@@ -188,6 +191,7 @@ export default function FilterBar({
                 value={filterVal}
                 onChange={(e) => onCustomFieldFilterChange(field.customFieldId, e.target.value)}
                 className={`${pillBase} ${filterVal ? pillActive : pillInactive}`}
+                aria-label={`Filter by ${field.name}`}
               >
                 <option value="">{field.name}</option>
                 {getDropdownOptions(field).map((opt) => (
@@ -204,6 +208,7 @@ export default function FilterBar({
                 value={filterVal}
                 onChange={(e) => onCustomFieldFilterChange(field.customFieldId, e.target.value)}
                 placeholder={field.name}
+                aria-label={`Filter by ${field.name}`}
                 className={`${pillBase} w-24 ${filterVal ? pillActive : pillInactive}`}
               />
             );
@@ -215,7 +220,7 @@ export default function FilterBar({
           <button
             type="button"
             onClick={onClear}
-            className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1"
+            className="text-xs text-slate-500 hover:text-slate-600 px-2 py-1"
           >
             Clear filters
           </button>
@@ -230,6 +235,7 @@ export default function FilterBar({
                 value={saveName}
                 onChange={(e) => setSaveName(e.target.value)}
                 placeholder="Filter name"
+                aria-label="Save filter name"
                 className="text-xs border border-slate-300 rounded px-2 py-1 w-28 focus:outline-none focus:ring-1 focus:ring-brand-green"
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSaveFilter(); }}
                 autoFocus
@@ -248,7 +254,7 @@ export default function FilterBar({
           ) : (
             <button
               onClick={() => setShowSaveInput(true)}
-              className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1"
+              className="text-xs text-slate-500 hover:text-slate-600 px-2 py-1"
             >
               Save filter
             </button>

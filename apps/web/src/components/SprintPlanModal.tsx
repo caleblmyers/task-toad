@@ -97,9 +97,10 @@ export default function SprintPlanModal({
       <div className="px-6 py-4 border-b border-slate-100 flex-shrink-0">
         <div className="flex gap-4 items-end">
           <div>
-            <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Sprint Length</label>
+            <label htmlFor="sprint-plan-length" className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Sprint Length</label>
             <div className="flex items-center gap-2">
               <input
+                id="sprint-plan-length"
                 type="number"
                 min={1}
                 max={8}
@@ -111,9 +112,10 @@ export default function SprintPlanModal({
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Team Size</label>
+            <label htmlFor="sprint-plan-team-size" className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Team Size</label>
             <div className="flex items-center gap-2">
               <input
+                id="sprint-plan-team-size"
                 type="number"
                 min={1}
                 max={20}
@@ -168,7 +170,7 @@ export default function SprintPlanModal({
                     const task = taskMap[taskId];
                     return (
                       <li key={taskId} className="flex items-center gap-2 text-sm py-0.5">
-                        <span className="text-slate-300 flex-shrink-0">–</span>
+                        <span className="text-slate-500 flex-shrink-0">–</span>
                         <span className="text-slate-700 flex-1">{task?.title ?? taskId}</span>
                         {task?.estimatedHours != null && (
                           <span className="text-xs text-slate-400 flex-shrink-0">

@@ -178,6 +178,7 @@ export default function CSVImportModal({ onImport, onClose }: CSVImportModalProp
                       value={mapping[i]}
                       onChange={(e) => handleMappingChange(i, e.target.value as TaskField)}
                       className="flex-1 text-sm border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-green"
+                      aria-label={`Map column "${header}" to field`}
                     >
                       {FIELD_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -200,7 +201,7 @@ export default function CSVImportModal({ onImport, onClose }: CSVImportModalProp
                     <tr>
                       {parsed.headers.map((h, i) => (
                         <th key={i} className="px-3 py-1.5 text-left font-medium text-slate-500">
-                          {mapping[i] !== 'skip' ? mapping[i] : <span className="text-slate-300">{h}</span>}
+                          {mapping[i] !== 'skip' ? mapping[i] : <span className="text-slate-500">{h}</span>}
                         </th>
                       ))}
                     </tr>
@@ -209,7 +210,7 @@ export default function CSVImportModal({ onImport, onClose }: CSVImportModalProp
                     {previewRows.map((row, ri) => (
                       <tr key={ri} className="border-t border-slate-100">
                         {row.map((cell, ci) => (
-                          <td key={ci} className={`px-3 py-1 ${mapping[ci] === 'skip' ? 'text-slate-300' : 'text-slate-700'} max-w-[200px] truncate`}>
+                          <td key={ci} className={`px-3 py-1 ${mapping[ci] === 'skip' ? 'text-slate-500' : 'text-slate-700'} max-w-[200px] truncate`}>
                             {cell}
                           </td>
                         ))}

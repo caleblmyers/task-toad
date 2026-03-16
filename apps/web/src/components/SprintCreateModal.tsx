@@ -111,8 +111,9 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Name *</label>
+            <label htmlFor="sprint-name" className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Name *</label>
             <input
+              id="sprint-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -124,8 +125,9 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Sprint Goal (optional)</label>
+            <label htmlFor="sprint-goal" className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Sprint Goal (optional)</label>
             <textarea
+              id="sprint-goal"
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
               placeholder="What is this sprint's objective?"
@@ -136,8 +138,9 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
 
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Start Date</label>
+              <label htmlFor="sprint-start-date" className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Start Date</label>
               <input
+                id="sprint-start-date"
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
@@ -145,8 +148,9 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
               />
             </div>
             <div className="flex-1">
-              <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">End Date</label>
+              <label htmlFor="sprint-end-date" className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">End Date</label>
               <input
+                id="sprint-end-date"
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
@@ -185,11 +189,13 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
             </div>
             <div className="flex gap-2">
               <input
+                id="sprint-add-column"
                 type="text"
                 value={newCol}
                 onChange={(e) => setNewCol(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addColumn(); }}}
                 placeholder="Add column…"
+                aria-label="Add column"
                 className="flex-1 border border-slate-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green"
               />
               <button

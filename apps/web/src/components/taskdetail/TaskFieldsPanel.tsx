@@ -57,8 +57,9 @@ export default function TaskFieldsPanel({
     <>
       {/* Status */}
       <div className="mb-4">
-        <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Status</label>
+        <label htmlFor="task-status-select" className="text-xs font-medium text-slate-500 uppercase tracking-wide">Status</label>
         <select
+          id="task-status-select"
           value={task.status}
           onChange={(e) => onStatusChange(task.taskId, e.target.value)}
           className="block mt-1 border border-slate-300 rounded px-2 py-1 text-sm"
@@ -72,8 +73,9 @@ export default function TaskFieldsPanel({
 
       {/* Sprint */}
       <div className="mb-4">
-        <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Sprint</label>
+        <label htmlFor="task-sprint-select" className="text-xs font-medium text-slate-500 uppercase tracking-wide">Sprint</label>
         <select
+          id="task-sprint-select"
           value={task.sprintId ?? ''}
           onChange={(e) => onAssignSprint(task.taskId, e.target.value || null)}
           className="block mt-1 border border-slate-300 rounded px-2 py-1 text-sm"
@@ -90,8 +92,9 @@ export default function TaskFieldsPanel({
 
       {/* Assignee */}
       <div className="mb-4">
-        <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Assignee</label>
+        <label htmlFor="task-assignee-select" className="text-xs font-medium text-slate-500 uppercase tracking-wide">Assignee</label>
         <select
+          id="task-assignee-select"
           value={task.assigneeId ?? ''}
           onChange={(e) => onAssignUser(task.taskId, e.target.value || null)}
           className="block mt-1 border border-slate-300 rounded px-2 py-1 text-sm"
@@ -106,8 +109,9 @@ export default function TaskFieldsPanel({
 
       {/* Due Date */}
       <div className="mb-4">
-        <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Due Date</label>
+        <label htmlFor="task-due-date" className="text-xs font-medium text-slate-500 uppercase tracking-wide">Due Date</label>
         <input
+          id="task-due-date"
           type="date"
           value={task.dueDate ?? ''}
           onChange={(e) => onDueDateChange(task.taskId, e.target.value || null)}
@@ -132,8 +136,9 @@ export default function TaskFieldsPanel({
 
       {/* Story Points */}
       <div className="mb-4">
-        <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Story Points</label>
+        <label htmlFor="task-story-points" className="text-xs font-medium text-slate-500 uppercase tracking-wide">Story Points</label>
         <input
+          id="task-story-points"
           type="number"
           min={0}
           max={100}
@@ -213,12 +218,14 @@ export default function TaskFieldsPanel({
                       value={newLabelColor}
                       onChange={(e) => setNewLabelColor(e.target.value)}
                       className="w-6 h-6 rounded border border-slate-300 cursor-pointer"
+                      aria-label="Label color"
                     />
                     <input
                       type="text"
                       value={newLabelName}
                       onChange={(e) => setNewLabelName(e.target.value)}
                       placeholder="New label…"
+                      aria-label="New label name"
                       className="flex-1 text-xs border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-green"
                       onKeyDown={async (e) => {
                         if (e.key === 'Enter' && newLabelName.trim()) {
