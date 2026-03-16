@@ -1,6 +1,7 @@
 import type { Context } from '../context.js';
 import { NotFoundError, ConflictError } from '../errors.js';
 import { requireOrg } from './auth.js';
+import { requireTask } from '../../utils/resolverHelpers.js';
 
 // ── Search queries ──
 
@@ -74,11 +75,7 @@ export const searchMutations = {
   },
 
   addTaskLabel: async (_parent: unknown, args: { taskId: string; labelId: string }, context: Context) => {
-    const user = requireOrg(context);
-    const task = await context.prisma.task.findUnique({ where: { taskId: args.taskId } });
-    if (!task || task.orgId !== user.orgId) {
-      throw new NotFoundError('Task not found');
-    }
+    const { user, task } = await requireTask(context, args.taskId);
     const label = await context.prisma.label.findUnique({ where: { labelId: args.labelId } });
     if (!label || label.orgId !== user.orgId) {
       throw new NotFoundError('Label not found');
@@ -92,11 +89,7 @@ export const searchMutations = {
   },
 
   removeTaskLabel: async (_parent: unknown, args: { taskId: string; labelId: string }, context: Context) => {
-    const user = requireOrg(context);
-    const task = await context.prisma.task.findUnique({ where: { taskId: args.taskId } });
-    if (!task || task.orgId !== user.orgId) {
-      throw new NotFoundError('Task not found');
-    }
+    const { task } = await requireTask(context, args.taskId);
     await context.prisma.taskLabel.deleteMany({
       where: { taskId: args.taskId, labelId: args.labelId },
     });

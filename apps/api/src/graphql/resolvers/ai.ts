@@ -24,6 +24,7 @@ import { NotFoundError, ValidationError, AuthorizationError } from '../errors.js
 import { requireOrg, requireApiKey } from './auth.js';
 import { getProjectRepo, fetchProjectFileTree, fetchFileContent, getPullRequestDiff } from '../../github/index.js';
 import { listRecentCommits, listOpenPullRequests } from '../../github/githubFileService.js';
+import { requireProject, sanitizeForPrompt } from '../../utils/resolverHelpers.js';
 
 // ── AI mutations ──
 
@@ -33,13 +34,7 @@ export const aiMutations = {
     args: { projectId: string; type: string; title: string; data: string; sprintId?: string | null },
     context: Context
   ) => {
-    const user = requireOrg(context);
-    const project = await context.prisma.project.findFirst({
-      where: { projectId: args.projectId, orgId: user.orgId },
-    });
-    if (!project) {
-      throw new NotFoundError('Project not found');
-    }
+    const { user } = await requireProject(context, args.projectId);
     return context.prisma.report.create({
       data: {
         orgId: user.orgId,
@@ -112,14 +107,8 @@ export const aiMutations = {
     args: { projectId: string; context?: string | null },
     context: Context
   ) => {
-    const user = requireOrg(context);
+    const { user, project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
-    const project = await context.prisma.project.findUnique({
-      where: { projectId: args.projectId },
-    });
-    if (!project || project.orgId !== user.orgId) {
-      throw new NotFoundError('Project not found');
-    }
     const existingTasks = await context.prisma.task.findMany({
       where: { projectId: args.projectId, archived: false },
       select: { title: true },
@@ -160,14 +149,8 @@ export const aiMutations = {
     args: { projectId: string; context?: string | null; appendToTitles?: string[] | null },
     context: Context
   ) => {
-    const user = requireOrg(context);
+    const { project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
-    const project = await context.prisma.project.findUnique({
-      where: { projectId: args.projectId },
-    });
-    if (!project || project.orgId !== user.orgId) {
-      throw new NotFoundError('Project not found');
-    }
     const existingTasks = await context.prisma.task.findMany({
       where: { projectId: args.projectId, archived: false },
       select: { title: true },
@@ -175,7 +158,7 @@ export const aiMutations = {
     const existingTitles = existingTasks.map((t: { title: string }) => t.title);
     let fullContext = args.context ?? undefined;
     if (args.appendToTitles && args.appendToTitles.length > 0) {
-      const existing = args.appendToTitles.map((t: string) => `"${t}"`).join(', ');
+      const existing = args.appendToTitles.map((t: string) => `<task_title>${sanitizeForPrompt(t)}</task_title>`).join(', ');
       fullContext = `These tasks already exist: ${existing}. Generate ONLY additional tasks not already in this list.${args.context ? ` Additional context: ${args.context}` : ''}`;
     }
     const allExistingTitles = [...existingTitles, ...(args.appendToTitles ?? [])];
@@ -222,13 +205,7 @@ export const aiMutations = {
     },
     context: Context
   ) => {
-    const user = requireOrg(context);
-    const project = await context.prisma.project.findUnique({
-      where: { projectId: args.projectId },
-    });
-    if (!project || project.orgId !== user.orgId) {
-      throw new NotFoundError('Project not found');
-    }
+    const { user } = await requireProject(context, args.projectId);
 
     if (args.clearExisting) {
       await context.prisma.task.deleteMany({
@@ -239,7 +216,7 @@ export const aiMutations = {
       });
     }
 
-    const created = await Promise.all(
+    const results = await Promise.allSettled(
       args.tasks.map((t) =>
         context.prisma.task.create({
           data: {
@@ -257,6 +234,12 @@ export const aiMutations = {
         })
       )
     );
+    const created = results
+      .filter((r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof context.prisma.task.create>>> => r.status === 'fulfilled')
+      .map((r) => r.value);
+    if (created.length === 0 && args.tasks.length > 0) {
+      throw new ValidationError('Failed to create any tasks');
+    }
 
     const titleToId = new Map<string, string>();
     created.forEach((task) => titleToId.set(task.title, task.taskId));
@@ -503,14 +486,8 @@ export const aiMutations = {
     args: { projectId: string; bugReport: string },
     context: Context
   ) => {
-    const user = requireOrg(context);
+    const { user, project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
-    const project = await context.prisma.project.findFirst({
-      where: { projectId: args.projectId, orgId: user.orgId },
-    });
-    if (!project) {
-      throw new NotFoundError('Project not found');
-    }
     if (!args.bugReport.trim()) {
       throw new ValidationError('Bug report text is required');
     }
@@ -538,14 +515,8 @@ export const aiMutations = {
     args: { projectId: string; prd: string },
     context: Context
   ) => {
-    const user = requireOrg(context);
+    const { project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
-    const project = await context.prisma.project.findFirst({
-      where: { projectId: args.projectId, orgId: user.orgId },
-    });
-    if (!project) {
-      throw new NotFoundError('Project not found');
-    }
     if (!args.prd.trim()) {
       throw new ValidationError('PRD text is required');
     }
@@ -561,13 +532,7 @@ export const aiMutations = {
     args: { projectId: string; epics: string },
     context: Context
   ) => {
-    const user = requireOrg(context);
-    const project = await context.prisma.project.findFirst({
-      where: { projectId: args.projectId, orgId: user.orgId },
-    });
-    if (!project) {
-      throw new NotFoundError('Project not found');
-    }
+    const { user } = await requireProject(context, args.projectId);
     let epics: Array<{ title: string; description: string; tasks: Array<{ title: string; description: string; priority: string; estimatedHours?: number; acceptanceCriteria?: string }> }>;
     try {
       epics = JSON.parse(args.epics);
@@ -613,14 +578,8 @@ export const aiMutations = {
     args: { projectId: string; taskIds: string[]; styleGuide?: string | null },
     context: Context
   ) => {
-    const user = requireOrg(context);
+    const { project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
-    const project = await context.prisma.project.findFirst({
-      where: { projectId: args.projectId, orgId: user.orgId },
-    });
-    if (!project) {
-      throw new NotFoundError('Project not found');
-    }
     if (!args.taskIds.length || args.taskIds.length > 5) {
       throw new ValidationError('Provide 1-5 task IDs');
     }
@@ -660,14 +619,8 @@ export const aiMutations = {
     args: { projectId: string },
     context: Context
   ) => {
-    const user = requireOrg(context);
+    const { user, project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
-    const project = await context.prisma.project.findFirst({
-      where: { projectId: args.projectId, orgId: user.orgId },
-    });
-    if (!project) {
-      throw new NotFoundError('Project not found');
-    }
     const repo = await getProjectRepo(args.projectId);
     if (!repo) {
       throw new ValidationError('Project has no linked GitHub repository');
@@ -743,14 +696,8 @@ export const aiQueries = {
     args: { projectId: string; question: string },
     context: Context
   ) => {
-    const user = requireOrg(context);
+    const { project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
-    const project = await context.prisma.project.findFirst({
-      where: { projectId: args.projectId, orgId: user.orgId },
-    });
-    if (!project) {
-      throw new NotFoundError('Project not found');
-    }
     if (!args.question.trim()) {
       throw new ValidationError('Question is required');
     }
@@ -812,14 +759,8 @@ export const aiQueries = {
     args: { projectId: string },
     context: Context
   ) => {
-    const user = requireOrg(context);
+    await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
-    const project = await context.prisma.project.findFirst({
-      where: { projectId: args.projectId, orgId: user.orgId },
-    });
-    if (!project) {
-      throw new NotFoundError('Project not found');
-    }
     const repo = await getProjectRepo(args.projectId);
     if (!repo) {
       throw new ValidationError('Project has no linked GitHub repository');
@@ -898,13 +839,7 @@ export const aiQueries = {
     args: { projectId: string; type?: string | null; limit?: number | null },
     context: Context
   ) => {
-    const user = requireOrg(context);
-    const project = await context.prisma.project.findFirst({
-      where: { projectId: args.projectId, orgId: user.orgId },
-    });
-    if (!project) {
-      throw new NotFoundError('Project not found');
-    }
+    await requireProject(context, args.projectId);
     return context.prisma.report.findMany({
       where: {
         projectId: args.projectId,
@@ -982,14 +917,8 @@ export const aiQueries = {
   },
 
   generateStandupReport: async (_parent: unknown, args: { projectId: string }, context: Context) => {
-    const user = requireOrg(context);
+    const { project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
-    const project = await context.prisma.project.findFirst({
-      where: { projectId: args.projectId, orgId: user.orgId },
-    });
-    if (!project) {
-      throw new NotFoundError('Project not found');
-    }
 
     // Find tasks completed in the last 24 hours via activity log
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -1043,14 +972,8 @@ export const aiQueries = {
   },
 
   generateSprintReport: async (_parent: unknown, args: { projectId: string; sprintId: string }, context: Context) => {
-    const user = requireOrg(context);
+    await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
-    const project = await context.prisma.project.findFirst({
-      where: { projectId: args.projectId, orgId: user.orgId },
-    });
-    if (!project) {
-      throw new NotFoundError('Project not found');
-    }
     const sprint = await context.prisma.sprint.findFirst({
       where: { sprintId: args.sprintId, projectId: args.projectId },
     });
@@ -1082,14 +1005,8 @@ export const aiQueries = {
   },
 
   analyzeProjectHealth: async (_parent: unknown, args: { projectId: string }, context: Context) => {
-    const user = requireOrg(context);
+    const { project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
-    const project = await context.prisma.project.findFirst({
-      where: { projectId: args.projectId, orgId: user.orgId },
-    });
-    if (!project) {
-      throw new NotFoundError('Project not found');
-    }
 
     const allTasks = await context.prisma.task.findMany({
       where: { projectId: args.projectId, parentTaskId: null, archived: false },
@@ -1133,14 +1050,8 @@ export const aiQueries = {
   },
 
   extractTasksFromNotes: async (_parent: unknown, args: { projectId: string; notes: string }, context: Context) => {
-    const user = requireOrg(context);
+    const { user, project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
-    const project = await context.prisma.project.findFirst({
-      where: { projectId: args.projectId, orgId: user.orgId },
-    });
-    if (!project) {
-      throw new NotFoundError('Project not found');
-    }
 
     const orgUsers = await context.prisma.user.findMany({
       where: { orgId: user.orgId },

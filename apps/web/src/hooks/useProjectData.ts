@@ -164,7 +164,7 @@ export function useProjectData(): ProjectData {
   // We use refs so callbacks can access taskCrud without initialization-order issues.
   const sprintMgmt = useSprintManagement({
     projectId,
-    setTasks: (updater) => taskCrudRef.current.setTasks(updater),
+    onTasksChanged: (updater) => taskCrudRef.current.setTasks((prev) => updater(prev)),
     setErr: (e) => taskCrudRef.current.setErr(e),
   });
 

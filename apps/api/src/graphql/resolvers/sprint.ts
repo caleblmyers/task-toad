@@ -7,6 +7,7 @@ import { NotFoundError, ValidationError } from '../errors.js';
 import { requireOrg, requireProjectAccess, requireApiKey } from './auth.js';
 import { dispatchWebhooks } from '../../utils/webhookDispatcher.js';
 import { sseManager } from '../../utils/sseManager.js';
+import { requireProject } from '../../utils/resolverHelpers.js';
 
 // ── Sprint queries ──
 
@@ -119,11 +120,7 @@ export const sprintQueries = {
 
 export const sprintMutations = {
   createSprint: async (_parent: unknown, args: { projectId: string; name: string; goal?: string | null; columns?: string | null; startDate?: string | null; endDate?: string | null }, context: Context) => {
-    const user = requireOrg(context);
-    const project = await context.prisma.project.findUnique({ where: { projectId: args.projectId } });
-    if (!project || project.orgId !== user.orgId) {
-      throw new NotFoundError('Project not found');
-    }
+    const { user } = await requireProject(context, args.projectId);
     const sprint = await context.prisma.sprint.create({
       data: {
         name: args.name,
@@ -256,12 +253,8 @@ export const sprintMutations = {
     args: { projectId: string; sprintLengthWeeks: number; teamSize: number },
     context: Context
   ) => {
-    const user = requireOrg(context);
+    const { project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
-    const project = await context.prisma.project.findUnique({ where: { projectId: args.projectId } });
-    if (!project || project.orgId !== user.orgId) {
-      throw new NotFoundError('Project not found');
-    }
     const backlogTasks = await context.prisma.task.findMany({
       where: { projectId: args.projectId, parentTaskId: null, sprintId: null },
       orderBy: { createdAt: 'asc' },
@@ -295,11 +288,7 @@ export const sprintMutations = {
     args: { projectId: string; sprints: Array<{ name: string; taskIds: string[] }> },
     context: Context
   ) => {
-    const user = requireOrg(context);
-    const project = await context.prisma.project.findUnique({ where: { projectId: args.projectId } });
-    if (!project || project.orgId !== user.orgId) {
-      throw new NotFoundError('Project not found');
-    }
+    const { user } = await requireProject(context, args.projectId);
     const defaultColumns = '["To Do","In Progress","In Review","Done"]';
     const firstColumn = 'To Do';
     const created = await Promise.all(

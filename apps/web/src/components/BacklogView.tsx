@@ -3,6 +3,87 @@ import type { Task, Sprint, OrgUser } from '../types';
 import SprintReportPanel from './SprintReportPanel';
 import SprintSection, { TaskRow } from './SprintSection';
 
+interface BacklogSectionProps {
+  tasks: Task[];
+  allTasks: Task[];
+  orgUsers: OrgUser[];
+  selectedTask: Task | null;
+  selectedTaskIds: Set<string>;
+  showCheckboxes: boolean;
+  dragOverInfo: { sectionId: string | null; index: number } | null;
+  containerRef: (el: HTMLDivElement | null) => void;
+  onSelectTask: (task: Task) => void;
+  onToggleTaskId: (taskId: string) => void;
+  onToggleAll: (taskIds: string[]) => void;
+  onDragStart: (taskId: string) => void;
+  onDragOver: (e: React.DragEvent<HTMLDivElement>, sectionId: string | null) => void;
+  onDragLeave: (e: React.DragEvent<HTMLDivElement>, sectionId: string | null) => void;
+  onDrop: (e: React.DragEvent<HTMLDivElement>, sectionId: string | null, tasks: Task[]) => void;
+}
+
+function BacklogSection({
+  tasks: sectionTasks, allTasks, orgUsers, selectedTask, selectedTaskIds,
+  showCheckboxes, dragOverInfo, containerRef,
+  onSelectTask, onToggleTaskId, onToggleAll, onDragStart,
+  onDragOver, onDragLeave, onDrop,
+}: BacklogSectionProps) {
+  const sectionIds = sectionTasks.map((t) => t.taskId);
+  const allChecked = sectionIds.length > 0 && sectionIds.every((id) => selectedTaskIds.has(id));
+
+  const renderDropIndicator = (index: number) => {
+    if (dragOverInfo?.sectionId === null && dragOverInfo?.index === index) {
+      return <div className="h-0.5 bg-blue-400 rounded mx-1 my-0.5" />;
+    }
+    return null;
+  };
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={allChecked}
+          onChange={() => onToggleAll(sectionIds)}
+          className={`w-3.5 h-3.5 rounded border-slate-300 text-slate-600 cursor-pointer ${showCheckboxes ? 'opacity-100' : 'opacity-0 hover:opacity-100'} transition-opacity`}
+        />
+        <span className="font-semibold text-slate-800 text-sm">Backlog (unassigned)</span>
+        <span className="text-xs text-slate-400">({sectionTasks.length} tasks)</span>
+      </div>
+      <div
+        ref={containerRef}
+        className="px-3 py-2 space-y-0 min-h-[2.5rem]"
+        onDragOver={(e) => onDragOver(e, null)}
+        onDragLeave={(e) => onDragLeave(e, null)}
+        onDrop={(e) => onDrop(e, null, sectionTasks)}
+      >
+        {sectionTasks.length === 0 && dragOverInfo?.sectionId !== null ? (
+          <p className="text-xs text-slate-400 py-2 px-1">No unassigned tasks.</p>
+        ) : (
+          <>
+            {renderDropIndicator(0)}
+            {sectionTasks.map((task, i) => (
+              <div key={task.taskId}>
+                <TaskRow
+                  task={task}
+                  orgUsers={orgUsers}
+                  allTasks={allTasks}
+                  selectedTask={selectedTask}
+                  onSelectTask={onSelectTask}
+                  onDragStart={onDragStart}
+                  isChecked={selectedTaskIds.has(task.taskId)}
+                  showCheckboxes={showCheckboxes}
+                  onToggle={() => onToggleTaskId(task.taskId)}
+                />
+                {renderDropIndicator(i + 1)}
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function sortTasks(taskList: Task[]): Task[] {
   return taskList.slice().sort((a, b) => {
     if (a.position != null && b.position != null) return a.position - b.position;
@@ -103,16 +184,6 @@ export default function BacklogView({
     onReorderTask(taskId, beforeTask?.taskId ?? null, afterTask?.taskId ?? null, sectionId);
   };
 
-  const renderBacklogDropIndicator = (index: number) => {
-    if (dragOverInfo?.sectionId === null && dragOverInfo?.index === index) {
-      return <div className="h-0.5 bg-blue-400 rounded mx-1 my-0.5" />;
-    }
-    return null;
-  };
-
-  const backlogIds = backlog.map((t) => t.taskId);
-  const allBacklogChecked = backlogIds.length > 0 && backlogIds.every((id) => selectedTaskIds.has(id));
-
   return (
     <div className="flex-1 overflow-y-auto px-6 py-4">
       <div className="max-w-3xl mx-auto space-y-6">
@@ -170,49 +241,23 @@ export default function BacklogView({
         ))}
 
         {/* Backlog section */}
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-          <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={allBacklogChecked}
-              onChange={() => onToggleAll(backlogIds)}
-              className={`w-3.5 h-3.5 rounded border-slate-300 text-slate-600 cursor-pointer ${showCheckboxes ? 'opacity-100' : 'opacity-0 hover:opacity-100'} transition-opacity`}
-            />
-            <span className="font-semibold text-slate-800 text-sm">Backlog (unassigned)</span>
-            <span className="text-xs text-slate-400">({backlog.length} tasks)</span>
-          </div>
-          <div
-            ref={(el) => { if (el) containerRefs.current.set(null, el); }}
-            className="px-3 py-2 space-y-0 min-h-[2.5rem]"
-            onDragOver={(e) => handleDragOver(e, null)}
-            onDragLeave={(e) => handleDragLeave(e, null)}
-            onDrop={(e) => handleDrop(e, null, backlog)}
-          >
-            {backlog.length === 0 && dragOverInfo?.sectionId !== null ? (
-              <p className="text-xs text-slate-400 py-2 px-1">No unassigned tasks.</p>
-            ) : (
-              <>
-                {renderBacklogDropIndicator(0)}
-                {backlog.map((task, i) => (
-                  <div key={task.taskId}>
-                    <TaskRow
-                      task={task}
-                      orgUsers={orgUsers}
-                      allTasks={tasks}
-                      selectedTask={selectedTask}
-                      onSelectTask={onSelectTask}
-                      onDragStart={handleDragStart}
-                      isChecked={selectedTaskIds.has(task.taskId)}
-                      showCheckboxes={showCheckboxes}
-                      onToggle={() => onToggleTaskId(task.taskId)}
-                    />
-                    {renderBacklogDropIndicator(i + 1)}
-                  </div>
-                ))}
-              </>
-            )}
-          </div>
-        </div>
+        <BacklogSection
+          tasks={backlog}
+          allTasks={tasks}
+          orgUsers={orgUsers}
+          selectedTask={selectedTask}
+          selectedTaskIds={selectedTaskIds}
+          showCheckboxes={showCheckboxes}
+          dragOverInfo={dragOverInfo}
+          containerRef={(el) => { if (el) containerRefs.current.set(null, el); }}
+          onSelectTask={onSelectTask}
+          onToggleTaskId={onToggleTaskId}
+          onToggleAll={onToggleAll}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        />
 
         {/* Load more */}
         {hasMore && (

@@ -6,6 +6,7 @@ import { requireAuth, requireOrg, requireProjectAccess } from './auth.js';
 import { executeAutomations } from '../../utils/automationEngine.js';
 import { dispatchWebhooks } from '../../utils/webhookDispatcher.js';
 import { sseManager } from '../../utils/sseManager.js';
+import { requireTask, requireProject, validateStatus, parseInput, CreateTaskInput, UpdateTaskInput, CreateCommentInput } from '../../utils/resolverHelpers.js';
 
 // ── Task queries ──
 
@@ -35,11 +36,7 @@ export const taskQueries = {
   },
 
   comments: async (_parent: unknown, args: { taskId: string }, context: Context) => {
-    const user = requireOrg(context);
-    const task = await context.prisma.task.findUnique({ where: { taskId: args.taskId } });
-    if (!task || task.orgId !== user.orgId) {
-      throw new NotFoundError('Task not found');
-    }
+    await requireTask(context, args.taskId);
     const comments = await context.prisma.comment.findMany({
       where: { taskId: args.taskId, parentCommentId: null },
       include: { user: { select: { email: true } }, replies: { include: { user: { select: { email: true } } }, orderBy: { createdAt: 'asc' } } },
@@ -95,18 +92,11 @@ export const taskMutations = {
     args: { projectId: string; title: string; status?: string; taskType?: string },
     context: Context
   ) => {
-    const user = requireOrg(context);
-    const project = await context.prisma.project.findUnique({
-      where: { projectId: args.projectId },
-    });
-    if (!project || project.orgId !== user.orgId) {
-      throw new NotFoundError('Project not found');
-    }
+    parseInput(CreateTaskInput, { title: args.title });
+    const { user, project } = await requireProject(context, args.projectId);
     const status = args.status ?? 'todo';
     const validStatuses = JSON.parse(project.statuses) as string[];
-    if (!validStatuses.includes(status)) {
-      throw new ValidationError(`Invalid status "${status}". Valid: ${validStatuses.join(', ')}`);
-    }
+    validateStatus(validStatuses, status);
     const validTaskTypes = ['epic', 'story', 'task', 'subtask'];
     const taskType = args.taskType ?? 'task';
     if (!validTaskTypes.includes(taskType)) {
@@ -141,16 +131,11 @@ export const taskMutations = {
     args: { taskId: string; title?: string; status?: string; description?: string; instructions?: string; acceptanceCriteria?: string; dependsOn?: string | null; sprintId?: string | null; sprintColumn?: string | null; assigneeId?: string | null; dueDate?: string | null; position?: number | null; archived?: boolean; storyPoints?: number | null; taskType?: string },
     context: Context
   ) => {
-    const user = requireOrg(context);
-    const task = await context.prisma.task.findUnique({ where: { taskId: args.taskId }, include: { project: true } });
-    if (!task || task.orgId !== user.orgId) {
-      throw new NotFoundError('Task not found');
-    }
+    parseInput(UpdateTaskInput, { title: args.title, description: args.description, instructions: args.instructions, acceptanceCriteria: args.acceptanceCriteria });
+    const { user, task } = await requireTask(context, args.taskId);
     if (args.status !== undefined) {
       const validStatuses = JSON.parse(task.project.statuses) as string[];
-      if (!validStatuses.includes(args.status)) {
-        throw new ValidationError(`Invalid status "${args.status}". Valid: ${validStatuses.join(', ')}`);
-      }
+      validateStatus(validStatuses, args.status);
     }
     const updated = await context.prisma.task.update({
       where: { taskId: args.taskId },
@@ -279,11 +264,8 @@ export const taskMutations = {
     args: { parentTaskId: string; title: string; taskType?: string },
     context: Context
   ) => {
-    const user = requireOrg(context);
-    const parent = await context.prisma.task.findUnique({ where: { taskId: args.parentTaskId } });
-    if (!parent || parent.orgId !== user.orgId) {
-      throw new NotFoundError('Parent task not found');
-    }
+    parseInput(CreateTaskInput, { title: args.title });
+    const { user, task: parent } = await requireTask(context, args.parentTaskId);
     // Auto-assign taskType based on parent
     let taskType = args.taskType;
     if (!taskType) {
@@ -317,11 +299,8 @@ export const taskMutations = {
   },
 
   createComment: async (_parent: unknown, args: { taskId: string; content: string; parentCommentId?: string | null }, context: Context) => {
-    const user = requireOrg(context);
-    const task = await context.prisma.task.findUnique({ where: { taskId: args.taskId } });
-    if (!task || task.orgId !== user.orgId) {
-      throw new NotFoundError('Task not found');
-    }
+    parseInput(CreateCommentInput, { content: args.content });
+    const { user, task } = await requireTask(context, args.taskId);
     if (args.parentCommentId) {
       const parent = await context.prisma.comment.findUnique({ where: { commentId: args.parentCommentId } });
       if (!parent || parent.taskId !== args.taskId) {
@@ -383,6 +362,7 @@ export const taskMutations = {
   },
 
   updateComment: async (_parent: unknown, args: { commentId: string; content: string }, context: Context) => {
+    parseInput(CreateCommentInput, { content: args.content });
     const user = requireAuth(context);
     const comment = await context.prisma.comment.findUnique({ where: { commentId: args.commentId } });
     if (!comment) throw new NotFoundError('Comment not found');

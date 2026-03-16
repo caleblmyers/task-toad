@@ -2,6 +2,7 @@ import type { Context } from '../context.js';
 import { logActivity } from '../../utils/activity.js';
 import { AuthorizationError, ValidationError } from '../errors.js';
 import { requireOrg, requireProjectAccess } from './auth.js';
+import { parseInput, CreateProjectInput } from '../../utils/resolverHelpers.js';
 
 // ── Project queries ──
 
@@ -148,6 +149,7 @@ export const projectQueries = {
 
 export const projectMutations = {
   createProject: async (_parent: unknown, args: { name: string }, context: Context) => {
+    parseInput(CreateProjectInput, { name: args.name });
     const user = requireOrg(context);
     if (user.role !== 'org:admin') {
       throw new AuthorizationError('Admin role required');

@@ -16,6 +16,7 @@ import {
 import { decomposeIssue as aiDecomposeIssue, generateReviewFix as aiGenerateReviewFix } from '../../ai/index.js';
 import { NotFoundError, AuthorizationError, ValidationError } from '../errors.js';
 import { requireOrg, requireProjectAccess, requireApiKey } from './auth.js';
+import { requireProject } from '../../utils/resolverHelpers.js';
 
 // ── GitHub queries ──
 
@@ -136,12 +137,8 @@ export const githubMutations = {
     args: { projectId: string; issueNumber: number },
     context: Context
   ) => {
-    const user = requireOrg(context);
+    const { user, project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
-    const project = await context.prisma.project.findFirst({
-      where: { projectId: args.projectId, orgId: user.orgId },
-    });
-    if (!project) throw new NotFoundError('Project not found');
     if (!project.githubInstallationId || !project.githubRepositoryOwner || !project.githubRepositoryName) {
       throw new ValidationError('Project has no linked GitHub repository');
     }

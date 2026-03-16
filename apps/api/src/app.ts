@@ -42,8 +42,18 @@ if (!envResult.success) {
 
 const app: express.Express = express();
 
-// Security headers
-app.use(helmet());
+// Security headers with explicit CSP
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"],
+    },
+  },
+}));
 
 // CORS — allow the Vite dev server and any configured origin
 const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:5173').split(',');
@@ -118,6 +128,21 @@ const authLimiter = rateLimit({
   },
 });
 app.use('/graphql', authLimiter);
+
+// Tighter rate limit for password reset & email verification: 5 per minute per IP
+const sensitiveAuthLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 5,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { errors: [{ message: 'Too many attempts. Please try again later.' }] },
+  skip: (req) => {
+    const body = req.body as { query?: string } | undefined;
+    if (!body?.query) return true;
+    return !/\b(requestPasswordReset|sendVerificationEmail)\s*[({]/.test(body.query);
+  },
+});
+app.use('/graphql', sensitiveAuthLimiter);
 
 
 const yoga = createYoga({ schema, context: buildContext, graphqlEndpoint: '/graphql' });

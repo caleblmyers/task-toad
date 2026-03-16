@@ -5,11 +5,11 @@ import type { Sprint, CloseSprintResult, Task } from '../types';
 
 interface UseSprintManagementOptions {
   projectId: string | undefined;
-  setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
+  onTasksChanged: (updater: (tasks: Task[]) => Task[]) => void;
   setErr: (err: string | null) => void;
 }
 
-export function useSprintManagement({ projectId, setTasks, setErr }: UseSprintManagementOptions) {
+export function useSprintManagement({ projectId, onTasksChanged, setErr }: UseSprintManagementOptions) {
   const [sprints, setSprints] = useState<Sprint[]>([]);
   const [showSprintModal, setShowSprintModal] = useState(false);
   const [editingSprint, setEditingSprint] = useState<Sprint | null>(null);
@@ -64,11 +64,11 @@ export function useSprintManagement({ projectId, setTasks, setErr }: UseSprintMa
     try {
       await gql<{ deleteSprint: boolean }>(DELETE_SPRINT_MUTATION, { sprintId });
       setSprints((prev) => prev.filter((s) => s.sprintId !== sprintId));
-      setTasks((prev) => prev.map((t) => t.sprintId === sprintId ? { ...t, sprintId: null, sprintColumn: null } : t));
+      onTasksChanged((prev) => prev.map((t) => t.sprintId === sprintId ? { ...t, sprintId: null, sprintColumn: null } : t));
     } catch (error) {
       setErr(error instanceof Error ? error.message : 'Failed to delete sprint');
     }
-  }, [setTasks, setErr]);
+  }, [onTasksChanged, setErr]);
 
   return {
     sprints,
