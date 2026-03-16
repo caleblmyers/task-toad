@@ -117,23 +117,45 @@ export function depthLimitRule(maxDepth: number) {
 // Query complexity / cost analysis — prevents wide fan-out queries
 // ---------------------------------------------------------------------------
 
-/** Estimated item counts for known list fields */
+/**
+ * Estimated item counts for known list fields.
+ * Connection wrappers (e.g. tasks query returning {tasks[], hasMore, total})
+ * are in SINGLE_OBJECT_FIELDS — only the inner array field fans out.
+ */
 const COST_MAP: Record<string, number> = {
+  // Top-level arrays (inside connection wrappers or standalone)
   projects: 20,
   tasks: 50,
   comments: 30,
   activities: 50,
   notifications: 30,
   sprints: 10,
-  labels: 20,
   epics: 20,
   reports: 10,
   savedFilters: 10,
   webhookEndpoints: 10,
   webhookDeliveries: 50,
+  // Per-item nested lists (small cardinality)
+  labels: 5,
+  assignees: 3,
+  pullRequests: 2,
+  commits: 5,
+  customFieldValues: 5,
+  replies: 5,
+  children: 10,
+  taskAssignees: 3,
 };
 
-const DEFAULT_LIST_MULTIPLIER = 10;
+const DEFAULT_LIST_MULTIPLIER = 5;
+
+/** Fields that return a single object (not a list) — traverse at 1x multiplier.
+ *  Includes connection wrapper query fields whose inner array handles fan-out. */
+const SINGLE_OBJECT_FIELDS = new Set([
+  // Scalar object returns
+  'user', 'project', 'org', 'sprint', 'task', 'field',
+  'me', 'aiUsage', 'unreadNotificationCount',
+  'projectStats', 'sprintVelocity', 'sprintBurndown',
+]);
 
 /** Introspection fields exempt from cost analysis */
 const INTROSPECTION_FIELDS = new Set(['__schema', '__type']);
@@ -154,7 +176,13 @@ function computeSelectionCost(selectionSet: SelectionSetNode, multiplier: number
         continue;
       }
 
-      // Nested object/list field — apply list multiplier (known or default)
+      // Single-object fields traverse at same multiplier (no fan-out)
+      if (SINGLE_OBJECT_FIELDS.has(fieldName)) {
+        cost += computeSelectionCost(field.selectionSet, multiplier);
+        continue;
+      }
+
+      // List field — apply list multiplier (known or default)
       const listMultiplier = COST_MAP[fieldName] ?? DEFAULT_LIST_MULTIPLIER;
       cost += computeSelectionCost(field.selectionSet, multiplier * listMultiplier);
     }

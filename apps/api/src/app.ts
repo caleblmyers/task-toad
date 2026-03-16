@@ -256,7 +256,7 @@ const yoga = createYoga({
   plugins: [
     { onValidate({ addValidationRule }: { addValidationRule: (rule: unknown) => void }) {
       addValidationRule(depthLimitRule(10));
-      addValidationRule(costLimitRule(Number(process.env.MAX_QUERY_COST) || 10000));
+      addValidationRule(costLimitRule(Number(process.env.MAX_QUERY_COST) || 50000));
     } },
     {
       onResultProcess({ result }: { result: { errors?: ReadonlyArray<{ message: string; extensions?: Record<string, unknown> }> } }) {
