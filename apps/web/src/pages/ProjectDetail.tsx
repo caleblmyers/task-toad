@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { useProjectData } from '../hooks/useProjectData';
 import { useTaskFiltering } from '../hooks/useTaskFiltering';
@@ -9,17 +9,20 @@ import { gql } from '../api/client';
 import type { Activity, GitHubRepoLink, GitHubInstallation } from '../types';
 import KanbanBoard from '../components/KanbanBoard';
 import TaskDetailPanel from '../components/TaskDetailPanel';
-import TaskPlanApprovalDialog from '../components/TaskPlanApprovalDialog';
 import BacklogView from '../components/BacklogView';
 import TableView from '../components/TableView';
 import CalendarView from '../components/CalendarView';
-import GanttChart from '../components/GanttChart';
 import BulkActionBar from '../components/BulkActionBar';
 import ProjectDashboard from '../components/ProjectDashboard';
 import CodePreviewModal from '../components/CodePreviewModal';
 import SprintCreateModal from '../components/SprintCreateModal';
 import SprintPlanModal from '../components/SprintPlanModal';
-import CloseSprintModal from '../components/CloseSprintModal';
+
+// Lazy-load heavy modals — only rendered on user action
+const GanttChart = lazy(() => import('../components/GanttChart'));
+const TaskPlanApprovalDialog = lazy(() => import('../components/TaskPlanApprovalDialog'));
+const CloseSprintModal = lazy(() => import('../components/CloseSprintModal'));
+const ProjectSettingsModal = lazy(() => import('../components/ProjectSettingsModal'));
 import { TaskListSkeleton, KanbanBoardSkeleton } from '../components/Skeleton';
 import SearchInput from '../components/shared/SearchInput';
 import FilterBar from '../components/shared/FilterBar';
@@ -35,7 +38,6 @@ import KnowledgeBaseModal from '../components/KnowledgeBaseModal';
 import BugReportModal from '../components/BugReportModal';
 import PRDBreakdownModal from '../components/PRDBreakdownModal';
 import SprintTransitionModal from '../components/SprintTransitionModal';
-import ProjectSettingsModal from '../components/ProjectSettingsModal';
 import Button from '../components/shared/Button';
 import { IconList, IconBoard, IconTable, IconCalendar, IconClose, IconPlus, IconRefresh, IconSummary, IconFilter, IconKeyboard, IconGitHub } from '../components/shared/Icons';
 import { TOKEN_KEY } from '../api/client';
@@ -44,6 +46,12 @@ import { parseColumns } from '../utils/jsonHelpers';
 
 const activeClass = 'px-3 py-1 text-sm rounded-md bg-white text-slate-800 font-medium shadow-sm';
 const inactiveClass = 'px-3 py-1 text-sm rounded-md text-slate-500 hover:text-slate-700';
+
+const lazyFallback = (
+  <div className="flex items-center justify-center p-8">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-green" />
+  </div>
+);
 
 export default function ProjectDetail() {
   const d = useProjectData();
@@ -684,10 +692,12 @@ export default function ProjectDetail() {
               </div>
             </div>
           ) : timelineView ? (
-            <GanttChart
-              tasks={filtering.filteredTasks}
-              onSelectTask={d.selectTask}
-            />
+            <Suspense fallback={lazyFallback}>
+              <GanttChart
+                tasks={filtering.filteredTasks}
+                onSelectTask={d.selectTask}
+              />
+            </Suspense>
           ) : d.view === 'dashboard' ? (
             <ProjectDashboard
               stats={d.dashboardStats}
@@ -841,29 +851,33 @@ export default function ProjectDetail() {
         const closingSprint = d.sprints.find((s) => s.sprintId === d.closeSprintId);
         if (!closingSprint) return null;
         return (
-          <CloseSprintModal
-            sprint={closingSprint}
-            sprintTasks={d.tasks.filter((t) => t.sprintId === d.closeSprintId && !t.parentTaskId)}
-            otherSprints={d.sprints.filter((s) => !s.closedAt && s.sprintId !== d.closeSprintId)}
-            onClosed={d.handleSprintClosed}
-            onActivateNext={d.handleActivateSprint}
-            onCreateSprint={() => d.setShowSprintModal(true)}
-            onClose={() => d.setCloseSprintId(null)}
-          />
+          <Suspense fallback={lazyFallback}>
+            <CloseSprintModal
+              sprint={closingSprint}
+              sprintTasks={d.tasks.filter((t) => t.sprintId === d.closeSprintId && !t.parentTaskId)}
+              otherSprints={d.sprints.filter((s) => !s.closedAt && s.sprintId !== d.closeSprintId)}
+              onClosed={d.handleSprintClosed}
+              onActivateNext={d.handleActivateSprint}
+              onCreateSprint={() => d.setShowSprintModal(true)}
+              onClose={() => d.setCloseSprintId(null)}
+            />
+          </Suspense>
         );
       })()}
 
       {/* Task plan approval dialog */}
       {d.previewTasks !== null && (
-        <TaskPlanApprovalDialog
-          tasks={d.previewTasks}
-          loading={d.previewLoading}
-          error={d.previewError}
-          onApprove={d.handleCommitPlan}
-          onRedo={(ctx) => d.openPreview(ctx)}
-          onAddMore={(ctx) => d.openPreview(ctx, d.previewTasks!.map((t) => t.title))}
-          onCancel={() => { d.setPreviewTasks(null); d.setPreviewError(null); }}
-        />
+        <Suspense fallback={lazyFallback}>
+          <TaskPlanApprovalDialog
+            tasks={d.previewTasks}
+            loading={d.previewLoading}
+            error={d.previewError}
+            onApprove={d.handleCommitPlan}
+            onRedo={(ctx) => d.openPreview(ctx)}
+            onAddMore={(ctx) => d.openPreview(ctx, d.previewTasks!.map((t) => t.title))}
+            onCancel={() => { d.setPreviewTasks(null); d.setPreviewError(null); }}
+          />
+        </Suspense>
       )}
 
       {/* GitHub repo modal */}
@@ -957,11 +971,13 @@ export default function ProjectDetail() {
 
       {/* Project settings modal */}
       {showProjectSettings && d.projectId && (
-        <ProjectSettingsModal
-          projectId={d.projectId}
-          orgUsers={d.orgUsers}
-          onClose={() => setShowProjectSettings(false)}
-        />
+        <Suspense fallback={lazyFallback}>
+          <ProjectSettingsModal
+            projectId={d.projectId}
+            orgUsers={d.orgUsers}
+            onClose={() => setShowProjectSettings(false)}
+          />
+        </Suspense>
       )}
 
       {/* Keyboard shortcut help */}

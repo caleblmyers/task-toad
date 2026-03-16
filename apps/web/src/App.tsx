@@ -1,7 +1,8 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, type ComponentType } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './auth/context';
 import ErrorBoundary from './components/ErrorBoundary';
+import RouteErrorBoundary from './components/shared/RouteErrorBoundary';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import CreateOrg from './pages/CreateOrg';
@@ -12,14 +13,46 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import AcceptInvite from './pages/AcceptInvite';
 
+function lazyWithRetry<T extends ComponentType<unknown>>(
+  importFn: () => Promise<{ default: T }>,
+  retries = 2,
+): React.LazyExoticComponent<T> {
+  return lazy(() =>
+    importFn().catch((err) => {
+      if (retries > 0) {
+        return new Promise<{ default: T }>((resolve) =>
+          setTimeout(() => resolve(lazyWithRetry(importFn, retries - 1) as never), 1000),
+        );
+      }
+      throw err;
+    }),
+  );
+}
+
 // Lazy-load heavy route components for code-splitting
-const ProjectDetail = lazy(() => import('./pages/ProjectDetail'));
-const Portfolio = lazy(() => import('./pages/Portfolio'));
-const OrgSettings = lazy(() => import('./pages/OrgSettings'));
-const Search = lazy(() => import('./pages/Search'));
-const NewProject = lazy(() => import('./pages/NewProject'));
-const Projects = lazy(() => import('./pages/Projects'));
-const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const ProjectDetail = lazyWithRetry(() => import('./pages/ProjectDetail'));
+const Portfolio = lazyWithRetry(() => import('./pages/Portfolio'));
+const OrgSettings = lazyWithRetry(() => import('./pages/OrgSettings'));
+const Search = lazyWithRetry(() => import('./pages/Search'));
+const NewProject = lazyWithRetry(() => import('./pages/NewProject'));
+const Projects = lazyWithRetry(() => import('./pages/Projects'));
+const ProfilePage = lazyWithRetry(() => import('./pages/ProfilePage'));
+
+const routeSpinner = (
+  <div className="flex items-center justify-center p-8">
+    <div className="w-8 h-8 border-2 border-slate-300 border-t-brand-green rounded-full animate-spin" />
+  </div>
+);
+
+function LazyRoute({ Component }: { Component: React.LazyExoticComponent<ComponentType<unknown>> }) {
+  return (
+    <RouteErrorBoundary>
+      <Suspense fallback={routeSpinner}>
+        <Component />
+      </Suspense>
+    </RouteErrorBoundary>
+  );
+}
 
 function Protected({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -63,13 +96,13 @@ export default function App() {
             }
           >
             <Route index element={<Home />} />
-            <Route path="portfolio" element={<Portfolio />} />
-            <Route path="projects" element={<Projects />} />
-            <Route path="projects/new" element={<NewProject />} />
-            <Route path="projects/:projectId" element={<ProjectDetail />} />
-            <Route path="search" element={<Search />} />
-            <Route path="profile" element={<ProfilePage />} />
-            <Route path="settings" element={<OrgSettings />} />
+            <Route path="portfolio" element={<LazyRoute Component={Portfolio} />} />
+            <Route path="projects" element={<LazyRoute Component={Projects} />} />
+            <Route path="projects/new" element={<LazyRoute Component={NewProject} />} />
+            <Route path="projects/:projectId" element={<LazyRoute Component={ProjectDetail} />} />
+            <Route path="search" element={<LazyRoute Component={Search} />} />
+            <Route path="profile" element={<LazyRoute Component={ProfilePage} />} />
+            <Route path="settings" element={<LazyRoute Component={OrgSettings} />} />
           </Route>
           <Route path="/" element={<Navigate to="/app" replace />} />
           <Route path="*" element={<Navigate to="/app" replace />} />
