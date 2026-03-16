@@ -254,7 +254,9 @@ export type AIFeature =
   | 'breakdownPRD'
   | 'analyzeSprintTransition'
   | 'bootstrapFromRepo'
-  | 'projectChat';
+  | 'projectChat'
+  | 'analyzeRepoDrift'
+  | 'batchGenerateCode';
 
 export const ProjectChatResponseSchema = z.object({
   answer: z.string(),
@@ -266,6 +268,23 @@ export const ProjectChatResponseSchema = z.object({
 });
 
 export type ProjectChatResponse = z.infer<typeof ProjectChatResponseSchema>;
+
+export const DriftAnalysisSchema = z.object({
+  summary: z.string(),
+  outdatedTasks: z.array(z.object({ taskId: z.string(), title: z.string(), reason: z.string() })),
+  untrackedWork: z.array(z.object({ description: z.string(), suggestedTaskTitle: z.string() })),
+  completedButOpen: z.array(z.object({ taskId: z.string(), title: z.string(), evidence: z.string() })),
+});
+
+export type DriftAnalysis = z.infer<typeof DriftAnalysisSchema>;
+
+export const BatchCodeGenerationSchema = z.object({
+  files: z.array(GeneratedFileSchema),
+  summary: z.string(),
+  estimatedTokensUsed: z.number().optional().default(0),
+});
+
+export type BatchCodeGeneration = z.infer<typeof BatchCodeGenerationSchema>;
 
 export interface AIUsage {
   inputTokens: number;

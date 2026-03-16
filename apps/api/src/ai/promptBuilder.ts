@@ -881,3 +881,95 @@ Return JSON:
 "references" — specific tasks, sprints, or activities you referenced in your answer. Use taskId for tasks, sprint name for sprints. Only include items you actually mentioned.`,
   };
 }
+
+export function buildRepoDriftPrompt(data: {
+  repoName: string;
+  recentCommits: Array<{ sha: string; message: string; date: string }>;
+  openPRs: Array<{ title: string; state: string }>;
+  tasks: Array<{ taskId: string; title: string; status: string; description?: string | null }>;
+}): Prompt {
+  const commitLines = data.recentCommits
+    .slice(0, 30)
+    .map((c) => `${c.sha} — ${c.message} (${c.date})`)
+    .join('\n');
+
+  const prLines = data.openPRs
+    .slice(0, 10)
+    .map((pr) => `"${pr.title}" — ${pr.state}`)
+    .join('\n');
+
+  const taskLines = data.tasks
+    .slice(0, 50)
+    .map((t) => `[${t.taskId}] "${t.title}" — ${t.status}${t.description ? `: ${truncate(t.description, 80)}` : ''}`)
+    .join('\n');
+
+  return {
+    systemPrompt: SYSTEM_JSON,
+    userPrompt: `Compare this repository's recent activity against its task board to find drift — mismatches between code work and tracked tasks.
+
+Repository: ${userInput('repo', data.repoName)}
+
+Recent commits (${data.recentCommits.length}):
+${commitLines || '(none)'}
+
+Open PRs (${data.openPRs.length}):
+${prLines || '(none)'}
+
+Task board (${data.tasks.length} tasks):
+${taskLines || '(no tasks)'}
+
+Return JSON:
+{
+  "summary": string,
+  "outdatedTasks": [{ "taskId": string, "title": string, "reason": string }],
+  "untrackedWork": [{ "description": string, "suggestedTaskTitle": string }],
+  "completedButOpen": [{ "taskId": string, "title": string, "evidence": string }]
+}
+"outdatedTasks" — tasks that reference code/features that have changed significantly since the task was created.
+"untrackedWork" — commits or PRs that don't correspond to any tracked task (suggest a task title).
+"completedButOpen" — tasks whose work appears done in the repo (matching commits/PRs) but are still marked todo/in_progress.
+"summary" — 2-3 sentence overview of repo↔task alignment.`,
+  };
+}
+
+export function buildBatchCodeGenerationPrompt(data: {
+  tasks: Array<{ title: string; description: string; instructions: string }>;
+  projectName: string;
+  projectDescription?: string | null;
+  existingFiles?: Array<{ path: string; language: string; size: number }>;
+  styleGuide?: string | null;
+  knowledgeBase?: string | null;
+}): Prompt {
+  const cappedFiles = (data.existingFiles ?? []).slice(0, 15);
+  const filesLine = cappedFiles.length > 0
+    ? `\nExisting files:\n${cappedFiles.map((f) => `- ${f.path} (${f.language}, ${f.size}B)`).join('\n')}`
+    : '';
+  const styleGuideLine = data.styleGuide
+    ? `\nCoding conventions:\n${userInput('style_guide', truncate(data.styleGuide, 1000))}`
+    : '';
+  const kbLine = data.knowledgeBase
+    ? `\nKnowledge Base:\n${userInput('knowledge_base', truncate(data.knowledgeBase, 800))}`
+    : '';
+
+  const taskSections = data.tasks
+    .slice(0, 5)
+    .map((t, i) => `Task ${i + 1}: ${userInput('title', t.title)}\nDescription: ${userInput('description', truncate(t.description, 200))}\nInstructions: ${userInput('instructions', truncate(t.instructions, 500))}`)
+    .join('\n\n');
+
+  return {
+    systemPrompt: SYSTEM_JSON,
+    userPrompt: `Generate code files to implement ALL of the following tasks in a single cohesive codebase. Organize files logically and avoid duplication between tasks.
+
+Project: ${userInput('project', data.projectName)}${data.projectDescription ? `\nDescription: ${userInput('projectDescription', truncate(data.projectDescription, 400))}` : ''}${filesLine}${styleGuideLine}${kbLine}
+
+${taskSections}
+
+Return JSON:
+{
+  "files": [{ "path": string, "content": string, "language": string, "description": string }],
+  "summary": string,
+  "estimatedTokensUsed": number
+}
+Generate complete, runnable files. Keep total output focused — avoid generating files not directly needed.`,
+  };
+}

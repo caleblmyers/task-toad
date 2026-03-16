@@ -24,6 +24,8 @@ export {
   analyzeSprintTransition,
   bootstrapFromRepo,
   projectChat,
+  analyzeRepoDrift,
+  batchGenerateCode,
 } from './aiService.js';
 
 export { logUsageToDB, checkBudget } from './aiUsageTracker.js';
@@ -51,5 +53,7 @@ export type {
   SprintTransition,
   RepoBootstrap,
   ProjectChatResponse,
+  DriftAnalysis,
+  BatchCodeGeneration,
   AIFeature,
 } from './aiTypes.js';

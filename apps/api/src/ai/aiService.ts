@@ -23,8 +23,10 @@ import {
   SprintTransitionSchema,
   RepoBootstrapSchema,
   ProjectChatResponseSchema,
+  DriftAnalysisSchema,
+  BatchCodeGenerationSchema,
 } from './aiTypes.js';
-import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse } from './aiTypes.js';
+import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse, DriftAnalysis, BatchCodeGeneration } from './aiTypes.js';
 import { FEATURE_CONFIG } from './aiConfig.js';
 import { callAI } from './aiClient.js';
 import { parseJSON } from './responseParser.js';
@@ -51,6 +53,8 @@ import {
   buildSprintTransitionPrompt,
   buildRepoBootstrapPrompt,
   buildProjectChatPrompt,
+  buildRepoDriftPrompt,
+  buildBatchCodeGenerationPrompt,
 } from './promptBuilder.js';
 
 // ---------------------------------------------------------------------------
@@ -421,4 +425,32 @@ export async function projectChat(
 ): Promise<ProjectChatResponse> {
   const p = buildProjectChatPrompt(data);
   return callAndParse(apiKey, 'projectChat', p, ProjectChatResponseSchema);
+}
+
+export async function analyzeRepoDrift(
+  apiKey: string,
+  data: {
+    repoName: string;
+    recentCommits: Array<{ sha: string; message: string; date: string }>;
+    openPRs: Array<{ title: string; state: string }>;
+    tasks: Array<{ taskId: string; title: string; status: string; description?: string | null }>;
+  }
+): Promise<DriftAnalysis> {
+  const p = buildRepoDriftPrompt(data);
+  return callAndParse(apiKey, 'analyzeRepoDrift', p, DriftAnalysisSchema);
+}
+
+export async function batchGenerateCode(
+  apiKey: string,
+  data: {
+    tasks: Array<{ title: string; description: string; instructions: string }>;
+    projectName: string;
+    projectDescription?: string | null;
+    existingFiles?: Array<{ path: string; language: string; size: number }>;
+    styleGuide?: string | null;
+    knowledgeBase?: string | null;
+  }
+): Promise<BatchCodeGeneration> {
+  const p = buildBatchCodeGenerationPrompt(data);
+  return callAndParse(apiKey, 'batchGenerateCode', p, BatchCodeGenerationSchema);
 }

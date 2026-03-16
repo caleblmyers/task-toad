@@ -17,10 +17,13 @@ import {
   analyzeSprintTransition as aiAnalyzeSprintTransition,
   bootstrapFromRepo as aiBootstrapFromRepo,
   projectChat as aiProjectChat,
+  analyzeRepoDrift as aiAnalyzeRepoDrift,
+  batchGenerateCode as aiBatchGenerateCode,
 } from '../../ai/index.js';
 import { NotFoundError, ValidationError, AuthorizationError } from '../errors.js';
 import { requireOrg, requireApiKey } from './auth.js';
 import { getProjectRepo, fetchProjectFileTree, fetchFileContent, getPullRequestDiff } from '../../github/index.js';
+import { listRecentCommits, listOpenPullRequests } from '../../github/githubFileService.js';
 
 // ── AI mutations ──
 
@@ -605,6 +608,53 @@ export const aiMutations = {
     return allCreated;
   },
 
+  batchGenerateCode: async (
+    _parent: unknown,
+    args: { projectId: string; taskIds: string[]; styleGuide?: string | null },
+    context: Context
+  ) => {
+    const user = requireOrg(context);
+    const apiKey = requireApiKey(context);
+    const project = await context.prisma.project.findFirst({
+      where: { projectId: args.projectId, orgId: user.orgId },
+    });
+    if (!project) {
+      throw new NotFoundError('Project not found');
+    }
+    if (!args.taskIds.length || args.taskIds.length > 5) {
+      throw new ValidationError('Provide 1-5 task IDs');
+    }
+    const tasks = await context.prisma.task.findMany({
+      where: { taskId: { in: args.taskIds }, projectId: args.projectId },
+    });
+    if (tasks.length !== args.taskIds.length) {
+      throw new NotFoundError('One or more tasks not found in this project');
+    }
+    const missingInstructions = tasks.filter((t: { instructions: string | null }) => !t.instructions);
+    if (missingInstructions.length > 0) {
+      throw new ValidationError(`Tasks missing instructions: ${missingInstructions.map((t: { title: string }) => t.title).join(', ')}`);
+    }
+
+    let projectFiles: Array<{ path: string; language: string; size: number }> | undefined;
+    const repo = await getProjectRepo(args.projectId);
+    if (repo) {
+      projectFiles = await fetchProjectFileTree(repo).catch(() => undefined);
+    }
+
+    return aiBatchGenerateCode(apiKey, {
+      tasks: tasks.map((t: { title: string; description: string | null; instructions: string | null }) => ({
+        title: t.title,
+        description: t.description ?? '',
+        instructions: t.instructions ?? '',
+      })),
+      projectName: project.name,
+      projectDescription: project.description,
+      existingFiles: projectFiles,
+      styleGuide: args.styleGuide,
+      knowledgeBase: project.knowledgeBase,
+    });
+  },
+
   bootstrapProjectFromRepo: async (
     _parent: unknown,
     args: { projectId: string },
@@ -754,6 +804,47 @@ export const aiQueries = {
         createdAt: a.createdAt.toISOString(),
       })),
       knowledgeBase: project.knowledgeBase,
+    });
+  },
+
+  analyzeRepoDrift: async (
+    _parent: unknown,
+    args: { projectId: string },
+    context: Context
+  ) => {
+    const user = requireOrg(context);
+    const apiKey = requireApiKey(context);
+    const project = await context.prisma.project.findFirst({
+      where: { projectId: args.projectId, orgId: user.orgId },
+    });
+    if (!project) {
+      throw new NotFoundError('Project not found');
+    }
+    const repo = await getProjectRepo(args.projectId);
+    if (!repo) {
+      throw new ValidationError('Project has no linked GitHub repository');
+    }
+
+    const [commits, prs, tasks] = await Promise.all([
+      listRecentCommits(repo.installationId, repo.repositoryOwner, repo.repositoryName, 30),
+      listOpenPullRequests(repo.installationId, repo.repositoryOwner, repo.repositoryName),
+      context.prisma.task.findMany({
+        where: { projectId: args.projectId, parentTaskId: null, archived: false },
+        select: { taskId: true, title: true, status: true, description: true },
+        take: 50,
+      }),
+    ]);
+
+    return aiAnalyzeRepoDrift(apiKey, {
+      repoName: `${repo.repositoryOwner}/${repo.repositoryName}`,
+      recentCommits: commits,
+      openPRs: prs,
+      tasks: tasks.map((t: { taskId: string; title: string; status: string; description: string | null }) => ({
+        taskId: t.taskId,
+        title: t.title,
+        status: t.status,
+        description: t.description,
+      })),
     });
   },
 

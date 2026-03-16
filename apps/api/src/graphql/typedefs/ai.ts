@@ -95,12 +95,37 @@ export const aiTypeDefs = /* GraphQL */ `
     answer: String!
     references: [ChatReference!]!
   }
+
+  type DriftOutdatedTask {
+    taskId: ID!
+    title: String!
+    reason: String!
+  }
+
+  type DriftUntrackedWork {
+    description: String!
+    suggestedTaskTitle: String!
+  }
+
+  type DriftCompletedButOpen {
+    taskId: ID!
+    title: String!
+    evidence: String!
+  }
+
+  type DriftAnalysis {
+    summary: String!
+    outdatedTasks: [DriftOutdatedTask!]!
+    untrackedWork: [DriftUntrackedWork!]!
+    completedButOpen: [DriftCompletedButOpen!]!
+  }
 `;
 
 export const aiQueryFields = /* GraphQL */ `
   aiUsage(days: Int): AIUsageSummary!
   analyzeSprintTransition(sprintId: ID!): SprintTransitionAnalysis!
   projectChat(projectId: ID!, question: String!): ProjectChatResponse!
+  analyzeRepoDrift(projectId: ID!): DriftAnalysis!
 `;
 
 export const aiMutationFields = /* GraphQL */ `
@@ -111,4 +136,5 @@ export const aiMutationFields = /* GraphQL */ `
   previewPRDBreakdown(projectId: ID!, prd: String!): PRDBreakdown!
   commitPRDBreakdown(projectId: ID!, epics: String!): [Task!]!
   bootstrapProjectFromRepo(projectId: ID!): [Task!]!
+  batchGenerateCode(projectId: ID!, taskIds: [ID!]!, styleGuide: String): CodeGeneration!
 `;

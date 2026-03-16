@@ -172,3 +172,78 @@ export async function fetchProjectFileTree(repo: GitHubRepoLink): Promise<Projec
     return [];
   }
 }
+
+// ---------------------------------------------------------------------------
+// Recent commits & open PRs (REST API)
+// ---------------------------------------------------------------------------
+
+export interface RecentCommit {
+  sha: string;
+  message: string;
+  date: string;
+}
+
+export async function listRecentCommits(
+  installationId: string,
+  owner: string,
+  repo: string,
+  count = 30
+): Promise<RecentCommit[]> {
+  try {
+    const token = await getInstallationToken(installationId);
+    const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/commits?per_page=${count}`;
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    });
+    if (!response.ok) {
+      log.error({ status: response.status }, 'Failed to fetch recent commits');
+      return [];
+    }
+    const data = (await response.json()) as Array<{ sha: string; commit: { message: string; committer: { date: string } | null } }>;
+    return data.map((c) => ({
+      sha: c.sha.slice(0, 7),
+      message: c.commit.message.split('\n')[0],
+      date: c.commit.committer?.date ?? '',
+    }));
+  } catch (error) {
+    log.error({ error }, 'Failed to fetch recent commits');
+    return [];
+  }
+}
+
+export interface OpenPR {
+  title: string;
+  state: string;
+  number: number;
+}
+
+export async function listOpenPullRequests(
+  installationId: string,
+  owner: string,
+  repo: string
+): Promise<OpenPR[]> {
+  try {
+    const token = await getInstallationToken(installationId);
+    const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls?state=open&per_page=10`;
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    });
+    if (!response.ok) {
+      log.error({ status: response.status }, 'Failed to fetch open PRs');
+      return [];
+    }
+    const data = (await response.json()) as Array<{ title: string; state: string; number: number }>;
+    return data.map((pr) => ({ title: pr.title, state: pr.state, number: pr.number }));
+  } catch (error) {
+    log.error({ error }, 'Failed to fetch open PRs');
+    return [];
+  }
+}

@@ -40,6 +40,8 @@ export const FEATURE_CONFIG: Record<AIFeature, FeatureConfig> = {
   analyzeSprintTransition:  { maxTokens: 2048, cacheTTLMs: 0,       retryOnValidationFailure: true },
   bootstrapFromRepo:        { maxTokens: 4096, cacheTTLMs: 0,       retryOnValidationFailure: true },
   projectChat:              { maxTokens: 2048, cacheTTLMs: 0,       retryOnValidationFailure: true },
+  analyzeRepoDrift:         { maxTokens: 4096, cacheTTLMs: 0,       retryOnValidationFailure: true },
+  batchGenerateCode:        { maxTokens: 8192, cacheTTLMs: 0,       retryOnValidationFailure: true },
 };
 
 // ---------------------------------------------------------------------------
