@@ -22,6 +22,14 @@ pnpm dev:api   # API only at http://localhost:3001/graphql (tsx watch)
 pnpm dev:web   # Web only at http://localhost:5173 (Vite HMR)
 ```
 
+### Test
+
+```bash
+pnpm test       # Run Vitest across all packages
+pnpm --filter api test   # API tests only
+pnpm --filter web test   # Web tests only
+```
+
 ### Build
 
 ```bash
@@ -51,23 +59,64 @@ pnpm --filter web lint
 - `apps/api/` — Express API with graphql-yoga. GraphQL endpoint: `POST /graphql` (GraphiQL UI available in dev). Entry point: `src/index.ts`.
 - `apps/web/` — React 18 + Vite + Tailwind. Vite proxies `/api/*` to `localhost:3001` in dev.
 
+### REST Endpoints
+
+- `GET /api/health` — Health check (database connectivity, uptime, timestamp)
+- `GET /api/metrics` — Prometheus metrics (prom-client)
+- `GET /api/docs` — API documentation page
+- `GET /api/export/project/:projectId/{json,csv}` — Project data export
+- `GET /api/export/project/:projectId/activity/{json,csv}` — Activity audit log export
+
+### Observability
+
+- **Metrics:** Prometheus via prom-client — HTTP request duration/count, GraphQL resolver duration, Prisma connection pool gauges. Served at `/api/metrics`.
+- **Logging:** Structured JSON logging via pino. Level configurable with `LOG_LEVEL` env var. Request logging via pino-http middleware.
+- **Prisma metrics:** `metrics` preview feature enabled in Prisma schema for pool monitoring.
+
+### Real-Time
+
+- **SSE:** Server-Sent Events via fetch-based client (not native `EventSource`) for real-time notifications. API: `apps/api/src/utils/sseManager.ts`. Client: `apps/web/src/hooks/useEventSource.ts`.
+
+### Multiple Assignees
+
+- Tasks support multiple assignees via `TaskAssignee` join table (task.prisma)
+- Mutations: `addTaskAssignee`, `removeTaskAssignee`
+- DataLoader: `taskAssignees` in `loaders.ts` for batched loading
+
 ### GraphQL Schema
 
 All operations require `Authorization: Bearer <token>` (except `signup` and `login`).
 
 **Queries:**
-- `me` — current user profile
-- `projects` — list projects for the user's org
-- `project(projectId)` — single project
-- `tasks(projectId)` — tasks for a project
+- **Auth:** `me`, `orgInvites`
+- **Org:** `org`, `orgUsers`
+- **Project:** `projects`, `project(projectId)`, `projectStats`, `portfolioOverview`, `savedFilters`
+- **Task:** `tasks(projectId)`, `epics`, `labels`, `customFields`
+- **Sprint:** `sprints(projectId)`, `sprintVelocity`, `sprintBurndown`
+- **Comment:** `comments`, `activities`
+- **AI:** `aiUsage`, `aiPromptHistory`, `analyzeTrends`, `analyzeSprintTransition`, `projectChat`, `analyzeRepoDrift`
+- **Notification:** `notifications`, `unreadNotificationCount`, `notificationPreferences`
+- **GitHub:** `githubInstallations`, `githubInstallationRepos`, `githubProjectRepo`, `fetchRepoFileContent`
+- **Report:** `reports`, `generateStandupReport`, `generateSprintReport`, `analyzeProjectHealth`, `extractTasksFromNotes`
+- **Search:** `globalSearch`
+- **ProjectRole:** `projectMembers`, `automationRules`
+- **Webhook:** `webhookEndpoints`, `webhookDeliveries`
+- **Slack:** `slackIntegrations`, `slackUserMappings`
 
 **Mutations:**
-- `signup(email, password)` — create account
-- `login(email, password)` — returns `{ token }`
-- `createOrg(name)` — create org and attach user as `org:admin`
-- `createProject(name)` — create project (`org:admin` only)
-- `createTask(projectId, title, status?)` — create task
-- `updateTask(taskId, title?, status?)` — update task
+- **Auth:** `signup`, `login`, `sendVerificationEmail`, `verifyEmail`, `requestPasswordReset`, `resetPassword`, `updateProfile`, `inviteOrgMember`, `acceptInvite`, `revokeInvite`
+- **Org:** `createOrg`, `setOrgApiKey`, `setAIBudget`
+- **Project:** `createProject`, `updateProject`, `archiveProject`, `generateProjectOptions`, `createProjectFromOption`, `saveFilter`, `updateFilter`, `deleteFilter`
+- **Task:** `createTask`, `updateTask`, `createSubtask`, `bulkUpdateTasks`, `createLabel`, `deleteLabel`, `addTaskLabel`, `removeTaskLabel`, `generateTaskPlan`, `previewTaskPlan`, `commitTaskPlan`, `expandTask`, `generateTaskInstructions`, `createCustomField`, `updateCustomField`, `deleteCustomField`, `setCustomFieldValue`, `addTaskAssignee`, `removeTaskAssignee`
+- **Sprint:** `createSprint`, `updateSprint`, `deleteSprint`, `closeSprint`, `previewSprintPlan`, `commitSprintPlan`
+- **Comment:** `createComment`, `updateComment`, `deleteComment`
+- **AI:** `generateCodeFromTask`, `regenerateCodeFile`, `reviewPullRequest`, `parseBugReport`, `previewPRDBreakdown`, `commitPRDBreakdown`, `bootstrapProjectFromRepo`, `batchGenerateCode`
+- **Notification:** `markNotificationRead`, `markAllNotificationsRead`, `updateNotificationPreference`
+- **GitHub:** `linkGitHubInstallation`, `connectGitHubRepo`, `disconnectGitHubRepo`, `createGitHubRepo`, `createPullRequestFromTask`, `syncTaskToGitHub`, `decomposeGitHubIssue`, `generateFixFromReview`
+- **Report:** `saveReport`, `deleteReport`, `summarizeProject`
+- **ProjectRole:** `addProjectMember`, `removeProjectMember`, `updateProjectMemberRole`, `createAutomationRule`, `updateAutomationRule`, `deleteAutomationRule`
+- **Webhook:** `createWebhookEndpoint`, `updateWebhookEndpoint`, `deleteWebhookEndpoint`, `testWebhookEndpoint`, `replayWebhookDelivery`
+- **Slack:** `connectSlack`, `updateSlackIntegration`, `disconnectSlack`, `testSlackIntegration`, `mapSlackUser`, `unmapSlackUser`
 
 ### Auth
 
@@ -78,20 +127,28 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 ### Key Files
 
 - `apps/api/src/graphql/schema.ts` — GraphQL schema assembly (imports from `typedefs/`)
-- `apps/api/src/graphql/typedefs/` — Domain-split GraphQL type definitions (auth, org, project, task, sprint, comment, notification, report, github, ai, search)
+- `apps/api/src/graphql/typedefs/` — Domain-split GraphQL type definitions (auth, org, project, task, sprint, comment, notification, report, github, ai, search, slack, webhook, projectrole)
 - `apps/api/src/graphql/resolvers/` — Domain-split resolvers (matching typedefs structure)
 - `apps/api/src/graphql/context.ts` — `buildContext`, `JWT_SECRET`, `Context` type
+- `apps/api/src/graphql/loaders.ts` — DataLoader instances for batching N+1 queries (task, project, sprint, user, labels, assignees, etc.)
 - `apps/api/src/utils/encryption.ts` — AES-256-GCM encryption for API keys
-- `apps/api/prisma/schema/` — Domain-split Prisma schema files (auth, org, project, task, sprint, comment, activity, notification, report, github, aiusage)
+- `apps/api/src/utils/metrics.ts` — Prometheus metrics (prom-client): HTTP request duration/count, GraphQL resolver duration, Prisma pool gauges
+- `apps/api/src/utils/logger.ts` — Structured logging (pino) with `LOG_LEVEL` env var
+- `apps/api/src/utils/sseManager.ts` — Server-Sent Events manager for real-time notifications
+- `apps/api/prisma/schema/` — Domain-split Prisma schema files (auth, org, project, projectrole, task, sprint, comment, activity, notification, report, github, aiusage, slack, webhook)
 - `apps/api/src/routes/export.ts` — REST endpoints for project/activity CSV/JSON export
+- `apps/api/src/routes/docs.ts` — REST endpoint serving API documentation page
+- `apps/api/vitest.config.ts` — API test configuration (Vitest)
 - `apps/web/src/api/client.ts` — `gql<T>()` fetch helper with AbortSignal support, `TOKEN_KEY`
 - `apps/web/src/auth/context.tsx` — `AuthProvider`, `useAuth` hook
 - `apps/web/src/hooks/useProjectData.ts` — data fetching, mutations, sprint/task CRUD, AI ops
 - `apps/web/src/hooks/useTaskFiltering.ts` — search + filter logic
 - `apps/web/src/hooks/useKeyboardShortcuts.ts` — keyboard shortcut handling
+- `apps/web/src/hooks/useEventSource.ts` — fetch-based SSE client for real-time notifications
 - `apps/web/src/utils/taskHelpers.ts` — `TASK_FIELDS`, status↔column mapping
 - `apps/web/src/components/shared/` — reusable UI (SearchInput, FilterBar, Icons, Toast, etc.)
 - `apps/web/src/components/Skeleton.tsx` — Loading skeleton components
+- `apps/web/vitest.config.ts` — Web test configuration (Vitest)
 
 ### TypeScript Config
 
@@ -99,12 +156,12 @@ All packages extend `tsconfig.base.json`. Strict mode + `noUnusedLocals` + `noUn
 
 ### Env Files
 
-- `apps/api/.env` — `DATABASE_URL`, `JWT_SECRET`, `ENCRYPTION_MASTER_KEY`, `CORS_ORIGINS`
+- `apps/api/.env` — `DATABASE_URL`, `JWT_SECRET`, `ENCRYPTION_MASTER_KEY`, `CORS_ORIGINS`, `LOG_LEVEL` (optional, defaults to `info`), `SENTRY_DSN` (optional)
 - `apps/web/.env` — `VITE_API_URL` (set to `/api` in dev; Vite proxy handles routing)
 
 Copy from `.env.example` and fill in values.
 
 ## Notes
 
-- **No tests** are implemented in this MVP.
+- **Tests:** Vitest is configured for both `apps/api` and `apps/web`. Run with `pnpm test`.
 - Package manager is **pnpm**; do not use npm or yarn.

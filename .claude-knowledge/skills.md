@@ -205,3 +205,111 @@ function columnToStatus(column: string): Task['status'] | null {
 pnpm --filter api <command>    # run in apps/api
 pnpm --filter web <command>    # run in apps/web
 ```
+
+## Vitest Test Setup
+
+```ts
+// vitest.config.ts (per-package)
+import { defineConfig } from 'vitest/config'
+
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'node',  // or 'jsdom' for web
+    include: ['src/**/*.test.ts'],
+  },
+})
+```
+
+```ts
+// Example test file
+import { describe, it, expect, vi } from 'vitest'
+
+describe('myFunction', () => {
+  it('does the thing', () => {
+    expect(myFunction('input')).toBe('output')
+  })
+})
+```
+
+## Prometheus Metrics with prom-client
+
+```ts
+// metrics.ts
+import { Registry, collectDefaultMetrics, Histogram, Counter, Gauge } from 'prom-client'
+
+const register = new Registry()
+collectDefaultMetrics({ register })
+
+const httpRequestDuration = new Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'Duration of HTTP requests',
+  labelNames: ['method', 'route', 'status_code'],
+  registers: [register],
+})
+
+// Expose at /api/metrics
+app.get('/api/metrics', async (_req, res) => {
+  res.set('Content-Type', register.contentType)
+  res.end(await register.metrics())
+})
+```
+
+## Structured Logging with pino
+
+```ts
+// logger.ts
+import pino from 'pino'
+
+export const logger = pino({ level: process.env.LOG_LEVEL || 'info' })
+export const createChildLogger = (module: string) => logger.child({ module })
+
+// Usage
+const log = createChildLogger('auth')
+log.info({ userId }, 'User logged in')
+log.error({ err }, 'Authentication failed')
+```
+
+## React.lazy Code-Splitting
+
+```tsx
+import { lazy, Suspense } from 'react'
+
+// Lazy-load heavy route components
+const ProjectDetail = lazy(() => import('./pages/ProjectDetail'))
+const Portfolio = lazy(() => import('./pages/Portfolio'))
+
+// Wrap in Suspense with fallback
+<Suspense fallback={<LoadingSpinner />}>
+  <Routes>
+    <Route path="/projects/:id" element={<ProjectDetail />} />
+    <Route path="/portfolio" element={<Portfolio />} />
+  </Routes>
+</Suspense>
+```
+
+## Fetch-based SSE Client
+
+```ts
+// Native EventSource doesn't support Authorization headers.
+// Use fetch + ReadableStream instead:
+const response = await fetch('/api/events', {
+  headers: { Authorization: `Bearer ${token}` },
+  signal: controller.signal,
+})
+const reader = response.body!.getReader()
+const decoder = new TextDecoder()
+
+while (true) {
+  const { done, value } = await reader.read()
+  if (done) break
+  const text = decoder.decode(value)
+  // Parse SSE format: "data: {...}\n\n"
+  for (const line of text.split('\n')) {
+    if (line.startsWith('data: ')) {
+      const event = JSON.parse(line.slice(6))
+      handleEvent(event)
+    }
+  }
+}
+```

@@ -15,12 +15,16 @@ Multi-tenant SaaS project management MVP. Users belong to orgs; orgs own project
 ## Data Model (Prisma)
 
 ```
-User     — id, email, passwordHash, orgId, role
-Org      — id, name, anthropicApiKeyEncrypted
-Project  — id, name, description, prompt, orgId
-Sprint   — id, name, orgId, projectId, isActive, columns (JSON string[]), startDate?, endDate?
-Task     — id, title, status, projectId, orgId, parentTaskId?, sprintId?, sprintColumn?, assigneeId?
-           priority, estimatedHours, description, instructions, suggestedTools, dependsOn
+User              — id, email, passwordHash, orgId, role
+Org               — id, name, anthropicApiKeyEncrypted
+Project           — id, name, description, prompt, orgId, statuses?, customFields
+Sprint            — id, name, orgId, projectId, isActive, columns (JSON string[]), startDate?, endDate?, closedAt?
+Task              — id, title, status, projectId, orgId, parentTaskId?, sprintId?, sprintColumn?, assigneeId?
+                    priority, estimatedHours, storyPoints, description, instructions, suggestedTools, dependsOn
+TaskAssignee      — id, taskId, userId, assignedAt (join table for multiple assignees)
+SlackUserMapping  — id, slackUserId, slackTeamId, userId, orgId (maps Slack users to TaskToad users)
+WebhookEndpoint   — id, orgId, url, secret, events, isActive
+WebhookDelivery   — id, endpointId, event, payload, status, statusCode, attemptCount, nextRetryAt
 ```
 
 User roles tracked via a string field (e.g. `org:admin`). Only `org:admin` can `createProject`.
@@ -40,9 +44,9 @@ Browser → Vite dev server (localhost:5173)
 
 **Public (no auth):** `signup`, `login`
 
-**Authed queries:** `me`, `org`, `projects`, `project(projectId)`, `tasks(projectId, parentTaskId?)`, `sprints(projectId)`, `orgUsers`
+**Authed queries:** `me`, `orgInvites`, `org`, `orgUsers`, `projects`, `project(projectId)`, `projectStats`, `portfolioOverview`, `savedFilters`, `tasks(projectId)`, `epics`, `labels`, `customFields`, `sprints(projectId)`, `sprintVelocity`, `sprintBurndown`, `comments`, `activities`, `aiUsage`, `aiPromptHistory`, `analyzeTrends`, `analyzeSprintTransition`, `projectChat`, `analyzeRepoDrift`, `notifications`, `unreadNotificationCount`, `notificationPreferences`, `githubInstallations`, `githubInstallationRepos`, `githubProjectRepo`, `fetchRepoFileContent`, `reports`, `generateStandupReport`, `generateSprintReport`, `analyzeProjectHealth`, `extractTasksFromNotes`, `globalSearch`, `projectMembers`, `automationRules`, `webhookEndpoints`, `webhookDeliveries`, `slackIntegrations`, `slackUserMappings`
 
-**Authed mutations:** `createOrg`, `setOrgApiKey`, `createProject` (admin only), `createTask`, `updateTask` (title, status, sprintId, sprintColumn, assigneeId), `createSprint`, `updateSprint` (activating a sprint deactivates all others in the project), `deleteSprint` (detaches tasks → backlog first), `generateProjectOptions`, `createProjectFromOption`, `previewTaskPlan`, `commitTaskPlan`, `expandTask`, `generateTaskInstructions`, `summarizeProject`
+**Authed mutations:** `createOrg`, `setOrgApiKey`, `setAIBudget`, `createProject`, `updateProject`, `archiveProject`, `generateProjectOptions`, `createProjectFromOption`, `saveFilter`, `updateFilter`, `deleteFilter`, `createTask`, `updateTask`, `createSubtask`, `bulkUpdateTasks`, `createLabel`, `deleteLabel`, `addTaskLabel`, `removeTaskLabel`, `generateTaskPlan`, `previewTaskPlan`, `commitTaskPlan`, `expandTask`, `generateTaskInstructions`, `createCustomField`, `updateCustomField`, `deleteCustomField`, `setCustomFieldValue`, `addTaskAssignee`, `removeTaskAssignee`, `createSprint`, `updateSprint`, `deleteSprint`, `closeSprint`, `previewSprintPlan`, `commitSprintPlan`, `createComment`, `updateComment`, `deleteComment`, `generateCodeFromTask`, `regenerateCodeFile`, `reviewPullRequest`, `parseBugReport`, `previewPRDBreakdown`, `commitPRDBreakdown`, `bootstrapProjectFromRepo`, `batchGenerateCode`, `markNotificationRead`, `markAllNotificationsRead`, `updateNotificationPreference`, `linkGitHubInstallation`, `connectGitHubRepo`, `disconnectGitHubRepo`, `createGitHubRepo`, `createPullRequestFromTask`, `syncTaskToGitHub`, `decomposeGitHubIssue`, `generateFixFromReview`, `saveReport`, `deleteReport`, `summarizeProject`, `addProjectMember`, `removeProjectMember`, `updateProjectMemberRole`, `createAutomationRule`, `updateAutomationRule`, `deleteAutomationRule`, `createWebhookEndpoint`, `updateWebhookEndpoint`, `deleteWebhookEndpoint`, `testWebhookEndpoint`, `replayWebhookDelivery`, `connectSlack`, `updateSlackIntegration`, `disconnectSlack`, `testSlackIntegration`, `mapSlackUser`, `unmapSlackUser`, `sendVerificationEmail`, `verifyEmail`, `requestPasswordReset`, `resetPassword`, `updateProfile`, `inviteOrgMember`, `acceptInvite`, `revokeInvite`
 
 ## Key File Map
 
@@ -53,11 +57,17 @@ Browser → Vite dev server (localhost:5173)
 | GraphQL resolvers (domain-split) | `apps/api/src/graphql/resolvers/*.ts` |
 | AI subsystem | `apps/api/src/ai/` (aiService, promptBuilder, aiTypes, etc.) |
 | Auth context (JWT verify) | `apps/api/src/graphql/context.ts` |
+| DataLoaders (N+1 prevention) | `apps/api/src/graphql/loaders.ts` |
 | AES-256-GCM encryption util | `apps/api/src/utils/encryption.ts` |
+| Prometheus metrics (prom-client) | `apps/api/src/utils/metrics.ts` |
+| Structured logging (pino) | `apps/api/src/utils/logger.ts` |
+| SSE manager (real-time events) | `apps/api/src/utils/sseManager.ts` |
 | Prisma schema (domain-split) | `apps/api/prisma/schema/*.prisma` |
 | REST export routes | `apps/api/src/routes/export.ts` |
+| REST API docs page | `apps/api/src/routes/docs.ts` |
 | Express app setup (+ helmet/cors/rate-limit) | `apps/api/src/app.ts` |
 | API entry point | `apps/api/src/index.ts` |
+| API test config | `apps/api/vitest.config.ts` |
 | GQL fetch helper (+ AbortController) | `apps/web/src/api/client.ts` |
 | Auth React context | `apps/web/src/auth/context.tsx` |
 | Vite proxy config | `apps/web/vite.config.ts` |
@@ -73,8 +83,10 @@ Browser → Vite dev server (localhost:5173)
 | Task detail panel (drawer) | `apps/web/src/components/TaskDetailPanel.tsx` |
 | Backlog view | `apps/web/src/components/BacklogView.tsx` |
 | Sprint create modal | `apps/web/src/components/SprintCreateModal.tsx` |
+| Fetch-based SSE client | `apps/web/src/hooks/useEventSource.ts` |
 | Loading skeletons | `apps/web/src/components/Skeleton.tsx` |
 | AI task plan review dialog | `apps/web/src/components/TaskPlanApprovalDialog.tsx` |
+| Web test config | `apps/web/vitest.config.ts` |
 
 ## Web Pages
 
@@ -92,6 +104,8 @@ Browser → Vite dev server (localhost:5173)
 - `JWT_SECRET` — signing secret (defaults to `'dev-secret'` in dev)
 - `ENCRYPTION_MASTER_KEY` — 64-char hex for AES-256-GCM API key encryption
 - `CORS_ORIGINS` — comma-separated allowed origins (defaults to `http://localhost:5173`)
+- `LOG_LEVEL` — pino log level (defaults to `info`)
+- `SENTRY_DSN` — optional Sentry error tracking DSN
 
 **Web** (`apps/web/.env`):
 - `VITE_API_URL` — set to `/api` in dev (Vite proxy strips prefix and forwards to `:3001`)

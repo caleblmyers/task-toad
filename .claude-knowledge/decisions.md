@@ -181,6 +181,76 @@ GraphiQL UI available in dev for interactive exploration.
 
 ---
 
+## 2026-03-16 — Fetch-based SSE client (replacing EventSource)
+
+**Decision:** Real-time notifications use a fetch-based SSE client (`useEventSource.ts`) instead of the native `EventSource` API.
+
+**Rationale:** Native `EventSource` does not support custom headers (e.g., `Authorization: Bearer <token>`). Since all API endpoints require JWT auth, a fetch-based approach with `ReadableStream` parsing is necessary. The fetch-based client also supports `AbortController` for clean teardown.
+
+---
+
+## 2026-03-16 — Vitest chosen over Jest
+
+**Decision:** Adopted Vitest as the test framework for both `apps/api` and `apps/web`.
+
+**Rationale:** Vitest is faster, shares the Vite config/transform pipeline (no separate babel/ts-jest config needed), has native ESM support, and a Jest-compatible API for easy migration. Simpler monorepo setup with per-package `vitest.config.ts` files.
+
+---
+
+## 2026-03-16 — Prometheus metrics via prom-client
+
+**Decision:** Added Prometheus-compatible metrics endpoint at `/api/metrics` using `prom-client`.
+
+**Implementation:**
+- Default Node.js metrics (memory, CPU, event loop)
+- Custom: HTTP request duration/count histograms, GraphQL resolver duration histogram, Prisma connection pool gauges
+- Metrics middleware skips `/api/health` and `/api/metrics` paths
+
+**Rationale:** Industry-standard observability. Prometheus metrics are supported by virtually all monitoring stacks (Grafana, Datadog, etc.) and prom-client is the de facto Node.js library.
+
+---
+
+## 2026-03-16 — Prisma `metrics` preview feature
+
+**Decision:** Enabled the `metrics` preview feature in the Prisma schema generator block.
+
+**Rationale:** Allows reading Prisma connection pool metrics (active, idle, waiting connections) and exposing them via the Prometheus `/api/metrics` endpoint. Provides visibility into database connection pool health.
+
+---
+
+## 2026-03-16 — Structured logging with pino
+
+**Decision:** Adopted pino for structured JSON logging, replacing ad-hoc `console.log` calls.
+
+**Implementation:**
+- `apps/api/src/utils/logger.ts` — shared logger with `LOG_LEVEL` env var
+- pino-http middleware for request/response logging with `requestId`, `statusCode`, `responseTime`
+- `createChildLogger(module)` for module-scoped loggers
+
+**Rationale:** JSON structured logs are parseable by log aggregation tools (ELK, CloudWatch, Datadog). pino is the fastest Node.js logger with minimal overhead.
+
+---
+
+## 2026-03-16 — DataLoader for N+1 query prevention
+
+**Decision:** Added DataLoader instances in `apps/api/src/graphql/loaders.ts` for batching GraphQL field resolver queries.
+
+**Loaders:** taskById, projectById, sprintById, userById, taskLabels, taskPullRequests, taskCommits, taskChildren, taskProgress, sprintTasks, customFieldValuesByTask, taskAssignees.
+
+**Rationale:** GraphQL resolvers naturally cause N+1 queries when resolving nested fields. DataLoader batches multiple individual loads into single database queries within the same tick.
+
+---
+
+## 2026-03-16 — Multiple assignees via join table
+
+**Decision:** Tasks support multiple assignees through a `TaskAssignee` join table instead of a single `assigneeId` FK.
+
+**Implementation:** `TaskAssignee` model with `taskId` + `userId` unique constraint. Mutations: `addTaskAssignee`, `removeTaskAssignee`. The legacy `assigneeId` field on Task is kept for backwards compatibility.
+
+**Rationale:** Real projects rarely have single-assignee tasks. Join table allows flexible assignment without schema changes for N assignees.
+
+---
+
 ## Stack Lock-in Notes
 
 - `graphql-yoga` requires casting as `unknown as express.RequestHandler` for TS compat in `app.ts`
