@@ -9,6 +9,7 @@ import { notificationQueries, notificationMutations, notificationFieldResolvers 
 import { searchQueries, searchMutations } from './search.js';
 import { projectRoleQueries, projectRoleMutations } from './projectrole.js';
 import { webhookQueries, webhookMutations } from './webhook.js';
+import { slackQueries, slackMutations, slackFieldResolvers } from './slack.js';
 
 export const resolvers = {
   Query: {
@@ -23,6 +24,7 @@ export const resolvers = {
     ...aiQueries,
     ...projectRoleQueries,
     ...webhookQueries,
+    ...slackQueries,
   },
   Mutation: {
     ...authMutations,
@@ -36,6 +38,7 @@ export const resolvers = {
     ...searchMutations,
     ...projectRoleMutations,
     ...webhookMutations,
+    ...slackMutations,
   },
   // Field resolvers
   User: { ...authFieldResolvers.User },
@@ -45,4 +48,5 @@ export const resolvers = {
   GitHubInstallation: { ...githubFieldResolvers.GitHubInstallation },
   Sprint: { ...sprintFieldResolvers.Sprint },
   Notification: { ...notificationFieldResolvers.Notification },
+  SlackIntegration: { ...slackFieldResolvers.SlackIntegration },
 };

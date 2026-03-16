@@ -1,0 +1,149 @@
+import type { Context } from '../context.js';
+import { requireOrg } from './auth.js';
+import { AuthorizationError, NotFoundError, ValidationError } from '../errors.js';
+import { isValidWebhookEvent } from '../../utils/webhookDispatcher.js';
+import { sendSlackWebhook, buildTestMessage } from '../../slack/slackClient.js';
+
+function requireAdmin(context: Context) {
+  const user = requireOrg(context);
+  if (user.role !== 'org:admin') {
+    throw new AuthorizationError('Only org admins can manage Slack integrations');
+  }
+  return user;
+}
+
+// ── Slack queries ──
+
+export const slackQueries = {
+  slackIntegrations: async (_parent: unknown, _args: unknown, context: Context) => {
+    const user = requireAdmin(context);
+    return context.prisma.slackIntegration.findMany({
+      where: { orgId: user.orgId },
+      orderBy: { createdAt: 'desc' },
+    });
+  },
+};
+
+// ── Slack mutations ──
+
+export const slackMutations = {
+  connectSlack: async (
+    _parent: unknown,
+    args: {
+      webhookUrl: string;
+      teamId: string;
+      teamName: string;
+      channelId: string;
+      channelName: string;
+      events: string[];
+    },
+    context: Context
+  ) => {
+    const user = requireAdmin(context);
+
+    // Validate webhook URL
+    try {
+      const url = new URL(args.webhookUrl);
+      if (!url.hostname.endsWith('slack.com') && !url.hostname.endsWith('hooks.slack.com')) {
+        throw new Error('not slack');
+      }
+    } catch {
+      throw new ValidationError('Invalid Slack webhook URL. Must be a hooks.slack.com URL.');
+    }
+
+    // Validate events
+    for (const event of args.events) {
+      if (!isValidWebhookEvent(event)) {
+        throw new ValidationError(
+          `Invalid event "${event}". Supported: task.created, task.updated, task.deleted, sprint.created, sprint.closed, comment.created`
+        );
+      }
+    }
+    if (args.events.length === 0) {
+      throw new ValidationError('At least one event is required');
+    }
+
+    if (!args.teamId.trim() || !args.teamName.trim() || !args.channelId.trim() || !args.channelName.trim()) {
+      throw new ValidationError('Team ID, team name, channel ID, and channel name are required');
+    }
+
+    return context.prisma.slackIntegration.create({
+      data: {
+        orgId: user.orgId,
+        teamId: args.teamId.trim(),
+        teamName: args.teamName.trim(),
+        webhookUrl: args.webhookUrl.trim(),
+        channelId: args.channelId.trim(),
+        channelName: args.channelName.trim(),
+        events: JSON.stringify(args.events),
+      },
+    });
+  },
+
+  updateSlackIntegration: async (
+    _parent: unknown,
+    args: { id: string; events?: string[] | null; enabled?: boolean | null },
+    context: Context
+  ) => {
+    const user = requireAdmin(context);
+    const integration = await context.prisma.slackIntegration.findUnique({
+      where: { id: args.id },
+    });
+    if (!integration || integration.orgId !== user.orgId) {
+      throw new NotFoundError('Slack integration not found');
+    }
+
+    if (args.events !== undefined && args.events !== null) {
+      for (const event of args.events) {
+        if (!isValidWebhookEvent(event)) {
+          throw new ValidationError(`Invalid event "${event}"`);
+        }
+      }
+      if (args.events.length === 0) {
+        throw new ValidationError('At least one event is required');
+      }
+    }
+
+    return context.prisma.slackIntegration.update({
+      where: { id: args.id },
+      data: {
+        ...(args.events !== undefined && args.events !== null ? { events: JSON.stringify(args.events) } : {}),
+        ...(args.enabled !== undefined && args.enabled !== null ? { enabled: args.enabled } : {}),
+      },
+    });
+  },
+
+  disconnectSlack: async (_parent: unknown, args: { id: string }, context: Context) => {
+    const user = requireAdmin(context);
+    const integration = await context.prisma.slackIntegration.findUnique({
+      where: { id: args.id },
+    });
+    if (!integration || integration.orgId !== user.orgId) {
+      throw new NotFoundError('Slack integration not found');
+    }
+    await context.prisma.slackIntegration.delete({ where: { id: args.id } });
+    return true;
+  },
+
+  testSlackIntegration: async (_parent: unknown, args: { id: string }, context: Context) => {
+    const user = requireAdmin(context);
+    const integration = await context.prisma.slackIntegration.findUnique({
+      where: { id: args.id },
+    });
+    if (!integration || integration.orgId !== user.orgId) {
+      throw new NotFoundError('Slack integration not found');
+    }
+
+    const message = buildTestMessage();
+    return sendSlackWebhook(integration.webhookUrl, message);
+  },
+};
+
+// ── Slack field resolvers ──
+
+export const slackFieldResolvers = {
+  SlackIntegration: {
+    createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
+    events: (parent: { events: string }) => JSON.parse(parent.events) as string[],
+  },
+};

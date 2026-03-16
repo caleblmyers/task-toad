@@ -5,6 +5,7 @@ import { NotFoundError, ValidationError, AuthorizationError } from '../errors.js
 import { requireAuth, requireOrg, requireProjectAccess } from './auth.js';
 import { executeAutomations } from '../../utils/automationEngine.js';
 import { dispatchWebhooks } from '../../utils/webhookDispatcher.js';
+import { dispatchSlackNotifications } from '../../utils/notificationUtils.js';
 import { sseManager } from '../../utils/sseManager.js';
 import { requireTask, requireProject, validateStatus, parseInput, CreateTaskInput, UpdateTaskInput, CreateCommentInput } from '../../utils/resolverHelpers.js';
 
@@ -122,6 +123,7 @@ export const taskMutations = {
       action: 'task.created',
     });
     dispatchWebhooks(context.prisma, user.orgId, 'task.created', { task });
+    dispatchSlackNotifications(context.prisma, user.orgId, 'task.created', { task });
     sseManager.broadcast(user.orgId, 'task.created', { task });
     return task;
   },
@@ -218,6 +220,7 @@ export const taskMutations = {
     }
     if (Object.keys(changes).length > 0) {
       dispatchWebhooks(context.prisma, user.orgId, 'task.updated', { task: updated, changes });
+      dispatchSlackNotifications(context.prisma, user.orgId, 'task.updated', { task: updated, changes });
       sseManager.broadcast(user.orgId, 'task.updated', { task: updated });
     }
     return updated;

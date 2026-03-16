@@ -1,0 +1,17 @@
+model SlackIntegration {
+  id          String   @id @default(uuid())
+  orgId       String   @map("org_id")
+  teamId      String   @map("team_id")
+  teamName    String   @map("team_name")
+  webhookUrl  String   @map("webhook_url")
+  channelId   String   @map("channel_id")
+  channelName String   @map("channel_name")
+  events      String   @default("[]") // JSON string array of event types
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  org Org @relation(fields: [orgId], references: [orgId], onDelete: Cascade)
+
+  @@index([orgId])
+  @@map("slack_integrations")
+}

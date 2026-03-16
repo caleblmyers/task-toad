@@ -1,0 +1,324 @@
+import { useState, useEffect } from 'react';
+import { gql } from '../api/client';
+
+interface SlackIntegration {
+  id: string;
+  teamId: string;
+  teamName: string;
+  channelId: string;
+  channelName: string;
+  events: string[];
+  enabled: boolean;
+  createdAt: string;
+}
+
+const SUPPORTED_EVENTS = [
+  'task.created',
+  'task.updated',
+  'task.deleted',
+  'sprint.created',
+  'sprint.closed',
+  'comment.created',
+];
+
+const SLACK_QUERY = `query { slackIntegrations { id teamId teamName channelId channelName events enabled createdAt } }`;
+
+export default function SlackSettings() {
+  const [integrations, setIntegrations] = useState<SlackIntegration[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+
+  // Form state
+  const [showForm, setShowForm] = useState(false);
+  const [formWebhookUrl, setFormWebhookUrl] = useState('');
+  const [formTeamId, setFormTeamId] = useState('');
+  const [formTeamName, setFormTeamName] = useState('');
+  const [formChannelId, setFormChannelId] = useState('');
+  const [formChannelName, setFormChannelName] = useState('');
+  const [formEvents, setFormEvents] = useState<string[]>(['task.created', 'task.updated']);
+  const [saving, setSaving] = useState(false);
+
+  // Testing state
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<{ id: string; success: boolean } | null>(null);
+
+  const fetchIntegrations = () => {
+    setLoading(true);
+    gql<{ slackIntegrations: SlackIntegration[] }>(SLACK_QUERY)
+      .then((data) => setIntegrations(data.slackIntegrations))
+      .catch((e) => setErr(e instanceof Error ? e.message : 'Failed to load Slack integrations'))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchIntegrations();
+  }, []);
+
+  const handleToggleEvent = (event: string) => {
+    setFormEvents((prev) =>
+      prev.includes(event) ? prev.filter((e) => e !== event) : [...prev, event]
+    );
+  };
+
+  const handleConnect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formWebhookUrl.trim() || formEvents.length === 0) return;
+    setSaving(true);
+    setErr(null);
+    try {
+      const data = await gql<{ connectSlack: SlackIntegration }>(
+        `mutation ConnectSlack($webhookUrl: String!, $teamId: String!, $teamName: String!, $channelId: String!, $channelName: String!, $events: [String!]!) {
+          connectSlack(webhookUrl: $webhookUrl, teamId: $teamId, teamName: $teamName, channelId: $channelId, channelName: $channelName, events: $events) {
+            id teamId teamName channelId channelName events enabled createdAt
+          }
+        }`,
+        {
+          webhookUrl: formWebhookUrl.trim(),
+          teamId: formTeamId.trim(),
+          teamName: formTeamName.trim(),
+          channelId: formChannelId.trim(),
+          channelName: formChannelName.trim(),
+          events: formEvents,
+        }
+      );
+      setIntegrations((prev) => [data.connectSlack, ...prev]);
+      setFormWebhookUrl('');
+      setFormTeamId('');
+      setFormTeamName('');
+      setFormChannelId('');
+      setFormChannelName('');
+      setFormEvents(['task.created', 'task.updated']);
+      setShowForm(false);
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Failed to connect Slack');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleEnabled = async (integration: SlackIntegration) => {
+    try {
+      await gql<{ updateSlackIntegration: SlackIntegration }>(
+        `mutation UpdateSlack($id: ID!, $enabled: Boolean) {
+          updateSlackIntegration(id: $id, enabled: $enabled) { id enabled }
+        }`,
+        { id: integration.id, enabled: !integration.enabled }
+      );
+      setIntegrations((prev) =>
+        prev.map((i) => (i.id === integration.id ? { ...i, enabled: !i.enabled } : i))
+      );
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Failed to update integration');
+    }
+  };
+
+  const handleTest = async (id: string) => {
+    setTestingId(id);
+    setTestResult(null);
+    try {
+      const data = await gql<{ testSlackIntegration: boolean }>(
+        `mutation TestSlack($id: ID!) { testSlackIntegration(id: $id) }`,
+        { id }
+      );
+      setTestResult({ id, success: data.testSlackIntegration });
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Test failed');
+      setTestResult({ id, success: false });
+    } finally {
+      setTestingId(null);
+    }
+  };
+
+  const handleDisconnect = async (id: string) => {
+    if (!confirm('Disconnect this Slack integration?')) return;
+    try {
+      await gql<{ disconnectSlack: boolean }>(
+        `mutation DisconnectSlack($id: ID!) { disconnectSlack(id: $id) }`,
+        { id }
+      );
+      setIntegrations((prev) => prev.filter((i) => i.id !== id));
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Failed to disconnect');
+    }
+  };
+
+  if (loading) {
+    return <p className="text-sm text-slate-500">Loading Slack integrations...</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {err && <p className="text-sm text-red-600">{err}</p>}
+
+      {/* Integration list */}
+      {integrations.length > 0 ? (
+        <ul className="divide-y divide-slate-100">
+          {integrations.map((int) => (
+            <li key={int.id} className="py-3 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-slate-800 font-medium">
+                    {int.teamName} <span className="text-slate-400 font-normal">#{int.channelName}</span>
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => handleToggleEnabled(int)}
+                    className={`text-xs px-2 py-0.5 rounded ${
+                      int.enabled
+                        ? 'bg-green-50 text-green-700'
+                        : 'bg-slate-100 text-slate-500'
+                    }`}
+                  >
+                    {int.enabled ? 'Active' : 'Disabled'}
+                  </button>
+                  <button
+                    onClick={() => handleTest(int.id)}
+                    disabled={testingId === int.id}
+                    className="text-xs text-slate-600 hover:text-slate-800 disabled:opacity-50"
+                  >
+                    {testingId === int.id ? 'Testing...' : 'Test'}
+                  </button>
+                  <button
+                    onClick={() => handleDisconnect(int.id)}
+                    className="text-xs text-red-600 hover:text-red-800"
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {int.events.map((ev) => (
+                  <span
+                    key={ev}
+                    className="inline-block text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded"
+                  >
+                    {ev}
+                  </span>
+                ))}
+              </div>
+              {testResult?.id === int.id && (
+                <p className={`text-xs ${testResult.success ? 'text-green-600' : 'text-red-600'}`}>
+                  {testResult.success ? 'Test message sent successfully!' : 'Test failed — check your webhook URL.'}
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-slate-500">No Slack integrations configured.</p>
+      )}
+
+      {/* Connect form */}
+      {showForm ? (
+        <form onSubmit={handleConnect} className="space-y-3 border border-slate-200 rounded p-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Webhook URL</label>
+            <input
+              type="url"
+              placeholder="https://hooks.slack.com/services/..."
+              value={formWebhookUrl}
+              onChange={(e) => setFormWebhookUrl(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded text-sm font-mono"
+              required
+            />
+            <p className="text-xs text-slate-400 mt-1">
+              Create an incoming webhook in your Slack workspace settings.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Team ID</label>
+              <input
+                type="text"
+                placeholder="T01234567"
+                value={formTeamId}
+                onChange={(e) => setFormTeamId(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Team Name</label>
+              <input
+                type="text"
+                placeholder="My Workspace"
+                value={formTeamName}
+                onChange={(e) => setFormTeamName(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Channel ID</label>
+              <input
+                type="text"
+                placeholder="C01234567"
+                value={formChannelId}
+                onChange={(e) => setFormChannelId(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Channel Name</label>
+              <input
+                type="text"
+                placeholder="general"
+                value={formChannelName}
+                onChange={(e) => setFormChannelName(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Events</label>
+            <div className="flex flex-wrap gap-2">
+              {SUPPORTED_EVENTS.map((event) => (
+                <label key={event} className="flex items-center gap-1.5 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={formEvents.includes(event)}
+                    onChange={() => handleToggleEvent(event)}
+                    className="rounded border-slate-300"
+                  />
+                  {event}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={saving || !formWebhookUrl.trim() || formEvents.length === 0}
+              className="px-4 py-2 bg-slate-800 text-white rounded hover:bg-slate-700 disabled:opacity-50 text-sm"
+            >
+              {saving ? 'Connecting...' : 'Connect Slack'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+              className="px-4 py-2 text-slate-600 hover:text-slate-800 text-sm"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <button
+          onClick={() => setShowForm(true)}
+          className="px-4 py-2 bg-slate-800 text-white rounded hover:bg-slate-700 text-sm"
+        >
+          Connect Slack
+        </button>
+      )}
+    </div>
+  );
+}

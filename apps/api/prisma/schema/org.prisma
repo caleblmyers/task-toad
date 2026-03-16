@@ -15,6 +15,7 @@ model Org {
   notificationPreferences NotificationPreference[]
   automationRules AutomationRule[]
   webhookEndpoints WebhookEndpoint[]
+  slackIntegrations SlackIntegration[]
 
   @@map("orgs")
 }

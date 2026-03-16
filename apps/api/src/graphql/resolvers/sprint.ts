@@ -6,6 +6,7 @@ import { logActivity } from '../../utils/activity.js';
 import { NotFoundError, ValidationError } from '../errors.js';
 import { requireOrg, requireProjectAccess, requireApiKey } from './auth.js';
 import { dispatchWebhooks } from '../../utils/webhookDispatcher.js';
+import { dispatchSlackNotifications } from '../../utils/notificationUtils.js';
 import { sseManager } from '../../utils/sseManager.js';
 import { requireProject } from '../../utils/resolverHelpers.js';
 
@@ -244,6 +245,7 @@ export const sprintMutations = {
     });
 
     dispatchWebhooks(context.prisma, user.orgId, 'sprint.closed', { sprint: closedSprint });
+    dispatchSlackNotifications(context.prisma, user.orgId, 'sprint.closed', { sprint: closedSprint });
     sseManager.broadcast(user.orgId, 'sprint.closed', { sprint: closedSprint });
     return { sprint: closedSprint, nextSprint: nextSprint ?? null };
   },

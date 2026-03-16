@@ -1,0 +1,124 @@
+import crypto from 'crypto';
+import type { Request, Response } from 'express';
+import { PrismaClient } from '@prisma/client';
+import { createChildLogger } from '../utils/logger.js';
+
+const log = createChildLogger('slack-commands');
+const prisma = new PrismaClient();
+
+/**
+ * Verify that a request came from Slack by checking the HMAC signature.
+ */
+function verifySlackSignature(signingSecret: string, timestamp: string, body: string, signature: string): boolean {
+  const baseString = `v0:${timestamp}:${body}`;
+  const hmac = crypto.createHmac('sha256', signingSecret).update(baseString).digest('hex');
+  const expected = `v0=${hmac}`;
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+}
+
+/**
+ * Handle incoming Slack slash commands (POST /api/slack/commands).
+ * Expects URL-encoded form data from Slack.
+ */
+export async function handleSlackCommand(req: Request, res: Response): Promise<void> {
+  const signingSecret = process.env.SLACK_SIGNING_SECRET;
+  if (!signingSecret) {
+    log.warn('SLACK_SIGNING_SECRET not configured');
+    res.status(500).json({ response_type: 'ephemeral', text: 'Slack integration not configured on the server.' });
+    return;
+  }
+
+  // Verify signature
+  const timestamp = req.headers['x-slack-request-timestamp'] as string | undefined;
+  const slackSignature = req.headers['x-slack-signature'] as string | undefined;
+
+  if (!timestamp || !slackSignature) {
+    res.status(401).json({ response_type: 'ephemeral', text: 'Missing Slack signature headers.' });
+    return;
+  }
+
+  // Reject requests older than 5 minutes to prevent replay attacks
+  const now = Math.floor(Date.now() / 1000);
+  if (Math.abs(now - parseInt(timestamp, 10)) > 300) {
+    res.status(401).json({ response_type: 'ephemeral', text: 'Request too old.' });
+    return;
+  }
+
+  const rawBody = typeof req.body === 'string' ? req.body : new URLSearchParams(req.body as Record<string, string>).toString();
+
+  try {
+    if (!verifySlackSignature(signingSecret, timestamp, rawBody, slackSignature)) {
+      res.status(401).json({ response_type: 'ephemeral', text: 'Invalid signature.' });
+      return;
+    }
+  } catch {
+    res.status(401).json({ response_type: 'ephemeral', text: 'Signature verification failed.' });
+    return;
+  }
+
+  const { command, text, team_id } = req.body as Record<string, string>;
+
+  if (command !== '/tasktoad') {
+    res.json({ response_type: 'ephemeral', text: `Unknown command: ${command}` });
+    return;
+  }
+
+  const trimmed = (text ?? '').trim();
+  const parts = trimmed.split(/\s+/);
+  const action = parts[0]?.toLowerCase();
+  const title = parts.slice(1).join(' ').trim();
+
+  if (action === 'create' && title) {
+    try {
+      // Find the org linked to this Slack team
+      const integration = await prisma.slackIntegration.findFirst({
+        where: { teamId: team_id, enabled: true },
+      });
+
+      if (!integration) {
+        res.json({ response_type: 'ephemeral', text: 'No TaskToad organization is linked to this Slack workspace. Connect Slack in your TaskToad org settings.' });
+        return;
+      }
+
+      // Find the first project in the org
+      const project = await prisma.project.findFirst({
+        where: { orgId: integration.orgId, archived: false },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      if (!project) {
+        res.json({ response_type: 'ephemeral', text: 'No active projects found in the linked organization.' });
+        return;
+      }
+
+      const task = await prisma.task.create({
+        data: {
+          title,
+          status: 'todo',
+          projectId: project.projectId,
+          orgId: integration.orgId,
+        },
+      });
+
+      res.json({
+        response_type: 'in_channel',
+        text: `Task created: *${task.title}*\nProject: ${project.name}\nStatus: todo`,
+      });
+    } catch (err) {
+      log.error({ err }, 'Failed to create task from Slack command');
+      res.json({ response_type: 'ephemeral', text: 'Failed to create task. Please try again.' });
+    }
+  } else if (action === 'help' || !action) {
+    res.json({
+      response_type: 'ephemeral',
+      text: '*TaskToad Slash Commands*\n' +
+        '`/tasktoad create <title>` — Create a new task\n' +
+        '`/tasktoad help` — Show this help message',
+    });
+  } else {
+    res.json({
+      response_type: 'ephemeral',
+      text: `Unknown action: \`${action}\`. Use \`/tasktoad help\` for available commands.`,
+    });
+  }
+}

@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { schema } from './graphql/schema.js';
 import { buildContext } from './graphql/context.js';
 import { handleGitHubWebhook } from './github/index.js';
+import { handleSlackCommand } from './slack/slackWebhookHandler.js';
 import { exportRouter } from './routes/export.js';
 import { logger } from './utils/logger.js';
 import { sseManager } from './utils/sseManager.js';
@@ -66,6 +67,9 @@ app.use(
 
 // GitHub webhook endpoint needs raw body for signature verification — must be before JSON parser
 app.post('/api/github/webhooks', express.raw({ type: 'application/json' }), handleGitHubWebhook);
+
+// Slack slash command endpoint — URL-encoded form data from Slack
+app.post('/api/slack/commands', express.urlencoded({ extended: false }), handleSlackCommand);
 
 // Compress responses
 app.use(compression());
