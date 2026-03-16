@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node';
 import { PrismaClient } from '@prisma/client';
 import app from './app.js';
 import { logger } from './utils/logger.js';
@@ -9,6 +10,18 @@ const prisma = new PrismaClient();
 const PORT = Number(process.env.PORT) || 3001;
 
 async function main() {
+  // Initialize Sentry error tracking (gracefully skips if DSN not set)
+  if (process.env.SENTRY_DSN) {
+    Sentry.init({
+      dsn: process.env.SENTRY_DSN,
+      environment: process.env.NODE_ENV ?? 'development',
+      release: `tasktoad-api@${process.env.npm_package_version ?? '0.1.0'}`,
+      tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+    });
+    logger.info('Sentry error tracking initialized');
+  } else {
+    logger.debug('SENTRY_DSN not set — Sentry error tracking disabled');
+  }
   // Verify DB connectivity before accepting requests
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -80,6 +93,13 @@ async function main() {
       logger.info('Prisma disconnected');
     } catch (err) {
       logger.error({ err }, 'Error disconnecting Prisma');
+    }
+
+    // Flush pending Sentry events before exiting
+    try {
+      await Sentry.close(2000);
+    } catch {
+      // Best-effort flush — don't block shutdown
     }
 
     process.exit(0);

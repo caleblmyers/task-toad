@@ -5,6 +5,7 @@ import compression from 'compression';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
+import * as Sentry from '@sentry/node';
 import { createYoga } from 'graphql-yoga';
 import { z } from 'zod';
 import { schema, depthLimitRule } from './graphql/schema.js';
@@ -238,12 +239,35 @@ const sensitiveAuthLimiter = rateLimit({
 app.use('/graphql', sensitiveAuthLimiter);
 
 
+// Expected user error codes that should NOT be reported to Sentry
+const EXPECTED_ERROR_CODES = new Set([
+  'ERR_NOT_FOUND',
+  'ERR_VALIDATION',
+  'ERR_AUTH',
+  'UNAUTHORIZED',
+  'FORBIDDEN',
+  'BAD_USER_INPUT',
+]);
+
 const yoga = createYoga({
   schema,
   context: buildContext,
   graphqlEndpoint: '/graphql',
   plugins: [
     { onValidate({ addValidationRule }: { addValidationRule: (rule: unknown) => void }) { addValidationRule(depthLimitRule(10)); } },
+    {
+      onResultProcess({ result }: { result: { errors?: ReadonlyArray<{ message: string; extensions?: Record<string, unknown> }> } }) {
+        if (!result.errors) return;
+        for (const err of result.errors) {
+          const code = err.extensions?.['code'] as string | undefined;
+          if (code && EXPECTED_ERROR_CODES.has(code)) continue;
+          Sentry.captureException(err instanceof Error ? err : new Error(err.message), {
+            tags: { source: 'graphql' },
+            extra: { extensions: err.extensions },
+          });
+        }
+      },
+    },
   ],
 });
 // graphql-yoga's server adapter is compatible with Express but requires a type cast
@@ -281,6 +305,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 app.use(((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  Sentry.captureException(err);
   logger.error({ err }, 'Unhandled express error');
   res.status(500).json({ error: 'Internal server error' });
 }) as express.ErrorRequestHandler);

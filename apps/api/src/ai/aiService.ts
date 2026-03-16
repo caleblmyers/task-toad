@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { GraphQLError } from 'graphql';
+import * as Sentry from '@sentry/node';
 import type { AIFeature } from './aiTypes.js';
 import { createChildLogger } from '../utils/logger.js';
 
@@ -70,30 +71,38 @@ async function callAndParse<T>(
   schema: z.ZodType<T>
 ): Promise<T> {
   const config = FEATURE_CONFIG[feature];
-  const result = await callAI({
-    apiKey,
-    systemPrompt: prompt.systemPrompt,
-    userPrompt: prompt.userPrompt,
-    maxTokens: config.maxTokens,
-    feature,
-    cacheTTLMs: config.cacheTTLMs,
-  });
-
   try {
-    return parseJSON(result.raw, schema);
-  } catch (err) {
-    if (config.retryOnValidationFailure && !result.cached) {
-      log.warn({ feature }, 'Validation failed, retrying once');
-      const retry = await callAI({
-        apiKey,
-        systemPrompt: prompt.systemPrompt,
-        userPrompt: prompt.userPrompt,
-        maxTokens: config.maxTokens,
-        feature,
-        cacheTTLMs: 0, // skip cache on retry
-      });
-      return parseJSON(retry.raw, schema);
+    const result = await callAI({
+      apiKey,
+      systemPrompt: prompt.systemPrompt,
+      userPrompt: prompt.userPrompt,
+      maxTokens: config.maxTokens,
+      feature,
+      cacheTTLMs: config.cacheTTLMs,
+    });
+
+    try {
+      return parseJSON(result.raw, schema);
+    } catch (err) {
+      if (config.retryOnValidationFailure && !result.cached) {
+        log.warn({ feature }, 'Validation failed, retrying once');
+        const retry = await callAI({
+          apiKey,
+          systemPrompt: prompt.systemPrompt,
+          userPrompt: prompt.userPrompt,
+          maxTokens: config.maxTokens,
+          feature,
+          cacheTTLMs: 0, // skip cache on retry
+        });
+        return parseJSON(retry.raw, schema);
+      }
+      throw err;
     }
+  } catch (err) {
+    Sentry.captureException(err, {
+      tags: { source: 'ai', feature },
+      extra: { maxTokens: config.maxTokens },
+    });
     throw err;
   }
 }

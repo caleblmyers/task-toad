@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { jwtVerify } from 'jose';
+import * as Sentry from '@sentry/node';
 import { createChildLogger } from '../utils/logger.js';
 import { createLoaders, type Loaders } from './loaders.js';
 
@@ -40,6 +41,9 @@ export async function buildContext(ctx: { request: Request }): Promise<Context> 
         select: { orgId: true, name: true, anthropicApiKeyEncrypted: true },
       });
     }
+
+    // Set Sentry user context for error attribution
+    Sentry.setUser({ id: dbUser.userId, email: dbUser.email });
 
     return {
       user: {
