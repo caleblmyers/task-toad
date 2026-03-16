@@ -4,6 +4,7 @@ export const taskTypeDefs = /* GraphQL */ `
     title: String!
     description: String
     instructions: String
+    acceptanceCriteria: String
     suggestedTools: String
     estimatedHours: Float
     storyPoints: Int
@@ -61,6 +62,7 @@ export const taskTypeDefs = /* GraphQL */ `
     priority: String!
     dependsOn: [String!]!
     subtasks: [SubtaskPreview!]!
+    acceptanceCriteria: String
   }
 
   type ExtractedTask {
@@ -85,6 +87,7 @@ export const taskTypeDefs = /* GraphQL */ `
     priority: String
     dependsOn: [String!]!
     subtasks: [SubtaskInput!]!
+    acceptanceCriteria: String
   }
 `;
 
@@ -96,7 +99,7 @@ export const taskQueryFields = /* GraphQL */ `
 
 export const taskMutationFields = /* GraphQL */ `
   createTask(projectId: ID!, title: String!, status: String, taskType: String): Task!
-  updateTask(taskId: ID!, title: String, status: String, description: String, instructions: String, dependsOn: String, sprintId: ID, sprintColumn: String, assigneeId: ID, dueDate: String, position: Float, archived: Boolean, storyPoints: Int, taskType: String): Task!
+  updateTask(taskId: ID!, title: String, status: String, description: String, instructions: String, acceptanceCriteria: String, dependsOn: String, sprintId: ID, sprintColumn: String, assigneeId: ID, dueDate: String, position: Float, archived: Boolean, storyPoints: Int, taskType: String): Task!
   createSubtask(parentTaskId: ID!, title: String!, taskType: String): Task!
   bulkUpdateTasks(taskIds: [ID!]!, status: String, assigneeId: ID, sprintId: ID, archived: Boolean): [Task!]!
 

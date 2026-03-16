@@ -4,6 +4,7 @@ export const projectTypeDefs = /* GraphQL */ `
     name: String!
     description: String
     prompt: String
+    knowledgeBase: String
     statuses: String!
     createdAt: String!
     orgId: ID!
@@ -49,7 +50,7 @@ export const projectQueryFields = /* GraphQL */ `
 
 export const projectMutationFields = /* GraphQL */ `
   createProject(name: String!): Project!
-  updateProject(projectId: ID!, name: String, description: String, statuses: String): Project!
+  updateProject(projectId: ID!, name: String, description: String, prompt: String, knowledgeBase: String, statuses: String): Project!
   archiveProject(projectId: ID!, archived: Boolean!): Project!
   generateProjectOptions(prompt: String!): [ProjectOption!]!
   createProjectFromOption(prompt: String!, title: String!, description: String!): Project!

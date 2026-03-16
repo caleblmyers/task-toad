@@ -29,6 +29,7 @@ export const TaskPlanSchema = z.object({
   priority: z.enum(['low', 'medium', 'high', 'critical']).optional().default('medium'),
   dependsOn: z.array(z.string()).optional().default([]),
   subtasks: z.array(SubtaskPlanSchema).optional().default([]),
+  acceptanceCriteria: z.string().optional().default(''),
 });
 
 export const SprintPlanSchema = z.object({

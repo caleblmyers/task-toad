@@ -5,8 +5,9 @@ model Task {
   parentTaskId   String?  @map("parent_task_id")
   title          String
   description    String?
-  instructions   String?
-  suggestedTools String?  @map("suggested_tools")
+  instructions       String?
+  acceptanceCriteria String?  @map("acceptance_criteria")
+  suggestedTools     String?  @map("suggested_tools")
   estimatedHours Float?   @map("estimated_hours")
   storyPoints    Int?     @map("story_points")
   priority       String   @default("medium")

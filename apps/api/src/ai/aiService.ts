@@ -97,9 +97,10 @@ export async function generateTaskPlan(
   projectTitle: string,
   projectDescription: string,
   projectPrompt: string,
-  context?: string | null
+  context?: string | null,
+  knowledgeBase?: string | null
 ): Promise<TaskPlan[]> {
-  const p = buildTaskPlanPrompt(projectTitle, projectDescription, projectPrompt, context);
+  const p = buildTaskPlanPrompt(projectTitle, projectDescription, projectPrompt, context, knowledgeBase);
   const tasks = await callAndParse(apiKey, 'generateTaskPlan', p, z.array(TaskPlanSchema));
   if (tasks.length === 0) {
     throw new GraphQLError('Failed to parse AI response');
@@ -112,9 +113,10 @@ export async function expandTask(
   taskTitle: string,
   taskDescription: string,
   projectName: string,
-  context?: string | null
+  context?: string | null,
+  knowledgeBase?: string | null
 ): Promise<TaskPlan[]> {
-  const p = buildExpandTaskPrompt(taskTitle, taskDescription, projectName, context);
+  const p = buildExpandTaskPrompt(taskTitle, taskDescription, projectName, context, knowledgeBase);
   const subtasks = await callAndParse(apiKey, 'expandTask', p, z.array(TaskPlanSchema));
   if (subtasks.length === 0) {
     throw new GraphQLError('Failed to parse AI response');
@@ -161,9 +163,10 @@ export async function generateTaskInstructions(
   taskTitle: string,
   taskDescription: string,
   projectName: string,
-  existingTaskTitles: string[] = []
+  existingTaskTitles: string[] = [],
+  knowledgeBase?: string | null
 ): Promise<TaskInstructions> {
-  const p = buildGenerateTaskInstructionsPrompt(taskTitle, taskDescription, projectName, existingTaskTitles);
+  const p = buildGenerateTaskInstructionsPrompt(taskTitle, taskDescription, projectName, existingTaskTitles, knowledgeBase);
   return callAndParse(apiKey, 'generateTaskInstructions', p, TaskInstructionsSchema);
 }
 
@@ -232,11 +235,12 @@ export async function generateCode(
   projectName: string,
   projectDescription: string,
   existingFiles?: Array<{ path: string; language: string; size: number }>,
-  styleGuide?: string | null
+  styleGuide?: string | null,
+  knowledgeBase?: string | null
 ): Promise<CodeGeneration> {
   const p = buildGenerateCodePrompt({
     taskTitle, taskDescription, taskInstructions,
-    projectName, projectDescription, existingFiles, styleGuide,
+    projectName, projectDescription, existingFiles, styleGuide, knowledgeBase,
   });
   return callAndParse(apiKey, 'generateCode', p, CodeGenerationSchema);
 }

@@ -133,7 +133,7 @@ export const taskMutations = {
 
   updateTask: async (
     _parent: unknown,
-    args: { taskId: string; title?: string; status?: string; description?: string; instructions?: string; dependsOn?: string | null; sprintId?: string | null; sprintColumn?: string | null; assigneeId?: string | null; dueDate?: string | null; position?: number | null; archived?: boolean; storyPoints?: number | null; taskType?: string },
+    args: { taskId: string; title?: string; status?: string; description?: string; instructions?: string; acceptanceCriteria?: string; dependsOn?: string | null; sprintId?: string | null; sprintColumn?: string | null; assigneeId?: string | null; dueDate?: string | null; position?: number | null; archived?: boolean; storyPoints?: number | null; taskType?: string },
     context: Context
   ) => {
     const user = requireOrg(context);
@@ -154,6 +154,7 @@ export const taskMutations = {
         ...(args.status !== undefined ? { status: args.status } : {}),
         ...(args.description !== undefined ? { description: args.description } : {}),
         ...(args.instructions !== undefined ? { instructions: args.instructions } : {}),
+        ...(args.acceptanceCriteria !== undefined ? { acceptanceCriteria: args.acceptanceCriteria } : {}),
         ...(args.dependsOn !== undefined ? { dependsOn: args.dependsOn } : {}),
         ...(args.sprintId !== undefined ? { sprintId: args.sprintId } : {}),
         ...(args.sprintColumn !== undefined ? { sprintColumn: args.sprintColumn } : {}),

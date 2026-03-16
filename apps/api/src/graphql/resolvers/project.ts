@@ -93,7 +93,7 @@ export const projectMutations = {
 
   updateProject: async (
     _parent: unknown,
-    args: { projectId: string; name?: string | null; description?: string | null; statuses?: string | null },
+    args: { projectId: string; name?: string | null; description?: string | null; prompt?: string | null; knowledgeBase?: string | null; statuses?: string | null },
     context: Context
   ) => {
     const user = requireOrg(context);
@@ -116,6 +116,8 @@ export const projectMutations = {
       data: {
         ...(args.name !== undefined && args.name !== null ? { name: args.name } : {}),
         ...(args.description !== undefined ? { description: args.description } : {}),
+        ...(args.prompt !== undefined ? { prompt: args.prompt } : {}),
+        ...(args.knowledgeBase !== undefined ? { knowledgeBase: args.knowledgeBase } : {}),
         ...(args.statuses !== undefined && args.statuses !== null ? { statuses: args.statuses } : {}),
       },
     });

@@ -4,6 +4,7 @@ model Project {
   name                  String
   description           String?
   prompt                String?
+  knowledgeBase         String?  @map("knowledge_base")
   statuses              String   @default("[\"todo\",\"in_progress\",\"in_review\",\"done\"]")
   createdAt             DateTime @default(now()) @map("created_at")
   archived              Boolean  @default(false)

@@ -119,7 +119,8 @@ export const aiMutations = {
       project.name,
       project.description ?? '',
       project.prompt ?? '',
-      args.context
+      args.context,
+      project.knowledgeBase
     );
     return Promise.all(
       taskPlans.map((t) =>
@@ -128,6 +129,7 @@ export const aiMutations = {
             title: t.title,
             description: t.description,
             instructions: t.instructions,
+            acceptanceCriteria: t.acceptanceCriteria || null,
             suggestedTools: JSON.stringify(t.suggestedTools),
             status: 'todo',
             projectId: args.projectId,
@@ -161,7 +163,8 @@ export const aiMutations = {
       project.name,
       project.description ?? '',
       project.prompt ?? '',
-      fullContext
+      fullContext,
+      project.knowledgeBase
     );
     return taskPlans.map((t) => ({
       title: t.title,
@@ -172,6 +175,7 @@ export const aiMutations = {
       priority: t.priority ?? 'medium',
       dependsOn: t.dependsOn ?? [],
       subtasks: t.subtasks ?? [],
+      acceptanceCriteria: t.acceptanceCriteria || null,
     }));
   },
 
@@ -188,6 +192,7 @@ export const aiMutations = {
         priority?: string | null;
         dependsOn: string[];
         subtasks: Array<{ title: string; description: string }>;
+        acceptanceCriteria?: string | null;
       }>;
       clearExisting?: boolean | null;
     },
@@ -217,6 +222,7 @@ export const aiMutations = {
             title: t.title,
             description: t.description,
             instructions: t.instructions,
+            acceptanceCriteria: t.acceptanceCriteria || null,
             suggestedTools: t.suggestedTools,
             estimatedHours: t.estimatedHours ?? null,
             priority: t.priority ?? 'medium',
@@ -295,7 +301,8 @@ export const aiMutations = {
       task.title,
       task.description ?? '',
       task.project.name,
-      args.context
+      args.context,
+      task.project.knowledgeBase
     );
     return Promise.all(
       subtaskPlans.map((t) =>
@@ -335,7 +342,8 @@ export const aiMutations = {
       task.title,
       task.description ?? '',
       task.project.name,
-      siblings.map((s: { title: string }) => s.title)
+      siblings.map((s: { title: string }) => s.title),
+      task.project.knowledgeBase
     );
     const titleToId = new Map(siblings.map((s: { title: string; taskId: string }) => [s.title, s.taskId]));
     const resolvedDeps = result.dependsOn
@@ -397,6 +405,7 @@ export const aiMutations = {
       task.project.description ?? '',
       projectFiles,
       args.styleGuide,
+      task.project.knowledgeBase,
     );
   },
 

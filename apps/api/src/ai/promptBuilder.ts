@@ -74,16 +74,18 @@ export function buildTaskPlanPrompt(
   projectTitle: string,
   projectDescription: string,
   projectPrompt: string,
-  context?: string | null
+  context?: string | null,
+  knowledgeBase?: string | null
 ): Prompt {
   const contextLine = context ? `\nAdditional context: ${userInput('context', context)}` : '';
+  const kbLine = knowledgeBase ? `\nProject Knowledge Base (use for context):\n${userInput('knowledge_base', truncate(knowledgeBase, 800))}` : '';
   return {
     systemPrompt: SYSTEM_JSON,
     userPrompt: `Break this project into implementation tasks.
 
 Project: ${userInput('title', projectTitle)}
 Description: ${userInput('description', truncate(projectDescription, MAX_PROJECT_DESCRIPTION_CHARS))}
-Original request: ${userInput('prompt', truncate(projectPrompt, MAX_PROJECT_DESCRIPTION_CHARS))}${contextLine}
+Original request: ${userInput('prompt', truncate(projectPrompt, MAX_PROJECT_DESCRIPTION_CHARS))}${contextLine}${kbLine}
 
 Return a JSON array of 4–8 tasks. Each item:
 {
@@ -94,14 +96,16 @@ Return a JSON array of 4–8 tasks. Each item:
   "estimatedHours": number,
   "priority": "low" | "medium" | "high" | "critical",
   "dependsOn": string[],
-  "subtasks": [{ "title": string, "description": string }]
+  "subtasks": [{ "title": string, "description": string }],
+  "acceptanceCriteria": string
 }
 "title" is a short action phrase. "description" is 1–2 sentences. "instructions" is 3–6 sentences of detailed step-by-step guidance for a human or AI agent.
 "category" is one of: "ai-model", "code-editor", "design-tool", "database", "cloud-service", "communication", "testing", "other".
 List 1–3 tools per task. Be specific (e.g. "Claude Sonnet", "Figma", "Vercel", "Jest").
 "estimatedHours" is a realistic work estimate (e.g. 1, 2, 4, 8, 16). "priority" reflects business impact.
 "dependsOn" lists titles of OTHER tasks in this same list that must be completed first (empty array if none).
-"subtasks" is 2–6 concrete implementation steps that break down this task.`,
+"subtasks" is 2–6 concrete implementation steps that break down this task.
+"acceptanceCriteria" is a bullet list of testable conditions that define when the task is complete.`,
   };
 }
 
@@ -109,23 +113,26 @@ export function buildExpandTaskPrompt(
   taskTitle: string,
   taskDescription: string,
   projectName: string,
-  context?: string | null
+  context?: string | null,
+  knowledgeBase?: string | null
 ): Prompt {
   const contextLine = context ? `\nAdditional context: ${userInput('context', context)}` : '';
+  const kbLine = knowledgeBase ? `\nProject Knowledge Base (use for context):\n${userInput('knowledge_base', truncate(knowledgeBase, 800))}` : '';
   return {
     systemPrompt: SYSTEM_JSON,
     userPrompt: `Break this task into subtasks.
 
 Task: ${userInput('title', taskTitle)}
 Task description: ${userInput('description', truncate(taskDescription, MAX_DESCRIPTION_CHARS))}
-Project: ${userInput('project', projectName)}${contextLine}
+Project: ${userInput('project', projectName)}${contextLine}${kbLine}
 
 Return a JSON array of 2–6 subtasks using the same schema:
 {
   "title": string,
   "description": string,
   "instructions": string,
-  "suggestedTools": [{ "name": string, "category": string, "reason": string }]
+  "suggestedTools": [{ "name": string, "category": string, "reason": string }],
+  "acceptanceCriteria": string
 }`,
   };
 }
@@ -370,6 +377,7 @@ export function buildGenerateCodePrompt(data: {
   projectDescription: string;
   existingFiles?: Array<{ path: string; language: string; size: number }>;
   styleGuide?: string | null;
+  knowledgeBase?: string | null;
 }): Prompt {
   const cappedFiles = (data.existingFiles ?? []).slice(0, 30);
   const filesLine =
@@ -381,6 +389,10 @@ export function buildGenerateCodePrompt(data: {
     ? `\nFollow these project coding conventions:\n${userInput('style_guide', truncate(data.styleGuide, 1000))}`
     : '';
 
+  const kbLine = data.knowledgeBase
+    ? `\nProject Knowledge Base (use for context):\n${userInput('knowledge_base', truncate(data.knowledgeBase, 800))}`
+    : '';
+
   return {
     systemPrompt: SYSTEM_JSON,
     userPrompt: `Generate code files to implement this task.
@@ -389,7 +401,7 @@ Task: ${userInput('title', data.taskTitle)}
 Description: ${userInput('description', truncate(data.taskDescription, 400))}
 Instructions: ${userInput('instructions', truncate(data.taskInstructions, 800))}
 Project: ${userInput('project', data.projectName)}
-${data.projectDescription ? `Project description: ${userInput('projectDescription', truncate(data.projectDescription, 400))}\n` : ''}${filesLine}${styleGuideLine}
+${data.projectDescription ? `Project description: ${userInput('projectDescription', truncate(data.projectDescription, 400))}\n` : ''}${filesLine}${styleGuideLine}${kbLine}
 
 Return JSON:
 {
@@ -482,7 +494,8 @@ export function buildGenerateTaskInstructionsPrompt(
   taskTitle: string,
   taskDescription: string,
   projectName: string,
-  existingTaskTitles: string[]
+  existingTaskTitles: string[],
+  knowledgeBase?: string | null
 ): Prompt {
   // Cap sibling titles to avoid bloating prompts on large projects
   const cappedTitles = existingTaskTitles.slice(0, MAX_SIBLING_TITLES);
@@ -490,6 +503,7 @@ export function buildGenerateTaskInstructionsPrompt(
     cappedTitles.length > 0
       ? `Other tasks in this project (${existingTaskTitles.length} total): ${cappedTitles.map((t) => JSON.stringify(t)).join(', ')}${existingTaskTitles.length > MAX_SIBLING_TITLES ? ', …' : ''}`
       : '';
+  const kbLine = knowledgeBase ? `\nProject Knowledge Base (use for context):\n${userInput('knowledge_base', truncate(knowledgeBase, 800))}` : '';
 
   return {
     systemPrompt: SYSTEM_JSON,
@@ -498,7 +512,7 @@ export function buildGenerateTaskInstructionsPrompt(
 Task: ${userInput('title', taskTitle)}
 Description: ${userInput('description', truncate(taskDescription, MAX_DESCRIPTION_CHARS))}
 Project: ${userInput('project', projectName)}
-${siblingsLine}
+${siblingsLine}${kbLine}
 
 Return JSON:
 {
