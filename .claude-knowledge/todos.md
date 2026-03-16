@@ -53,19 +53,20 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 - [x] Environment validation improvements — warn if SMTP not configured in production, validate ANTHROPIC_API_KEY (Wave 9, 2026-03-16)
 - [x] Static asset caching headers — `Cache-Control: max-age=31536000, immutable` for hashed assets, `no-cache` for index.html (Wave 9, 2026-03-16)
 - [x] React Error Boundary — global error boundary at App root with fallback UI (Wave 9, 2026-03-16)
-- [ ] Wire up webhook retry processor — `startRetryProcessor()` / `stopRetryProcessor()` exported but not called from `index.ts` (needs graceful shutdown integration)
-- [ ] SSE connection cleanup in graceful shutdown — `closeAllConnections` from sseManager not called in shutdown handler
+- [x] Wire up webhook retry processor — `startRetryProcessor()` / `stopRetryProcessor()` called from `index.ts` (Wave 10, 2026-03-16)
+- [x] SSE connection cleanup in graceful shutdown — `closeAllConnections` called in shutdown handler (Wave 10, 2026-03-16)
 
 ### P2: Security Hardening (High Priority)
 **Why:** Several medium-severity security gaps: unbounded GraphQL depth, missing CSRF, bulk mutation auth gaps, SSE token in query string.
 **Touches:** `apps/api/src/graphql/schema.ts`, `apps/api/src/app.ts`, `apps/api/src/utils/sseManager.ts`, `apps/api/src/graphql/resolvers/task.ts`
 
-- [ ] GraphQL query depth + complexity limits — configure graphql-yoga with `depthLimit` and `costLimit` plugins to prevent nested query DoS
-- [ ] Rate limit SSE connections — add per-user concurrent connection limit in sseManager (max 5 per user)
-- [ ] Rate limit export endpoints — stricter per-endpoint limit (5 exports per 10 min) to prevent bandwidth abuse
-- [ ] Bulk mutation role checks — `bulkUpdateTasks` only checks org, not per-project membership; add project-level auth
-- [ ] Move SSE token from query string to header — query params get logged in server logs, leaking tokens
-- [ ] Comment mention regex hardening — add content length check or iteration cap to prevent ReDoS on large comments
+- [x] GraphQL query depth limit — custom validation rule limiting depth to 10 (Wave 10, 2026-03-16)
+- [ ] GraphQL query complexity/cost limits — add `costLimit` plugin to prevent expensive queries (depth limit done, complexity not yet)
+- [x] Rate limit SSE connections — per-user concurrent connection limit (max 5), evicts oldest (Wave 10, 2026-03-16)
+- [x] Rate limit export endpoints — 5 exports per 10 min per IP (Wave 10, 2026-03-16)
+- [x] Bulk mutation role checks — `bulkUpdateTasks` verifies per-project access (Wave 10, 2026-03-16)
+- [x] Move SSE token from query string to header — fetch-based SSE client with Authorization header (Wave 10, 2026-03-16)
+- [x] Comment mention regex hardening — tighter email regex, 20-mention cap, batched DB lookups (Wave 10, 2026-03-16)
 
 ### A11: Accessibility Foundation (High Priority)
 **Why:** App fails WCAG 2.1 Level A on multiple criteria — keyboard nav, focus management, ARIA labels, color contrast.
@@ -73,13 +74,16 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 
 - [x] Modal accessibility — shared `<Modal>` with focus trap, aria-modal, aria-labelledby, Escape-to-close, focus restore. 19 modals converted (Wave 9, 2026-03-16)
 - [x] ARIA labels on all icon-only buttons — close/clear/dismiss buttons, all 22 SVG icons have aria-hidden (Wave 9, 2026-03-16)
-- [ ] Form label associations — connect all `<label>` elements to inputs via `htmlFor`/`id` in TaskFieldsPanel, SprintCreateModal, filter inputs
+- [x] Form label associations — htmlFor/id on TaskFieldsPanel, SprintCreateModal, FilterBar, SprintPlanModal; aria-labels on CSVImportModal (Wave 10, 2026-03-16)
 - [x] Screen reader live regions — ToastContainer has aria-live="polite", error toasts use role="alert" (Wave 9, 2026-03-16)
 - [x] Skip-to-content link — sr-only visible on focus, jumps to #main-content (Wave 9, 2026-03-16)
-- [ ] Color contrast fixes — upgrade `text-slate-300/400` to `text-slate-600/700` on light backgrounds throughout. Audit all Tailwind color pairings against WCAG AA (4.5:1 ratio)
+- [x] Color contrast fixes — text-slate-300/400 → text-slate-500 on light backgrounds in FilterBar, CSVImportModal, SprintPlanModal (Wave 10, 2026-03-16)
+- [ ] Color contrast audit — full WCAG AA 4.5:1 audit of remaining Tailwind color pairings across all components
 - [x] Drag-and-drop keyboard alternative — Enter/Space to enter move mode, arrow keys to move between columns, Escape to exit (Wave 9, 2026-03-16)
-- [ ] Backlog keyboard navigation — backlog sprint sections don't have keyboard move support yet (only KanbanBoard does)
-- [ ] KanbanBoard move mode: Up/Down arrow keys for reordering within a column (only Left/Right cross-column moves implemented)
+- [x] Backlog keyboard navigation — sprint picker on task rows via M key or button, with aria-live announcements (Wave 10, 2026-03-16)
+- [x] KanbanBoard move mode: Up/Down arrow keys for within-column reordering with announcements (Wave 10, 2026-03-16)
+- [ ] KanbanBoard reorder persistence — Up/Down reorder is local state only; needs a `reorderTask` mutation to persist order to DB
+- [ ] BacklogView sprint picker: close on Escape key and click-outside for better keyboard UX
 
 ### Q1: Code Quality & Testing (Medium Priority)
 **Why:** Zero test coverage, inconsistent error handling, duplicated modal patterns, dead code.
@@ -138,11 +142,12 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 - [x] Webhook retry queue — exponential backoff with delivery log table showing status, attempts, next retry (Wave 9, 2026-03-16)
 - [x] Webhook delivery dashboard — UI in OrgSettings showing delivery history per endpoint with success/failure counts (Wave 9, 2026-03-16)
 - [x] Slack command expansion — added `/tasktoad list` and `/tasktoad status` with Block Kit formatting (Wave 9, 2026-03-16)
-- [ ] Slack user mapping — link Slack user ID to TaskToad user for auto-assignment on slash commands
+- [x] Slack user mapping — SlackUserMapping model, GraphQL CRUD, slash command integration, settings UI (Wave 10, 2026-03-16)
 - [x] Email HTML templates — branded templates for verification, password reset, invite (Wave 9, 2026-03-16)
-- [ ] Wire HTML email templates into sendEmail callers — `buildVerifyEmailHtml`/`buildResetPasswordHtml`/`buildInviteHtml` exist but auth resolvers still only pass plain text
-- [ ] Slack `/tasktoad list` assignee filtering — currently shows all tasks from first project, not user-specific (blocked on Slack user mapping)
-- [ ] Email retry queue — retry failed SMTP sends with backoff instead of silent failure
+- [x] Wire HTML email templates into sendEmail callers — all 4 auth resolver calls now pass HTML templates (Wave 10, 2026-03-16)
+- [x] Slack `/tasktoad list` assignee filtering — shows user-specific tasks when Slack user is mapped (Wave 10, 2026-03-16)
+- [x] Email retry queue — 3 attempts with exponential backoff (1s/5s/15s), logs but doesn't throw (Wave 10, 2026-03-16)
+- [ ] Slack user mapping discovery — `/tasktoad link` self-service command for users to link their own accounts (currently admin-only via UI)
 - [ ] GitHub webhook retry — dead letter queue for failed webhook processing with manual replay
 
 ### F1: Frontend Performance (Low-Medium Priority)
@@ -195,6 +200,28 @@ Each swarm task MUST represent **30-60 minutes** of focused agentic work. Never 
 ---
 
 ## Completed
+
+### P2 (partial): Security Hardening (Wave 10, 2026-03-16)
+- [x] GraphQL query depth limit (max 10) — custom validation rule
+- [x] Per-user SSE connection limit (max 5) — evicts oldest on overflow
+- [x] Export rate limiting — 5 req/10min per IP
+- [x] Bulk mutation per-project auth — bulkUpdateTasks verifies project access
+- [x] SSE token moved to Authorization header — fetch-based client replaces EventSource
+- [x] Comment mention hardening — tighter regex, 20 cap, batched lookups
+
+### A11 (partial): Accessibility (Wave 10, 2026-03-16)
+- [x] Form label associations — htmlFor/id pairs + aria-labels across 5 components
+- [x] Color contrast fixes — text-slate-300/400 → text-slate-500 on light backgrounds
+- [x] KanbanBoard Up/Down reordering — within-column task moves with aria-live announcements
+- [x] BacklogView keyboard sprint moves — sprint picker dropdown accessible via M key
+
+### I1 (partial): Integration Completeness (Wave 10, 2026-03-16)
+- [x] HTML email templates wired — all 4 sendEmail calls pass HTML templates
+- [x] Webhook retry processor wired — start/stop in server lifecycle
+- [x] SSE shutdown cleanup — closeAllConnections in graceful shutdown
+- [x] Email retry with backoff — 3 attempts (1s/5s/15s)
+- [x] Slack user mapping — full vertical slice (Prisma, GraphQL, slash commands, settings UI)
+- [x] Slack list assignee filtering — user-specific task lists for mapped users
 
 ### S1 (partial): Styling & Branding (2026-03-16)
 - [x] CSS custom properties + Tailwind brand tokens (--brand-green, --brand-lime, --brand-dark, --brand-cyan, --brand-green-light, --brand-green-hover)

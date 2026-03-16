@@ -6,6 +6,36 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-16
 
+### Wave 10: P2 + A11 + I1 (3 workers, 6 tasks)
+
+**P2 — Security Hardening (Worker 1):**
+- GraphQL query depth limit (max 10) via custom validation rule in schema.ts
+- `bulkUpdateTasks` now verifies per-project access (was only checking org membership)
+- Comment mention regex hardened: tighter email pattern, 20-mention cap, batched DB lookups
+- Per-user SSE connection limit (max 5, evicts oldest on overflow) in sseManager
+- SSE token moved from query string to Authorization header (fetch-based client replaces native EventSource)
+- Export endpoints rate limited to 5 requests per 10 minutes per IP
+
+**A11 — Accessibility (Worker 2):**
+- Form label associations: htmlFor/id pairs on TaskFieldsPanel (6 fields), SprintCreateModal (5 inputs), SprintPlanModal (2 inputs); aria-labels on FilterBar selects, CSVImportModal mapping selects
+- Color contrast fixes: text-slate-300 → text-slate-500 on light backgrounds in FilterBar, CSVImportModal, SprintPlanModal
+- KanbanBoard Up/Down arrow reordering within columns with aria-live announcements
+- BacklogView sprint picker: keyboard-accessible via M key on focused task rows, with screen reader announcements
+
+**I1 — Integration Completeness (Worker 3):**
+- HTML email templates wired into all 4 sendEmail calls in auth.ts (verify, resend, reset, invite)
+- Webhook retry processor wired into server lifecycle (startRetryProcessor on startup, stopRetryProcessor on shutdown)
+- SSE connection cleanup added to graceful shutdown handler
+- Email retry wrapper: 3 attempts with exponential backoff (1s/5s/15s)
+- Slack user mapping: SlackUserMapping Prisma model + migration, GraphQL CRUD, `/tasktoad list` filters by mapped user, `/tasktoad create` auto-assigns, SlackSettings UI for managing mappings
+
+**Open follow-ups from Wave 10:**
+- [ ] GraphQL complexity/cost limits (depth done, cost analysis not yet)
+- [ ] KanbanBoard reorder persistence — Up/Down moves are local state only, need `reorderTask` mutation
+- [ ] BacklogView sprint picker: close on Escape/click-outside
+- [ ] Slack user mapping self-service — `/tasktoad link` command for non-admin users
+- [ ] Full WCAG AA 4.5:1 color contrast audit across all components
+
 ### S1: Branding & Design System
 
 - **CSS custom properties** + **Tailwind brand tokens**: `--brand-green`, `--brand-lime`, `--brand-dark`, `--brand-cyan`, `--brand-green-light`, `--brand-green-hover` — defined in `:root` and referenced via `brand.*` in tailwind.config.js
