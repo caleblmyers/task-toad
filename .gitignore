@@ -16,3 +16,6 @@ vite.config.d.ts
 .ai/swarm/tasks.json
 .ai/swarm/tasks-*.json
 .ai/e2e-test-results-*.md
+# Test swarm artifacts (ephemeral per swarm run)
+.ai/bugs/*
+!.ai/bugs/.gitkeep
