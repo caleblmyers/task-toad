@@ -1,6 +1,6 @@
 import type { Context } from '../context.js';
 import { encryptApiKey, decryptApiKey } from '../../utils/encryption.js';
-import { AuthorizationError } from '../errors.js';
+import { AuthorizationError, ValidationError } from '../errors.js';
 import { requireAuth, requireOrg } from './auth.js';
 
 // ── Org queries ──
@@ -36,6 +36,12 @@ export const orgQueries = {
 export const orgMutations = {
   createOrg: async (_parent: unknown, args: { name: string; apiKey?: string | null }, context: Context) => {
     const user = requireAuth(context);
+    if (user.orgId) {
+      throw new ValidationError('You already belong to an organization. Leave your current org first.');
+    }
+    if (!args.name.trim()) {
+      throw new ValidationError('Name is required');
+    }
     const org = await context.prisma.org.create({
       data: {
         name: args.name,

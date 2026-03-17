@@ -30,8 +30,8 @@ export const taskQueries = {
     context: Context
   ) => {
     await requireProjectAccess(context, args.projectId);
-    const limit = args.limit ?? 100;
-    const offset = args.offset ?? 0;
+    const limit = Math.max(0, Math.min(args.limit ?? 100, 1000));
+    const offset = Math.max(0, args.offset ?? 0);
     const where = {
       projectId: args.projectId,
       parentTaskId: args.parentTaskId !== undefined ? args.parentTaskId : null,

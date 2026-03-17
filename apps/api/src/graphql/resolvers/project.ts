@@ -5,7 +5,7 @@ export type { Project as SharedProject } from '@tasktoad/shared-types';
 import { logActivity } from '../../utils/activity.js';
 import { AuthorizationError, NotFoundError, ValidationError } from '../errors.js';
 import { requireAuth, requireOrg, requireProjectAccess } from './auth.js';
-import { parseInput, CreateProjectInput } from '../../utils/resolverHelpers.js';
+import { parseInput, CreateProjectInput, requireProject } from '../../utils/resolverHelpers.js';
 
 // ── Project queries ──
 
@@ -194,7 +194,7 @@ export const projectMutations = {
     if (user.role !== 'org:admin') {
       throw new AuthorizationError('Admin role required');
     }
-    const { project } = await requireProjectAccess(context, args.projectId);
+    const { project } = await requireProject(context, args.projectId);
     if (args.statuses !== undefined && args.statuses !== null) {
       try {
         const parsed = JSON.parse(args.statuses) as unknown;

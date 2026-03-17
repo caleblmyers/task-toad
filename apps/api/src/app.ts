@@ -258,11 +258,32 @@ const EXPECTED_ERROR_CODES = new Set([
   'BAD_USER_INPUT',
 ]);
 
+/** Recursively strip null bytes (\0) from all string values in an object. */
+function stripNullBytes(obj: unknown): unknown {
+  if (typeof obj === 'string') return obj.replace(/\0/g, '');
+  if (Array.isArray(obj)) return obj.map(stripNullBytes);
+  if (obj !== null && typeof obj === 'object') {
+    const cleaned: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(obj)) {
+      cleaned[k] = stripNullBytes(v);
+    }
+    return cleaned;
+  }
+  return obj;
+}
+
 const yoga = createYoga({
   schema,
   context: buildContext,
   graphqlEndpoint: '/graphql',
   plugins: [
+    {
+      onParams({ params, setParams }: { params: { variables?: Record<string, unknown> }; setParams: (p: typeof params) => void }) {
+        if (params.variables) {
+          setParams({ ...params, variables: stripNullBytes(params.variables) as Record<string, unknown> });
+        }
+      },
+    },
     { onValidate({ addValidationRule }: { addValidationRule: (rule: unknown) => void }) {
       addValidationRule(depthLimitRule(10));
       addValidationRule(costLimitRule(Number(process.env.MAX_QUERY_COST) || 100000));
