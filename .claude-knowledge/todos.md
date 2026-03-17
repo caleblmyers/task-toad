@@ -130,15 +130,23 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 
 - [ ] **Responsive workspace (Audit Item 9):** Collapsible sidebar, stacked toolbar, drawer task panel — desktop-first is fine for launch, defer to Wave 24+
 - [ ] **Task detail re-architecture (Audit Item 10):** Collapsible sections, prioritized field order, tabbed comments/activity — functional as-is, defer to Wave 24+
-- [ ] ProjectToolbar template/export overlays — currently positioned with absolute right-16 top-12; may need refinement when toolbar width changes
-- [ ] Migrate remaining inline `bg-white dark:bg-slate-900 rounded-lg border...` patterns to use `<Card>` component
-- [ ] Migrate remaining inline status/priority pills to use `<Badge>` component
-- [ ] Replace `window.confirm` in `useProjectData.ts` (AI generation nav block) — needs async pattern since it's inside a popstate handler
+- [x] ~~ProjectToolbar template/export overlays — fix positioning to use relative anchoring~~ — done in Wave 24 (task-004)
+- [ ] Migrate remaining inline `bg-white dark:bg-slate-900 rounded-lg border...` patterns to use `<Card>` component (ProfilePage done in Wave 24, others remain)
+- [ ] Migrate remaining inline status/priority pills to use `<Badge>` component (SprintSection, TableView, TaskFieldsPanel, Search, Portfolio done in Wave 24; other files may remain)
+- [x] ~~Replace `window.confirm` in `useProjectData.ts` (AI generation nav block)~~ — done in Wave 24 (task-005, promise-based ConfirmDialog)
 
 ## Follow-ups from Wave 21
 
-- [ ] Dark mode contrast audit — remaining components not checked in Wave 21 (BacklogView, SprintCreateModal, KanbanBoard, etc.) may still have `dark:text-slate-400` on dark backgrounds
-- [ ] Shared-types re-export in comment resolver — task-003 planned to add exports in `resolvers/comment.ts` but only did `resolvers/sprint.ts`; expand to more resolvers
+- [x] ~~Dark mode contrast audit — remaining components (BacklogView, KanbanBoard, CalendarView, CSVImportModal, CloseSprintModal, SprintTransitionModal, ProjectSettingsModal, ProjectDashboard)~~ — done in Wave 24 (task-001)
+- [x] ~~Shared-types re-export in notification resolver~~ — done in Wave 24 (task-006); comment/report types not in shared-types yet
 - [ ] PWA navigateFallback behavior — verify offline.html is only served for navigation requests (not API/asset requests) in production; current denylist only covers `/api/`
-- [ ] Pre-existing lint warnings — 8 warnings across BurndownChart, GanttChart, ProjectSettingsModal, TaskPlanApprovalDialog, Home, Projects; not blocking but should be cleaned up
-- [ ] S3 unit tests don't cover `getFromS3` (if it exists) or error handling for `uploadToS3` failures (e.g., network timeout, bucket permissions)
+- [x] ~~Pre-existing lint warnings — 9 warnings across BurndownChart, GanttChart, ProjectSettingsModal, DropdownMenu, TaskPlanApprovalDialog, Home, Projects~~ — done in Wave 24 (task-002, 0 warnings)
+- [x] ~~S3 unit tests — error handling for uploadToS3/deleteFromS3 failures, custom endpoint, URL expiry config, key sanitization~~ — done in Wave 24 (task-006)
+
+## Follow-ups from Wave 24
+
+- [ ] Shared-types expansion — add Comment and Report types to `@tasktoad/shared-types` so comment.ts and report.ts resolvers can re-export them
+- [ ] Card component adoption — remaining files with inline card div patterns (beyond ProfilePage) should migrate to `<Card>`
+- [ ] Badge component adoption — audit remaining files beyond the 5 migrated in task-003 for inline pill patterns
+- [ ] ProjectToolbar menu accessibility — ensure ARIA attributes (role="menu", aria-expanded) are on the template/export dropdowns
+- [ ] BurndownChart/Projects data fetching — currently using inline fetch in useEffect with cancellation flags; consider extracting to a shared useAsyncData hook if the pattern recurs

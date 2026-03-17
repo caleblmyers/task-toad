@@ -4,6 +4,28 @@ Summaries of work completed each session. Most recent first.
 
 ---
 
+## 2026-03-17
+
+### Wave 24: Polish + Code Quality (3 workers, 6 tasks)
+
+**Worker 1 — Dark Mode + Lint Fixes:**
+- WCAG AA contrast fixes across 8 components: BacklogView, KanbanBoard, CalendarView, CSVImportModal, CloseSprintModal, SprintTransitionModal, ProjectSettingsModal, ProjectDashboard — changed `dark:text-slate-400` to `dark:text-slate-300` on interactive elements/dark backgrounds
+- Fixed all 9 pre-existing lint warnings → 0 warnings: BurndownChart (useEffect fetch pattern), GanttChart (useMemo allTasks), ProjectSettingsModal (loadData deps), DropdownMenu (setActiveIndex moved to toggle), TaskPlanApprovalDialog/Home (unescaped entities), Projects (useEffect fetch pattern)
+
+**Worker 2 — Badge/Card Adoption + Toolbar Fix:**
+- Migrated inline pill patterns to Badge component in 5 files: SprintSection (priority/due date/active), TableView (priority), TaskFieldsPanel (priority), Search (status), Portfolio (health)
+- Card component adoption in ProfilePage
+- Fixed ProjectToolbar template/export overlay positioning: anchored to trigger buttons with `right-0 top-full mt-1`, added export menu Escape/click-outside handling, menus now close each other
+
+**Worker 3 — ConfirmDialog + API + Tests:**
+- Replaced last `window.confirm()` in useProjectData.ts popstate handler with promise-based ConfirmDialog (ref-stored confirm function + `.then()` chain)
+- Added shared-types re-export in notification resolver (Comment/Report types not in shared-types yet — skipped correctly)
+- 5 new S3 edge-case unit tests: key with special chars, custom endpoint config, uploadToS3 error propagation, custom URL expiry, deleteFromS3 error propagation
+
+**Process:** Zero review rejections this wave. Lint went from 9 warnings to 0.
+
+---
+
 ## 2026-03-16 (cont.)
 
 ### Wave 22-23: UX Audit Implementation (9 tasks across 2 waves)

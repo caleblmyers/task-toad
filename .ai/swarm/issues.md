@@ -236,3 +236,25 @@ Format:
 **Issue:** Task description asked for shared-types re-exports in "2-3 more API resolver files (e.g., resolvers/sprint.ts, resolvers/comment.ts)" but worker only added exports to sprint.ts, not comment.ts.
 **Impact:** Minor — sprint.ts covers 3 types (Sprint, CloseSprintResult, SprintPlanItem). Comment resolver has no shared types to export.
 **Suggestion:** When "2-3" is a suggestion, mark it as optional or specify exactly which resolvers and what types to export.
+
+### worker-3 — task-006
+**Issue:** Task listed `comment.ts` and `report.ts` in the files array, but these resolver files don't exist. Comments are handled in `task.ts` resolver and reports don't have a dedicated resolver file.
+**Impact:** Could only add re-exports to `notification.ts`. Two of the three target files were invalid.
+**Suggestion:** Verify file paths exist before assigning them in task planning. Use `ls` or `glob` to confirm resolver file structure.
+
+### Reviewer — Positive (Wave 24)
+**Observation:** All 6 tasks merged with zero rejections. Every worker ran full validation before marking complete. Lint went from 9 warnings to 0.
+**Why it worked:** Tasks were well-scoped (CSS-only contrast fixes, specific lint warnings, component migrations). No file overlap between workers. Acceptance criteria were concrete and verifiable.
+
+### Reviewer — Positive (Wave 24)
+**Observation:** Worker-1's lint fixes were technically excellent — used cancellation flags in useEffect, proper useCallback/useMemo patterns, and HTML entity escapes. No behavior changes.
+**Why it worked:** Task description gave specific fix strategies for each warning, reducing ambiguity.
+
+### Reviewer — task-006 (Wave 24, files)
+**Issue:** Task listed `comment.ts` and `report.ts` as files to potentially add shared-types re-exports, but Comment and Report types don't exist in shared-types yet. Worker correctly skipped those and only added the notification re-export.
+**Impact:** None — worker made the right call.
+**Suggestion:** Before assigning shared-types re-export tasks, verify which types actually exist in the shared-types package.
+
+### Reviewer — Observation (Wave 24)
+**Observation:** Worker-1's hover state change in CSVImportModal and SprintTransitionModal (dark:hover:text-slate-300 → dark:hover:text-slate-200) was initially flagged as scope creep but was actually necessary — without it, the hover state would be identical to the new base color, eliminating the hover effect.
+**Suggestion:** For contrast fix tasks, note that adjusting hover states may be necessary when changing base colors. Include this in the task description to avoid false review rejections.
