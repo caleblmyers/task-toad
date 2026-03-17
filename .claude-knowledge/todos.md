@@ -1,6 +1,6 @@
-# Deferred Ideas & Future Improvements
+# Remaining Work
 
-Organized into **Task Sets** for parallel swarm development. Completed items are in `changelog.md`.
+All original work sets (Q1, A11, W2, W6, D1, I1, F1, S1, SW1) are **completed** through Wave 25. Completed items are in `changelog.md`. What remains are follow-ups and polish.
 
 ---
 
@@ -12,152 +12,48 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 
 ---
 
-## Priority Order
+## Remaining Work by Category
 
-1. **Q1** — Code quality & testing (authz regression tests, e2e suite, password policy alignment)
-2. **D1** — Deployment & observability (object storage for attachments, metrics wiring)
-3. **F1** — Frontend performance & architecture (ProjectDetail decomposition)
-4. **A11** — Accessibility
-5. **W2** — Advanced tasks & filters
-6. **I1** — Integration completeness
-7. **S1** — Styling & branding
-8. **W6** — AI extras
-9. **SW1** — Swarm workflow optimization
+### Accessibility
+**Touches:** `apps/web/src/components/`, `apps/web/src/pages/`
+- [ ] Focus trap for ProjectToolbar overlays — template dialog and export menu don't trap focus; consider a reusable `useFocusTrap` hook
+- [ ] Mobile drawer focus trap — Tab can escape the drawer to background elements; needs focus containment
+- [ ] ARIA audit for remaining overlays — NotificationCenter, NotificationSettings, and modals should match ProjectToolbar's ARIA patterns
+- [ ] Export menu Enter key — keyboard-only users need Enter support on focused menuitem (currently click-handler only)
 
----
+### Responsive
+**Touches:** `apps/web/src/components/ProjectToolbar.tsx`, `apps/web/src/components/TaskDetailPanel.tsx`, `apps/web/src/pages/AppLayout.tsx`
+- [ ] Responsive ProjectToolbar — toolbar buttons overflow on narrow screens; needs responsive stacking or overflow menu
+- [ ] Responsive task detail panel — on mobile should be a drawer or sheet overlay instead of full-width
+- [ ] Sidebar collapse: notification preferences button hidden when collapsed; overlay doesn't show
 
-## Remaining Work
-
-### Q1: Code Quality & Testing
-**Touches:** `apps/web/src/hooks/`, `apps/api/src/__tests__/`
-- [x] ~~TypeScript strictness — remaining `any` types audit~~ — done in Wave 18
-- [x] ~~Expand test coverage — useTaskCRUD hook tests, web component tests~~ — done in Wave 18 (useTaskCRUD + ActivityFeed)
-- [x] ~~Recurrence scheduler tests~~ — done in Wave 17
-- [x] ~~Attachment DataLoader~~ — done in Wave 17
-- [x] ~~Authorization regression tests~~ — done in Wave 17 (7 boundary tests)
-- [x] ~~End-to-end test suite~~ — done in Wave 19 (happy-path + task lifecycle + tenant isolation)
-- [x] ~~Fix integration test DB~~ — done in Wave 18 (fixed table names + password validation)
-- [x] ~~Password policy alignment~~ — done in Wave 17 (shared validatePassword, client-side validation)
-
-### A11: Accessibility
+### Design System Adoption
 **Touches:** `apps/web/src/components/`
-- [x] ~~Color contrast audit — full WCAG AA 4.5:1 audit of all Tailwind color pairings~~ — done in Wave 20 (text-slate-400→500, text-slate-500→700 on bg-slate-100)
+- [ ] Card component — remaining files with inline `bg-white dark:bg-slate-900 rounded-lg border...` patterns (AppLayout notification panel, others)
+- [ ] Badge component — remaining files beyond the 16 migrated in Waves 24-25 (DependencyBadge, SlackSettings status indicators)
+- [ ] Badge `pink` variant — `design-tool` and `ai-model` both map to `purple` in TaskDetailPanel; differentiate with a new variant
 
-### W2: Advanced Tasks & Filters
-**Touches:** `prisma/schema/task.prisma`, `typedefs/task.ts`, `resolvers/task.ts`, frontend
-- [x] ~~Shared types between API and web~~ — done in Wave 19 (@tasktoad/shared-types workspace package)
+### API / Backend
+**Touches:** `packages/shared-types/`, `apps/api/`
+- [ ] Shared-types expansion — add Comment and Report types to `@tasktoad/shared-types` so resolvers can re-export them
+- [ ] S3 multipart upload — current 10MB limit uses single PUT; implement multipart for larger files
 
-### W6: AI Extras
-**Touches:** `resolvers/ai.ts`, `apps/web/src/components/`
-- [x] ~~SDL descriptions for remaining operations~~ — done in Wave 17 (github, report, slack, webhook, projectrole)
-- [x] ~~Subtask code gen abort support~~ — done in Wave 17 (AbortController + Cancel button)
-- [x] ~~AI prompt log admin toggle~~ — done in Wave 17 (promptLoggingEnabled on Org, OrgSettings toggle)
-- [x] ~~Thread promptLoggingEnabled through AI callers~~ — done in Wave 18
+### Architecture / DX
+- [ ] useAsyncData hook — BurndownChart/Projects use inline fetch-in-useEffect with cancellation flags; extract to shared hook if pattern recurs
+- [ ] Task detail re-architecture (UX Audit Item 10) — collapsible sections, prioritized field order, tabbed comments/activity. Functional as-is; polish after core UX ships.
 
-### D1: Deployment & Observability
-**Touches:** `apps/api/src/app.ts`, `apps/api/src/index.ts`, Railway config
-- [x] ~~External uptime monitoring (Uptime Robot or similar)~~ — documented in Wave 21 (decisions.md)
-- [x] ~~Railway alerting — restart loops, memory spikes, high CPU~~ — documented in Wave 21 (decisions.md)
-- [x] ~~Staging environment — Railway preview deployments from PRs~~ — documented in Wave 21 (decisions.md)
-- [x] ~~Database backup strategy — verify Railway automated backups, document restore~~ — documented in Wave 21 (decisions.md)
-- [x] ~~Wire Prometheus resolver duration metrics~~ — done in Wave 17 (yoga plugin + Prisma pool interval)
-- [x] ~~Enable Railway deploy webhook in GitHub Actions~~ — done in Wave 17 (conditional deploy + smoke test job)
-- [x] ~~Object storage for attachments — migrate from local disk to S3/R2~~ — done in Wave 20 (S3 with local fallback, health check, presigned URLs)
-
-### I1: Integration Completeness
-**Touches:** `apps/api/src/utils/webhookDispatcher.ts`, `apps/api/src/slack/`, `apps/api/src/github/`
-- [x] ~~Slack user mapping discovery — `/tasktoad link` self-service command~~ — done in Wave 18
-- [x] ~~GitHub webhook retry — dead letter queue for failed webhook processing~~ — done in Wave 18
-
-### F1: Frontend Performance & Architecture
-**Touches:** `apps/web/src/components/`, `apps/web/src/pages/`, `apps/web/src/hooks/`
-- [x] ~~Virtualize activity feeds~~ — done in Wave 18 (react-window ActivityFeed + paginated CommentSection)
-- [x] ~~Dark mode contrast audit — verify dark: color pairings meet WCAG AA 4.5:1~~ — done in Wave 21 (slate-400→300/200 across TaskDetailPanel, Button, GlobalSearchModal, ProjectDetail)
-- [x] ~~Decompose ProjectDetail + useProjectData~~ — done in Wave 18 (extracted ProjectToolbar, consolidated modal state)
-
-### S1: Styling & Branding
-**Touches:** `apps/web/src/components/shared/`, `apps/web/tailwind.config.js`
-- [x] ~~Consistent spacing/typography scale — audit and normalize across components~~ — done in Wave 20 (TaskDetailPanel, Projects, BacklogView)
-- [x] ~~SVG favicon~~ — done in Wave 19 (frog silhouette SVG + PNG fallback)
-- [x] ~~Social preview meta tags~~ — done in Wave 19 (og:image, og:title, twitter:card)
-- [x] ~~PWA service worker — offline caching via workbox~~ — done in Wave 20 (vite-plugin-pwa, NetworkFirst API cache, autoUpdate)
-- [x] ~~Dark mode for remaining modals~~ — done in Wave 19 (all 12 modals)
-
-### Misc Follow-ups
-- [x] ~~Review `schema.ts` change — `'tasks'` added to `SINGLE_OBJECT_FIELDS`~~ — committed as fix(api) in e3006a3, was causing query cost 430K > 100K limit
-
-### SW1: Swarm Workflow Optimization
-**Touches:** `.claude/skills/`, `scripts/swarm/`
-- [x] ~~Auto-prisma-generate in spawn.sh~~ — done in Wave 19 (runs per worktree)
-- [x] ~~Task file array validation~~ — done in Wave 19 (validate-tasks.sh)
-- [x] ~~Auto-strip worker role from CLAUDE.md~~ — done in Wave 19 (delimiter + sed strip in merge-worker.sh)
+### Process (non-code)
+- [ ] Task descriptions creating new workspace packages should note: point `types` to source (`src/index.ts`) not dist
 
 ---
 
 ## Parallelism Matrix
 
 **Safe parallel combos:**
-- Q1 (tests) + I1 (integrations) + F1 (performance)
-- W2 (tasks) + any non-W set
-- S1 (styling) + D1 (deployment)
+- Accessibility + API/Backend (no file overlap)
+- Responsive + Design System Adoption (different files if scoped carefully)
+- Architecture + any other set
 
 **Conflicts:**
-- A11 + S1 (both touch component styling)
-
----
-
-## Follow-ups from Wave 19
-
-- [x] ~~Have API also import from `@tasktoad/shared-types` for resolver return type annotations~~ — done in Wave 20 (task.ts + project.ts re-exports)
-- [x] ~~E2E tests: add export route handler test via supertest~~ — done in Wave 20 (5 tests: JSON, CSV, activity, auth, tenant isolation)
-- [x] ~~E2E tests: add notification/SSE flow test coverage~~ — done in Wave 21 (notification resolver + SSE manager unit tests)
-- [x] ~~Dark mode: verify dark mode contrast meets WCAG AA~~ — done in Wave 21
-- [x] ~~Social preview: create a proper composite og:image~~ — done in Wave 20 (1200x630 SVG with toad icon + brand colors)
-- [ ] Task descriptions creating new workspace packages should note: point `types` to source (`src/index.ts`) not dist (learned from task-006 rejection)
-
-## Follow-ups from Wave 20
-
-- [x] ~~S3 upload tests — unit tests for S3 upload/download/delete with AWS SDK mocking~~ — done in Wave 21
-- [x] ~~S3 presigned URL expiry configuration — make the 15-min default configurable via env var~~ — done in Wave 21 (ATTACHMENT_URL_EXPIRY_SECONDS)
-- [x] ~~PWA offline fallback page — create `offline.html` with "You are offline" message for uncached routes~~ — done in Wave 21
-- [x] ~~PWA cache invalidation strategy — document how to force SW update on breaking API changes~~ — done in Wave 25 (task-005, decisions.md)
-- [x] ~~og:image PNG fallback — some social platforms don't render SVG og:images~~ — done in Wave 21
-- [x] ~~Export test rate limit handling — tenant isolation test hitting 429~~ — done in Wave 21 (rate limit relaxed in test env)
-- [x] ~~Extend shared-types usage — expand to more resolvers and web client types~~ — done in Wave 21 (ProjectStats, TaskConnection, CloseSprintResult, SprintPlanItem moved; sprint resolver re-exports)
-- [ ] S3 multipart upload — current 10MB limit uses single PUT; for larger files, implement multipart upload
-
-## Follow-ups from Wave 22-23 (UX Audit)
-
-- [x] ~~**Responsive workspace (Audit Item 9):** Collapsible sidebar with mobile drawer~~ — done in Wave 25 (task-001); stacked toolbar and drawer task panel still deferred
-- [ ] **Task detail re-architecture (Audit Item 10):** Collapsible sections, prioritized field order, tabbed comments/activity — functional as-is, defer to Wave 24+
-- [x] ~~ProjectToolbar template/export overlays — fix positioning to use relative anchoring~~ — done in Wave 24 (task-004)
-- [ ] Migrate remaining inline `bg-white dark:bg-slate-900 rounded-lg border...` patterns to use `<Card>` component (ProfilePage done in Wave 24, others remain)
-- [ ] Migrate remaining inline status/priority pills to use `<Badge>` component (SprintSection, TableView, TaskFieldsPanel, Search, Portfolio done in Wave 24; other files may remain)
-- [x] ~~Replace `window.confirm` in `useProjectData.ts` (AI generation nav block)~~ — done in Wave 24 (task-005, promise-based ConfirmDialog)
-
-## Follow-ups from Wave 21
-
-- [x] ~~Dark mode contrast audit — remaining components (BacklogView, KanbanBoard, CalendarView, CSVImportModal, CloseSprintModal, SprintTransitionModal, ProjectSettingsModal, ProjectDashboard)~~ — done in Wave 24 (task-001)
-- [x] ~~Shared-types re-export in notification resolver~~ — done in Wave 24 (task-006); comment/report types not in shared-types yet
-- [x] ~~PWA navigateFallback behavior — verify offline.html is only served for navigation requests; denylist extended with /assets/, /sw.js, /workbox-~~ — done in Wave 25 (task-005)
-- [x] ~~Pre-existing lint warnings — 9 warnings across BurndownChart, GanttChart, ProjectSettingsModal, DropdownMenu, TaskPlanApprovalDialog, Home, Projects~~ — done in Wave 24 (task-002, 0 warnings)
-- [x] ~~S3 unit tests — error handling for uploadToS3/deleteFromS3 failures, custom endpoint, URL expiry config, key sanitization~~ — done in Wave 24 (task-006)
-
-## Follow-ups from Wave 24
-
-- [ ] Shared-types expansion — add Comment and Report types to `@tasktoad/shared-types` so comment.ts and report.ts resolvers can re-export them
-- [ ] Card component adoption — remaining files with inline card div patterns (beyond ProfilePage) should migrate to `<Card>`
-- [ ] Badge component adoption — audit remaining files beyond the 11 migrated in Wave 24-25 for inline pill patterns
-- [x] ~~ProjectToolbar menu accessibility — ARIA attributes (role="dialog"/role="menu", aria-label, keyboard nav, focus management) on template/export overlays~~ — done in Wave 25 (task-004)
-- [ ] BurndownChart/Projects data fetching — currently using inline fetch in useEffect with cancellation flags; consider extracting to a shared useAsyncData hook if the pattern recurs
-
-## Follow-ups from Wave 25
-
-- [ ] Focus trap for ProjectToolbar overlays — template dialog and export menu don't trap focus (Tab can escape to background elements); consider a reusable `useFocusTrap` hook
-- [ ] ARIA accessibility audit for remaining overlays — NotificationCenter, NotificationSettings, QuickSearch, and all modals should have consistent ARIA patterns matching ProjectToolbar's approach
-- [ ] Badge `design-tool` category maps to `purple` same as `ai-model` in TaskDetailPanel — consider adding a `pink` Badge variant to differentiate
-- [ ] Export menu keyboard nav — Enter key should activate focused menuitem (currently relies on click handler; keyboard-only users need Enter support on the focused button)
-- [ ] Responsive ProjectToolbar — toolbar buttons overflow on narrow screens; needs responsive stacking or overflow menu
-- [ ] Responsive task detail panel — currently full-width; on mobile should be a drawer or sheet overlay
-- [ ] Sidebar collapse: notification preferences overlay doesn't show in collapsed mode (settings button hidden when collapsed)
-- [ ] Mobile drawer focus trap — Tab can escape the drawer to background elements; needs focus containment
+- Accessibility + Responsive (both touch AppLayout, ProjectToolbar)
+- Design System + Responsive (both touch component JSX)
