@@ -1,3 +1,5 @@
+import Card from './shared/Card';
+
 interface SkeletonProps {
   className?: string;
 }
@@ -42,11 +44,11 @@ export function KanbanColumnSkeleton() {
       </div>
       <div className="px-2 pb-2 space-y-2">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="bg-white dark:bg-slate-900 rounded-lg p-3 shadow-sm border border-slate-200 dark:border-slate-700 space-y-2">
+          <Card key={i} padding="none" className="p-3 shadow-sm space-y-2">
             <Skeleton className="h-4 w-4/5" />
             <Skeleton className="h-3 w-3/5" />
             <Skeleton className="h-5 w-16 rounded" />
-          </div>
+          </Card>
         ))}
       </div>
     </div>
