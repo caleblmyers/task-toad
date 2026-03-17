@@ -19,11 +19,18 @@ import {
   projectChat as aiProjectChat,
   analyzeRepoDrift as aiAnalyzeRepoDrift,
   batchGenerateCode as aiBatchGenerateCode,
+  generateRepoProfile as aiGenerateRepoProfile,
 } from '../../ai/index.js';
 import type { PromptLogContext } from '../../ai/index.js';
 import { NotFoundError, ValidationError, AuthorizationError } from '../errors.js';
 import { requireOrg, requireApiKey } from './auth.js';
 import { checkBudget, type BudgetStatus } from '../../ai/aiUsageTracker.js';
+
+/**
+ * Prisma filter for "display-level" tasks: root tasks OR children of epics.
+ * Excludes subtasks of regular tasks (those are loaded on demand).
+ */
+const ROOT_OR_EPIC_CHILD = { OR: [{ parentTaskId: null }, { parentTask: { taskType: 'epic' } }] };
 
 async function buildPromptLogContext(context: Context): Promise<PromptLogContext> {
   const user = requireOrg(context);
@@ -38,7 +45,8 @@ async function buildPromptLogContext(context: Context): Promise<PromptLogContext
     promptLoggingEnabled: org?.promptLoggingEnabled ?? true,
   };
 }
-import { getProjectRepo, fetchProjectFileTree, fetchFileContent, getPullRequestDiff } from '../../github/index.js';
+import { getProjectRepo, fetchProjectFileTree, fetchFileContent, getPullRequestDiff, resolveCodeGenContext, resolveReviewContext } from '../../github/index.js';
+import type { RelevantFile } from '../../github/index.js';
 import { listRecentCommits, listOpenPullRequests } from '../../github/githubFileService.js';
 import { requireProject, sanitizeForPrompt } from '../../utils/resolverHelpers.js';
 import { EpicsInputSchema } from '../../utils/zodSchemas.js';
@@ -286,54 +294,92 @@ export const aiMutations = {
       throw new ValidationError('Failed to create any tasks');
     }
 
+    // Map epic title → epicId for dependency resolution
     const titleToId = new Map<string, string>();
     created.forEach((task) => titleToId.set(task.title, task.taskId));
 
+    // Resolve epic-level dependencies and store for later propagation to children
+    const epicDeps = new Map<string, string[]>(); // epicId → [dependencyEpicIds]
+    for (let i = 0; i < created.length; i++) {
+      const inputTask = args.tasks[i];
+      const resolvedDeps = inputTask.dependsOn
+        .map((title) => titleToId.get(title))
+        .filter((id): id is string => id !== undefined);
+      if (resolvedDeps.length > 0) {
+        epicDeps.set(created[i].taskId, resolvedDeps);
+        await context.prisma.task.update({
+          where: { taskId: created[i].taskId },
+          data: { dependsOn: JSON.stringify(resolvedDeps) },
+        });
+      }
+    }
+
+    // Create child tasks for each epic
     await Promise.all(
       created.map(async (task, i) => {
         const inputTask = args.tasks[i];
-        const resolvedDeps = inputTask.dependsOn
-          .map((title) => titleToId.get(title))
-          .filter((id): id is string => id !== undefined);
-
-        const updates: Promise<unknown>[] = [];
-
-        if (resolvedDeps.length > 0) {
-          updates.push(
-            context.prisma.task.update({
-              where: { taskId: task.taskId },
-              data: { dependsOn: JSON.stringify(resolvedDeps) },
-            })
-          );
-        }
-
         if (inputTask.tasks.length > 0) {
-          updates.push(
-            context.prisma.task.createMany({
-              data: inputTask.tasks.map((ct) => ({
-                title: ct.title,
-                description: ct.description,
-                instructions: ct.instructions || null,
-                estimatedHours: ct.estimatedHours ?? null,
-                priority: ct.priority ?? 'medium',
-                acceptanceCriteria: ct.acceptanceCriteria || null,
-                suggestedTools: ct.suggestedTools || null,
-                status: 'todo',
-                taskType: 'task',
-                projectId: args.projectId,
-                parentTaskId: task.taskId,
-                orgId: user.orgId,
-              })),
-            })
-          );
+          await context.prisma.task.createMany({
+            data: inputTask.tasks.map((ct) => ({
+              title: ct.title,
+              description: ct.description,
+              instructions: ct.instructions || null,
+              estimatedHours: ct.estimatedHours ?? null,
+              priority: ct.priority ?? 'medium',
+              acceptanceCriteria: ct.acceptanceCriteria || null,
+              suggestedTools: ct.suggestedTools || null,
+              status: 'todo',
+              taskType: 'task',
+              projectId: args.projectId,
+              parentTaskId: task.taskId,
+              orgId: user.orgId,
+            })),
+          });
         }
-
-        await Promise.all(updates);
       })
     );
 
+    // Propagate epic dependencies to child tasks:
+    // If Epic A depends on Epic B, each child task of A depends on all child tasks of B
+    if (epicDeps.size > 0) {
+      // Fetch all child tasks grouped by parent epic
+      const allChildTasks = await context.prisma.task.findMany({
+        where: { projectId: args.projectId, taskType: 'task', parentTaskId: { in: created.map((c) => c.taskId) } },
+        select: { taskId: true, parentTaskId: true },
+      });
+      const childrenByEpic = new Map<string, string[]>();
+      for (const ct of allChildTasks) {
+        if (!ct.parentTaskId) continue;
+        const list = childrenByEpic.get(ct.parentTaskId) ?? [];
+        list.push(ct.taskId);
+        childrenByEpic.set(ct.parentTaskId, list);
+      }
+
+      // For each epic with dependencies, set dependsOn on its children
+      const depUpdates: Promise<unknown>[] = [];
+      for (const [epicId, depEpicIds] of epicDeps) {
+        const myChildren = childrenByEpic.get(epicId) ?? [];
+        if (myChildren.length === 0) continue;
+        // Collect all task IDs from dependency epics
+        const depTaskIds: string[] = [];
+        for (const depEpicId of depEpicIds) {
+          const depChildren = childrenByEpic.get(depEpicId) ?? [];
+          depTaskIds.push(...depChildren);
+        }
+        if (depTaskIds.length === 0) continue;
+        const depJson = JSON.stringify(depTaskIds);
+        depUpdates.push(
+          context.prisma.task.updateMany({
+            where: { taskId: { in: myChildren } },
+            data: { dependsOn: depJson },
+          })
+        );
+      }
+      await Promise.all(depUpdates);
+    }
+
     return context.prisma.task.findMany({
-      where: { projectId: args.projectId, parentTaskId: null },
+      where: { projectId: args.projectId, taskType: { not: 'epic' } },
       orderBy: { createdAt: 'asc' },
     });
   },
@@ -401,7 +447,7 @@ export const aiMutations = {
     const project = await context.loaders.projectById.load(task.projectId);
     if (!project) throw new NotFoundError('Project not found');
     const siblings = await context.prisma.task.findMany({
-      where: { projectId: task.projectId, parentTaskId: null, NOT: { taskId: task.taskId } },
+      where: { projectId: task.projectId, taskType: { not: 'epic' }, NOT: { taskId: task.taskId }, ...ROOT_OR_EPIC_CHILD },
       select: { taskId: true, title: true },
       orderBy: { createdAt: 'asc' },
     });
@@ -464,11 +510,18 @@ export const aiMutations = {
     const project = await context.loaders.projectById.load(task.projectId);
     if (!project) throw new NotFoundError('Project not found');
 
-    // Fetch project file tree for context if repo is connected
+    // Fetch project file tree and targeted file context if repo is connected
     let projectFiles: Array<{ path: string; language: string; size: number }> | undefined;
+    let relevantFiles: RelevantFile[] | undefined;
     const repo = await getProjectRepo(task.projectId);
     if (repo) {
-      projectFiles = await fetchProjectFileTree(repo).catch(() => undefined);
+      const repoContext = await resolveCodeGenContext(repo, task, 15_000).catch(() => null);
+      if (repoContext) {
+        projectFiles = repoContext.fileTree;
+        relevantFiles = repoContext.relevantFiles;
+      } else {
+        projectFiles = await fetchProjectFileTree(repo).catch(() => undefined);
+      }
     }
 
     const plc = await buildPromptLogContext(context);
@@ -482,7 +535,8 @@ export const aiMutations = {
       projectFiles,
       args.styleGuide,
       project.knowledgeBase,
-      plc
+      plc,
+      relevantFiles
     );
   },
 
@@ -511,9 +565,16 @@ export const aiMutations = {
     ].filter(Boolean).join('\n\n');
 
     let projectFiles: Array<{ path: string; language: string; size: number }> | undefined;
+    let relevantFiles: RelevantFile[] | undefined;
     const repo = await getProjectRepo(parentTask.projectId);
     if (repo) {
-      projectFiles = await fetchProjectFileTree(repo).catch(() => undefined);
+      const repoContext = await resolveCodeGenContext(repo, subtask, 15_000).catch(() => null);
+      if (repoContext) {
+        projectFiles = repoContext.fileTree;
+        relevantFiles = repoContext.relevantFiles;
+      } else {
+        projectFiles = await fetchProjectFileTree(repo).catch(() => undefined);
+      }
     }
 
     const plc = await buildPromptLogContext(context);
@@ -527,7 +588,8 @@ export const aiMutations = {
       projectFiles,
       args.styleGuide,
       project.knowledgeBase,
-      plc
+      plc,
+      relevantFiles
     );
   },
 
@@ -548,6 +610,14 @@ export const aiMutations = {
     }
     const project = await context.loaders.projectById.load(task.projectId);
     if (!project) throw new NotFoundError('Project not found');
+
+    let relevantFiles: RelevantFile[] | undefined;
+    const repo = await getProjectRepo(task.projectId);
+    if (repo) {
+      const repoContext = await resolveCodeGenContext(repo, task, 10_000).catch(() => null);
+      relevantFiles = repoContext?.relevantFiles;
+    }
+
     const plc = await buildPromptLogContext(context);
     return aiRegenerateFile(
       apiKey,
@@ -558,7 +628,8 @@ export const aiMutations = {
       '', // original content will be passed from frontend in feedback if needed
       project.name,
       args.feedback,
-      plc
+      plc,
+      relevantFiles
     );
   },
 
@@ -588,6 +659,17 @@ export const aiMutations = {
       args.prNumber
     );
 
+    // Extract changed file paths from the diff for repo context
+    let relevantFiles: RelevantFile[] | undefined;
+    const repo = await getProjectRepo(task.projectId);
+    if (repo) {
+      const changedPaths = [...diff.matchAll(/^diff --git a\/(.+?) b\//gm)].map((m) => m[1]);
+      if (changedPaths.length > 0) {
+        const repoContext = await resolveReviewContext(repo, changedPaths, 10_000).catch(() => null);
+        relevantFiles = repoContext?.relevantFiles;
+      }
+    }
+
     const plc = await buildPromptLogContext(context);
     return aiReviewCode(apiKey, {
       taskTitle: task.title,
@@ -596,6 +678,7 @@ export const aiMutations = {
       acceptanceCriteria: (task as Record<string, unknown>).acceptanceCriteria as string | undefined,
       diff,
       projectName: project.name,
+      repoContext: relevantFiles,
     }, plc);
   },
 
@@ -698,7 +781,8 @@ export const aiMutations = {
         allCreated.push(childTask);
       }
     }
-    return allCreated;
+    // Return only non-epic tasks (epics shown in dedicated Epics view)
+    return allCreated.filter((t) => t.taskType !== 'epic');
   },
 
   batchGenerateCode: async (
@@ -724,9 +808,18 @@ export const aiMutations = {
     }
 
     let projectFiles: Array<{ path: string; language: string; size: number }> | undefined;
+    let relevantFiles: RelevantFile[] | undefined;
     const repo = await getProjectRepo(args.projectId);
     if (repo) {
-      projectFiles = await fetchProjectFileTree(repo).catch(() => undefined);
+      // Use the first task for keyword context
+      const firstTask = tasks[0] as { title: string; description: string | null; instructions: string | null };
+      const repoContext = await resolveCodeGenContext(repo, firstTask, 12_000).catch(() => null);
+      if (repoContext) {
+        projectFiles = repoContext.fileTree;
+        relevantFiles = repoContext.relevantFiles;
+      } else {
+        projectFiles = await fetchProjectFileTree(repo).catch(() => undefined);
+      }
     }
 
     const plc = await buildPromptLogContext(context);
@@ -741,6 +834,7 @@ export const aiMutations = {
       existingFiles: projectFiles,
       styleGuide: args.styleGuide,
       knowledgeBase: project.knowledgeBase,
+      repoContext: relevantFiles,
     }, plc);
   },
 
@@ -775,10 +869,18 @@ export const aiMutations = {
       languages: [...languageSet],
     }, plc);
 
+    // Update project description and knowledge base (repo profile)
+    const projectUpdates: Record<string, string> = {};
     if (!project.description && result.projectDescription) {
+      projectUpdates.description = result.projectDescription;
+    }
+    if (result.repoProfile) {
+      projectUpdates.knowledgeBase = result.repoProfile;
+    }
+    if (Object.keys(projectUpdates).length > 0) {
       await context.prisma.project.update({
         where: { projectId: args.projectId },
-        data: { description: result.projectDescription },
+        data: projectUpdates,
       });
     }
 
@@ -801,6 +903,38 @@ export const aiMutations = {
     return created;
   },
 
+  refreshRepoProfile: async (_parent: unknown, args: { projectId: string }, context: Context) => {
+    const { project: _project } = await requireProject(context, args.projectId);
+    const apiKey = requireApiKey(context);
+    await enforceBudget(context);
+    const repo = await getProjectRepo(args.projectId);
+    if (!repo) {
+      throw new ValidationError('Project has no linked GitHub repository');
+    }
+    const fileTree = await fetchProjectFileTree(repo).catch(() => []);
+    const readme = await fetchFileContent(repo.installationId, repo.repositoryOwner, repo.repositoryName, 'README.md').catch(() => null);
+    const packageJson = await fetchFileContent(repo.installationId, repo.repositoryOwner, repo.repositoryName, 'package.json').catch(() => null);
+
+    const languageSet = new Set<string>();
+    for (const f of fileTree) {
+      if (f.language) languageSet.add(f.language);
+    }
+
+    const plc = await buildPromptLogContext(context);
+    const profile = await aiGenerateRepoProfile(apiKey, {
+      repoName: `${repo.repositoryOwner}/${repo.repositoryName}`,
+      readme,
+      packageJson,
+      fileTree: fileTree.map((f) => ({ path: f.path, language: f.language, size: f.size })),
+      languages: [...languageSet],
+    }, plc);
+
+    return context.prisma.project.update({
+      where: { projectId: args.projectId },
+      data: { knowledgeBase: profile },
+    });
+  },
+
   summarizeProject: async (_parent: unknown, args: { projectId: string }, context: Context) => {
     const user = requireOrg(context);
     const apiKey = requireApiKey(context);
@@ -810,7 +944,7 @@ export const aiMutations = {
       throw new NotFoundError('Project not found');
     }
     const tasks = await context.prisma.task.findMany({
-      where: { projectId: args.projectId, parentTaskId: null },
+      where: { projectId: args.projectId, taskType: { not: 'epic' }, ...ROOT_OR_EPIC_CHILD },
       select: { title: true, status: true },
       orderBy: { createdAt: 'asc' },
     });
@@ -838,7 +972,7 @@ export const aiQueries = {
     }
 
     const tasks = await context.prisma.task.findMany({
-      where: { projectId: args.projectId, parentTaskId: null, archived: false },
+      where: { projectId: args.projectId, archived: false, taskType: { not: 'epic' }, ...ROOT_OR_EPIC_CHILD },
       include: { assignee: { select: { email: true } }, sprint: { select: { name: true } } },
       orderBy: { createdAt: 'desc' },
       take: 50,
@@ -907,7 +1041,7 @@ export const aiQueries = {
       listRecentCommits(repo.installationId, repo.repositoryOwner, repo.repositoryName, 30),
       listOpenPullRequests(repo.installationId, repo.repositoryOwner, repo.repositoryName),
       context.prisma.task.findMany({
-        where: { projectId: args.projectId, parentTaskId: null, archived: false },
+        where: { projectId: args.projectId, archived: false, taskType: { not: 'epic' }, ...ROOT_OR_EPIC_CHILD },
         select: { taskId: true, title: true, status: true, description: true },
         take: 50,
       }),
@@ -949,7 +1083,7 @@ export const aiQueries = {
     }
 
     const sprintTasks = await context.prisma.task.findMany({
-      where: { sprintId: args.sprintId, parentTaskId: null },
+      where: { sprintId: args.sprintId, taskType: { not: 'epic' }, ...ROOT_OR_EPIC_CHILD },
       include: { assignee: { select: { email: true } } },
     });
 
@@ -1149,13 +1283,13 @@ export const aiQueries = {
     const doneTaskIds = [...new Set(recentDoneActivities.map((a) => a.taskId!))];
     const completedTasks = doneTaskIds.length > 0
       ? await context.prisma.task.findMany({
-          where: { taskId: { in: doneTaskIds }, parentTaskId: null },
+          where: { taskId: { in: doneTaskIds }, taskType: { not: 'epic' }, ...ROOT_OR_EPIC_CHILD },
           select: { title: true },
         })
       : [];
 
     const inProgressTasks = await context.prisma.task.findMany({
-      where: { projectId: args.projectId, parentTaskId: null, status: 'in_progress' },
+      where: { projectId: args.projectId, status: 'in_progress', taskType: { not: 'epic' }, ...ROOT_OR_EPIC_CHILD },
       select: { title: true },
     });
 
@@ -1163,7 +1297,8 @@ export const aiQueries = {
     const overdueTasks = await context.prisma.task.findMany({
       where: {
         projectId: args.projectId,
-        parentTaskId: null,
+        taskType: { not: 'epic' },
+        ...ROOT_OR_EPIC_CHILD,
         status: { not: 'done' },
         dueDate: { lt: todayStr, not: null },
       },
@@ -1198,7 +1333,7 @@ export const aiQueries = {
     }
 
     const sprintTasks = await context.prisma.task.findMany({
-      where: { sprintId: args.sprintId, parentTaskId: null },
+      where: { sprintId: args.sprintId, taskType: { not: 'epic' }, ...ROOT_OR_EPIC_CHILD },
       include: { assignee: { select: { email: true } } },
     });
 
@@ -1227,7 +1362,7 @@ export const aiQueries = {
     await enforceBudget(context);
 
     const allTasks = await context.prisma.task.findMany({
-      where: { projectId: args.projectId, parentTaskId: null, archived: false },
+      where: { projectId: args.projectId, archived: false, taskType: { not: 'epic' }, ...ROOT_OR_EPIC_CHILD },
       select: { status: true, assigneeId: true, dueDate: true, createdAt: true },
     });
 

@@ -1,4 +1,3 @@
-import { githubRequest } from './githubAppClient.js';
 import { getInstallationToken } from './githubAppAuth.js';
 import type { GitHubRepoLink } from './githubTypes.js';
 import { createChildLogger } from '../utils/logger.js';
@@ -6,21 +5,9 @@ import { getCached, setCache } from './githubCache.js';
 
 const log = createChildLogger('github');
 
-const GET_TREE = `
-  query GetTree($owner: String!, $name: String!, $expression: String!) {
-    repository(owner: $owner, name: $name) {
-      object(expression: $expression) {
-        ... on Tree {
-          entries { name type path object { ... on Blob { byteSize } } }
-        }
-      }
-    }
-  }
-`;
-
 const IGNORED_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', 'coverage', '__pycache__', '.cache']);
 const CODE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.py', '.go', '.rs', '.sql', '.prisma', '.graphql', '.css', '.scss']);
-const MAX_FILES = 30;
+const MAX_FILES = 100;
 
 const EXTENSION_TO_LANGUAGE: Record<string, string> = {
   '.ts': 'typescript',
@@ -43,42 +30,26 @@ export interface ProjectFile {
   size: number;
 }
 
-interface TreeEntry {
-  name: string;
-  type: string;
-  path: string;
-  object: { byteSize?: number } | null;
-}
-
-interface TreeResponse {
-  repository: {
-    object: {
-      entries: TreeEntry[];
-    } | null;
-  };
-}
-
 function getExtension(filename: string): string {
   const idx = filename.lastIndexOf('.');
   return idx >= 0 ? filename.slice(idx) : '';
 }
 
-function isIgnoredDir(name: string): boolean {
-  return IGNORED_DIRS.has(name);
+function isIgnoredPath(path: string): boolean {
+  return path.split('/').some((seg) => IGNORED_DIRS.has(seg));
 }
 
 function isCodeFile(name: string): boolean {
   return CODE_EXTENSIONS.has(getExtension(name));
 }
 
-async function fetchTreeEntries(
-  token: string,
-  owner: string,
-  name: string,
-  expression: string
-): Promise<TreeEntry[]> {
-  const result = await githubRequest<TreeResponse>(token, GET_TREE, { owner, name, expression });
-  return result.repository.object?.entries ?? [];
+/** REST recursive tree entry from GitHub API. */
+interface RestTreeEntry {
+  path: string;
+  mode: string;
+  type: string;
+  size?: number;
+  sha: string;
 }
 
 /**
@@ -126,39 +97,37 @@ export async function fetchProjectFileTree(repo: GitHubRepoLink): Promise<Projec
     const token = await getInstallationToken(repo.installationId);
     const branch = repo.defaultBranch;
 
-    // Fetch root and common subdirectories for deeper coverage
-    const expressions = [
-      `${branch}:`,
-      `${branch}:src`,
-      `${branch}:apps`,
-    ];
+    // Use REST recursive tree API — returns the full tree in one call
+    const url = `https://api.github.com/repos/${encodeURIComponent(repo.repositoryOwner)}/${encodeURIComponent(repo.repositoryName)}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    });
 
-    const allEntries: TreeEntry[] = [];
-    for (const expr of expressions) {
-      try {
-        const entries = await fetchTreeEntries(token, repo.repositoryOwner, repo.repositoryName, expr);
-        allEntries.push(...entries);
-      } catch {
-        // Directory may not exist — skip
-      }
+    if (!response.ok) {
+      log.error({ status: response.status }, 'Failed to fetch recursive tree');
+      return [];
     }
 
-    // Deduplicate by path and filter
-    const seen = new Set<string>();
+    const data = (await response.json()) as { tree: RestTreeEntry[]; truncated: boolean };
+    if (data.truncated) {
+      log.warn('Recursive tree was truncated by GitHub — very large repo');
+    }
+
     const files: ProjectFile[] = [];
-
-    for (const entry of allEntries) {
+    for (const entry of data.tree) {
       if (entry.type !== 'blob') continue;
-      if (isIgnoredDir(entry.name)) continue;
-      if (!isCodeFile(entry.name)) continue;
-      if (seen.has(entry.path)) continue;
-      seen.add(entry.path);
+      if (isIgnoredPath(entry.path)) continue;
+      if (!isCodeFile(entry.path)) continue;
 
-      const ext = getExtension(entry.name);
+      const ext = getExtension(entry.path);
       files.push({
         path: entry.path,
         language: EXTENSION_TO_LANGUAGE[ext] ?? '',
-        size: entry.object?.byteSize ?? 0,
+        size: entry.size ?? 0,
       });
     }
 
@@ -171,6 +140,28 @@ export async function fetchProjectFileTree(repo: GitHubRepoLink): Promise<Projec
     log.error({ error }, 'Failed to fetch project file tree');
     return [];
   }
+}
+
+/**
+ * Fetch file content with caching (30-minute TTL).
+ * Wrapper around fetchFileContent for repeated access to the same files.
+ */
+export async function fetchFileContentCached(
+  installationId: string,
+  owner: string,
+  repo: string,
+  path: string,
+  ref?: string
+): Promise<string | null> {
+  const cacheKey = `filecontent:${owner}:${repo}:${path}`;
+  const cached = getCached<string>(cacheKey);
+  if (cached) return cached;
+
+  const content = await fetchFileContent(installationId, owner, repo, path, ref);
+  if (content) {
+    setCache(cacheKey, content, 1_800_000); // 30 min TTL
+  }
+  return content;
 }
 
 // ---------------------------------------------------------------------------

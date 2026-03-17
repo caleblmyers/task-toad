@@ -26,6 +26,8 @@ export {
   projectChat,
   analyzeRepoDrift,
   batchGenerateCode,
+  planTaskActions,
+  generateRepoProfile,
 } from './aiService.js';
 
 export { logUsageToDB, checkBudget, type BudgetStatus } from './aiUsageTracker.js';
@@ -57,5 +59,7 @@ export type {
   ProjectChatResponse,
   DriftAnalysis,
   BatchCodeGeneration,
+  ActionPlanResponse,
+  ActionPlanItem,
   AIFeature,
 } from './aiTypes.js';

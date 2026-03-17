@@ -6,6 +6,7 @@ import { createChildLogger } from '../utils/logger.js';
 
 const log = createChildLogger('ai');
 import {
+  ActionPlanResponseSchema,
   ProjectOptionSchema,
   TaskPlanSchema,
   SprintPlanSchema,
@@ -28,7 +29,7 @@ import {
   BatchCodeGenerationSchema,
   TrendAnalysisSchema,
 } from './aiTypes.js';
-import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse, DriftAnalysis, BatchCodeGeneration, TrendAnalysis } from './aiTypes.js';
+import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse, DriftAnalysis, BatchCodeGeneration, TrendAnalysis, ActionPlanResponse } from './aiTypes.js';
 import { FEATURE_CONFIG } from './aiConfig.js';
 import { callAI, type PromptLogContext } from './aiClient.js';
 import { parseJSON } from './responseParser.js';
@@ -58,6 +59,8 @@ import {
   buildRepoDriftPrompt,
   buildBatchCodeGenerationPrompt,
   buildTrendAnalysisPrompt,
+  buildPlanTaskActionsPrompt,
+  buildRepoProfilePrompt,
 } from './promptBuilder.js';
 
 // ---------------------------------------------------------------------------
@@ -311,11 +314,12 @@ export async function generateCode(
   existingFiles?: Array<{ path: string; language: string; size: number }>,
   styleGuide?: string | null,
   knowledgeBase?: string | null,
-  promptLogContext?: PromptLogContext
+  promptLogContext?: PromptLogContext,
+  repoContext?: Array<{ path: string; language: string; content: string; relevanceReason: string }>
 ): Promise<CodeGeneration> {
   const p = buildGenerateCodePrompt({
     taskTitle, taskDescription, taskInstructions,
-    projectName, projectDescription, existingFiles, styleGuide, knowledgeBase,
+    projectName, projectDescription, existingFiles, styleGuide, knowledgeBase, repoContext,
   });
   return callAndParse(apiKey, 'generateCode', p, CodeGenerationSchema, promptLogContext);
 }
@@ -329,11 +333,12 @@ export async function regenerateFile(
   originalContent: string,
   projectName: string,
   feedback?: string | null,
-  promptLogContext?: PromptLogContext
+  promptLogContext?: PromptLogContext,
+  repoContext?: Array<{ path: string; language: string; content: string; relevanceReason: string }>
 ): Promise<GeneratedFile> {
   const p = buildRegenerateFilePrompt({
     taskTitle, taskDescription, taskInstructions,
-    filePath, originalContent, feedback, projectName,
+    filePath, originalContent, feedback, projectName, repoContext,
   });
   return callAndParse(apiKey, 'regenerateFile', p, GeneratedFileSchema, promptLogContext);
 }
@@ -368,6 +373,7 @@ export async function reviewCode(
     acceptanceCriteria?: string;
     diff: string;
     projectName: string;
+    repoContext?: Array<{ path: string; language: string; content: string; relevanceReason: string }>;
   },
   promptLogContext?: PromptLogContext
 ): Promise<CodeReview> {
@@ -516,6 +522,7 @@ export async function batchGenerateCode(
     existingFiles?: Array<{ path: string; language: string; size: number }>;
     styleGuide?: string | null;
     knowledgeBase?: string | null;
+    repoContext?: Array<{ path: string; language: string; content: string; relevanceReason: string }>;
   },
   promptLogContext?: PromptLogContext
 ): Promise<BatchCodeGeneration> {
@@ -534,4 +541,48 @@ export async function analyzeTrends(
 ): Promise<TrendAnalysis> {
   const p = buildTrendAnalysisPrompt(data);
   return callAndParse(apiKey, 'analyzeTrends', p, TrendAnalysisSchema, promptLogContext);
+}
+
+export async function planTaskActions(
+  apiKey: string,
+  data: {
+    taskTitle: string;
+    taskDescription: string;
+    taskInstructions: string;
+    acceptanceCriteria?: string | null;
+    suggestedTools?: string | null;
+    projectName: string;
+    projectDescription?: string | null;
+    hasGitHubRepo: boolean;
+    availableActionTypes: string[];
+  },
+  promptLogContext?: PromptLogContext
+): Promise<ActionPlanResponse> {
+  const p = buildPlanTaskActionsPrompt(data);
+  return callAndParse(apiKey, 'planTaskActions', p, ActionPlanResponseSchema, promptLogContext);
+}
+
+export async function generateRepoProfile(
+  apiKey: string,
+  data: {
+    repoName: string;
+    readme?: string | null;
+    packageJson?: string | null;
+    fileTree: Array<{ path: string; language?: string | null; size?: number | null }>;
+    languages: string[];
+  },
+  promptLogContext?: PromptLogContext
+): Promise<string> {
+  const p = buildRepoProfilePrompt(data);
+  const config = FEATURE_CONFIG.bootstrapFromRepo;
+  const result = await callAI({
+    apiKey,
+    systemPrompt: p.systemPrompt,
+    userPrompt: p.userPrompt,
+    maxTokens: config.maxTokens,
+    feature: 'bootstrapFromRepo',
+    cacheTTLMs: config.cacheTTLMs,
+    promptLogContext,
+  });
+  return result.raw.trim();
 }

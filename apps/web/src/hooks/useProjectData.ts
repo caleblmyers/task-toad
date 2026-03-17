@@ -2,13 +2,13 @@ import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { gql } from '../api/client';
 import { useAuth } from '../auth/context';
-import { PROJECT_QUERY, ORG_USERS_QUERY, PROJECT_STATS_QUERY, UPDATE_PROJECT_MUTATION } from '../api/queries';
+import { PROJECT_QUERY, ORG_USERS_QUERY, PROJECT_STATS_QUERY, UPDATE_PROJECT_MUTATION, EPICS_QUERY, REFRESH_REPO_PROFILE_MUTATION } from '../api/queries';
 import { useTaskCRUD } from './useTaskCRUD';
 import { useSprintManagement } from './useSprintManagement';
 import { useAIGeneration } from './useAIGeneration';
 import { useConfirmDialog } from '../components/shared/ConfirmDialog';
 import { parseStatuses } from '../utils/jsonHelpers';
-import type { Task, TaskPlanPreview, Sprint, OrgUser, CloseSprintResult, Project, Comment, Activity, ProjectStats, Label } from '../types';
+import type { Task, TaskPlanPreview, Sprint, OrgUser, CloseSprintResult, Project, Comment, Activity, ProjectStats, Label, Epic, ActionPlanPreview, TaskActionPlan } from '../types';
 
 const VIEW_KEY = 'task-toad-view';
 
@@ -41,7 +41,9 @@ export interface ProjectData {
   } | null;
   creatingPR: boolean;
   isGenerating: boolean;
-  view: 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar';
+  epics: Epic[];
+  epicMap: Map<string, string>;
+  view: 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar' | 'epics';
   editingTitle: boolean;
   editTitleValue: string;
   showAddForm: boolean;
@@ -88,8 +90,9 @@ export interface ProjectData {
   startEditTitle: (task: Task) => void;
   handleTitleSave: () => Promise<void>;
   handleUpdateTask: (taskId: string, updates: { description?: string; instructions?: string; acceptanceCriteria?: string; storyPoints?: number | null }) => Promise<void>;
-  switchView: (v: 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar') => void;
+  switchView: (v: 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar' | 'epics') => void;
   handleUpdateProject: (data: { name?: string; description?: string; prompt?: string; knowledgeBase?: string; statuses?: string }) => Promise<void>;
+  handleRefreshRepoProfile: () => Promise<void>;
   handleUpdateDependencies: (taskId: string, dependsOnIds: string[]) => Promise<void>;
   handleBulkUpdate: (taskIds: string[], updates: { status?: string; assigneeId?: string | null; sprintId?: string | null; archived?: boolean }) => Promise<void>;
   handleArchiveTask: (taskId: string, archived: boolean) => Promise<void>;
@@ -133,6 +136,21 @@ export interface ProjectData {
   handleRetryPlannedFile: (taskId: string, filePath: string) => Promise<void>;
   setSelectedTaskIds: React.Dispatch<React.SetStateAction<Set<string>>>;
 
+  // Action plan
+  actionPlanPreview: ActionPlanPreview | null;
+  actionPlanPreviewLoading: boolean;
+  actionPlan: TaskActionPlan | null;
+  handlePreviewActionPlan: (task: Task) => Promise<void>;
+  handleCommitActionPlan: (taskId: string, actions: Array<{ actionType: string; label: string; config: string; requiresApproval: boolean }>) => Promise<TaskActionPlan | null>;
+  handleExecuteActionPlan: (planId: string) => Promise<TaskActionPlan | null>;
+  handleCompleteManualAction: (actionId: string) => Promise<void>;
+  handleSkipAction: (actionId: string) => Promise<void>;
+  handleRetryAction: (actionId: string) => Promise<void>;
+  handleCancelActionPlan: (planId: string) => Promise<void>;
+  loadActionPlan: (taskId: string) => Promise<void>;
+  setActionPlanPreview: React.Dispatch<React.SetStateAction<ActionPlanPreview | null>>;
+  setActionPlan: React.Dispatch<React.SetStateAction<TaskActionPlan | null>>;
+
   // Computed
   activeSprint: Sprint | undefined;
   rootTasks: Task[];
@@ -157,10 +175,12 @@ export function useProjectData(): ProjectData {
   const [orgUsers, setOrgUsers] = useState<OrgUser[]>([]);
   const [dashboardStats, setDashboardStats] = useState<ProjectStats | null>(null);
 
+  const [epics, setEpics] = useState<Epic[]>([]);
+
   const stored = localStorage.getItem(VIEW_KEY);
-  const validViews = ['backlog', 'board', 'dashboard', 'table', 'calendar'];
-  const [view, setView] = useState<'backlog' | 'board' | 'dashboard' | 'table' | 'calendar'>(
-    validViews.includes(stored ?? '') ? (stored as 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar') : 'backlog'
+  const validViews = ['backlog', 'board', 'dashboard', 'table', 'calendar', 'epics'];
+  const [view, setView] = useState<'backlog' | 'board' | 'dashboard' | 'table' | 'calendar' | 'epics'>(
+    validViews.includes(stored ?? '') ? (stored as 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar' | 'epics') : 'backlog'
   );
 
   const autoPreviewFiredRef = useRef(false);
@@ -221,6 +241,22 @@ export function useProjectData(): ProjectData {
     }
   }, []);
 
+  const loadEpics = useCallback(async () => {
+    if (!projectId) return;
+    try {
+      const data = await gql<{ epics: Epic[] }>(EPICS_QUERY, { projectId });
+      setEpics(data.epics);
+    } catch {
+      // ignore
+    }
+  }, [projectId]);
+
+  const epicMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const e of epics) map.set(e.taskId, e.title);
+    return map;
+  }, [epics]);
+
   const loadDashboardStats = useCallback(async () => {
     if (!projectId) return;
     try {
@@ -241,7 +277,17 @@ export function useProjectData(): ProjectData {
     }
   }, [projectId]);
 
-  const switchView = useCallback((v: 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar') => {
+  const handleRefreshRepoProfile = useCallback(async () => {
+    if (!projectId) return;
+    try {
+      const result = await gql<{ refreshRepoProfile: Project }>(REFRESH_REPO_PROFILE_MUTATION, { projectId });
+      setProject(result.refreshRepoProfile);
+    } catch (error) {
+      taskCrudRef.current.setErr(error instanceof Error ? error.message : 'Failed to refresh repo profile');
+    }
+  }, [projectId]);
+
+  const switchView = useCallback((v: 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar' | 'epics') => {
     setView(v);
     localStorage.setItem(VIEW_KEY, v);
     if (v === 'dashboard') loadDashboardStats();
@@ -251,7 +297,7 @@ export function useProjectData(): ProjectData {
 
   // Load all data on project change
   useEffect(() => {
-    Promise.all([loadProject(), taskCrud.loadTasks(), sprintMgmt.loadSprints(), loadOrgUsers(), taskCrud.loadLabels()]).then(([, loadedTasks]) => {
+    Promise.all([loadProject(), taskCrud.loadTasks(), sprintMgmt.loadSprints(), loadOrgUsers(), taskCrud.loadLabels(), loadEpics()]).then(([, loadedTasks]) => {
       if (locationState?.autoPreview && loadedTasks.length === 0 && !autoPreviewFiredRef.current) {
         autoPreviewFiredRef.current = true;
         navigate(location.pathname, { replace: true, state: {} });
@@ -311,6 +357,22 @@ export function useProjectData(): ProjectData {
     sprintMgmt.handleSprintClosed(result, taskCrud.loadTasks);
   }, [sprintMgmt.handleSprintClosed, taskCrud.loadTasks]);
 
+  // ── Wrap AI handlers that create epics to also reload epic list ──
+  const handleCommitPlan = useCallback(async (selectedTasks: TaskPlanPreview[]) => {
+    await ai.handleCommitPlan(selectedTasks);
+    loadEpics();
+  }, [ai.handleCommitPlan, loadEpics]);
+
+  const handleCommitPRD = useCallback(async (epics: string) => {
+    await ai.handleCommitPRD(epics);
+    loadEpics();
+  }, [ai.handleCommitPRD, loadEpics]);
+
+  const handleBootstrapFromRepo = useCallback(async () => {
+    await ai.handleBootstrapFromRepo();
+    loadEpics();
+  }, [ai.handleBootstrapFromRepo, loadEpics]);
+
   // ── Kanban reorder (direct position update) ──
   const handleKanbanReorderTask = useCallback(async (taskId: string, position: number) => {
     taskCrud.setTasks((prev) => prev.map((t) => t.taskId === taskId ? { ...t, position } : t));
@@ -338,6 +400,8 @@ export function useProjectData(): ProjectData {
     sprints: sprintMgmt.sprints,
     orgUsers,
     labels: taskCrud.labels,
+    epics,
+    epicMap,
     previewTasks: ai.previewTasks,
     previewLoading: ai.previewLoading,
     previewError: ai.previewError,
@@ -384,7 +448,7 @@ export function useProjectData(): ProjectData {
     handleSprintUpdated: sprintMgmt.handleSprintUpdated,
     handleDeleteSprint: sprintMgmt.handleDeleteSprint,
     openPreview: ai.openPreview,
-    handleCommitPlan: ai.handleCommitPlan,
+    handleCommitPlan,
     handleSummarize: ai.handleSummarize,
     handleGenerateInstructions: ai.handleGenerateInstructions,
     handleGenerateCode: ai.handleGenerateCode,
@@ -397,6 +461,7 @@ export function useProjectData(): ProjectData {
     handleUpdateTask: taskCrud.handleUpdateTask,
     switchView,
     handleUpdateProject,
+    handleRefreshRepoProfile,
     handleUpdateDependencies: taskCrud.handleUpdateDependencies,
     handleBulkUpdate: taskCrud.handleBulkUpdate,
     handleArchiveTask: taskCrud.handleArchiveTask,
@@ -411,8 +476,8 @@ export function useProjectData(): ProjectData {
     handleDeleteComment: taskCrud.handleDeleteComment,
     handleParseBugReport: ai.handleParseBugReport,
     handlePreviewPRD: ai.handlePreviewPRD,
-    handleCommitPRD: ai.handleCommitPRD,
-    handleBootstrapFromRepo: ai.handleBootstrapFromRepo,
+    handleCommitPRD,
+    handleBootstrapFromRepo,
     cancelSubtaskGeneration: ai.cancelSubtaskGeneration,
     loadDashboardStats,
 
@@ -437,6 +502,21 @@ export function useProjectData(): ProjectData {
     handleGeneratePlannedFiles: ai.handleGeneratePlannedFiles,
     handleRetryPlannedFile: ai.handleRetryPlannedFile,
     setSelectedTaskIds: taskCrud.setSelectedTaskIds,
+
+    // Action plan
+    actionPlanPreview: ai.actionPlanPreview,
+    actionPlanPreviewLoading: ai.actionPlanPreviewLoading,
+    actionPlan: ai.actionPlan,
+    handlePreviewActionPlan: ai.handlePreviewActionPlan,
+    handleCommitActionPlan: ai.handleCommitActionPlan,
+    handleExecuteActionPlan: ai.handleExecuteActionPlan,
+    handleCompleteManualAction: ai.handleCompleteManualAction,
+    handleSkipAction: ai.handleSkipAction,
+    handleRetryAction: ai.handleRetryAction,
+    handleCancelActionPlan: ai.handleCancelActionPlan,
+    loadActionPlan: ai.loadActionPlan,
+    setActionPlanPreview: ai.setActionPlanPreview,
+    setActionPlan: ai.setActionPlan,
 
     // Computed
     activeSprint: sprintMgmt.activeSprint,

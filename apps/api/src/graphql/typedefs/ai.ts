@@ -188,4 +188,6 @@ export const aiMutationFields = /* GraphQL */ `
   bootstrapProjectFromRepo(projectId: ID!): [Task!]!
   """Generate code for multiple tasks at once (max 5)."""
   batchGenerateCode(projectId: ID!, taskIds: [ID!]!, styleGuide: String): CodeGeneration!
+  """Refresh the repo profile (knowledge base) from the linked GitHub repository."""
+  refreshRepoProfile(projectId: ID!): Project!
 `;

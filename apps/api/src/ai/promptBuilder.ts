@@ -15,6 +15,7 @@ export function userInput(label: string, value: string): string {
 const MAX_DESCRIPTION_CHARS = 200;
 const MAX_PROJECT_DESCRIPTION_CHARS = 400;
 const MAX_SIBLING_TITLES = 15;
+const MAX_KB_CHARS = 3000;
 
 function truncate(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;
@@ -79,13 +80,13 @@ export function buildTaskPlanPrompt(
   existingTaskTitles?: string[]
 ): Prompt {
   const contextLine = context ? `\nAdditional context: ${userInput('context', context)}` : '';
-  const kbLine = knowledgeBase ? `\nProject Knowledge Base (use for context):\n${userInput('knowledge_base', truncate(knowledgeBase, 800))}` : '';
+  const kbLine = knowledgeBase ? `\nProject Knowledge Base (use for context):\n${userInput('knowledge_base', truncate(knowledgeBase, MAX_KB_CHARS))}` : '';
   const dedupLine = existingTaskTitles && existingTaskTitles.length > 0
     ? `\nIMPORTANT: Do NOT create tasks with the same or very similar titles as these existing tasks:\n${existingTaskTitles.slice(0, 30).join('\n')}`
     : '';
   const taskPlanSchema = `
 
-Return a JSON array of 5–10 epics (NEVER more than 10). For simple projects, 5 epics; for complex ones, up to 10. Prefer fewer, well-scoped epics over many trivial ones. Each item:
+Return a JSON array of 3–10 epics (NEVER more than 10). Use as few as 3 for simple projects, up to 10 for complex ones. Prefer fewer, well-scoped epics over many trivial ones. Each item:
 {
   "title": string,
   "description": string,
@@ -102,7 +103,8 @@ Return a JSON array of 5–10 epics (NEVER more than 10). For simple projects, 5
 List 1–3 tools per epic. Be specific (e.g. "Claude Sonnet", "Figma", "Vercel", "Jest").
 "estimatedHours" is a realistic work estimate (e.g. 1, 2, 4, 8, 16). "priority" reflects business impact.
 "dependsOn" lists titles of OTHER epics in this same list that must be completed first (empty array if none).
-"tasks" is 2–6 implementation tasks that break down this epic. Each task has its own instructions, estimatedHours, priority, acceptanceCriteria, and suggestedTools.
+"tasks" is 1–8 implementation tasks that break down this epic. Each task has its own instructions, estimatedHours, priority, acceptanceCriteria, and suggestedTools.
+Keep "instructions" to 2–3 sentences. Keep "acceptanceCriteria" to 3–5 bullet items. Be concise.
 "acceptanceCriteria" is a bullet list of testable conditions that define when the epic is complete.`;
 
   return {
@@ -124,7 +126,7 @@ export function buildExpandTaskPrompt(
   siblingTitles?: string[]
 ): Prompt {
   const contextLine = context ? `\nAdditional context: ${userInput('context', context)}` : '';
-  const kbLine = knowledgeBase ? `\nProject Knowledge Base (use for context):\n${userInput('knowledge_base', truncate(knowledgeBase, 800))}` : '';
+  const kbLine = knowledgeBase ? `\nProject Knowledge Base (use for context):\n${userInput('knowledge_base', truncate(knowledgeBase, MAX_KB_CHARS))}` : '';
   const dedupLine = siblingTitles && siblingTitles.length > 0
     ? `\nIMPORTANT: Do NOT create tasks with the same or very similar titles as these existing sibling tasks:\n${siblingTitles.slice(0, 30).join('\n')}`
     : '';
@@ -390,6 +392,7 @@ export function buildGenerateCodePrompt(data: {
   existingFiles?: Array<{ path: string; language: string; size: number }>;
   styleGuide?: string | null;
   knowledgeBase?: string | null;
+  repoContext?: Array<{ path: string; language: string; content: string; relevanceReason: string }>;
 }): Prompt {
   const cappedFiles = (data.existingFiles ?? []).slice(0, 15);
   const filesLine =
@@ -402,7 +405,11 @@ export function buildGenerateCodePrompt(data: {
     : '';
 
   const kbLine = data.knowledgeBase
-    ? `\nProject Knowledge Base (use for context):\n${userInput('knowledge_base', truncate(data.knowledgeBase, 800))}`
+    ? `\nProject Knowledge Base (use for context):\n${userInput('knowledge_base', truncate(data.knowledgeBase, MAX_KB_CHARS))}`
+    : '';
+
+  const repoContextLine = data.repoContext && data.repoContext.length > 0
+    ? `\nReference code from the repository (study for patterns, imports, conventions — do NOT regenerate):\n${data.repoContext.map((f) => `--- ${f.path} ---\n${f.content}\n---`).join('\n')}`
     : '';
 
   return {
@@ -413,8 +420,8 @@ Task: ${userInput('title', data.taskTitle)}
 Description: ${userInput('description', truncate(data.taskDescription, 400))}
 Instructions: ${userInput('instructions', truncate(data.taskInstructions, 800))}
 Project: ${userInput('project', data.projectName)}
-${data.projectDescription ? `Project description: ${userInput('projectDescription', truncate(data.projectDescription, 400))}\n` : ''}${filesLine}${styleGuideLine}${kbLine}
-
+${data.projectDescription ? `Project description: ${userInput('projectDescription', truncate(data.projectDescription, 400))}\n` : ''}${filesLine}${styleGuideLine}${kbLine}${repoContextLine}
+${repoContextLine ? '\nMatch the coding style, import patterns, and naming conventions shown in the reference code and knowledge base. Reuse existing utilities rather than reimplementing them. Use correct relative import paths.' : ''}
 Return JSON:
 {
   "files": [{ "path": string, "content": string, "language": string, "description": string }],
@@ -439,6 +446,7 @@ export function buildRegenerateFilePrompt(data: {
   feedback?: string | null;
   projectName: string;
   styleGuide?: string | null;
+  repoContext?: Array<{ path: string; language: string; content: string; relevanceReason: string }>;
 }): Prompt {
   const feedbackLine = data.feedback
     ? `\nFeedback: ${userInput('feedback', data.feedback)}`
@@ -448,6 +456,10 @@ export function buildRegenerateFilePrompt(data: {
     ? `\nFollow these project coding conventions:\n${userInput('style_guide', truncate(data.styleGuide, 1000))}`
     : '';
 
+  const repoContextLine = data.repoContext && data.repoContext.length > 0
+    ? `\nReference code from the repository:\n${data.repoContext.map((f) => `--- ${f.path} ---\n${f.content}\n---`).join('\n')}`
+    : '';
+
   return {
     systemPrompt: SYSTEM_JSON,
     userPrompt: `Regenerate ONLY the file at ${userInput('filePath', data.filePath)} for this task.
@@ -455,7 +467,7 @@ export function buildRegenerateFilePrompt(data: {
 Task: ${userInput('title', data.taskTitle)}
 Description: ${userInput('description', truncate(data.taskDescription, 400))}
 Instructions: ${userInput('instructions', truncate(data.taskInstructions, 800))}
-Project: ${userInput('project', data.projectName)}${feedbackLine}${styleGuideLine}
+Project: ${userInput('project', data.projectName)}${feedbackLine}${styleGuideLine}${repoContextLine}
 
 Original content (for reference):
 <user_input label="originalContent">
@@ -464,7 +476,7 @@ ${truncate(data.originalContent, 2000)}
 
 Return JSON:
 { "path": string, "content": string, "language": string, "description": string }
-Generate a complete, runnable file. Incorporate the feedback if provided.`,
+Generate a complete, runnable file. Incorporate the feedback if provided.${repoContextLine ? ' Match the coding style and import patterns from the reference code.' : ''}`,
   };
 }
 
@@ -595,12 +607,17 @@ export function buildCodeReviewPrompt(data: {
   acceptanceCriteria?: string;
   diff: string;
   projectName: string;
+  repoContext?: Array<{ path: string; language: string; content: string; relevanceReason: string }>;
 }): Prompt {
   const instructionsLine = data.taskInstructions
     ? `\nInstructions: ${userInput('instructions', truncate(data.taskInstructions, 800))}`
     : '';
   const acLine = data.acceptanceCriteria
     ? `\nAcceptance Criteria: ${userInput('acceptance_criteria', truncate(data.acceptanceCriteria, 400))}`
+    : '';
+
+  const repoContextLine = data.repoContext && data.repoContext.length > 0
+    ? `\nSurrounding repository context (base branch):\n${data.repoContext.map((f) => `--- ${f.path} ---\n${f.content}\n---`).join('\n')}`
     : '';
 
   return {
@@ -615,7 +632,7 @@ Diff:
 <user_input label="diff">
 ${truncate(data.diff, 6000)}
 </user_input>
-
+${repoContextLine}
 Return JSON:
 {
   "summary": string,
@@ -623,7 +640,7 @@ Return JSON:
   "comments": [{ "file": string, "line": number | null, "severity": "info" | "warning" | "error", "comment": string }],
   "suggestions": string[]
 }
-Focus on actionable feedback. Be specific about file paths and line numbers when possible.`,
+Focus on actionable feedback. Be specific about file paths and line numbers when possible.${repoContextLine ? ' Verify imports reference real files. Check patterns match the surrounding codebase. Flag code that would conflict with existing implementations.' : ''}`,
   };
 }
 
@@ -640,7 +657,7 @@ export function buildGenerateTaskInstructionsPrompt(
     cappedTitles.length > 0
       ? `Other tasks in this project (${existingTaskTitles.length} total): ${cappedTitles.map((t) => JSON.stringify(t)).join(', ')}${existingTaskTitles.length > MAX_SIBLING_TITLES ? ', …' : ''}`
       : '';
-  const kbLine = knowledgeBase ? `\nProject Knowledge Base (use for context):\n${userInput('knowledge_base', truncate(knowledgeBase, 800))}` : '';
+  const kbLine = knowledgeBase ? `\nProject Knowledge Base (use for context):\n${userInput('knowledge_base', truncate(knowledgeBase, MAX_KB_CHARS))}` : '';
 
   return {
     systemPrompt: SYSTEM_JSON,
@@ -801,7 +818,7 @@ export function buildRepoBootstrapPrompt(data: {
 
   return {
     systemPrompt: SYSTEM_JSON,
-    userPrompt: `Analyze this GitHub repository and generate a project description and initial task breakdown for improving and maintaining the codebase.
+    userPrompt: `Analyze this GitHub repository and generate a project description, repo profile, and initial task breakdown for improving and maintaining the codebase.
 
 Repository: ${userInput('repo', data.repoName)}${data.repoDescription ? `\nDescription: ${userInput('description', data.repoDescription)}` : ''}
 Languages: ${data.languages.join(', ')}
@@ -812,6 +829,7 @@ ${filesSection}${readmeSection}${packageSection}
 Return JSON:
 {
   "projectDescription": string,
+  "repoProfile": string,
   "tasks": [{
     "title": string,
     "description": string,
@@ -821,8 +839,56 @@ Return JSON:
   }]
 }
 "projectDescription" — 2-3 sentences summarizing the project purpose and tech stack.
+"repoProfile" — A markdown-formatted knowledge base (1500-2500 chars) covering:
+  - Architecture overview (directory structure, key modules, entry points)
+  - Coding conventions (naming, patterns, error handling approach)
+  - Key utilities and helpers (path + what they do)
+  - Import patterns (absolute vs relative, path aliases, barrel exports)
+  - Tech stack details (frameworks, libraries, build tools)
+  - Testing patterns (framework, file naming, test location)
+This profile will be injected into future AI prompts to help the AI write code that matches this repo's patterns.
 Generate tasks covering: setup/documentation, code quality, testing, features, and maintenance. Include as many as the codebase warrants — small repos may need 5–8; large repos with many concerns may need up to 20.
 Tasks should be specific to THIS codebase — reference actual files, technologies, and patterns found.`,
+  };
+}
+
+export function buildRepoProfilePrompt(data: {
+  repoName: string;
+  readme?: string | null;
+  packageJson?: string | null;
+  fileTree: Array<{ path: string; language?: string | null; size?: number | null }>;
+  languages: string[];
+}): Prompt {
+  const filesSection = data.fileTree
+    .slice(0, 50)
+    .map((f) => `- ${f.path}${f.language ? ` (${f.language})` : ''}${f.size != null ? ` [${f.size}B]` : ''}`)
+    .join('\n');
+  const readmeSection = data.readme
+    ? `\nREADME:\n<user_input label="readme">\n${truncate(data.readme, 2000)}\n</user_input>`
+    : '';
+  const packageSection = data.packageJson
+    ? `\npackage.json:\n<user_input label="package_json">\n${truncate(data.packageJson, 1000)}\n</user_input>`
+    : '';
+
+  return {
+    systemPrompt: SYSTEM_PROSE,
+    userPrompt: `Analyze this GitHub repository and generate a repo profile — a structured knowledge base that will be injected into future AI prompts to help the AI write code matching this repo's patterns.
+
+Repository: ${userInput('repo', data.repoName)}
+Languages: ${data.languages.join(', ')}
+
+File tree (${data.fileTree.length} files):
+${filesSection}${readmeSection}${packageSection}
+
+Generate a markdown-formatted profile (1500-2500 chars) covering:
+- **Architecture overview** — directory structure, key modules, entry points
+- **Coding conventions** — naming, patterns, error handling approach
+- **Key utilities and helpers** — path + what they do (e.g. "src/utils/db.ts — database connection helper")
+- **Import patterns** — absolute vs relative, path aliases, barrel exports
+- **Tech stack** — frameworks, libraries, build tools with versions if visible
+- **Testing patterns** — framework, file naming, test location
+
+Be specific to THIS codebase — reference actual files, directories, and patterns found. Return ONLY the markdown profile text.`,
   };
 }
 
@@ -853,7 +919,7 @@ export function buildProjectChatPrompt(data: {
     ? `\nDescription: ${userInput('description', truncate(data.projectDescription, MAX_PROJECT_DESCRIPTION_CHARS))}`
     : '';
   const kbLine = data.knowledgeBase
-    ? `\nKnowledge Base:\n${userInput('knowledge_base', truncate(data.knowledgeBase, 800))}`
+    ? `\nKnowledge Base:\n${userInput('knowledge_base', truncate(data.knowledgeBase, MAX_KB_CHARS))}`
     : '';
 
   return {
@@ -975,6 +1041,69 @@ Return JSON:
   };
 }
 
+export function buildPlanTaskActionsPrompt(data: {
+  taskTitle: string;
+  taskDescription: string;
+  taskInstructions: string;
+  acceptanceCriteria?: string | null;
+  suggestedTools?: string | null;
+  projectName: string;
+  projectDescription?: string | null;
+  hasGitHubRepo: boolean;
+  availableActionTypes: string[];
+}): Prompt {
+  const acLine = data.acceptanceCriteria
+    ? `\nAcceptance Criteria: ${userInput('acceptance_criteria', truncate(data.acceptanceCriteria, 400))}`
+    : '';
+  const toolsLine = data.suggestedTools
+    ? `\nSuggested Tools: ${userInput('suggested_tools', data.suggestedTools)}`
+    : '';
+  const repoLine = data.hasGitHubRepo
+    ? '\nThis project has a connected GitHub repository, so create_pr actions are available after code generation.'
+    : '\nNo GitHub repo is connected — do not include create_pr actions.';
+
+  return {
+    systemPrompt: SYSTEM_JSON,
+    userPrompt: `Analyze this task and create an ordered action plan to complete it. Each action should be a concrete step.
+
+Task: ${userInput('title', data.taskTitle)}
+Description: ${userInput('description', truncate(data.taskDescription, 400))}
+Instructions: ${userInput('instructions', truncate(data.taskInstructions, 800))}${acLine}${toolsLine}
+Project: ${userInput('project', data.projectName)}
+${data.projectDescription ? `Project description: ${userInput('projectDescription', truncate(data.projectDescription, 400))}` : ''}${repoLine}
+
+Available action types: ${data.availableActionTypes.join(', ')}
+
+Action type guide:
+- generate_code: Generate implementation code files. Config: { "styleGuide"?: string }
+- create_pr: Create a GitHub pull request from previously generated code. Config: { "sourceActionId": "<id of generate_code action>" }. ONLY use if GitHub repo is connected.
+- write_docs: Generate documentation (README, API docs, changelog). Config: { "docType": "readme" | "api-docs" | "changelog" }
+- manual_step: A step the user must complete manually. Config: { "description": string, "checklist"?: string[] }
+
+Rules:
+1. Order actions logically — code gen before PR creation, setup before implementation.
+2. Use manual_step for anything that can't be automated (account setup, API key configuration, manual testing, deployment).
+3. Set requiresApproval to true for actions that modify external systems (create_pr) and false for safe actions (generate_code, write_docs).
+4. Keep the plan focused — typically 2–6 actions. Don't over-plan.
+5. create_pr must always reference a prior generate_code action via sourceActionId (use a placeholder ID like "action_0" referring to the action at index 0).
+
+Return JSON:
+{
+  "actions": [{
+    "actionType": string,
+    "label": string,
+    "config": object,
+    "requiresApproval": boolean,
+    "reasoning": string
+  }],
+  "summary": string
+}
+"summary" — 1-2 sentence overview of what this plan accomplishes.
+"label" — short human-readable description of each action (e.g. "Generate authentication middleware").
+"reasoning" — 1 sentence explaining why this action is needed.`,
+  };
+}
+
 export function buildBatchCodeGenerationPrompt(data: {
   tasks: Array<{ title: string; description: string; instructions: string }>;
   projectName: string;
@@ -982,6 +1111,7 @@ export function buildBatchCodeGenerationPrompt(data: {
   existingFiles?: Array<{ path: string; language: string; size: number }>;
   styleGuide?: string | null;
   knowledgeBase?: string | null;
+  repoContext?: Array<{ path: string; language: string; content: string; relevanceReason: string }>;
 }): Prompt {
   const cappedFiles = (data.existingFiles ?? []).slice(0, 15);
   const filesLine = cappedFiles.length > 0
@@ -991,7 +1121,10 @@ export function buildBatchCodeGenerationPrompt(data: {
     ? `\nCoding conventions:\n${userInput('style_guide', truncate(data.styleGuide, 1000))}`
     : '';
   const kbLine = data.knowledgeBase
-    ? `\nKnowledge Base:\n${userInput('knowledge_base', truncate(data.knowledgeBase, 800))}`
+    ? `\nKnowledge Base:\n${userInput('knowledge_base', truncate(data.knowledgeBase, MAX_KB_CHARS))}`
+    : '';
+  const repoContextLine = data.repoContext && data.repoContext.length > 0
+    ? `\nReference code from the repository (study for patterns, imports, conventions — do NOT regenerate):\n${data.repoContext.map((f) => `--- ${f.path} ---\n${f.content}\n---`).join('\n')}`
     : '';
 
   const taskSections = data.tasks
@@ -1003,10 +1136,10 @@ export function buildBatchCodeGenerationPrompt(data: {
     systemPrompt: SYSTEM_JSON,
     userPrompt: `Generate code files to implement ALL of the following tasks in a single cohesive codebase. Organize files logically and avoid duplication between tasks.
 
-Project: ${userInput('project', data.projectName)}${data.projectDescription ? `\nDescription: ${userInput('projectDescription', truncate(data.projectDescription, 400))}` : ''}${filesLine}${styleGuideLine}${kbLine}
+Project: ${userInput('project', data.projectName)}${data.projectDescription ? `\nDescription: ${userInput('projectDescription', truncate(data.projectDescription, 400))}` : ''}${filesLine}${styleGuideLine}${kbLine}${repoContextLine}
 
 ${taskSections}
-
+${repoContextLine ? '\nMatch the coding style, import patterns, and naming conventions shown in the reference code. Reuse existing utilities.' : ''}
 Return JSON:
 {
   "files": [{ "path": string, "content": string, "language": string, "description": string }],

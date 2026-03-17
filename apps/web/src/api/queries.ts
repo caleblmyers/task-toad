@@ -3,7 +3,7 @@ import { TASK_FIELDS } from '../utils/taskHelpers';
 // ── Project Queries ──
 
 export const PROJECT_QUERY = `query Project($projectId: ID!) {
-  project(projectId: $projectId) { projectId name description prompt knowledgeBase statuses createdAt orgId archived }
+  project(projectId: $projectId) { projectId name description prompt knowledgeBase statuses createdAt orgId archived githubRepositoryName githubRepositoryOwner }
 }`;
 
 export const TASKS_QUERY = `query Tasks($projectId: ID!) {
@@ -192,11 +192,75 @@ export const BOOTSTRAP_REPO_MUTATION = `mutation BootstrapFromRepo($projectId: I
   bootstrapProjectFromRepo(projectId: $projectId) { ${TASK_FIELDS} }
 }`;
 
+export const REFRESH_REPO_PROFILE_MUTATION = `mutation RefreshRepoProfile($projectId: ID!) {
+  refreshRepoProfile(projectId: $projectId) {
+    projectId name description prompt knowledgeBase statuses createdAt orgId archived
+  }
+}`;
+
 // ── Webhook Queries ──
 
 export const WEBHOOK_DELIVERIES_QUERY = `query WebhookDeliveries($endpointId: ID!, $limit: Int) {
   webhookDeliveries(endpointId: $endpointId, limit: $limit) {
     id endpointId event status statusCode attemptCount nextRetryAt createdAt completedAt
+  }
+}`;
+
+export const EPICS_QUERY = `query Epics($projectId: ID!) {
+  epics(projectId: $projectId) {
+    taskId title description status priority position createdAt
+    progress { total completed percentage }
+  }
+}`;
+
+// ── Action Plan Queries/Mutations ──
+
+export const PREVIEW_ACTION_PLAN_MUTATION = `mutation PreviewActionPlan($taskId: ID!) {
+  previewActionPlan(taskId: $taskId) {
+    actions { actionType label config requiresApproval reasoning }
+    summary
+  }
+}`;
+
+export const COMMIT_ACTION_PLAN_MUTATION = `mutation CommitActionPlan($taskId: ID!, $actions: [ActionInput!]!) {
+  commitActionPlan(taskId: $taskId, actions: $actions) {
+    id taskId status summary createdAt
+    actions { id planId actionType label config position status requiresApproval result errorMessage startedAt completedAt createdAt }
+  }
+}`;
+
+export const EXECUTE_ACTION_PLAN_MUTATION = `mutation ExecuteActionPlan($planId: ID!) {
+  executeActionPlan(planId: $planId) {
+    id taskId status summary
+    actions { id planId actionType label config position status requiresApproval result errorMessage startedAt completedAt createdAt }
+  }
+}`;
+
+export const COMPLETE_MANUAL_ACTION_MUTATION = `mutation CompleteManualAction($actionId: ID!) {
+  completeManualAction(actionId: $actionId) {
+    id status completedAt
+  }
+}`;
+
+export const SKIP_ACTION_MUTATION = `mutation SkipAction($actionId: ID!) {
+  skipAction(actionId: $actionId) { id status }
+}`;
+
+export const RETRY_ACTION_MUTATION = `mutation RetryAction($actionId: ID!) {
+  retryAction(actionId: $actionId) { id status }
+}`;
+
+export const CANCEL_ACTION_PLAN_MUTATION = `mutation CancelActionPlan($planId: ID!) {
+  cancelActionPlan(planId: $planId) {
+    id status
+    actions { id status }
+  }
+}`;
+
+export const TASK_ACTION_PLAN_QUERY = `query TaskActionPlan($taskId: ID!) {
+  taskActionPlan(taskId: $taskId) {
+    id taskId status summary createdAt updatedAt
+    actions { id planId actionType label config position status requiresApproval result errorMessage startedAt completedAt createdAt }
   }
 }`;
 

@@ -227,6 +227,7 @@ export type SprintTransition = z.infer<typeof SprintTransitionSchema>;
 
 export const RepoBootstrapSchema = z.object({
   projectDescription: z.string(),
+  repoProfile: z.string().optional().default(''),
   tasks: z.array(z.object({
     title: z.string(),
     description: z.string(),
@@ -249,7 +250,24 @@ export const TrendAnalysisSchema = z.object({
 
 export type TrendAnalysis = z.infer<typeof TrendAnalysisSchema>;
 
+export const ActionPlanItemSchema = z.object({
+  actionType: z.enum(['generate_code', 'create_pr', 'write_docs', 'manual_step']),
+  label: z.string(),
+  config: z.record(z.string(), z.unknown()),
+  requiresApproval: z.boolean(),
+  reasoning: z.string(),
+});
+
+export const ActionPlanResponseSchema = z.object({
+  actions: z.array(ActionPlanItemSchema),
+  summary: z.string(),
+});
+
+export type ActionPlanItem = z.infer<typeof ActionPlanItemSchema>;
+export type ActionPlanResponse = z.infer<typeof ActionPlanResponseSchema>;
+
 export type AIFeature =
+  | 'planTaskActions'
   | 'analyzeTrends'
   | 'generateProjectOptions'
   | 'generateTaskPlan'

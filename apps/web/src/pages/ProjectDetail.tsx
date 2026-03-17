@@ -10,6 +10,7 @@ import type { Activity, GitHubRepoLink, GitHubInstallation } from '../types';
 import KanbanBoard from '../components/KanbanBoard';
 import TaskDetailPanel from '../components/TaskDetailPanel';
 import BacklogView from '../components/BacklogView';
+import EpicsView from '../components/EpicsView';
 import TableView from '../components/TableView';
 import CalendarView from '../components/CalendarView';
 import BulkActionBar from '../components/BulkActionBar';
@@ -35,6 +36,7 @@ const KnowledgeBaseModal = lazyWithRetry(() => import('../components/KnowledgeBa
 const BugReportModal = lazyWithRetry(() => import('../components/BugReportModal'));
 const PRDBreakdownModal = lazyWithRetry(() => import('../components/PRDBreakdownModal'));
 const SprintTransitionModal = lazyWithRetry(() => import('../components/SprintTransitionModal'));
+const ActionPlanDialog = lazyWithRetry(() => import('../components/ActionPlanDialog'));
 import { TaskListSkeleton, KanbanBoardSkeleton } from '../components/Skeleton';
 import ToastContainer from '../components/shared/ToastContainer';
 import KeyboardShortcutHelp from '../components/shared/KeyboardShortcutHelp';
@@ -265,6 +267,13 @@ export default function ProjectDetail() {
       await d.handleArchiveTask(taskId, archived);
       addToast('success', archived ? 'Task archived' : 'Task unarchived');
     },
+    onAutoComplete: d.handlePreviewActionPlan,
+    autoCompleteLoading: d.actionPlanPreviewLoading,
+    actionPlan: d.actionPlan,
+    onCompleteManualAction: d.handleCompleteManualAction,
+    onSkipAction: d.handleSkipAction,
+    onRetryAction: d.handleRetryAction,
+    onCancelActionPlan: d.handleCancelActionPlan,
   };
 
   return (
@@ -368,6 +377,13 @@ export default function ProjectDetail() {
               projectId={d.projectId!}
               sprints={d.sprints}
             />
+          ) : d.view === 'epics' ? (
+            <EpicsView
+              projectId={d.projectId!}
+              epics={d.epics}
+              selectedTask={d.selectedTask}
+              onSelectTask={d.selectTask}
+            />
           ) : d.loading ? (
             d.view === 'board' ? <KanbanBoardSkeleton /> : <TaskListSkeleton count={6} />
           ) : d.view === 'backlog' ? (
@@ -393,6 +409,7 @@ export default function ProjectDetail() {
               onLoadMore={d.loadMoreTasks}
               showArchived={filtering.showArchived}
               onToggleShowArchived={() => filtering.setShowArchived(!filtering.showArchived)}
+              epicMap={d.epicMap}
             />
           ) : d.view === 'calendar' ? (
             <CalendarView
@@ -425,6 +442,7 @@ export default function ProjectDetail() {
                 selectedTask={d.selectedTask}
                 onSelectTask={d.selectTask}
                 onColumnChange={d.handleSprintColumnChange}
+                epicMap={d.epicMap}
               />
             </div>
           ) : (
@@ -563,7 +581,7 @@ export default function ProjectDetail() {
           <Suspense fallback={lazyFallback}>
             <CloseSprintModal
               sprint={closingSprint}
-              sprintTasks={d.tasks.filter((t) => t.sprintId === d.closeSprintId && !t.parentTaskId)}
+              sprintTasks={d.tasks.filter((t) => t.sprintId === d.closeSprintId)}
               otherSprints={d.sprints.filter((s) => !s.closedAt && s.sprintId !== d.closeSprintId)}
               onClosed={d.handleSprintClosed}
               onActivateNext={d.handleActivateSprint}
@@ -699,6 +717,8 @@ export default function ProjectDetail() {
           onClose={() => setActiveModal(null)}
           knowledgeBase={d.project?.knowledgeBase ?? null}
           onSave={(kb) => d.handleUpdateProject({ knowledgeBase: kb })}
+          onRefreshFromRepo={d.handleRefreshRepoProfile}
+          hasGitHubRepo={!!(d.project?.githubRepositoryName)}
         />
       </Suspense>
 
@@ -709,6 +729,22 @@ export default function ProjectDetail() {
             projectId={d.projectId}
             orgUsers={d.orgUsers}
             onClose={() => setActiveModal(null)}
+          />
+        </Suspense>
+      )}
+
+      {/* Action plan dialog */}
+      {d.actionPlanPreview && d.selectedTask && (
+        <Suspense fallback={lazyFallback}>
+          <ActionPlanDialog
+            preview={d.actionPlanPreview}
+            onCommitAndExecute={async (actions) => {
+              const plan = await d.handleCommitActionPlan(d.selectedTask!.taskId, actions);
+              if (plan) {
+                await d.handleExecuteActionPlan(plan.id);
+              }
+            }}
+            onClose={() => d.setActionPlanPreview(null)}
           />
         </Suspense>
       )}

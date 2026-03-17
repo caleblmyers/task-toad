@@ -30,8 +30,12 @@ export { extractTaskIds, linkCommitsToTasks } from './githubTaskLinker.js';
 export { createPullRequestFromTask } from './githubService.js';
 
 // File tree
-export { fetchProjectFileTree, fetchFileContent } from './githubFileService.js';
+export { fetchProjectFileTree, fetchFileContent, fetchFileContentCached } from './githubFileService.js';
 export type { ProjectFile } from './githubFileService.js';
+
+// Repo context
+export { resolveCodeGenContext, resolveReviewContext } from './repoContextService.js';
+export type { RepoContext, RelevantFile } from './repoContextService.js';
 
 // Types
 export type {
