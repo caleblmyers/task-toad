@@ -138,7 +138,7 @@ export default function GlobalSearchModal({ onClose }: GlobalSearchModalProps) {
                       <p className="text-sm text-slate-700 dark:text-slate-300 truncate">{hit.task.title}</p>
                       <p className="text-xs text-slate-400">{hit.projectName}</p>
                     </div>
-                    <span className="text-xs bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded flex-shrink-0">
+                    <span className="text-xs bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-200 px-1.5 py-0.5 rounded flex-shrink-0">
                       {statusLabel(hit.task.status)}
                     </span>
                   </button>

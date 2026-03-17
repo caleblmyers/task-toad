@@ -279,6 +279,70 @@ GraphiQL UI available in dev for interactive exploration.
 
 ---
 
+## 2026-03-16 — D1 Deployment Operations
+
+Four operational items for production readiness on Railway.
+
+### External Uptime Monitoring
+
+Use **UptimeRobot** (free tier: 50 monitors, 5-min intervals) to poll the health endpoint:
+
+- **URL:** `GET https://<your-domain>/api/health`
+- **Interval:** 5 minutes
+- **Expected response (200):**
+  ```json
+  {
+    "status": "ok",
+    "db": "ok",
+    "s3": "ok" | "not configured",
+    "uptime": 12345.678,
+    "timestamp": "2026-03-16T12:00:00.000Z"
+  }
+  ```
+- **503 response:** Database is unreachable (`db: "error: ..."`)
+- **Alert on:** Any non-200 response or timeout (>10s)
+- **Recommended contacts:** Email + Slack webhook for on-call
+
+Alternative: **BetterStack** (free tier: 5 monitors, 3-min intervals) — provides status pages out of the box.
+
+### Railway Alerting
+
+Railway provides built-in alerting for common failure modes:
+
+- **Restart loop detection:** `railway.toml` configures `restartPolicyMaxRetries = 3`. If all retries fail, the service stops and Railway sends a notification.
+- **Deploy failure notifications:** Automatic — any failed build or deploy triggers an alert.
+- **How to enable:** Railway dashboard → Project → Settings → Notifications → enable Email and/or Slack webhook integration.
+- **Memory/CPU spike alerts:** Available under Observability tab in Railway dashboard. Set threshold alerts for memory usage (recommended: 80% of plan limit).
+- **Sentry integration:** Already configured via `SENTRY_DSN` env var for runtime error tracking and alerting.
+
+### Staging Environment
+
+Set up a Railway preview environment for pre-production testing:
+
+1. **Create a second Railway service** from the same GitHub repo (or link the same repo to a new Railway project).
+2. **Branch-based deploys:** Configure the staging service to deploy from a `staging` or `develop` branch. The production service deploys from `main`.
+3. **Environment variables:** Staging should use a separate `DATABASE_URL` (separate Railway Postgres instance or a different database name on the same instance). Copy all other env vars but use test/staging API keys.
+4. **CI/CD:** The existing `deploy.yml` GitHub Actions workflow supports conditional deployment. Add a `staging` environment to the workflow matrix or use Railway's automatic branch deploys.
+5. **Cost:** Railway Hobby plan ($5/mo) supports multiple services. A staging Postgres instance is free under the hobby tier's included usage.
+
+### Database Backup
+
+Railway provides automated PostgreSQL backup and recovery:
+
+- **Automated daily backups:** Enabled by default on Railway-managed Postgres. No configuration needed.
+- **Point-in-time recovery (PITR):** Available via Railway dashboard → Database → Backups. Allows restoring to any point within the retention window.
+- **Manual backup download:** Railway dashboard → Database → Backups → Download. Produces a `pg_dump` file that can be restored locally with `pg_restore` or `psql`.
+- **Local restore procedure:**
+  ```bash
+  # Download backup from Railway dashboard, then:
+  pg_restore --clean --if-exists -d tasktoad backup.dump
+  # Or for SQL format:
+  psql tasktoad < backup.sql
+  ```
+- **Recommended practice:** Download a manual backup before any migration that alters or drops columns. Store off-site (S3 bucket or local machine).
+
+---
+
 ## Stack Lock-in Notes
 
 - `graphql-yoga` requires casting as `unknown as express.RequestHandler` for TS compat in `app.ts`

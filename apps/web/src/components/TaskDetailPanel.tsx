@@ -166,7 +166,7 @@ function PanelContent({
 
       {/* Recurrence */}
       <div className="mb-4">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">
           {task.recurrenceRule && <span className="mr-1">↻</span>}Recurrence
         </p>
         <select
@@ -209,7 +209,7 @@ function PanelContent({
 
       {/* Description */}
       <div className="mb-4">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Description</p>
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">Description</p>
         {editingDescription ? (
           <MarkdownEditor
             value={editDescValue}
@@ -243,7 +243,7 @@ function PanelContent({
 
       {/* Attachments */}
       <div className="mb-4">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Attachments</p>
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">Attachments</p>
         {localAttachments.length > 0 && (
           <ul className="space-y-1 mb-2">
             {localAttachments.map(a => (
@@ -279,7 +279,7 @@ function PanelContent({
 
       {/* Acceptance Criteria */}
       <div className="mb-4">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">
           <span className="mr-1">&#10003;</span>Acceptance Criteria
         </p>
         {editingAC ? (
@@ -315,7 +315,7 @@ function PanelContent({
 
       {/* Instructions */}
       <div className="mb-4">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Instructions</p>
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">Instructions</p>
         {editingInstructions ? (
           <MarkdownEditor
             value={editInstrValue}
@@ -389,7 +389,7 @@ function PanelContent({
       {/* Suggested Tools */}
       {tools.length > 0 && (
         <div className="mb-4">
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Suggested Tools</p>
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">Suggested Tools</p>
           <div className="flex flex-wrap gap-2">
             {tools.map((tool, i) => (
               <div key={i} className={`px-2.5 py-1.5 rounded-lg text-xs ${categoryColors[tool.category] ?? categoryColors.other}`}>
@@ -420,7 +420,7 @@ function PanelContent({
 
       {/* Activity */}
       <div>
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Activity</p>
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">Activity</p>
         <ActivityFeed activities={activities} />
       </div>
 
