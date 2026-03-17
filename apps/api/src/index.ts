@@ -8,6 +8,7 @@ import { sseManager } from './utils/sseManager.js';
 import { startRecurrenceScheduler, stopRecurrenceScheduler } from './utils/recurrenceScheduler.js';
 import { cleanExpiredPromptLogs } from './utils/promptRetention.js';
 import { withAdvisoryLock, LOCK_IDS } from './utils/advisoryLock.js';
+import { prismaPoolActive, prismaPoolIdle, prismaPoolWait } from './utils/metrics.js';
 
 const prisma = new PrismaClient();
 const PORT = Number(process.env.PORT) || 3001;
@@ -78,6 +79,20 @@ async function main() {
   // Run once at startup too
   lockedPromptCleanup().catch(err => logger.error({ err }, 'Initial prompt log cleanup failed'));
 
+  // Collect Prisma connection pool metrics every 30 seconds
+  const prismaMetricsInterval = setInterval(async () => {
+    try {
+      const metrics = await prisma.$metrics.json();
+      for (const gauge of metrics.gauges) {
+        if (gauge.key === 'prisma_pool_connections_busy') prismaPoolActive.set(gauge.value);
+        else if (gauge.key === 'prisma_pool_connections_idle') prismaPoolIdle.set(gauge.value);
+        else if (gauge.key === 'prisma_client_queries_wait') prismaPoolWait.set(gauge.value);
+      }
+    } catch (err) {
+      logger.error({ err }, 'Failed to collect Prisma pool metrics');
+    }
+  }, 30_000);
+
   const server = app.listen(PORT, () => {
     logger.info({ port: PORT }, `TaskToad API listening on http://localhost:${PORT}`);
   });
@@ -98,6 +113,7 @@ async function main() {
 
     clearInterval(reminderInterval);
     clearInterval(promptCleanupInterval);
+    clearInterval(prismaMetricsInterval);
     stopRetryProcessor();
     stopRecurrenceScheduler(recurrenceTimer);
     sseManager.closeAllConnections();
