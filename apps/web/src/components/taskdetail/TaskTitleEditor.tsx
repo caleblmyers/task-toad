@@ -1,4 +1,5 @@
 import type { Task } from '../../types';
+import Badge from '../shared/Badge';
 
 interface TaskTitleEditorProps {
   task: Task;
@@ -54,14 +55,13 @@ export default function TaskTitleEditor({
       {/* Task Type Badge */}
       {task.taskType && task.taskType !== 'task' && (
         <div className="mb-3">
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-            task.taskType === 'epic' ? 'bg-purple-100 text-purple-700' :
-            task.taskType === 'story' ? 'bg-blue-100 text-blue-700' :
-            task.taskType === 'subtask' ? 'bg-slate-100 text-slate-600' :
-            'bg-slate-100 text-slate-600'
-          }`}>
+          <Badge variant={
+            task.taskType === 'epic' ? 'purple' :
+            task.taskType === 'story' ? 'info' :
+            'neutral'
+          }>
             {task.taskType.charAt(0).toUpperCase() + task.taskType.slice(1)}
-          </span>
+          </Badge>
           {task.parentTaskId && (() => {
             const parentTask = allTasks.find((t) => t.taskId === task.parentTaskId);
             return parentTask ? (

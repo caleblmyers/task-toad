@@ -1,14 +1,15 @@
 import type { CodeReview } from '../../types';
+import Badge from '../shared/Badge';
 
 interface TaskAIReviewSectionProps {
   review: CodeReview | null;
   loading: boolean;
 }
 
-const severityStyles: Record<string, string> = {
-  error: 'bg-red-100 text-red-700',
-  warning: 'bg-amber-100 text-amber-700',
-  info: 'bg-blue-100 text-blue-700',
+const severityVariant: Record<string, 'danger' | 'warning' | 'info'> = {
+  error: 'danger',
+  warning: 'warning',
+  info: 'info',
 };
 
 export default function TaskAIReviewSection({ review, loading }: TaskAIReviewSectionProps) {
@@ -34,19 +35,19 @@ export default function TaskAIReviewSection({ review, loading }: TaskAIReviewSec
         {/* Approval badge */}
         <div className="flex items-center gap-2">
           {review.approved ? (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+            <Badge variant="success" className="gap-1 px-2.5 py-1">
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
               Approved
-            </span>
+            </Badge>
           ) : (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+            <Badge variant="danger" className="gap-1 px-2.5 py-1">
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
               Changes Requested
-            </span>
+            </Badge>
           )}
         </div>
 
@@ -61,9 +62,9 @@ export default function TaskAIReviewSection({ review, loading }: TaskAIReviewSec
               {review.comments.map((c, i) => (
                 <div key={i} className="bg-slate-50 rounded p-2.5 text-xs">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${severityStyles[c.severity] ?? severityStyles.info}`}>
+                    <Badge variant={severityVariant[c.severity] ?? 'info'} size="sm" className="rounded">
                       {c.severity}
-                    </span>
+                    </Badge>
                     <span className="font-mono text-slate-500">
                       {c.file}{c.line != null ? `:${c.line}` : ''}
                     </span>

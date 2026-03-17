@@ -12,21 +12,22 @@ import TaskDependenciesSection from './taskdetail/TaskDependenciesSection';
 import TaskSubtasksSection from './taskdetail/TaskSubtasksSection';
 import TaskAIHistory from './taskdetail/TaskAIHistory';
 import TaskAIReviewSection from './taskdetail/TaskAIReviewSection';
+import Badge from './shared/Badge';
 
 function parseTools(raw?: string | null): Array<{ name: string; category: string; reason?: string }> {
   if (!raw) return [];
   try { return JSON.parse(raw); } catch { return []; }
 }
 
-const categoryColors: Record<string, string> = {
-  'ai-model': 'bg-purple-100 text-purple-700',
-  'code-editor': 'bg-blue-100 text-blue-700',
-  'design-tool': 'bg-pink-100 text-pink-700',
-  'database': 'bg-yellow-100 text-yellow-700',
-  'cloud-service': 'bg-sky-100 text-sky-700',
-  'communication': 'bg-green-100 text-green-700',
-  'testing': 'bg-orange-100 text-orange-700',
-  'other': 'bg-slate-100 text-slate-600',
+const categoryVariant: Record<string, 'purple' | 'info' | 'warning' | 'success' | 'accent' | 'neutral'> = {
+  'ai-model': 'purple',
+  'code-editor': 'info',
+  'design-tool': 'purple',
+  'database': 'warning',
+  'cloud-service': 'info',
+  'communication': 'success',
+  'testing': 'accent',
+  'other': 'neutral',
 };
 
 export interface TaskDetailPanelProps {
@@ -392,11 +393,11 @@ function PanelContent({
           <p className="text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">Suggested Tools</p>
           <div className="flex flex-wrap gap-2">
             {tools.map((tool, i) => (
-              <div key={i} className={`px-2.5 py-1.5 rounded-lg text-xs ${categoryColors[tool.category] ?? categoryColors.other}`}>
+              <Badge key={i} variant={categoryVariant[tool.category] ?? 'neutral'} className="px-2.5 py-1.5 rounded-lg">
                 <span className="font-semibold">{tool.name}</span>
                 <span className="ml-1 opacity-60">· {tool.category}</span>
                 {tool.reason && <p className="mt-0.5 opacity-75 font-normal">{tool.reason}</p>}
-              </div>
+              </Badge>
             ))}
           </div>
         </div>

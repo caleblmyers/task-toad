@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Task, TaskPullRequest, TaskCommit } from '../../types';
+import Badge from '../shared/Badge';
 
 interface TaskGitHubSectionProps {
   task: Task;
@@ -66,13 +67,13 @@ export default function TaskGitHubSection({
           <div className="mt-1 space-y-1.5">
             {pullRequests.map((pr) => (
               <div key={pr.id} className="flex items-center gap-2">
-                <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                  pr.state === 'MERGED' ? 'bg-purple-100 text-purple-700' :
-                  pr.state === 'OPEN' ? 'bg-green-100 text-green-700' :
-                  'bg-red-100 text-red-700'
-                }`}>
+                <Badge variant={
+                  pr.state === 'MERGED' ? 'purple' :
+                  pr.state === 'OPEN' ? 'success' :
+                  'danger'
+                } size="sm">
                   {pr.state === 'MERGED' ? 'Merged' : pr.state === 'OPEN' ? 'Open' : 'Closed'}
-                </span>
+                </Badge>
                 <a
                   href={pr.prUrl}
                   target="_blank"
