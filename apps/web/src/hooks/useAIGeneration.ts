@@ -81,6 +81,7 @@ export function useAIGeneration({
   const [codeGenProgress, setCodeGenProgress] = useState<CodeGenProgress | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
+  const subtaskAbortRef = useRef<AbortController | null>(null);
 
   const isGenerating = previewLoading || summarizing || committing || generatingInstructions !== null || generatingCode !== null;
 
@@ -322,10 +323,12 @@ export function useAIGeneration({
   }, [handlePlanCodeGeneration]);
 
   const handleGenerateCodeFromSubtask = useCallback(async (taskId: string, subtaskId: string): Promise<GeneratedCode | null> => {
+    const controller = new AbortController();
+    subtaskAbortRef.current = controller;
     try {
       const styleGuide = projectId ? localStorage.getItem(`tasktoad-style-guide-${projectId}`) : null;
       const data = await gql<{ generateCodeFromSubtask: GeneratedCode }>(
-        GENERATE_CODE_FROM_SUBTASK_MUTATION, { taskId, subtaskId, styleGuide },
+        GENERATE_CODE_FROM_SUBTASK_MUTATION, { taskId, subtaskId, styleGuide }, controller.signal,
       );
       return data.generateCodeFromSubtask;
     } catch (err: unknown) {
@@ -333,8 +336,15 @@ export function useAIGeneration({
         setErr((err as Error).message || 'Subtask code generation failed');
       }
       return null;
+    } finally {
+      if (subtaskAbortRef.current === controller) subtaskAbortRef.current = null;
     }
   }, [projectId, setErr]);
+
+  const cancelSubtaskGeneration = useCallback(() => {
+    subtaskAbortRef.current?.abort();
+    subtaskAbortRef.current = null;
+  }, []);
 
   const handleRegenerateFile = useCallback(async (
     taskId: string, filePath: string, feedback?: string,
@@ -409,6 +419,7 @@ export function useAIGeneration({
     handleRegenerateFile, handleCreatePR,
     handlePlanCodeGeneration, handleGeneratePlannedFiles, handleRetryPlannedFile,
     handleParseBugReport, handlePreviewPRD, handleCommitPRD, handleBootstrapFromRepo,
+    cancelSubtaskGeneration,
     setPreviewTasks, setPreviewError, setSummary, setGeneratedCode, setCodeGenProgress,
   };
 }

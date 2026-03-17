@@ -968,6 +968,7 @@ export default function ProjectDetail() {
           onStartGeneration={d.handleGeneratePlannedFiles}
           onRetryFile={d.handleRetryPlannedFile}
           onRegenerateFile={d.selectedTask ? (filePath: string, feedback?: string) => d.handleRegenerateFile(d.selectedTask!.taskId, filePath, feedback) : undefined}
+          onCancelSubtaskGeneration={d.cancelSubtaskGeneration}
           projectId={d.projectId}
         />
       </Suspense>

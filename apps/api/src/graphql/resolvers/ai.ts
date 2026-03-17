@@ -63,7 +63,7 @@ export const aiMutations = {
 
   setAIBudget: async (
     _parent: unknown,
-    args: { monthlyBudgetCentsUSD?: number | null; alertThreshold?: number | null },
+    args: { monthlyBudgetCentsUSD?: number | null; alertThreshold?: number | null; promptLoggingEnabled?: boolean | null },
     context: Context
   ) => {
     const user = requireOrg(context);
@@ -78,6 +78,7 @@ export const aiMutations = {
       data: {
         ...(args.monthlyBudgetCentsUSD !== undefined && { monthlyBudgetCentsUSD: args.monthlyBudgetCentsUSD ?? null }),
         ...(args.alertThreshold != null && { budgetAlertThreshold: args.alertThreshold }),
+        ...(args.promptLoggingEnabled != null && { promptLoggingEnabled: args.promptLoggingEnabled }),
       },
     });
   },

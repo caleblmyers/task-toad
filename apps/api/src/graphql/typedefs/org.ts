@@ -7,6 +7,7 @@ export const orgTypeDefs = /* GraphQL */ `
     apiKeyHint: String
     monthlyBudgetCentsUSD: Int
     budgetAlertThreshold: Int!
+    promptLoggingEnabled: Boolean!
   }
 
   type OrgUser {
@@ -24,5 +25,5 @@ export const orgQueryFields = /* GraphQL */ `
 export const orgMutationFields = /* GraphQL */ `
   createOrg(name: String!, apiKey: String): Org!
   setOrgApiKey(apiKey: String!): Org!
-  setAIBudget(monthlyBudgetCentsUSD: Int, alertThreshold: Int): Org!
+  setAIBudget(monthlyBudgetCentsUSD: Int, alertThreshold: Int, promptLoggingEnabled: Boolean): Org!
 `;

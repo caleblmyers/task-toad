@@ -105,6 +105,7 @@ export interface ProjectData {
   handlePreviewPRD: (prd: string) => Promise<{ epics: Array<{ title: string; description: string; tasks: Array<{ title: string; description: string; priority: string; estimatedHours?: number | null; acceptanceCriteria?: string | null }> }> }>;
   handleCommitPRD: (epics: string) => Promise<void>;
   handleBootstrapFromRepo: () => Promise<void>;
+  cancelSubtaskGeneration: () => void;
   loadDashboardStats: () => Promise<void>;
   setSelectedTask: React.Dispatch<React.SetStateAction<Task | null>>;
   setErr: React.Dispatch<React.SetStateAction<string | null>>;
@@ -400,6 +401,7 @@ export function useProjectData(): ProjectData {
     handlePreviewPRD: ai.handlePreviewPRD,
     handleCommitPRD: ai.handleCommitPRD,
     handleBootstrapFromRepo: ai.handleBootstrapFromRepo,
+    cancelSubtaskGeneration: ai.cancelSubtaskGeneration,
     loadDashboardStats,
 
     // State setters (backwards compat)

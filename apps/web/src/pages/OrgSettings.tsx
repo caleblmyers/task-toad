@@ -8,7 +8,7 @@ import UserAvatar from '../components/shared/UserAvatar';
 import WebhookSettings from '../components/WebhookSettings';
 import SlackSettings from '../components/SlackSettings';
 
-const ORG_QUERY = `query GetOrg { org { orgId name hasApiKey apiKeyHint } }`;
+const ORG_QUERY = `query GetOrg { org { orgId name hasApiKey apiKeyHint promptLoggingEnabled } }`;
 const ORG_USERS_QUERY = `query { orgUsers { userId email role } }`;
 const ORG_INVITES_QUERY = `query { orgInvites { inviteId email role expiresAt createdAt } }`;
 const GITHUB_INSTALLATIONS_QUERY = `query { githubInstallations { installationId accountLogin accountType orgId createdAt } }`;
@@ -374,6 +374,48 @@ export default function OrgSettings() {
       <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-6 space-y-6">
         <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Webhooks</h2>
         <WebhookSettings />
+      </div>
+
+      {/* AI Settings */}
+      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-6 space-y-6">
+        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">AI Settings</h2>
+
+        {/* Prompt Logging Toggle */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Prompt Logging</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              When enabled, AI prompts and responses are stored for auditing and debugging.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={org.promptLoggingEnabled !== false}
+            onClick={async () => {
+              const newValue = org.promptLoggingEnabled === false;
+              setOrg({ ...org, promptLoggingEnabled: newValue });
+              try {
+                await gql<{ setAIBudget: Org }>(
+                  `mutation SetAIBudget($promptLoggingEnabled: Boolean) { setAIBudget(promptLoggingEnabled: $promptLoggingEnabled) { orgId name hasApiKey apiKeyHint promptLoggingEnabled } }`,
+                  { promptLoggingEnabled: newValue }
+                );
+              } catch (error) {
+                setOrg({ ...org, promptLoggingEnabled: !newValue });
+                setErr(error instanceof Error ? error.message : 'Failed to update prompt logging');
+              }
+            }}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2 ${
+              org.promptLoggingEnabled !== false ? 'bg-brand-green' : 'bg-slate-300 dark:bg-slate-600'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                org.promptLoggingEnabled !== false ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
       </div>
 
       {/* AI Usage */}
