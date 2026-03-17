@@ -25,7 +25,7 @@ export default function TaskDependenciesSection({
   const depIds = parseDependsOn(task.dependsOn);
 
   const availableTasks = allTasks.filter(
-    (t) => t.taskId !== task.taskId && !t.parentTaskId && !depIds.includes(t.taskId)
+    (t) => t.taskId !== task.taskId && !depIds.includes(t.taskId)
   );
   const filteredAvailable = depSearch
     ? availableTasks.filter((t) => t.title.toLowerCase().includes(depSearch.toLowerCase()))

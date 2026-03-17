@@ -164,7 +164,7 @@ describe('useTaskCRUD', () => {
 
   // ── rootTasks memo ──
 
-  it('rootTasks filters out subtasks', async () => {
+  it('rootTasks returns all tasks (backend handles epic filtering)', async () => {
     const tasks = [
       makeTask({ taskId: 't1', title: 'Parent' }),
       makeTask({ taskId: 't2', title: 'Child', parentTaskId: 't1' }),
@@ -173,7 +173,6 @@ describe('useTaskCRUD', () => {
     const { result } = renderHook(() => useTaskCRUD(defaultOptions));
     await act(async () => { result.current.setTasks(tasks); });
 
-    expect(result.current.rootTasks).toHaveLength(1);
-    expect(result.current.rootTasks[0].taskId).toBe('t1');
+    expect(result.current.rootTasks).toHaveLength(2);
   });
 });

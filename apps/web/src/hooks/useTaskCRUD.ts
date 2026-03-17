@@ -43,7 +43,7 @@ export function useTaskCRUD({ projectId, userId, sprints }: UseTaskCRUDOptions) 
   const [editTitleValue, setEditTitleValue] = useState('');
   const titleEditRef = useRef<HTMLInputElement>(null);
 
-  const rootTasks = useMemo(() => tasks.filter((t) => !t.parentTaskId), [tasks]);
+  const rootTasks = useMemo(() => tasks, [tasks]);
 
   // ── Data loading ──
 
@@ -275,7 +275,7 @@ export function useTaskCRUD({ projectId, userId, sprints }: UseTaskCRUDOptions) 
     if (!task) return;
 
     const sectionTasks = tasks
-      .filter((t) => !t.parentTaskId && !t.archived && t.sprintId === targetSprintId && t.taskId !== taskId)
+      .filter((t) => !t.archived && t.sprintId === targetSprintId && t.taskId !== taskId)
       .sort((a, b) => {
         if (a.position != null && b.position != null) return a.position - b.position;
         if (a.position != null) return -1;

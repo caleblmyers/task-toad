@@ -6,8 +6,11 @@ import {
   REGENERATE_FILE_MUTATION, PLAN_CODE_MUTATION, GENERATE_PLANNED_FILE_MUTATION,
   CREATE_PR_MUTATION, PARSE_BUG_REPORT_MUTATION, PREVIEW_PRD_MUTATION,
   COMMIT_PRD_MUTATION, BOOTSTRAP_REPO_MUTATION,
+  PREVIEW_ACTION_PLAN_MUTATION, COMMIT_ACTION_PLAN_MUTATION, EXECUTE_ACTION_PLAN_MUTATION,
+  COMPLETE_MANUAL_ACTION_MUTATION, SKIP_ACTION_MUTATION, RETRY_ACTION_MUTATION,
+  CANCEL_ACTION_PLAN_MUTATION, TASK_ACTION_PLAN_QUERY,
 } from '../api/queries';
-import type { Task, TaskPlanPreview } from '../types';
+import type { Task, TaskPlanPreview, ActionPlanPreview, TaskActionPlan } from '../types';
 
 interface GeneratedFile {
   path: string;
@@ -122,7 +125,7 @@ export function useAIGeneration({
     setCommitting(true);
     setErr(null);
     try {
-      const data = await gql<{ commitTaskPlan: Task[] }>(
+      await gql<{ commitTaskPlan: Task[] }>(
         COMMIT_TASK_PLAN_MUTATION,
         {
           projectId,
@@ -135,10 +138,10 @@ export function useAIGeneration({
         },
         controller.signal,
       );
-      setTasks(data.commitTaskPlan);
       setSubtasks({});
       setSelectedTask(null);
       setPreviewTasks(null);
+      await loadTasks();
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return;
       setErr(error instanceof Error ? error.message : 'Failed to create tasks');
@@ -146,7 +149,7 @@ export function useAIGeneration({
       setCommitting(false);
       if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [projectId, setTasks, setSubtasks, setSelectedTask, setErr]);
+  }, [projectId, setSubtasks, setSelectedTask, setErr, loadTasks]);
 
   const handleSummarize = useCallback(async () => {
     if (!projectId) return;
@@ -422,6 +425,123 @@ export function useAIGeneration({
     await loadTasks();
   }, [projectId, loadTasks]);
 
+  // ── Action Plan ──
+
+  const [actionPlanPreview, setActionPlanPreview] = useState<ActionPlanPreview | null>(null);
+  const [actionPlanPreviewLoading, setActionPlanPreviewLoading] = useState(false);
+  const [actionPlan, setActionPlan] = useState<TaskActionPlan | null>(null);
+
+  const handlePreviewActionPlan = useCallback(async (task: Task) => {
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setActionPlanPreviewLoading(true);
+    setActionPlanPreview(null);
+    try {
+      const data = await gql<{ previewActionPlan: ActionPlanPreview }>(
+        PREVIEW_ACTION_PLAN_MUTATION, { taskId: task.taskId }, controller.signal,
+      );
+      setActionPlanPreview(data.previewActionPlan);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      setErr(error instanceof Error ? error.message : 'Failed to generate action plan');
+    } finally {
+      setActionPlanPreviewLoading(false);
+      if (abortRef.current === controller) abortRef.current = null;
+    }
+  }, [setErr]);
+
+  const handleCommitActionPlan = useCallback(async (taskId: string, actions: Array<{ actionType: string; label: string; config: string; requiresApproval: boolean }>) => {
+    try {
+      const data = await gql<{ commitActionPlan: TaskActionPlan }>(
+        COMMIT_ACTION_PLAN_MUTATION, { taskId, actions },
+      );
+      setActionPlan(data.commitActionPlan);
+      setActionPlanPreview(null);
+      return data.commitActionPlan;
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Failed to commit action plan');
+      return null;
+    }
+  }, [setErr]);
+
+  const handleExecuteActionPlan = useCallback(async (planId: string) => {
+    try {
+      const data = await gql<{ executeActionPlan: TaskActionPlan }>(
+        EXECUTE_ACTION_PLAN_MUTATION, { planId },
+      );
+      setActionPlan(data.executeActionPlan);
+      return data.executeActionPlan;
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Failed to execute action plan');
+      return null;
+    }
+  }, [setErr]);
+
+  const handleCompleteManualAction = useCallback(async (actionId: string) => {
+    try {
+      await gql(COMPLETE_MANUAL_ACTION_MUTATION, { actionId });
+      // Refresh the plan
+      if (actionPlan) {
+        const data = await gql<{ taskActionPlan: TaskActionPlan | null }>(
+          TASK_ACTION_PLAN_QUERY, { taskId: actionPlan.taskId },
+        );
+        if (data.taskActionPlan) setActionPlan(data.taskActionPlan);
+      }
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Failed to complete action');
+    }
+  }, [setErr, actionPlan]);
+
+  const handleSkipAction = useCallback(async (actionId: string) => {
+    try {
+      await gql(SKIP_ACTION_MUTATION, { actionId });
+      if (actionPlan) {
+        const data = await gql<{ taskActionPlan: TaskActionPlan | null }>(
+          TASK_ACTION_PLAN_QUERY, { taskId: actionPlan.taskId },
+        );
+        if (data.taskActionPlan) setActionPlan(data.taskActionPlan);
+      }
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Failed to skip action');
+    }
+  }, [setErr, actionPlan]);
+
+  const handleRetryAction = useCallback(async (actionId: string) => {
+    try {
+      await gql(RETRY_ACTION_MUTATION, { actionId });
+      if (actionPlan) {
+        const data = await gql<{ taskActionPlan: TaskActionPlan | null }>(
+          TASK_ACTION_PLAN_QUERY, { taskId: actionPlan.taskId },
+        );
+        if (data.taskActionPlan) setActionPlan(data.taskActionPlan);
+      }
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Failed to retry action');
+    }
+  }, [setErr, actionPlan]);
+
+  const handleCancelActionPlan = useCallback(async (planId: string) => {
+    try {
+      const data = await gql<{ cancelActionPlan: TaskActionPlan }>(
+        CANCEL_ACTION_PLAN_MUTATION, { planId },
+      );
+      setActionPlan(data.cancelActionPlan);
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Failed to cancel action plan');
+    }
+  }, [setErr]);
+
+  const loadActionPlan = useCallback(async (taskId: string) => {
+    try {
+      const data = await gql<{ taskActionPlan: TaskActionPlan | null }>(
+        TASK_ACTION_PLAN_QUERY, { taskId },
+      );
+      setActionPlan(data.taskActionPlan);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   return {
     previewTasks, previewLoading, previewError, committing,
     summary, summarizing, generatingInstructions, generatingCode,
@@ -435,5 +555,11 @@ export function useAIGeneration({
     handleParseBugReport, handlePreviewPRD, handleCommitPRD, handleBootstrapFromRepo,
     cancelSubtaskGeneration,
     setPreviewTasks, setPreviewError, setSummary, setGeneratedCode, setCodeGenProgress,
+    // Action plan
+    actionPlanPreview, actionPlanPreviewLoading, actionPlan,
+    handlePreviewActionPlan, handleCommitActionPlan, handleExecuteActionPlan,
+    handleCompleteManualAction, handleSkipAction, handleRetryAction,
+    handleCancelActionPlan, loadActionPlan,
+    setActionPlanPreview, setActionPlan,
   };
 }

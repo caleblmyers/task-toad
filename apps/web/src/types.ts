@@ -24,6 +24,17 @@ export type {
   SprintPlanItem,
 } from '@tasktoad/shared-types';
 
+export interface Epic {
+  taskId: string;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: string;
+  position: number | null;
+  createdAt: string;
+  progress: { total: number; completed: number; percentage: number } | null;
+}
+
 export interface ChildTaskPreview {
   title: string;
   description: string;
@@ -89,4 +100,45 @@ export interface CodeReview {
   approved: boolean;
   comments: CodeReviewComment[];
   suggestions: string[];
+}
+
+export interface ActionPlanPreviewItem {
+  actionType: string;
+  label: string;
+  config: string;
+  requiresApproval: boolean;
+  reasoning: string;
+}
+
+export interface ActionPlanPreview {
+  actions: ActionPlanPreviewItem[];
+  summary: string;
+}
+
+export interface TaskActionType {
+  id: string;
+  planId: string;
+  actionType: string;
+  label: string;
+  config: string;
+  position: number;
+  status: string;
+  requiresApproval: boolean;
+  result: string | null;
+  errorMessage: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+}
+
+export interface TaskActionPlan {
+  id: string;
+  taskId: string;
+  orgId: string;
+  status: string;
+  summary: string | null;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+  actions: TaskActionType[];
 }

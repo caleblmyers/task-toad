@@ -57,9 +57,10 @@ interface KanbanBoardProps {
   onSelectTask: (task: Task) => void;
   onColumnChange: (taskId: string, columnName: string) => void;
   onReorderTask?: (taskId: string, position: number) => Promise<void>;
+  epicMap?: Map<string, string>;
 }
 
-export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, onSelectTask, onColumnChange, onReorderTask }: KanbanBoardProps) {
+export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, onSelectTask, onColumnChange, onReorderTask, epicMap }: KanbanBoardProps) {
   const draggedId = useRef<string | null>(null);
   const [movingTaskId, setMovingTaskId] = useState<string | null>(null);
   const [moveAnnouncement, setMoveAnnouncement] = useState('');
@@ -277,6 +278,11 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
                           )}
                           <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-snug line-clamp-2">{task.title}</p>
                         </div>
+                        {task.parentTaskId && epicMap?.get(task.parentTaskId) && (
+                          <span className="text-[10px] text-purple-600 bg-purple-50 dark:text-purple-400 dark:bg-purple-900/30 px-1.5 py-0.5 rounded-full truncate max-w-[120px] inline-block mt-0.5">
+                            {epicMap.get(task.parentTaskId)}
+                          </span>
+                        )}
                         {task.description && (
                           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{task.description}</p>
                         )}

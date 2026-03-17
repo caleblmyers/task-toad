@@ -32,7 +32,7 @@ export default function SprintPlanModal({
   const [committing, setCommitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const backlogTasks = tasks.filter((t) => !t.sprintId && !t.parentTaskId);
+  const backlogTasks = tasks.filter((t) => !t.sprintId);
   const taskMap = Object.fromEntries(tasks.map((t) => [t.taskId, t]));
   const capacity = Math.round(sprintLengthWeeks * teamSize * 40 * 0.7);
 

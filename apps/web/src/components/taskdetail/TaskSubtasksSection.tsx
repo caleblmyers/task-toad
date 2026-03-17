@@ -13,6 +13,8 @@ interface TaskSubtasksSectionProps {
   onGenerateInstructions: (task: Task) => void;
   onGenerateCode?: (task: Task) => void;
   onCreateSubtask?: (parentTaskId: string, title: string) => Promise<void>;
+  onAutoComplete?: (task: Task) => void;
+  autoCompleteLoading?: boolean;
 }
 
 export default function TaskSubtasksSection({
@@ -26,6 +28,8 @@ export default function TaskSubtasksSection({
   onGenerateInstructions,
   onGenerateCode,
   onCreateSubtask,
+  onAutoComplete,
+  autoCompleteLoading,
 }: TaskSubtasksSectionProps) {
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [showSubtaskForm, setShowSubtaskForm] = useState(false);
@@ -111,6 +115,16 @@ export default function TaskSubtasksSection({
               className="px-3 py-1.5 text-sm border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50"
             >
               {generatingCode === task.taskId ? 'Generating code…' : '⌨ Generate code'}
+            </button>
+          )}
+          {onAutoComplete && task.instructions && (
+            <button
+              type="button"
+              onClick={() => onAutoComplete(task)}
+              disabled={disabled || autoCompleteLoading}
+              className="px-3 py-1.5 text-sm border border-indigo-300 text-indigo-700 rounded hover:bg-indigo-50 disabled:opacity-50"
+            >
+              {autoCompleteLoading ? 'Planning…' : '⚡ Auto-Complete'}
             </button>
           )}
         </div>

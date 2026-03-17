@@ -18,9 +18,10 @@ interface FeatureConfig {
 }
 
 export const FEATURE_CONFIG: Record<AIFeature, FeatureConfig> = {
+  planTaskActions:          { maxTokens: 2048, cacheTTLMs: 0,       retryOnValidationFailure: true },
   analyzeTrends:            { maxTokens: 2048, cacheTTLMs: 300_000, retryOnValidationFailure: true },
   generateProjectOptions:   { maxTokens: 512,  cacheTTLMs: 0,       retryOnValidationFailure: true },
-  generateTaskPlan:         { maxTokens: 8192, cacheTTLMs: 86_400_000, retryOnValidationFailure: true },
+  generateTaskPlan:         { maxTokens: 32768, cacheTTLMs: 86_400_000, retryOnValidationFailure: true },
   expandTask:               { maxTokens: 2048, cacheTTLMs: 43_200_000, retryOnValidationFailure: true },
   summarizeProject:         { maxTokens: 512,  cacheTTLMs: 300_000, retryOnValidationFailure: false },
   planSprints:              { maxTokens: 2048, cacheTTLMs: 0,       retryOnValidationFailure: true },
@@ -29,7 +30,7 @@ export const FEATURE_CONFIG: Record<AIFeature, FeatureConfig> = {
   generateSprintReport:     { maxTokens: 2048, cacheTTLMs: 0,       retryOnValidationFailure: true },
   analyzeProjectHealth:     { maxTokens: 2048, cacheTTLMs: 300_000, retryOnValidationFailure: true },
   extractTasksFromNotes:    { maxTokens: 4096, cacheTTLMs: 0,       retryOnValidationFailure: true },
-  generateCode:             { maxTokens: 16384, cacheTTLMs: 0,       retryOnValidationFailure: true },
+  generateCode:             { maxTokens: 32768, cacheTTLMs: 0,       retryOnValidationFailure: true },
   generateCommitMessage:    { maxTokens: 256,  cacheTTLMs: 0,       retryOnValidationFailure: false },
   enrichPRDescription:      { maxTokens: 1024, cacheTTLMs: 0,       retryOnValidationFailure: false },
   regenerateFile:           { maxTokens: 4096, cacheTTLMs: 0,       retryOnValidationFailure: true },

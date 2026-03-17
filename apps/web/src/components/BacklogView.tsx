@@ -26,13 +26,14 @@ interface BacklogSectionProps {
   onDrop: (e: React.DragEvent<HTMLDivElement>, sectionId: string | null, tasks: Task[]) => void;
   sprints?: Sprint[];
   onAssignSprint?: (taskId: string, sprintId: string | null) => void;
+  epicMap?: Map<string, string>;
 }
 
 function BacklogSection({
   tasks: sectionTasks, allTasks, orgUsers, selectedTask, selectedTaskIds,
   showCheckboxes, dragOverInfo, containerRef,
   onSelectTask, onToggleTaskId, onToggleAll, onDragStart,
-  onDragOver, onDragLeave, onDrop, sprints, onAssignSprint,
+  onDragOver, onDragLeave, onDrop, sprints, onAssignSprint, epicMap,
 }: BacklogSectionProps) {
   const sectionIds = sectionTasks.map((t) => t.taskId);
   const allChecked = sectionIds.length > 0 && sectionIds.every((id) => selectedTaskIds.has(id));
@@ -86,6 +87,7 @@ function BacklogSection({
                     onToggleTaskId={onToggleTaskId}
                     sprints={sprints}
                     onAssignSprint={onAssignSprint}
+                    epicMap={epicMap}
                   />
                 </div>
               );
@@ -109,6 +111,7 @@ function BacklogSection({
                   onToggleTaskId={onToggleTaskId}
                   sprints={sprints}
                   onAssignSprint={onAssignSprint}
+                  epicMap={epicMap}
                 />
                 {renderDropIndicator(i + 1)}
               </div>
@@ -160,13 +163,14 @@ interface BacklogViewProps {
   onLoadMore: () => void;
   showArchived?: boolean;
   onToggleShowArchived?: () => void;
+  epicMap?: Map<string, string>;
 }
 
 export default function BacklogView({
   projectId, tasks, sprints, orgUsers, selectedTask, selectedTaskIds,
   onSelectTask, onToggleTaskId, onToggleAll,
   onCreateSprint, onEditSprint, onDeleteSprint, onActivateSprint, onCloseSprint,
-  onAssignSprint, onPlanSprints, onReorderTask, hasMore, onLoadMore, showArchived, onToggleShowArchived,
+  onAssignSprint, onPlanSprints, onReorderTask, hasMore, onLoadMore, showArchived, onToggleShowArchived, epicMap,
 }: BacklogViewProps) {
   const openSprints = sprints.filter((s) => !s.closedAt);
   const bySprint: Record<string, Task[]> = Object.fromEntries(
@@ -275,6 +279,7 @@ export default function BacklogView({
             onSprintReport={setSprintReportId}
             allSprints={openSprints}
             onAssignSprint={onAssignSprint}
+            epicMap={epicMap}
           />
         ))}
 
@@ -297,6 +302,7 @@ export default function BacklogView({
           onDrop={handleDrop}
           sprints={openSprints}
           onAssignSprint={onAssignSprint}
+          epicMap={epicMap}
         />
 
         {/* Load more */}

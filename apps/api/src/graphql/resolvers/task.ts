@@ -2,20 +2,16 @@ import type { Context } from '../context.js';
 // Re-export shared types for cross-package type consistency (API ↔ Web).
 // These match the GraphQL response shapes consumed by the web client.
 export type { Task as SharedTask } from '@tasktoad/shared-types';
-import { logActivity } from '../../utils/activity.js';
-import { createNotification } from '../../utils/notification.js';
 import { NotFoundError, ValidationError, AuthorizationError } from '../errors.js';
 import { requireAuth, requireOrg, requireProjectAccess } from './auth.js';
-import { executeAutomations } from '../../utils/automationEngine.js';
-import { dispatchWebhooks } from '../../utils/webhookDispatcher.js';
-import { dispatchSlackNotifications } from '../../utils/notificationUtils.js';
-import { sseManager } from '../../utils/sseManager.js';
 import { requireTask, requireProject, requireOrgUser, requireProjectField, validateStatus, parseInput, CreateTaskInput, UpdateTaskInput, CreateCommentInput } from '../../utils/resolverHelpers.js';
 import { StringArraySchema } from '../../utils/zodSchemas.js';
 import { createChildLogger } from '../../utils/logger.js';
 import { reviewCode } from '../../ai/aiService.js';
 import { decryptApiKey } from '../../utils/encryption.js';
 import { getPullRequestDiff } from '../../github/index.js';
+import { getEventBus } from '../../infrastructure/eventbus/index.js';
+import { logActivity } from '../../utils/activity.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -32,10 +28,14 @@ export const taskQueries = {
     await requireProjectAccess(context, args.projectId);
     const limit = Math.max(0, Math.min(args.limit ?? 100, 1000));
     const offset = Math.max(0, args.offset ?? 0);
-    const where = {
-      projectId: args.projectId,
-      parentTaskId: args.parentTaskId !== undefined ? args.parentTaskId : null,
-    };
+    let where: Record<string, unknown>;
+    if (args.parentTaskId !== undefined) {
+      // Explicit parentTaskId: fetch subtasks of a specific parent (SUBTASKS_QUERY)
+      where = { projectId: args.projectId, parentTaskId: args.parentTaskId };
+    } else {
+      // Default: all non-epic tasks (root tasks + children of epics)
+      where = { projectId: args.projectId, taskType: { not: 'epic' } };
+    }
     const [tasks, total] = await Promise.all([
       context.prisma.task.findMany({
         where,
@@ -151,13 +151,11 @@ export const taskMutations = {
         position: nextPosition,
       },
     });
-    logActivity(context.prisma, {
-      orgId: user.orgId, projectId: args.projectId, taskId: task.taskId, userId: user.userId,
-      action: 'task.created',
+    getEventBus().emit('task.created', {
+      orgId: user.orgId, userId: user.userId, projectId: args.projectId,
+      timestamp: new Date().toISOString(),
+      task: { taskId: task.taskId, title: task.title, status: task.status, projectId: task.projectId, orgId: task.orgId, taskType: task.taskType },
     });
-    dispatchWebhooks(context.prisma, user.orgId, 'task.created', { task });
-    dispatchSlackNotifications(context.prisma, user.orgId, 'task.created', { task });
-    sseManager.broadcast(user.orgId, 'task.created', { task });
     return task;
   },
 
@@ -200,7 +198,7 @@ export const taskMutations = {
         ...(args.recurrenceRule !== undefined ? { recurrenceRule: args.recurrenceRule || null } : {}),
       },
     });
-    // Log each changed field
+    // Build changes map
     const fields: Array<[string, string | null | undefined, string | null | undefined]> = [
       ['title', task.title, args.title],
       ['status', task.status, args.status],
@@ -211,48 +209,19 @@ export const taskMutations = {
       ['archived', String(task.archived), args.archived !== undefined ? String(args.archived) : undefined],
       ['recurrenceRule', task.recurrenceRule ?? null, args.recurrenceRule !== undefined ? (args.recurrenceRule || null) : undefined],
     ];
+    const changes: Record<string, { old: string | null; new: string | null }> = {};
     for (const [field, oldVal, newVal] of fields) {
       if (newVal !== undefined && newVal !== oldVal) {
-        logActivity(context.prisma, {
-          orgId: user.orgId, projectId: task.projectId, taskId: task.taskId, userId: user.userId,
-          action: 'task.updated', field, oldValue: oldVal ?? null, newValue: newVal ?? null,
-        });
+        changes[field] = { old: oldVal ?? null, new: newVal ?? null };
       }
     }
-    // Notify on assignment change
-    if (args.assigneeId !== undefined && args.assigneeId !== task.assigneeId && args.assigneeId && args.assigneeId !== user.userId) {
-      createNotification(context.prisma, {
-        orgId: user.orgId,
-        userId: args.assigneeId,
-        type: 'assigned',
-        title: `You were assigned to "${task.title}"`,
-        linkUrl: `/app/projects/${task.projectId}`,
-        relatedTaskId: task.taskId,
-        relatedProjectId: task.projectId,
-      });
-    }
-    // Notify on status change
-    if (args.status !== undefined && args.status !== task.status && task.assigneeId && task.assigneeId !== user.userId) {
-      const userRecord = await context.prisma.user.findUnique({ where: { userId: user.userId }, select: { email: true } });
-      createNotification(context.prisma, {
-        orgId: user.orgId,
-        userId: task.assigneeId,
-        type: 'status_changed',
-        title: `${userRecord?.email ?? 'Someone'} changed "${task.title}" status to ${args.status}`,
-        linkUrl: `/app/projects/${task.projectId}`,
-        relatedTaskId: task.taskId,
-        relatedProjectId: task.projectId,
-      });
-    }
-    // Fire automation rules on status change
-    if (args.status !== undefined && args.status !== task.status) {
-      executeAutomations(context.prisma, {
-        type: 'task.status_changed',
-        projectId: task.projectId,
-        orgId: user.orgId,
-        taskId: task.taskId,
-        userId: user.userId,
-        data: { oldStatus: task.status, newStatus: args.status },
+    if (Object.keys(changes).length > 0) {
+      getEventBus().emit('task.updated', {
+        orgId: user.orgId, userId: user.userId, projectId: task.projectId,
+        timestamp: new Date().toISOString(),
+        task: { taskId: updated.taskId, title: updated.title, status: updated.status, projectId: updated.projectId, orgId: updated.orgId, taskType: updated.taskType },
+        changes,
+        previousAssigneeId: task.assigneeId,
       });
     }
     // Auto-review trigger: when status changes to in_review and task has linked PRs
@@ -291,17 +260,6 @@ export const taskMutations = {
         }
       }
     }
-    const changes: Record<string, unknown> = {};
-    for (const [field, oldVal, newVal] of fields) {
-      if (newVal !== undefined && newVal !== oldVal) {
-        changes[field] = { old: oldVal, new: newVal };
-      }
-    }
-    if (Object.keys(changes).length > 0) {
-      dispatchWebhooks(context.prisma, user.orgId, 'task.updated', { task: updated, changes });
-      dispatchSlackNotifications(context.prisma, user.orgId, 'task.updated', { task: updated, changes });
-      sseManager.broadcast(user.orgId, 'task.updated', { task: updated });
-    }
     return updated;
   },
 
@@ -339,14 +297,11 @@ export const taskMutations = {
     const updated = await context.prisma.task.findMany({
       where: { taskId: { in: args.taskIds } },
     });
-    for (const task of tasks) {
-      logActivity(context.prisma, {
-        orgId: user.orgId, projectId: task.projectId, taskId: task.taskId, userId: user.userId,
-        action: 'task.bulk_updated',
-        ...(args.status ? { field: 'status', oldValue: task.status, newValue: args.status } : {}),
-      });
-    }
-    sseManager.broadcast(user.orgId, 'tasks.bulk_updated', { taskIds: args.taskIds });
+    getEventBus().emit('task.bulk_updated', {
+      orgId: user.orgId, userId: user.userId, projectId: projectIds[0],
+      timestamp: new Date().toISOString(),
+      taskIds: args.taskIds,
+    });
     return updated;
   },
 
@@ -381,9 +336,11 @@ export const taskMutations = {
         position: nextPosition,
       },
     });
-    logActivity(context.prisma, {
-      orgId: user.orgId, projectId: parent.projectId, taskId: task.taskId, userId: user.userId,
-      action: 'task.created',
+    getEventBus().emit('subtask.created', {
+      orgId: user.orgId, userId: user.userId, projectId: parent.projectId,
+      timestamp: new Date().toISOString(),
+      task: { taskId: task.taskId, title: task.title, status: task.status, projectId: task.projectId, orgId: task.orgId, taskType: task.taskType },
+      parentTaskId: args.parentTaskId,
     });
     return task;
   },
@@ -406,22 +363,6 @@ export const taskMutations = {
       },
       include: { user: { select: { email: true } } },
     });
-    logActivity(context.prisma, {
-      orgId: user.orgId, projectId: task.projectId, taskId: task.taskId, userId: user.userId,
-      action: 'comment.created',
-    });
-    if (task.assigneeId && task.assigneeId !== user.userId) {
-      createNotification(context.prisma, {
-        orgId: user.orgId,
-        userId: task.assigneeId,
-        type: 'commented',
-        title: `New comment on "${task.title}"`,
-        body: args.content.length > 100 ? args.content.slice(0, 100) + '\u2026' : args.content,
-        linkUrl: `/app/projects/${task.projectId}`,
-        relatedTaskId: task.taskId,
-        relatedProjectId: task.projectId,
-      });
-    }
     // Extract mentions with tighter email regex, capped at 20
     const mentionPattern = /@([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
     const mentionedEmails: string[] = [];
@@ -431,30 +372,24 @@ export const taskMutations = {
       if (mentionedEmails.length >= 20) break;
     }
     // Batch DB lookup — single findMany instead of N queries
+    const mentionedUserIds: string[] = [];
     if (mentionedEmails.length > 0) {
       const mentionedUsers = await context.prisma.user.findMany({
         where: { email: { in: mentionedEmails }, orgId: user.orgId },
       });
       for (const mentionedUser of mentionedUsers) {
         if (mentionedUser.userId !== user.userId) {
-          createNotification(context.prisma, {
-            orgId: user.orgId,
-            userId: mentionedUser.userId,
-            type: 'mentioned',
-            title: `You were mentioned in a comment on "${task.title}"`,
-            body: args.content.length > 100 ? args.content.slice(0, 100) + '\u2026' : args.content,
-            linkUrl: `/app/projects/${task.projectId}`,
-            relatedTaskId: task.taskId,
-            relatedProjectId: task.projectId,
-          });
+          mentionedUserIds.push(mentionedUser.userId);
         }
       }
     }
-    dispatchWebhooks(context.prisma, user.orgId, 'comment.created', {
+    getEventBus().emit('comment.created', {
+      orgId: user.orgId, userId: user.userId, projectId: task.projectId,
+      timestamp: new Date().toISOString(),
       comment: { commentId: comment.commentId, taskId: args.taskId, content: args.content },
-      task: { taskId: task.taskId, title: task.title, projectId: task.projectId },
+      task: { taskId: task.taskId, title: task.title, status: task.status, projectId: task.projectId, orgId: task.orgId, taskType: task.taskType, assigneeId: task.assigneeId },
+      mentionedUserIds,
     });
-    sseManager.broadcast(user.orgId, 'comment.created', { comment: { commentId: comment.commentId, taskId: args.taskId } });
     return {
       ...comment,
       userEmail: comment.user.email,
@@ -589,7 +524,11 @@ export const taskMutations = {
       where: { taskId: args.taskId },
       data: { position: args.position },
     });
-    sseManager.broadcast(task.orgId, 'task.updated', { task: updated });
+    getEventBus().emit('task.reordered', {
+      orgId: task.orgId, userId: context.user!.userId, projectId: task.projectId,
+      timestamp: new Date().toISOString(),
+      task: { taskId: updated.taskId, title: updated.title, status: updated.status, projectId: updated.projectId, orgId: updated.orgId, taskType: updated.taskType },
+    });
     return updated;
   },
 
@@ -607,21 +546,11 @@ export const taskMutations = {
       update: {},
       include: { user: true },
     });
-    logActivity(context.prisma, {
-      orgId: user.orgId, projectId: task.projectId, taskId: task.taskId, userId: user.userId,
-      action: 'task.assignee_added', field: 'assignee', newValue: args.userId,
+    getEventBus().emit('task.assignee_added', {
+      orgId: user.orgId, userId: user.userId, projectId: task.projectId,
+      timestamp: new Date().toISOString(),
+      taskId: task.taskId, taskTitle: task.title, assigneeId: args.userId,
     });
-    if (args.userId !== user.userId) {
-      createNotification(context.prisma, {
-        orgId: user.orgId,
-        userId: args.userId,
-        type: 'assigned',
-        title: `You were assigned to "${task.title}"`,
-        linkUrl: `/app/projects/${task.projectId}`,
-        relatedTaskId: task.taskId,
-        relatedProjectId: task.projectId,
-      });
-    }
     return {
       id: assignee.id,
       user: assignee.user,
@@ -640,9 +569,10 @@ export const taskMutations = {
     await context.prisma.taskAssignee.deleteMany({
       where: { taskId: args.taskId, userId: args.userId },
     });
-    logActivity(context.prisma, {
-      orgId: user.orgId, projectId: task.projectId, taskId: task.taskId, userId: user.userId,
-      action: 'task.assignee_removed', field: 'assignee', oldValue: args.userId,
+    getEventBus().emit('task.assignee_removed', {
+      orgId: user.orgId, userId: user.userId, projectId: task.projectId,
+      timestamp: new Date().toISOString(),
+      taskId: task.taskId, assigneeId: args.userId,
     });
     return true;
   },

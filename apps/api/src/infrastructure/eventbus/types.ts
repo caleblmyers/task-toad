@@ -1,0 +1,111 @@
+/**
+ * Domain event types and typed payload map for the event bus.
+ */
+
+export interface BaseEventPayload {
+  orgId: string;
+  userId: string;
+  projectId: string;
+  timestamp: string;
+}
+
+export interface TaskPayload {
+  taskId: string;
+  title: string;
+  status: string;
+  projectId: string;
+  orgId: string;
+  taskType: string;
+  [key: string]: unknown;
+}
+
+export interface SprintPayload {
+  sprintId: string;
+  name: string;
+  projectId: string;
+  orgId: string;
+  [key: string]: unknown;
+}
+
+export interface CommentPayload {
+  commentId: string;
+  taskId: string;
+  content: string;
+  [key: string]: unknown;
+}
+
+export interface FieldChange {
+  old: string | null;
+  new: string | null;
+}
+
+export interface DomainEventMap {
+  'task.created': BaseEventPayload & {
+    task: TaskPayload;
+  };
+  'task.updated': BaseEventPayload & {
+    task: TaskPayload;
+    changes: Record<string, FieldChange>;
+    previousAssigneeId?: string | null;
+  };
+  'task.deleted': BaseEventPayload & {
+    taskId: string;
+  };
+  'task.bulk_updated': BaseEventPayload & {
+    taskIds: string[];
+  };
+  'task.assignee_added': BaseEventPayload & {
+    taskId: string;
+    taskTitle: string;
+    assigneeId: string;
+  };
+  'task.assignee_removed': BaseEventPayload & {
+    taskId: string;
+    assigneeId: string;
+  };
+  'task.reordered': BaseEventPayload & {
+    task: TaskPayload;
+  };
+  'subtask.created': BaseEventPayload & {
+    task: TaskPayload;
+    parentTaskId: string;
+  };
+  'comment.created': BaseEventPayload & {
+    comment: CommentPayload;
+    task: TaskPayload;
+    mentionedUserIds: string[];
+  };
+  'sprint.created': BaseEventPayload & {
+    sprint: SprintPayload;
+  };
+  'sprint.updated': BaseEventPayload & {
+    sprint: SprintPayload;
+  };
+  'sprint.deleted': BaseEventPayload & {
+    sprintId: string;
+    sprintName: string;
+  };
+  'sprint.closed': BaseEventPayload & {
+    sprint: SprintPayload;
+  };
+  'project.updated': BaseEventPayload & {
+    changes: Record<string, FieldChange>;
+  };
+  'project.archived': BaseEventPayload & {
+    archived: boolean;
+  };
+  'task.action_completed': BaseEventPayload & {
+    actionId: string;
+    actionType: string;
+    planId: string;
+    taskId: string;
+    success: boolean;
+  };
+  'task.action_plan_completed': BaseEventPayload & {
+    planId: string;
+    taskId: string;
+  };
+}
+
+export type EventName = keyof DomainEventMap;
+export type DomainEvent<E extends EventName> = DomainEventMap[E];

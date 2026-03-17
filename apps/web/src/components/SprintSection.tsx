@@ -49,11 +49,12 @@ interface TaskRowProps {
   onToggleTaskId: (taskId: string) => void;
   sprints?: Sprint[];
   onAssignSprint?: (taskId: string, sprintId: string | null) => void;
+  epicMap?: Map<string, string>;
 }
 
 export const TaskRow = memo(function TaskRow({
   task, orgUsers, allTasks, selectedTask, onSelectTask, onDragStart,
-  isChecked, showCheckboxes, onToggleTaskId, sprints, onAssignSprint,
+  isChecked, showCheckboxes, onToggleTaskId, sprints, onAssignSprint, epicMap,
 }: TaskRowProps) {
   const isSelected = selectedTask?.taskId === task.taskId;
   const assignee = useMemo(() => orgUsers.find((u) => u.userId === task.assigneeId), [orgUsers, task.assigneeId]);
@@ -179,6 +180,11 @@ export const TaskRow = memo(function TaskRow({
         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${taskTypeDot[task.taskType] ?? ''}`} title={task.taskType} />
       )}
       <span className={`flex-1 text-sm leading-snug ${task.taskType === 'epic' ? 'font-semibold text-slate-900 dark:text-slate-100' : 'text-slate-800 dark:text-slate-200'}`}>{task.title}</span>
+      {task.parentTaskId && epicMap?.get(task.parentTaskId) && (
+        <span className="text-[10px] text-purple-600 bg-purple-50 dark:text-purple-400 dark:bg-purple-900/30 px-1.5 py-0.5 rounded-full truncate max-w-[120px]">
+          {epicMap.get(task.parentTaskId)}
+        </span>
+      )}
       <div className="flex items-center gap-1.5 flex-shrink-0">
         <DependencyBadge task={task} allTasks={allTasks} onTaskClick={(id) => {
           const t = allTasks.find((at) => at.taskId === id);
@@ -298,6 +304,7 @@ interface SprintSectionProps {
   onSprintReport: (sprintId: string) => void;
   allSprints?: Sprint[];
   onAssignSprint?: (taskId: string, sprintId: string | null) => void;
+  epicMap?: Map<string, string>;
 }
 
 export default function SprintSection({
@@ -306,7 +313,7 @@ export default function SprintSection({
   onSelectTask, onToggleTaskId, onToggleAll, onDragStart,
   onDragOver, onDragLeave, onDrop,
   onEditSprint, onDeleteSprint, onActivateSprint, onCloseSprint, onSprintReport,
-  allSprints, onAssignSprint,
+  allSprints, onAssignSprint, epicMap,
 }: SprintSectionProps) {
   const { confirm, ConfirmDialogPortal } = useConfirmDialog();
   const [burndownVisible, setBurndownVisible] = useState(false);
@@ -422,6 +429,7 @@ export default function SprintSection({
                     onToggleTaskId={onToggleTaskId}
                     sprints={allSprints}
                     onAssignSprint={onAssignSprint}
+                    epicMap={epicMap}
                   />
                 </div>
               );
@@ -445,6 +453,7 @@ export default function SprintSection({
                   onToggleTaskId={onToggleTaskId}
                   sprints={allSprints}
                   onAssignSprint={onAssignSprint}
+                  epicMap={epicMap}
                 />
                 {renderDropIndicator(i + 1)}
               </div>

@@ -1,6 +1,9 @@
 import { PrismaClient } from '@prisma/client';
 import { execSync } from 'child_process';
 import path from 'path';
+import { InProcessEventBus } from '../infrastructure/eventbus/inProcessAdapter.js';
+import { setEventBus } from '../infrastructure/eventbus/index.js';
+import { registerListeners } from '../infrastructure/listeners/index.js';
 
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL ??
@@ -12,6 +15,11 @@ process.env.DATABASE_URL = TEST_DATABASE_URL;
 export const prisma = new PrismaClient({
   datasourceUrl: TEST_DATABASE_URL,
 });
+
+// Initialize event bus for integration tests
+const testEventBus = new InProcessEventBus();
+setEventBus(testEventBus);
+registerListeners(testEventBus, prisma);
 
 /**
  * Push the current schema to the test database (creates tables if needed).

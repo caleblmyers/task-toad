@@ -185,6 +185,12 @@ export default function ProjectToolbar({
           <span className="hidden sm:inline">Timeline</span>
         </span>
       </button>
+      <button onClick={() => { d.switchView('epics'); setTimelineView(false); }} className={d.view === 'epics' && !timelineView ? activeClass : inactiveClass} disabled={d.isGenerating} title="Epics">
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" />
+          <span className="hidden sm:inline">Epics</span>
+        </span>
+      </button>
       <button onClick={() => { d.switchView('dashboard'); setTimelineView(false); onLoadProjectActivities(); }} className={d.view === 'dashboard' && !timelineView ? activeClass : inactiveClass} disabled={d.isGenerating} title="Dashboard">
         <span className="flex items-center gap-1">📊<span className="hidden sm:inline">Dashboard</span></span>
       </button>

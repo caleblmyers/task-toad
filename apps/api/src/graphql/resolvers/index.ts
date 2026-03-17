@@ -11,6 +11,7 @@ import { projectRoleQueries, projectRoleMutations } from './projectrole.js';
 import { webhookQueries, webhookMutations } from './webhook.js';
 import { slackQueries, slackMutations, slackFieldResolvers } from './slack.js';
 import { templateQueries, templateMutations } from './template.js';
+import { taskActionQueries, taskActionMutations, taskActionFieldResolvers } from './taskaction.js';
 
 export const resolvers = {
   Query: {
@@ -27,6 +28,7 @@ export const resolvers = {
     ...webhookQueries,
     ...slackQueries,
     ...templateQueries,
+    ...taskActionQueries,
   },
   Mutation: {
     ...authMutations,
@@ -42,6 +44,7 @@ export const resolvers = {
     ...webhookMutations,
     ...slackMutations,
     ...templateMutations,
+    ...taskActionMutations,
   },
   // Field resolvers
   User: { ...authFieldResolvers.User },
@@ -58,4 +61,6 @@ export const resolvers = {
   Report: {
     createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
   },
+  TaskActionPlan: { ...taskActionFieldResolvers.TaskActionPlan },
+  TaskAction: { ...taskActionFieldResolvers.TaskAction },
 };

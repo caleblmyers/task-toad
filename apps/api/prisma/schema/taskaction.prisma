@@ -1,0 +1,38 @@
+model TaskActionPlan {
+  id          String   @id @default(uuid()) @map("action_plan_id")
+  taskId      String   @map("task_id")
+  orgId       String   @map("org_id")
+  status      String   @default("draft") // draft | approved | executing | completed | failed | cancelled
+  summary     String?  @db.Text
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  task    Task   @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
+  actions TaskAction[]
+
+  @@index([taskId])
+  @@index([orgId, status])
+  @@map("task_action_plans")
+}
+
+model TaskAction {
+  id               String    @id @default(uuid()) @map("action_id")
+  planId           String    @map("plan_id")
+  actionType       String    @map("action_type") // generate_code | create_pr | write_docs | manual_step
+  label            String
+  config           String    @db.Text // JSON: action-specific configuration
+  position         Int
+  status           String    @default("pending") // pending | executing | completed | failed | skipped
+  requiresApproval Boolean   @default(true) @map("requires_approval")
+  result           String?   @db.Text // JSON: action output
+  errorMessage     String?   @map("error_message")
+  startedAt        DateTime? @map("started_at")
+  completedAt      DateTime? @map("completed_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  plan TaskActionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId, position])
+  @@map("task_actions")
+}

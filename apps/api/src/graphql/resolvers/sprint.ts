@@ -3,15 +3,12 @@ export type { Sprint as SharedSprint, CloseSprintResult as SharedCloseSprintResu
 import {
   planSprints as aiPlanSprints,
 } from '../../ai/index.js';
-import { logActivity } from '../../utils/activity.js';
 import { NotFoundError, ValidationError } from '../errors.js';
 import { requireOrg, requireProjectAccess, requireApiKey } from './auth.js';
-import { dispatchWebhooks } from '../../utils/webhookDispatcher.js';
-import { dispatchSlackNotifications } from '../../utils/notificationUtils.js';
-import { sseManager } from '../../utils/sseManager.js';
 import { requireProject } from '../../utils/resolverHelpers.js';
 import { StringArraySchema } from '../../utils/zodSchemas.js';
 import { createChildLogger } from '../../utils/logger.js';
+import { getEventBus } from '../../infrastructure/eventbus/index.js';
 
 const log = createChildLogger('sprint');
 
@@ -62,7 +59,7 @@ export const sprintQueries = {
     }
 
     const tasks = await context.prisma.task.findMany({
-      where: { sprintId: sprint.sprintId, parentTaskId: null },
+      where: { sprintId: sprint.sprintId, taskType: { not: 'epic' }, OR: [{ parentTaskId: null }, { parentTask: { taskType: 'epic' } }] },
     });
     const totalScope = tasks.length;
 
@@ -141,13 +138,11 @@ export const sprintMutations = {
         endDate: args.endDate ?? null,
       },
     });
-    logActivity(context.prisma, {
-      orgId: user.orgId, projectId: args.projectId, sprintId: sprint.sprintId, userId: user.userId,
-      action: 'sprint.created',
+    getEventBus().emit('sprint.created', {
+      orgId: user.orgId, userId: user.userId, projectId: args.projectId,
+      timestamp: new Date().toISOString(),
+      sprint: { sprintId: sprint.sprintId, name: sprint.name, projectId: sprint.projectId, orgId: sprint.orgId },
     });
-    dispatchWebhooks(context.prisma, user.orgId, 'sprint.created', { sprint });
-    dispatchSlackNotifications(context.prisma, user.orgId, 'sprint.created', { sprint });
-    sseManager.broadcast(user.orgId, 'sprint.created', { sprint });
     return sprint;
   },
 
@@ -174,11 +169,11 @@ export const sprintMutations = {
         ...(args.endDate !== undefined ? { endDate: args.endDate } : {}),
       },
     });
-    logActivity(context.prisma, {
-      orgId: user.orgId, projectId: sprint.projectId, sprintId: sprint.sprintId, userId: user.userId,
-      action: 'sprint.updated',
+    getEventBus().emit('sprint.updated', {
+      orgId: user.orgId, userId: user.userId, projectId: sprint.projectId,
+      timestamp: new Date().toISOString(),
+      sprint: { sprintId: updated.sprintId, name: updated.name, projectId: updated.projectId, orgId: updated.orgId },
     });
-    sseManager.broadcast(user.orgId, 'sprint.updated', { sprint: updated });
     return updated;
   },
 
@@ -193,9 +188,10 @@ export const sprintMutations = {
       data: { sprintId: null, sprintColumn: null },
     });
     await context.prisma.sprint.delete({ where: { sprintId: args.sprintId } });
-    logActivity(context.prisma, {
-      orgId: user.orgId, projectId: sprint.projectId, sprintId: sprint.sprintId, userId: user.userId,
-      action: 'sprint.deleted',
+    getEventBus().emit('sprint.deleted', {
+      orgId: user.orgId, userId: user.userId, projectId: sprint.projectId,
+      timestamp: new Date().toISOString(),
+      sprintId: sprint.sprintId, sprintName: sprint.name,
     });
     return true;
   },
@@ -258,9 +254,11 @@ export const sprintMutations = {
       orderBy: { createdAt: 'asc' },
     });
 
-    dispatchWebhooks(context.prisma, user.orgId, 'sprint.closed', { sprint: closedSprint });
-    dispatchSlackNotifications(context.prisma, user.orgId, 'sprint.closed', { sprint: closedSprint });
-    sseManager.broadcast(user.orgId, 'sprint.closed', { sprint: closedSprint });
+    getEventBus().emit('sprint.closed', {
+      orgId: user.orgId, userId: user.userId, projectId: sprint.projectId,
+      timestamp: new Date().toISOString(),
+      sprint: { sprintId: closedSprint.sprintId, name: closedSprint.name, projectId: closedSprint.projectId, orgId: closedSprint.orgId },
+    });
     return { sprint: closedSprint, nextSprint: nextSprint ?? null };
   },
 
@@ -272,7 +270,7 @@ export const sprintMutations = {
     const { project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
     const backlogTasks = await context.prisma.task.findMany({
-      where: { projectId: args.projectId, parentTaskId: null, sprintId: null },
+      where: { projectId: args.projectId, sprintId: null, taskType: { not: 'epic' }, OR: [{ parentTaskId: null }, { parentTask: { taskType: 'epic' } }] },
       orderBy: { createdAt: 'asc' },
     });
     if (backlogTasks.length === 0) {

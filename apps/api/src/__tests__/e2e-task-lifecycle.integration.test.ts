@@ -303,6 +303,9 @@ describe('Activity audit', () => {
     // Create comment (should log comment.created)
     await taskMutations.createComment(null, { taskId: task.taskId, content: 'Audit comment' }, ctx);
 
+    // Allow fire-and-forget activity writes to settle
+    await new Promise((r) => setTimeout(r, 100));
+
     // Query activities for this task
     const result = await taskQueries.activities(null, { taskId: task.taskId }, ctx);
     const actions = result.activities.map((a: { action: string }) => a.action);

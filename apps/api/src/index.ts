@@ -2,13 +2,8 @@ import * as Sentry from '@sentry/node';
 import { PrismaClient } from '@prisma/client';
 import app from './app.js';
 import { logger } from './utils/logger.js';
-import { checkDueDateReminders } from './utils/dueDateReminder.js';
-import { startRetryProcessor, stopRetryProcessor } from './utils/webhookDispatcher.js';
 import { sseManager } from './utils/sseManager.js';
-import { startRecurrenceScheduler, stopRecurrenceScheduler } from './utils/recurrenceScheduler.js';
-import { cleanExpiredPromptLogs } from './utils/promptRetention.js';
-import { withAdvisoryLock, LOCK_IDS } from './utils/advisoryLock.js';
-import { prismaPoolActive, prismaPoolIdle, prismaPoolWait } from './utils/metrics.js';
+import { createInfrastructure } from './infrastructure/bootstrap.js';
 
 const prisma = new PrismaClient();
 const PORT = Number(process.env.PORT) || 3001;
@@ -62,43 +57,13 @@ async function main() {
     }
   }
 
-  // Wrap background jobs with advisory locks so only one replica runs each
-  const lockedReminders = withAdvisoryLock(prisma, LOCK_IDS.DUE_DATE_REMINDERS, checkDueDateReminders);
-  const lockedPromptCleanup = withAdvisoryLock(prisma, LOCK_IDS.PROMPT_CLEANUP, cleanExpiredPromptLogs);
-
-  const reminderInterval = setInterval(
-    () => lockedReminders().catch(err => logger.error({ err }, 'Due date reminder check failed')),
-    15 * 60 * 1000,
-  );
-
-  // Clean expired AI prompt logs every 6 hours
-  const promptCleanupInterval = setInterval(
-    () => lockedPromptCleanup().catch(err => logger.error({ err }, 'Prompt log cleanup failed')),
-    6 * 60 * 60 * 1000,
-  );
-  // Run once at startup too
-  lockedPromptCleanup().catch(err => logger.error({ err }, 'Initial prompt log cleanup failed'));
-
-  // Collect Prisma connection pool metrics every 30 seconds
-  const prismaMetricsInterval = setInterval(async () => {
-    try {
-      const metrics = await prisma.$metrics.json();
-      for (const gauge of metrics.gauges) {
-        if (gauge.key === 'prisma_pool_connections_busy') prismaPoolActive.set(gauge.value);
-        else if (gauge.key === 'prisma_pool_connections_idle') prismaPoolIdle.set(gauge.value);
-        else if (gauge.key === 'prisma_client_queries_wait') prismaPoolWait.set(gauge.value);
-      }
-    } catch (err) {
-      logger.error({ err }, 'Failed to collect Prisma pool metrics');
-    }
-  }, 30_000);
+  // Initialize event bus + job queue infrastructure
+  const { jobQueue } = createInfrastructure(prisma);
+  jobQueue.start();
 
   const server = app.listen(PORT, () => {
     logger.info({ port: PORT }, `TaskToad API listening on http://localhost:${PORT}`);
   });
-
-  startRetryProcessor(prisma);
-  const recurrenceTimer = startRecurrenceScheduler(prisma);
 
   // Graceful shutdown
   const shutdown = async (signal: string) => {
@@ -111,11 +76,7 @@ async function main() {
     }, 10_000);
     forceKillTimeout.unref();
 
-    clearInterval(reminderInterval);
-    clearInterval(promptCleanupInterval);
-    clearInterval(prismaMetricsInterval);
-    stopRetryProcessor();
-    stopRecurrenceScheduler(recurrenceTimer);
+    await jobQueue.shutdown();
     sseManager.closeAllConnections();
 
     server.close(() => {

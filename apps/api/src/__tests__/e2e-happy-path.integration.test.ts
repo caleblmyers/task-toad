@@ -126,6 +126,9 @@ describe('E2E happy path: signup through export', () => {
     expect(comment).toHaveProperty('commentId');
     expect(comment.content).toBe('E2E comment content');
 
+    // Allow fire-and-forget activity writes to settle
+    await new Promise((r) => setTimeout(r, 100));
+
     // Verify activity was logged for the comment
     const activities = await taskQueries.activities(
       null,

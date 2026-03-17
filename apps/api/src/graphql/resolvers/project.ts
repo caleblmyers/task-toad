@@ -2,10 +2,10 @@ import type { Context } from '../context.js';
 // Re-export shared types for cross-package type consistency (API ↔ Web).
 // These match the GraphQL response shapes consumed by the web client.
 export type { Project as SharedProject } from '@tasktoad/shared-types';
-import { logActivity } from '../../utils/activity.js';
 import { AuthorizationError, NotFoundError, ValidationError } from '../errors.js';
 import { requireAuth, requireOrg, requireProjectAccess } from './auth.js';
 import { parseInput, CreateProjectInput, requireProject } from '../../utils/resolverHelpers.js';
+import { getEventBus } from '../../infrastructure/eventbus/index.js';
 
 // ── Project queries ──
 
@@ -45,7 +45,7 @@ export const projectQueries = {
 
     // Batch: fetch ALL tasks for all projects in one query
     const allTasks = await context.prisma.task.findMany({
-      where: { projectId: { in: projectIds }, parentTaskId: null, archived: false },
+      where: { projectId: { in: projectIds }, archived: false, taskType: { not: 'epic' }, OR: [{ parentTaskId: null }, { parentTask: { taskType: 'epic' } }] },
       select: { projectId: true, status: true, dueDate: true },
     });
 
@@ -122,7 +122,7 @@ export const projectQueries = {
   projectStats: async (_parent: unknown, args: { projectId: string }, context: Context) => {
     await requireProjectAccess(context, args.projectId);
     const tasks = await context.prisma.task.findMany({
-      where: { projectId: args.projectId, parentTaskId: null, archived: false },
+      where: { projectId: args.projectId, archived: false, taskType: { not: 'epic' }, OR: [{ parentTaskId: null }, { parentTask: { taskType: 'epic' } }] },
       select: { status: true, priority: true, assigneeId: true, estimatedHours: true, dueDate: true },
     });
     const orgUsers = await context.prisma.user.findMany({
@@ -215,10 +215,14 @@ export const projectMutations = {
         ...(args.statuses !== undefined && args.statuses !== null ? { statuses: args.statuses } : {}),
       },
     });
-    logActivity(context.prisma, {
-      orgId: user.orgId, projectId: args.projectId, userId: user.userId,
-      action: 'project.updated',
-      ...(args.name && args.name !== project.name ? { field: 'name', oldValue: project.name, newValue: args.name } : {}),
+    const changes: Record<string, { old: string | null; new: string | null }> = {};
+    if (args.name && args.name !== project.name) {
+      changes.name = { old: project.name, new: args.name };
+    }
+    getEventBus().emit('project.updated', {
+      orgId: user.orgId, userId: user.userId, projectId: args.projectId,
+      timestamp: new Date().toISOString(),
+      changes,
     });
     return updated;
   },
@@ -265,9 +269,10 @@ export const projectMutations = {
       where: { projectId: args.projectId },
       data: { archived: args.archived },
     });
-    logActivity(context.prisma, {
-      orgId: user.orgId, projectId: args.projectId, userId: user.userId,
-      action: args.archived ? 'project.archived' : 'project.unarchived',
+    getEventBus().emit('project.archived', {
+      orgId: user.orgId, userId: user.userId, projectId: args.projectId,
+      timestamp: new Date().toISOString(),
+      archived: args.archived,
     });
     return result;
   },

@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import type { Task, Sprint, OrgUser, Comment, Activity, Label, CodeReview, Attachment } from '../types';
+import type { Task, Sprint, OrgUser, Comment, Activity, Label, CodeReview, Attachment, TaskActionPlan } from '../types';
+import ActionProgressPanel from './ActionProgressPanel';
 import { gql, TOKEN_KEY } from '../api/client';
 import CommentSection from './CommentSection';
 import ActivityFeed from './ActivityFeed';
@@ -76,6 +77,13 @@ export interface TaskDetailPanelProps {
   reviewLoading?: boolean;
   onClose?: () => void;
   isDrawer?: boolean;
+  onAutoComplete?: (task: Task) => void;
+  autoCompleteLoading?: boolean;
+  actionPlan?: TaskActionPlan | null;
+  onCompleteManualAction?: (actionId: string) => Promise<void>;
+  onSkipAction?: (actionId: string) => Promise<void>;
+  onRetryAction?: (actionId: string) => Promise<void>;
+  onCancelActionPlan?: (planId: string) => Promise<void>;
 }
 
 function PanelContent({
@@ -89,6 +97,8 @@ function PanelContent({
   onCreateComment, onUpdateComment, onDeleteComment, onUpdateTask, onArchiveTask,
   onCreateSubtask,
   onReviewPR, reviewResult, reviewLoading,
+  onAutoComplete, autoCompleteLoading,
+  actionPlan, onCompleteManualAction, onSkipAction, onRetryAction, onCancelActionPlan,
 }: Omit<TaskDetailPanelProps, 'onClose' | 'isDrawer'>) {
   const tools = parseTools(task.suggestedTools);
   const [editingDescription, setEditingDescription] = useState(false);
@@ -385,7 +395,19 @@ function PanelContent({
         onGenerateInstructions={onGenerateInstructions}
         onGenerateCode={onGenerateCode}
         onCreateSubtask={onCreateSubtask}
+        onAutoComplete={onAutoComplete}
+        autoCompleteLoading={autoCompleteLoading}
       />
+
+      {actionPlan && onCompleteManualAction && onSkipAction && onRetryAction && onCancelActionPlan && (
+        <ActionProgressPanel
+          plan={actionPlan}
+          onCompleteManual={onCompleteManualAction}
+          onSkip={onSkipAction}
+          onRetry={onRetryAction}
+          onCancel={onCancelActionPlan}
+        />
+      )}
 
       {/* Suggested Tools */}
       {tools.length > 0 && (

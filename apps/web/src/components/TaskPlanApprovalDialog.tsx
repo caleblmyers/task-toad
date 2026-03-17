@@ -246,11 +246,11 @@ export default function TaskPlanApprovalDialog({
   };
 
   return (
-    <Modal isOpen={true} onClose={onCancel} title="Review Task Plan" size="lg" variant="top-aligned">
+    <Modal isOpen={true} onClose={onCancel} title="Review Plan" size="lg" variant="top-aligned">
       {/* Header */}
       <div className="flex items-start justify-between p-6 border-b border-slate-200">
         <div>
-          <h2 className="text-lg font-semibold text-slate-800">Review Task Plan</h2>
+          <h2 className="text-lg font-semibold text-slate-800">Review Plan</h2>
           {!loading && !error && (
             <p className="text-sm text-slate-500 mt-0.5">
               {tasks.length} epic{tasks.length !== 1 ? 's' : ''} generated based on project scope — deselect any you don&apos;t want, or use &lsquo;+ Add more&rsquo; below
