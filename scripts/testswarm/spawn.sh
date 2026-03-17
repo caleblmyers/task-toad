@@ -23,6 +23,13 @@ const data = {
 require('fs').writeFileSync('$BUGS_FILE', JSON.stringify(data, null, 2) + '\n');
 "
 
+# Initialize test data tracker
+TRACKER_FILE="$MAIN_REPO/.ai/bugs/test-data.json"
+node -e "
+const data = {users:[],orgs:[],projects:[],tasks:[],sprints:[],comments:[],labels:[],webhooks:[],slackIntegrations:[]};
+require('fs').writeFileSync('$TRACKER_FILE', JSON.stringify(data, null, 2) + '\n');
+"
+
 # Testers don't need worktrees — they test against the live server.
 # They run from the main repo directory.
 echo "Testers will run from: $MAIN_REPO"

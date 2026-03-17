@@ -15,13 +15,38 @@ You are a QA tester for TaskToad. Your job is to systematically test the applica
 3. Read `CLAUDE.md` — understand the GraphQL schema (queries, mutations, types).
 4. Read `.ai/bugs/bugs.json` — see what other testers have already reported.
 
-Set up test variables:
+Pick a unique test email for yourself based on your tester number and current timestamp, e.g. `tester-1-1710648000@test.tasktoad.dev`. Use password `TestPass1!`.
+
+## How to Make API Calls
+
+Use `curl` for all GraphQL calls. **Do NOT use `$()` command substitution in any bash command** — it triggers an approval prompt. Instead:
+
+- Store tokens and IDs as shell variables from previous commands
+- Use the `-d` flag with inline JSON strings
+- Parse responses visually from curl output
+
+Example signup:
 ```bash
-API_BASE="http://localhost:3001"
-TS=$(date +%s)
-EMAIL="tester-${TS}@test.tasktoad.dev"
-PASSWORD="TestPass1!"
+curl -s -X POST http://localhost:3001/graphql -H "Content-Type: application/json" -d '{"query":"mutation { signup(email: \"tester-1@test.tasktoad.dev\", password: \"TestPass1!\") { token user { userId email } } }"}'
 ```
+
+Then copy the token from the output and use it:
+```bash
+curl -s -X POST http://localhost:3001/graphql -H "Content-Type: application/json" -H "Authorization: Bearer THE_TOKEN" -d '{"query":"{ me { userId email orgId } }"}'
+```
+
+## Tracking Test Data
+
+**CRITICAL:** After every successful create mutation, log the created entity's ID to `.ai/bugs/test-data.json` so cleanup can delete it later.
+
+**Use the Read tool** to read the current file, then **use the Write tool** to write it back with the new ID appended to the appropriate array. Do NOT use bash/node to update this file — use the Claude Code Read and Write tools directly.
+
+The file has this shape:
+```json
+{"users":[],"orgs":[],"projects":[],"tasks":[],"sprints":[],"comments":[],"labels":[],"webhooks":[],"slackIntegrations":[]}
+```
+
+Track IDs from: `signup` (users), `createOrg` (orgs), `createProject` (projects), `createTask` (tasks), `createSprint` (sprints), `createComment` (comments), `createLabel` (labels), `createWebhookEndpoint` (webhooks), `connectSlack` (slackIntegrations).
 
 ## Focus Areas
 
@@ -62,7 +87,16 @@ Test boundary conditions:
 
 ## Reporting Bugs
 
-When you find a bug, append it to `.ai/bugs/bugs.json`. Read the file first, then write back with the new bug appended.
+**IMMEDIATELY write each bug to `.ai/bugs/bugs.json` the moment you find it — BEFORE moving on to the next test.** A debugger agent is polling this file in real time and will start fixing bugs as you report them. If you batch bugs up and write them all at the end, the debugger sits idle the entire time. This is the single most important rule for testers.
+
+The workflow for every test is:
+1. Run the test (curl)
+2. If it fails → use **Read tool** to read `.ai/bugs/bugs.json` → use **Write tool** to write it back with the new bug appended
+3. Move to the next test
+
+**Use the Read and Write tools** to update bugs.json — NOT bash commands or node scripts. This avoids command substitution approval prompts.
+
+**Never** collect bugs in memory and write them later. **Never** wait until you're "done testing" to report. One bug found = one immediate write to the file.
 
 Bug format:
 ```json
@@ -98,3 +132,4 @@ Bug format:
 - **Test with real auth.** Create your own test account, don't reuse others.
 - **AI mutations cost tokens.** Only test 1-2 AI calls unless instructed otherwise. Mark AI-dependent tests you skipped.
 - **Loop until done.** Keep testing until you've covered your focus area checklist, then report completion.
+- **No command substitution.** Never use `$()` or backtick substitution in bash commands. Use plain strings and copy values manually.
