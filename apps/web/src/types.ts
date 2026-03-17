@@ -18,35 +18,11 @@ export type {
   GitHubInstallation,
   GitHubRepoLink,
   GitHubRepo,
+  ProjectStats,
+  TaskConnection,
+  CloseSprintResult,
+  SprintPlanItem,
 } from '@tasktoad/shared-types';
-
-// Import shared types needed by web-only interfaces below
-import type { Task, Sprint } from '@tasktoad/shared-types';
-
-// Web-only types (query-specific aggregates, not shared with API)
-
-export interface ProjectStats {
-  totalTasks: number;
-  completedTasks: number;
-  overdueTasks: number;
-  completionPercent: number;
-  tasksByStatus: Array<{ label: string; count: number }>;
-  tasksByPriority: Array<{ label: string; count: number }>;
-  tasksByAssignee: Array<{ userId: string; email: string; count: number }>;
-  totalEstimatedHours: number;
-  completedEstimatedHours: number;
-}
-
-export interface TaskConnection {
-  tasks: Task[];
-  hasMore: boolean;
-  total: number;
-}
-
-export interface CloseSprintResult {
-  sprint: Sprint;
-  nextSprint: Sprint | null;
-}
 
 export interface SubtaskPreview {
   title: string;
@@ -91,12 +67,6 @@ export interface ToolSuggestion {
   name: string;
   category: string;
   reason: string;
-}
-
-export interface SprintPlanItem {
-  name: string;
-  taskIds: string[];
-  totalHours: number;
 }
 
 export interface CodeReviewComment {

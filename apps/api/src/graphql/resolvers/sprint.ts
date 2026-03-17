@@ -1,4 +1,5 @@
 import type { Context } from '../context.js';
+export type { Sprint as SharedSprint, CloseSprintResult as SharedCloseSprintResult, SprintPlanItem as SharedSprintPlanItem } from '@tasktoad/shared-types';
 import {
   planSprints as aiPlanSprints,
 } from '../../ai/index.js';

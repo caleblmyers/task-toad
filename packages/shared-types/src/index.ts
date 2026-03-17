@@ -196,3 +196,32 @@ export interface GitHubRepo {
   isPrivate: boolean;
   defaultBranch: string;
 }
+
+export interface ProjectStats {
+  totalTasks: number;
+  completedTasks: number;
+  overdueTasks: number;
+  completionPercent: number;
+  tasksByStatus: Array<{ label: string; count: number }>;
+  tasksByPriority: Array<{ label: string; count: number }>;
+  tasksByAssignee: Array<{ userId: string; email: string; count: number }>;
+  totalEstimatedHours: number;
+  completedEstimatedHours: number;
+}
+
+export interface TaskConnection {
+  tasks: Task[];
+  hasMore: boolean;
+  total: number;
+}
+
+export interface CloseSprintResult {
+  sprint: Sprint;
+  nextSprint: Sprint | null;
+}
+
+export interface SprintPlanItem {
+  name: string;
+  taskIds: string[];
+  totalHours: number;
+}

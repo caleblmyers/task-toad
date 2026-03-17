@@ -13,6 +13,7 @@ const S3_BUCKET = process.env.S3_BUCKET;
 const S3_REGION = process.env.S3_REGION || 'auto';
 const S3_ACCESS_KEY_ID = process.env.S3_ACCESS_KEY_ID;
 const S3_SECRET_ACCESS_KEY = process.env.S3_SECRET_ACCESS_KEY;
+const ATTACHMENT_URL_EXPIRY_SECONDS = parseInt(process.env.ATTACHMENT_URL_EXPIRY_SECONDS || '900', 10);
 
 /** Whether S3 storage is configured. When false, local disk fallback is used. */
 export const isS3Configured =
@@ -64,10 +65,10 @@ export async function uploadToS3(
   );
 }
 
-/** Generate a presigned download URL (default 15 min expiry). */
+/** Generate a presigned download URL (default from ATTACHMENT_URL_EXPIRY_SECONDS or 900s). */
 export async function getSignedDownloadUrl(
   key: string,
-  expiresIn = 900,
+  expiresIn = ATTACHMENT_URL_EXPIRY_SECONDS,
 ): Promise<string> {
   const client = getS3Client();
   return getSignedUrl(
