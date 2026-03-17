@@ -5,6 +5,14 @@ import { requireProjectAccess } from './auth.js';
 
 const VALID_ROLES: readonly string[] = ['viewer', 'editor', 'admin'];
 
+function safeParseJSON(value: string, fieldName: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    throw new ValidationError(`${fieldName} must be valid JSON`);
+  }
+}
+
 const TriggerSchema = z.object({
   event: z.string(),
   condition: z.record(z.string(), z.unknown()).optional(),
@@ -156,11 +164,11 @@ export const projectRoleMutations = {
   ) => {
     const { user } = await requireProjectAdmin(context, args.projectId);
     // Validate JSON structure
-    const triggerResult = TriggerSchema.safeParse(JSON.parse(args.trigger));
+    const triggerResult = TriggerSchema.safeParse(safeParseJSON(args.trigger, 'trigger'));
     if (!triggerResult.success) {
       throw new ValidationError(`Invalid trigger: ${triggerResult.error.message}`);
     }
-    const actionResult = ActionSchema.safeParse(JSON.parse(args.action));
+    const actionResult = ActionSchema.safeParse(safeParseJSON(args.action, 'action'));
     if (!actionResult.success) {
       throw new ValidationError(`Invalid action: ${actionResult.error.message}`);
     }
@@ -186,13 +194,13 @@ export const projectRoleMutations = {
     await requireProjectAdmin(context, rule.projectId);
 
     if (args.trigger !== undefined && args.trigger !== null) {
-      const triggerResult = TriggerSchema.safeParse(JSON.parse(args.trigger));
+      const triggerResult = TriggerSchema.safeParse(safeParseJSON(args.trigger, 'trigger'));
       if (!triggerResult.success) {
         throw new ValidationError(`Invalid trigger: ${triggerResult.error.message}`);
       }
     }
     if (args.action !== undefined && args.action !== null) {
-      const actionResult = ActionSchema.safeParse(JSON.parse(args.action));
+      const actionResult = ActionSchema.safeParse(safeParseJSON(args.action, 'action'));
       if (!actionResult.success) {
         throw new ValidationError(`Invalid action: ${actionResult.error.message}`);
       }

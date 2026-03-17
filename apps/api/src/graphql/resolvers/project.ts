@@ -272,3 +272,11 @@ export const projectMutations = {
     return result;
   },
 };
+
+// ── Project field resolvers ──
+
+export const projectFieldResolvers = {
+  Project: {
+    createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
+  },
+};

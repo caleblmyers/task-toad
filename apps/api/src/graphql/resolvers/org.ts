@@ -71,6 +71,7 @@ export const orgMutations = {
 
 export const orgFieldResolvers = {
   Org: {
+    createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
     hasApiKey: (parent: { anthropicApiKeyEncrypted?: string | null }) => !!parent.anthropicApiKeyEncrypted,
     apiKeyHint: (parent: { anthropicApiKeyEncrypted?: string | null }) => {
       if (!parent.anthropicApiKeyEncrypted) return null;

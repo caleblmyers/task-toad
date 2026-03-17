@@ -334,6 +334,7 @@ export const sprintMutations = {
 
 export const sprintFieldResolvers = {
   Sprint: {
+    createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
     closedAt: (parent: { closedAt: Date | null }) =>
       parent.closedAt ? parent.closedAt.toISOString() : null,
   },

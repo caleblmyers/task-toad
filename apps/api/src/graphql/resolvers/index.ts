@@ -1,6 +1,6 @@
 import { authQueries, authMutations, authFieldResolvers } from './auth.js';
 import { orgQueries, orgMutations, orgFieldResolvers } from './org.js';
-import { projectQueries, projectMutations } from './project.js';
+import { projectQueries, projectMutations, projectFieldResolvers } from './project.js';
 import { taskQueries, taskMutations, taskFieldResolvers } from './task.js';
 import { sprintQueries, sprintMutations, sprintFieldResolvers } from './sprint.js';
 import { aiMutations, aiQueries } from './ai.js';
@@ -47,6 +47,7 @@ export const resolvers = {
   User: { ...authFieldResolvers.User },
   OrgInvite: { ...authFieldResolvers.OrgInvite },
   Org: { ...orgFieldResolvers.Org },
+  Project: { ...projectFieldResolvers.Project },
   Task: { ...taskFieldResolvers.Task },
   CustomFieldValue: { ...taskFieldResolvers.CustomFieldValue },
   GitHubInstallation: { ...githubFieldResolvers.GitHubInstallation },
@@ -54,4 +55,7 @@ export const resolvers = {
   Notification: { ...notificationFieldResolvers.Notification },
   SlackIntegration: { ...slackFieldResolvers.SlackIntegration },
   SlackUserMapping: { ...slackFieldResolvers.SlackUserMapping },
+  Report: {
+    createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
+  },
 };

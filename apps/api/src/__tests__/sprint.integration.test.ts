@@ -19,7 +19,7 @@ let projectId: string;
 function makeContext(): Context {
   return {
     user: { userId, email: 'sprint-test@example.com', orgId, role: 'org:admin', emailVerifiedAt: null },
-    org: { orgId, name: 'Test Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80 },
+    org: { orgId, name: 'Test Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, createdAt: new Date() },
     prisma,
     loaders: createLoaders(prisma),
   };
