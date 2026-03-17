@@ -204,3 +204,16 @@ Format:
 ### Reviewer — Positive (Wave 19)
 **Observation:** Task-005 swarm workflow improvements (auto-prisma, validate-tasks.sh, role stripping) directly addressed issues logged in previous waves. Good example of using issues.md feedback to improve tooling.
 **Why it worked:** The task was directly derived from reviewer pain points documented in earlier waves.
+
+### Reviewer — Positive (Wave 20)
+**Observation:** All 6 tasks merged successfully. Workers 1 and 3 passed first review. Worker 2 required one rejection for CLAUDE.md worker role leak (recurring issue) but the code itself was clean.
+**Why it worked:** Tasks were well-scoped with clear acceptance criteria. No file overlap between workers. merge-worker.sh auto-handled pnpm install for new dependencies.
+
+### Reviewer — Positive (Wave 20)
+**Observation:** Worker-2's S3 migration was a clean implementation — lazy S3Client init, proper fallback to local disk, presigned URL redirects, health check integration. No security shortcuts.
+**Why it worked:** Task description was extremely detailed with step-by-step implementation plan and specific file modifications.
+
+### Reviewer — task-006 (Wave 20)
+**Issue:** Worker-3 needed two review passes — first for lockfile conflict (hadn't rebased after task-005 merge), second after rebase. Not the worker's fault — they completed task-006 before task-005 was merged to main.
+**Impact:** One extra review cycle, ~2 min delay.
+**Suggestion:** When a worker has multiple tasks on the same branch, the reviewer should merge them together if possible, or ensure the worker rebases between tasks.

@@ -41,7 +41,7 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 
 ### A11: Accessibility
 **Touches:** `apps/web/src/components/`
-- [ ] Color contrast audit — full WCAG AA 4.5:1 audit of all Tailwind color pairings
+- [x] ~~Color contrast audit — full WCAG AA 4.5:1 audit of all Tailwind color pairings~~ — done in Wave 20 (text-slate-400→500, text-slate-500→700 on bg-slate-100)
 
 ### W2: Advanced Tasks & Filters
 **Touches:** `prisma/schema/task.prisma`, `typedefs/task.ts`, `resolvers/task.ts`, frontend
@@ -62,7 +62,7 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 - [ ] Database backup strategy — verify Railway automated backups, document restore
 - [x] ~~Wire Prometheus resolver duration metrics~~ — done in Wave 17 (yoga plugin + Prisma pool interval)
 - [x] ~~Enable Railway deploy webhook in GitHub Actions~~ — done in Wave 17 (conditional deploy + smoke test job)
-- [ ] Object storage for attachments — migrate from local disk to S3/R2; current hardening (Content-Disposition, type validation) is interim only
+- [x] ~~Object storage for attachments — migrate from local disk to S3/R2~~ — done in Wave 20 (S3 with local fallback, health check, presigned URLs)
 
 ### I1: Integration Completeness
 **Touches:** `apps/api/src/utils/webhookDispatcher.ts`, `apps/api/src/slack/`, `apps/api/src/github/`
@@ -77,10 +77,10 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 
 ### S1: Styling & Branding
 **Touches:** `apps/web/src/components/shared/`, `apps/web/tailwind.config.js`
-- [ ] Consistent spacing/typography scale — audit and normalize across components
+- [x] ~~Consistent spacing/typography scale — audit and normalize across components~~ — done in Wave 20 (TaskDetailPanel, Projects, BacklogView)
 - [x] ~~SVG favicon~~ — done in Wave 19 (frog silhouette SVG + PNG fallback)
 - [x] ~~Social preview meta tags~~ — done in Wave 19 (og:image, og:title, twitter:card)
-- [ ] PWA service worker — offline caching via workbox or custom SW
+- [x] ~~PWA service worker — offline caching via workbox~~ — done in Wave 20 (vite-plugin-pwa, NetworkFirst API cache, autoUpdate)
 - [x] ~~Dark mode for remaining modals~~ — done in Wave 19 (all 12 modals)
 
 ### Misc Follow-ups
@@ -108,9 +108,20 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 
 ## Follow-ups from Wave 19
 
-- [ ] Have API also import from `@tasktoad/shared-types` for resolver return type annotations (task-006 only wired up web)
-- [ ] E2E tests: add export route handler test via supertest (task-001 verified export data via direct DB query, not the actual REST endpoint)
+- [x] ~~Have API also import from `@tasktoad/shared-types` for resolver return type annotations~~ — done in Wave 20 (task.ts + project.ts re-exports)
+- [x] ~~E2E tests: add export route handler test via supertest~~ — done in Wave 20 (5 tests: JSON, CSV, activity, auth, tenant isolation)
 - [ ] E2E tests: add notification/SSE flow test coverage
 - [ ] Dark mode: verify dark mode contrast meets WCAG AA (already in F1 todos but reinforced by the 12-modal batch)
-- [ ] Social preview: create a proper composite og:image (current uses logo.png which may be too small for social cards)
+- [x] ~~Social preview: create a proper composite og:image~~ — done in Wave 20 (1200x630 SVG with toad icon + brand colors)
 - [ ] Task descriptions creating new workspace packages should note: point `types` to source (`src/index.ts`) not dist (learned from task-006 rejection)
+
+## Follow-ups from Wave 20
+
+- [ ] S3 upload tests — integration tests for S3 upload/download/delete (currently only tested manually)
+- [ ] S3 presigned URL expiry configuration — make the 15-min default configurable via env var
+- [ ] PWA offline fallback page — create `offline.html` with "You are offline" message for uncached routes
+- [ ] PWA cache invalidation strategy — document how to force SW update on breaking API changes
+- [ ] og:image PNG fallback — some social platforms (LinkedIn, older WhatsApp) don't render SVG og:images; generate a PNG version
+- [ ] Export test rate limit handling — tenant isolation test may hit 429 due to strict 5-req/10-min limit; consider relaxing for test env
+- [ ] Extend shared-types usage — currently only 2 re-exports in API resolvers; expand to more resolvers and web client types
+- [ ] S3 multipart upload — current 10MB limit uses single PUT; for larger files, implement multipart upload

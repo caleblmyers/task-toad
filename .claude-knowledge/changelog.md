@@ -6,6 +6,35 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-16 (cont.)
 
+### Wave 20: A11+F1 + D1 + Follow-ups+S1 (3 workers, 6 tasks)
+
+**A11+F1 — WCAG AA Contrast & Spacing (Worker 1):**
+- Color contrast audit: replaced `text-slate-400` with `text-slate-500` for readable text (timestamps, labels), `text-slate-500` with `text-slate-700` on `bg-slate-100` badges — all pairings now meet 4.5:1
+- Spacing/typography normalization across Home, Projects, TaskDetailPanel, BacklogView — consistent padding scales, heading sizes
+
+**D1 — Object Storage (Worker 2):**
+- Migrated file attachments from local disk (multer) to S3-compatible object storage (`@aws-sdk/client-s3`)
+- Presigned URL redirects for downloads, memoryStorage for uploads, local disk fallback when `S3_BUCKET` unset
+- Health check reports S3 connectivity status
+- Documented deployment strategy in decisions.md (S3/R2, DB backup, monitoring recommendations)
+
+**Follow-ups+S1 — PWA & Wave 19 Follow-ups (Worker 3):**
+- PWA service worker via vite-plugin-pwa (autoUpdate, NetworkFirst API caching, 37 precached entries)
+- E2E supertest export tests (JSON, CSV, activity, auth 401, tenant isolation)
+- API now imports from `@tasktoad/shared-types` (task.ts + project.ts resolver type annotations)
+- Composite og:image SVG (1200x630, brand colors, toad icon)
+
+**Process fix:** Added `git update-index --assume-unchanged CLAUDE.md` to spawn.sh to prevent workers from committing the swarm role section
+
+**Open follow-ups:**
+- S3 integration tests, presigned URL expiry config, multipart upload for large files
+- PWA offline fallback page, cache invalidation docs
+- og:image PNG fallback for platforms that don't render SVG
+- Export test rate limit handling (429 risk)
+- Extend shared-types usage across more resolvers
+- E2E notification/SSE flow test coverage
+- Dark mode WCAG AA contrast verification
+
 ### Pre-wave fix: Query cost limit rejects tasks query
 - Added `'tasks'` to `SINGLE_OBJECT_FIELDS` in `schema.ts` — the `tasks` query returns `TaskConnection` (single wrapper object), not a list, but was treated as a list with 50x multiplier, causing compounding 50×50 = 2500x cost (430K > 100K limit). Fix drops cost to ~2-3K.
 
