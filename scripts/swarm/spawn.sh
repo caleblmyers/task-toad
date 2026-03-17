@@ -60,6 +60,10 @@ for i in $(seq 1 "$WORKER_COUNT"); do
   echo "Installing dependencies for worker-$i..."
   (cd "$WORKER_DIR" && pnpm install --frozen-lockfile --prefer-offline 2>/dev/null) || true
 
+  # Generate Prisma client so workers have up-to-date types
+  echo "Generating Prisma client for worker-$i..."
+  (cd "$WORKER_DIR/apps/api" && npx prisma generate 2>&1) || echo "Warning: prisma generate failed (non-fatal)"
+
   # Append role prompt to CLAUDE.md
   if [ -f "$PROMPTS_DIR/worker.md" ]; then
     PROMPT=$(sed \
@@ -67,7 +71,7 @@ for i in $(seq 1 "$WORKER_COUNT"); do
       -e "s|{{MAIN_REPO}}|$MAIN_REPO|g" \
       -e "s|{{BRANCH}}|$BRANCH|g" \
       "$PROMPTS_DIR/worker.md")
-    printf '\n\n---\n\n%s\n' "$PROMPT" >> "$WORKER_DIR/CLAUDE.md"
+    printf '\n\n<!-- swarm-role -->\n---\n\n%s\n' "$PROMPT" >> "$WORKER_DIR/CLAUDE.md"
   fi
 
   echo "  -> $WORKER_DIR (branch: $BRANCH)"
@@ -90,11 +94,15 @@ else
 
   (cd "$REVIEWER_DIR" && pnpm install --frozen-lockfile --prefer-offline 2>/dev/null) || true
 
+  # Generate Prisma client for reviewer
+  echo "Generating Prisma client for reviewer..."
+  (cd "$REVIEWER_DIR/apps/api" && npx prisma generate 2>&1) || echo "Warning: prisma generate failed (non-fatal)"
+
   if [ -f "$PROMPTS_DIR/reviewer.md" ]; then
     PROMPT=$(sed \
       -e "s|{{MAIN_REPO}}|$MAIN_REPO|g" \
       "$PROMPTS_DIR/reviewer.md")
-    printf '\n\n---\n\n%s\n' "$PROMPT" >> "$REVIEWER_DIR/CLAUDE.md"
+    printf '\n\n<!-- swarm-role -->\n---\n\n%s\n' "$PROMPT" >> "$REVIEWER_DIR/CLAUDE.md"
   fi
 
   echo "  -> $REVIEWER_DIR (branch: $REVIEWER_BRANCH)"

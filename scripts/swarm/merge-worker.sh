@@ -91,6 +91,17 @@ git -C "$MAIN_REPO" merge --squash "$BRANCH" || {
   exit 1
 }
 
+# Strip swarm role content from CLAUDE.md if present
+CLAUDE_MD="$MAIN_REPO/CLAUDE.md"
+if [ -f "$CLAUDE_MD" ] && grep -q '<!-- swarm-role -->' "$CLAUDE_MD"; then
+  echo "Stripping swarm role content from CLAUDE.md..."
+  # Remove everything from the delimiter line onwards
+  sed -i '/<!-- swarm-role -->/,$d' "$CLAUDE_MD"
+  # Remove any trailing blank lines left behind
+  sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$CLAUDE_MD"
+  git -C "$MAIN_REPO" add CLAUDE.md
+fi
+
 echo ""
 echo "Squash merge staged. Review with 'git diff --cached' then commit."
 echo "Suggested: git commit -m 'swarm(<worker>): [task-XXX] description'"
