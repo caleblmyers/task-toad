@@ -72,6 +72,8 @@ for i in $(seq 1 "$WORKER_COUNT"); do
       -e "s|{{BRANCH}}|$BRANCH|g" \
       "$PROMPTS_DIR/worker.md")
     printf '\n\n<!-- swarm-role -->\n---\n\n%s\n' "$PROMPT" >> "$WORKER_DIR/CLAUDE.md"
+    # Prevent workers from accidentally committing the role section
+    git -C "$WORKER_DIR" update-index --assume-unchanged CLAUDE.md
   fi
 
   echo "  -> $WORKER_DIR (branch: $BRANCH)"
@@ -103,6 +105,8 @@ else
       -e "s|{{MAIN_REPO}}|$MAIN_REPO|g" \
       "$PROMPTS_DIR/reviewer.md")
     printf '\n\n<!-- swarm-role -->\n---\n\n%s\n' "$PROMPT" >> "$REVIEWER_DIR/CLAUDE.md"
+    # Prevent reviewer from accidentally committing the role section
+    git -C "$REVIEWER_DIR" update-index --assume-unchanged CLAUDE.md
   fi
 
   echo "  -> $REVIEWER_DIR (branch: $REVIEWER_BRANCH)"
