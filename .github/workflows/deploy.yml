@@ -25,15 +25,76 @@ jobs:
       - run: pnpm build
       - run: pnpm typecheck
       - run: pnpm lint
+      - run: pnpm test
 
-  # Railway auto-deploys on push to main when configured.
-  # This workflow validates the build before Railway picks it up.
-  # To enable Railway deploy hook, add RAILWAY_DEPLOY_WEBHOOK secret
-  # and uncomment the deploy job below.
-  #
-  # deploy:
-  #   needs: build-and-test
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Trigger Railway deploy
-  #       run: curl -X POST "${{ secrets.RAILWAY_DEPLOY_WEBHOOK }}"
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && vars.RAILWAY_DEPLOY_ENABLED == 'true'
+    steps:
+      - name: Trigger Railway deploy
+        run: curl -sf -X POST "${{ secrets.RAILWAY_DEPLOY_WEBHOOK }}"
+
+  smoke-test:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Push database schema
+        run: npx prisma db push --skip-generate
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      - name: Generate Prisma client
+        run: npx prisma generate
+        working-directory: apps/api
+      - name: Build API
+        run: pnpm --filter api build
+      - name: Start server
+        run: node apps/api/dist/index.js &
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+          JWT_SECRET: test-secret
+          ENCRYPTION_MASTER_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          NODE_ENV: production
+          PORT: '3001'
+      - name: Wait for server to be ready
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3001/api/health > /dev/null 2>&1; then
+              echo "Server is ready"
+              exit 0
+            fi
+            echo "Waiting for server... attempt $i"
+            sleep 2
+          done
+          echo "Server failed to start"
+          exit 1
+      - name: Health check smoke test
+        run: |
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:3001/api/health)
+          if [ "$STATUS" != "200" ]; then
+            echo "Health check failed with status $STATUS"
+            exit 1
+          fi
+          echo "Health check passed with status $STATUS"

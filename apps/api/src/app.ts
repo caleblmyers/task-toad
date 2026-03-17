@@ -20,7 +20,7 @@ import { sseManager } from './utils/sseManager.js';
 import { jwtVerify } from 'jose';
 import { JWT_SECRET } from './graphql/context.js';
 import crypto from 'crypto';
-import { register, httpRequestDuration, httpRequestsTotal } from './utils/metrics.js';
+import { register, httpRequestDuration, httpRequestsTotal, graphqlResolverDuration } from './utils/metrics.js';
 import { prisma as sharedPrisma } from './graphql/context.js';
 
 // Validate required environment variables at startup
@@ -259,6 +259,23 @@ const yoga = createYoga({
       addValidationRule(depthLimitRule(10));
       addValidationRule(costLimitRule(Number(process.env.MAX_QUERY_COST) || 100000));
     } },
+    {
+      onExecute() {
+        const start = process.hrtime.bigint();
+        return {
+          onExecuteDone({ args }: { args: { operationName?: string | null; document: { definitions: ReadonlyArray<{ kind: string; name?: { value: string } }> } } }) {
+            const durationSec = Number(process.hrtime.bigint() - start) / 1e9;
+            const operationName =
+              args.operationName ??
+              (args.document.definitions.find(
+                (d) => d.kind === 'OperationDefinition' && d.name?.value,
+              ) as { name?: { value: string } } | undefined)?.name?.value ??
+              'anonymous';
+            graphqlResolverDuration.observe({ resolver_name: operationName }, durationSec);
+          },
+        };
+      },
+    },
     {
       onResultProcess({ result }: { result: { errors?: ReadonlyArray<{ message: string; extensions?: Record<string, unknown> }> } }) {
         if (!result.errors) return;
