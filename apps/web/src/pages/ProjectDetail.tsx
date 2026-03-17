@@ -677,6 +677,9 @@ export default function ProjectDetail() {
 
       {/* Toast notifications */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
+
+      {/* Confirm dialog for nav-away during AI generation */}
+      <d.ConfirmDialogPortal />
     </div>
   );
 }

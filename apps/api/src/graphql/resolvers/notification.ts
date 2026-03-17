@@ -2,6 +2,8 @@ import type { Context } from '../context.js';
 import { NotFoundError } from '../errors.js';
 import { requireAuth, requireOrg } from './auth.js';
 
+export type { Notification as SharedNotification } from '@tasktoad/shared-types';
+
 // ── Notification queries ──
 
 export const notificationQueries = {

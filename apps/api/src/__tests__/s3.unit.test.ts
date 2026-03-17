@@ -132,6 +132,96 @@ describe('S3 utilities', () => {
       const { isS3Configured } = await import('../utils/s3.js');
       expect(isS3Configured).toBe(true);
     });
+
+    it('buildS3Key handles filenames with spaces and special characters', async () => {
+      const { buildS3Key } = await import('../utils/s3.js');
+      const key = buildS3Key('org-1', 'task-2', 'my report (final).pdf');
+      expect(key).toMatch(/^attachments\/org-1\/task-2\/\d+-my report \(final\)\.pdf$/);
+    });
+
+    it('buildS3Key handles unicode filenames', async () => {
+      const { buildS3Key } = await import('../utils/s3.js');
+      const key = buildS3Key('org-1', 'task-2', '日本語ファイル.txt');
+      expect(key).toMatch(/^attachments\/org-1\/task-2\/\d+-日本語ファイル\.txt$/);
+    });
+
+    it('uploadToS3 propagates network errors', async () => {
+      const { uploadToS3 } = await import('../utils/s3.js');
+      mockSend.mockRejectedValueOnce(new Error('Network timeout'));
+      await expect(uploadToS3('key', Buffer.from('x'), 'text/plain')).rejects.toThrow('Network timeout');
+    });
+
+    it('deleteFromS3 propagates errors', async () => {
+      const { deleteFromS3 } = await import('../utils/s3.js');
+      mockSend.mockRejectedValueOnce(new Error('Access Denied'));
+      await expect(deleteFromS3('key')).rejects.toThrow('Access Denied');
+    });
+  });
+
+  describe('with custom S3 endpoint', () => {
+    beforeEach(() => {
+      process.env.S3_BUCKET = 'test-bucket';
+      process.env.S3_ACCESS_KEY_ID = 'test-key';
+      process.env.S3_SECRET_ACCESS_KEY = 'test-secret';
+      process.env.S3_REGION = 'us-east-1';
+      process.env.S3_ENDPOINT = 'https://minio.local:9000';
+      mockSend.mockReset();
+      vi.resetModules();
+    });
+
+    afterEach(() => {
+      delete process.env.S3_BUCKET;
+      delete process.env.S3_ACCESS_KEY_ID;
+      delete process.env.S3_SECRET_ACCESS_KEY;
+      delete process.env.S3_REGION;
+      delete process.env.S3_ENDPOINT;
+    });
+
+    it('creates S3Client with endpoint and forcePathStyle', async () => {
+      const { S3Client } = await import('@aws-sdk/client-s3');
+      const { uploadToS3 } = await import('../utils/s3.js');
+      mockSend.mockResolvedValueOnce({});
+      await uploadToS3('key', Buffer.from('x'), 'text/plain');
+
+      expect(S3Client).toHaveBeenCalledWith(
+        expect.objectContaining({
+          endpoint: 'https://minio.local:9000',
+          forcePathStyle: true,
+        }),
+      );
+    });
+  });
+
+  describe('with custom ATTACHMENT_URL_EXPIRY_SECONDS', () => {
+    beforeEach(() => {
+      process.env.S3_BUCKET = 'test-bucket';
+      process.env.S3_ACCESS_KEY_ID = 'test-key';
+      process.env.S3_SECRET_ACCESS_KEY = 'test-secret';
+      process.env.S3_REGION = 'us-east-1';
+      process.env.ATTACHMENT_URL_EXPIRY_SECONDS = '3600';
+      mockSend.mockReset();
+      mockGetSignedUrl.mockReset().mockResolvedValue('https://s3.example.com/signed-url');
+      vi.resetModules();
+    });
+
+    afterEach(() => {
+      delete process.env.S3_BUCKET;
+      delete process.env.S3_ACCESS_KEY_ID;
+      delete process.env.S3_SECRET_ACCESS_KEY;
+      delete process.env.S3_REGION;
+      delete process.env.ATTACHMENT_URL_EXPIRY_SECONDS;
+    });
+
+    it('uses ATTACHMENT_URL_EXPIRY_SECONDS env var as default expiry', async () => {
+      const { getSignedDownloadUrl } = await import('../utils/s3.js');
+      await getSignedDownloadUrl('key');
+
+      expect(mockGetSignedUrl).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        { expiresIn: 3600 },
+      );
+    });
   });
 
   describe('when S3 is NOT configured', () => {

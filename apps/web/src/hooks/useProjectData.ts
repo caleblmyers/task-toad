@@ -6,6 +6,7 @@ import { PROJECT_QUERY, ORG_USERS_QUERY, PROJECT_STATS_QUERY, UPDATE_PROJECT_MUT
 import { useTaskCRUD } from './useTaskCRUD';
 import { useSprintManagement } from './useSprintManagement';
 import { useAIGeneration } from './useAIGeneration';
+import { useConfirmDialog } from '../components/shared/ConfirmDialog';
 import { parseStatuses } from '../utils/jsonHelpers';
 import type { Task, TaskPlanPreview, Sprint, OrgUser, CloseSprintResult, Project, Comment, Activity, ProjectStats, Label } from '../types';
 
@@ -139,6 +140,9 @@ export interface ProjectData {
   // Refs
   titleEditRef: React.RefObject<HTMLInputElement>;
   abortRef: React.MutableRefObject<AbortController | null>;
+
+  // Confirm dialog portal (for nav-away confirmation)
+  ConfirmDialogPortal: () => JSX.Element | null;
 }
 
 export function useProjectData(): ProjectData {
@@ -269,21 +273,29 @@ export function useProjectData(): ProjectData {
   const isGeneratingRef = useRef(false);
   isGeneratingRef.current = ai.isGenerating;
 
+  const { confirm: confirmNavAway, ConfirmDialogPortal } = useConfirmDialog();
+  const confirmNavAwayRef = useRef(confirmNavAway);
+  confirmNavAwayRef.current = confirmNavAway;
+
   useEffect(() => {
     if (!ai.isGenerating) return;
     window.history.pushState(null, '', window.location.href);
     const handlePopState = () => {
       if (!isGeneratingRef.current) return;
-      const leave = window.confirm(
-        'An AI generation is in progress. If you leave, the request will be cancelled.\n\nAre you sure you want to leave?'
-      );
-      if (leave) {
-        ai.abortRef.current?.abort();
-        ai.abortRef.current = null;
-        window.history.back();
-      } else {
-        window.history.pushState(null, '', window.location.href);
-      }
+      window.history.pushState(null, '', window.location.href);
+      confirmNavAwayRef.current({
+        title: 'Leave page?',
+        message: 'An AI generation is in progress. If you leave, the request will be cancelled.',
+        confirmLabel: 'Leave',
+        cancelLabel: 'Stay',
+        variant: 'warning',
+      }).then((leave) => {
+        if (leave) {
+          ai.abortRef.current?.abort();
+          ai.abortRef.current = null;
+          window.history.back();
+        }
+      });
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -433,5 +445,8 @@ export function useProjectData(): ProjectData {
     // Refs
     titleEditRef: taskCrud.titleEditRef,
     abortRef: ai.abortRef,
+
+    // Confirm dialog portal
+    ConfirmDialogPortal,
   };
 }
