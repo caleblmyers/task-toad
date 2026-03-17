@@ -51,6 +51,39 @@ export const webhookQueries = {
       createdAt: d.createdAt.toISOString(),
       completedAt: d.completedAt?.toISOString() ?? null,
       nextRetryAt: d.nextRetryAt?.toISOString() ?? null,
+      deadLetterAt: d.deadLetterAt?.toISOString() ?? null,
+    }));
+  },
+
+  deadLetterDeliveries: async (
+    _parent: unknown,
+    args: { endpointId: string },
+    context: Context
+  ) => {
+    const user = requireAdmin(context);
+    const endpoint = await context.prisma.webhookEndpoint.findUnique({
+      where: { id: args.endpointId },
+    });
+    if (!endpoint || endpoint.orgId !== user.orgId) {
+      throw new NotFoundError('Webhook endpoint not found');
+    }
+
+    const deliveries = await context.prisma.webhookDelivery.findMany({
+      where: {
+        endpointId: args.endpointId,
+        status: 'failed',
+        deadLetterAt: { not: null },
+      },
+      orderBy: { deadLetterAt: 'desc' },
+      take: 50,
+    });
+
+    return deliveries.map((d) => ({
+      ...d,
+      createdAt: d.createdAt.toISOString(),
+      completedAt: d.completedAt?.toISOString() ?? null,
+      nextRetryAt: d.nextRetryAt?.toISOString() ?? null,
+      deadLetterAt: d.deadLetterAt?.toISOString() ?? null,
     }));
   },
 };
@@ -256,6 +289,7 @@ export const webhookMutations = {
       createdAt: updated.createdAt.toISOString(),
       completedAt: updated.completedAt?.toISOString() ?? null,
       nextRetryAt: updated.nextRetryAt?.toISOString() ?? null,
+      deadLetterAt: updated.deadLetterAt?.toISOString() ?? null,
     };
   },
 };

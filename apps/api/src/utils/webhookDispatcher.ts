@@ -96,6 +96,7 @@ async function attemptDelivery(
           attemptCount: newAttemptCount,
           responseBody: message.slice(0, 500),
           completedAt: new Date(),
+          deadLetterAt: new Date(),
         },
       });
     } else {
@@ -225,6 +226,7 @@ export async function replayDelivery(
       completedAt: null,
       responseBody: null,
       statusCode: null,
+      deadLetterAt: null,
     },
   });
 

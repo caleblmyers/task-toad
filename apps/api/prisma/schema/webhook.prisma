@@ -26,9 +26,10 @@ model WebhookDelivery {
   statusCode   Int?      @map("status_code")
   responseBody String?   @map("response_body") // first 500 chars
   attemptCount Int       @default(0) @map("attempt_count")
-  nextRetryAt  DateTime? @map("next_retry_at")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  completedAt  DateTime? @map("completed_at")
+  nextRetryAt    DateTime? @map("next_retry_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  completedAt    DateTime? @map("completed_at")
+  deadLetterAt   DateTime? @map("dead_letter_at")
 
   endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
 

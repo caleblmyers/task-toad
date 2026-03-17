@@ -20,6 +20,7 @@ export const webhookTypeDefs = /* GraphQL */ `
     nextRetryAt: String
     createdAt: String!
     completedAt: String
+    deadLetterAt: String
   }
 `;
 
@@ -28,6 +29,8 @@ export const webhookQueryFields = /* GraphQL */ `
   webhookEndpoints: [WebhookEndpoint!]!
   """List recent delivery attempts for a specific webhook endpoint."""
   webhookDeliveries(endpointId: ID!, limit: Int): [WebhookDelivery!]!
+  """List failed deliveries in the dead letter queue for a specific endpoint."""
+  deadLetterDeliveries(endpointId: ID!): [WebhookDelivery!]!
 `;
 
 export const webhookMutationFields = /* GraphQL */ `

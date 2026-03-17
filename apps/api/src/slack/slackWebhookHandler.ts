@@ -204,6 +204,60 @@ export async function handleSlackCommand(req: Request, res: Response): Promise<v
       log.error({ err }, 'Failed to get project status from Slack command');
       res.json({ response_type: 'ephemeral', text: 'Failed to fetch project status. Please try again.' });
     }
+  } else if (action === 'link' && title) {
+    try {
+      const integration = await prisma.slackIntegration.findFirst({
+        where: { teamId: team_id, enabled: true },
+      });
+
+      if (!integration) {
+        res.json({ response_type: 'ephemeral', text: 'No TaskToad organization is linked to this Slack workspace. Connect Slack in your TaskToad org settings.' });
+        return;
+      }
+
+      const email = title.toLowerCase();
+      const user = await prisma.user.findFirst({
+        where: { email, orgId: integration.orgId },
+      });
+
+      if (!user) {
+        res.json({ response_type: 'ephemeral', text: `No TaskToad user found with email \`${email}\` in this organization. Make sure you use the email address associated with your TaskToad account.` });
+        return;
+      }
+
+      await prisma.slackUserMapping.upsert({
+        where: { slackTeamId_slackUserId: { slackTeamId: team_id, slackUserId } },
+        update: { userId: user.userId },
+        create: {
+          slackTeamId: team_id,
+          slackUserId,
+          userId: user.userId,
+          orgId: integration.orgId,
+        },
+      });
+
+      res.json({ response_type: 'ephemeral', text: `Your Slack account has been linked to TaskToad user \`${email}\`. Task commands will now be personalized for you.` });
+    } catch (err) {
+      log.error({ err }, 'Failed to link Slack user');
+      res.json({ response_type: 'ephemeral', text: 'Failed to link your account. Please try again.' });
+    }
+  } else if (action === 'link' && !title) {
+    res.json({ response_type: 'ephemeral', text: 'Usage: `/tasktoad link your@email.com`' });
+  } else if (action === 'unlink') {
+    try {
+      const deleted = await prisma.slackUserMapping.deleteMany({
+        where: { slackTeamId: team_id, slackUserId },
+      });
+
+      if (deleted.count > 0) {
+        res.json({ response_type: 'ephemeral', text: 'Your Slack account has been unlinked from TaskToad.' });
+      } else {
+        res.json({ response_type: 'ephemeral', text: 'Your Slack account is not currently linked to a TaskToad user.' });
+      }
+    } catch (err) {
+      log.error({ err }, 'Failed to unlink Slack user');
+      res.json({ response_type: 'ephemeral', text: 'Failed to unlink your account. Please try again.' });
+    }
   } else if (action === 'help' || !action) {
     res.json({
       response_type: 'ephemeral',
@@ -211,6 +265,8 @@ export async function handleSlackCommand(req: Request, res: Response): Promise<v
         '`/tasktoad create <title>` — Create a new task\n' +
         '`/tasktoad list` — Show your recent tasks\n' +
         '`/tasktoad status` — Show project summary\n' +
+        '`/tasktoad link <email>` — Link your Slack account to TaskToad\n' +
+        '`/tasktoad unlink` — Unlink your Slack account from TaskToad\n' +
         '`/tasktoad help` — Show this help message',
     });
   } else {
