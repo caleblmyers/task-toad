@@ -8,7 +8,7 @@ const log = createChildLogger('recurrence');
  * Fields: minute hour dayOfMonth month dayOfWeek
  * Supports: exact numbers, *, and step syntax (e.g. * /5)
  */
-function cronMatchesNow(cronExpr: string, now: Date): boolean {
+export function cronMatchesNow(cronExpr: string, now: Date): boolean {
   const parts = cronExpr.trim().split(/\s+/);
   if (parts.length !== 5) return false;
 
@@ -26,7 +26,7 @@ function cronMatchesNow(cronExpr: string, now: Date): boolean {
   return true;
 }
 
-function fieldMatches(field: string, value: number): boolean {
+export function fieldMatches(field: string, value: number): boolean {
   // Handle comma-separated values
   if (field.includes(',')) {
     return field.split(',').some(part => fieldMatches(part.trim(), value));

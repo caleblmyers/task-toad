@@ -38,6 +38,7 @@ export async function cleanDatabase(): Promise<void> {
     'CustomFieldValue',
     'CustomField',
     'TaskLabel',
+    'Attachment',
     'TaskAssignee',
     'Label',
     'GitHubPullRequestLink',

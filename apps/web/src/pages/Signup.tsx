@@ -1,16 +1,31 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/context';
 import Button from '../components/shared/Button';
 
+function getPasswordErrors(password: string): string[] {
+  const errors: string[] = [];
+  if (password.length < 8) errors.push('At least 8 characters');
+  if (!/[A-Z]/.test(password)) errors.push('At least one uppercase letter');
+  if (!/[a-z]/.test(password)) errors.push('At least one lowercase letter');
+  if (!/\d/.test(password)) errors.push('At least one digit');
+  return errors;
+}
+
 export default function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [touched, setTouched] = useState(false);
   const { signup, error } = useAuth();
   const navigate = useNavigate();
 
+  const passwordErrors = useMemo(() => getPasswordErrors(password), [password]);
+  const showErrors = touched && password.length > 0 && passwordErrors.length > 0;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setTouched(true);
+    if (passwordErrors.length > 0) return;
     try {
       await signup(email, password);
       navigate('/login', { replace: true });
@@ -40,9 +55,17 @@ export default function Signup() {
             placeholder="Password (min 8, upper, lower, digit)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onBlur={() => setTouched(true)}
             className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded"
             required
           />
+          {showErrors && (
+            <ul className="text-sm text-red-600 list-disc pl-4">
+              {passwordErrors.map((err) => (
+                <li key={err}>{err}</li>
+              ))}
+            </ul>
+          )}
           {error && <p className="text-sm text-red-600">{error}</p>}
           <Button type="submit" className="w-full">
             Create account
