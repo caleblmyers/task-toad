@@ -11,6 +11,7 @@ import FilterBar from './shared/FilterBar';
 import Button from './shared/Button';
 import DropdownMenu, { type DropdownMenuItem } from './shared/DropdownMenu';
 import { IconList, IconBoard, IconTable, IconCalendar, IconClose, IconPlus, IconRefresh, IconSummary, IconFilter, IconKeyboard, IconGitHub, IconSparkle } from './shared/Icons';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 const activeClass = 'px-3 py-1 text-sm rounded-md bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-medium shadow-sm';
 const inactiveClass = 'px-3 py-1 text-sm rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200';
@@ -57,13 +58,12 @@ export default function ProjectToolbar({
   const [activeExportIndex, setActiveExportIndex] = useState(0);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
-  // Close template menu on Escape or click-outside, manage focus
+  const { handleFocusTrapKeyDown: handleTemplateTrapKeyDown } = useFocusTrap(templateMenuRef, showTemplateMenu);
+  const { handleFocusTrapKeyDown: handleExportTrapKeyDown } = useFocusTrap(exportMenuRef, showExportMenu);
+
+  // Close template menu on Escape or click-outside
   useEffect(() => {
     if (!showTemplateMenu) return;
-    // Auto-focus select element when overlay opens
-    requestAnimationFrame(() => {
-      templateSelectRef.current?.focus();
-    });
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setShowTemplateMenu(false);
@@ -84,14 +84,10 @@ export default function ProjectToolbar({
     };
   }, [showTemplateMenu]);
 
-  // Close export menu on Escape or click-outside, manage focus + keyboard nav
+  // Close export menu on click-outside
   useEffect(() => {
     if (!showExportMenu) return;
     setActiveExportIndex(0);
-    // Auto-focus first menu item
-    requestAnimationFrame(() => {
-      exportItemRefs.current[0]?.focus();
-    });
     const handleClickOutside = (e: MouseEvent) => {
       if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
         setShowExportMenu(false);
@@ -316,7 +312,7 @@ export default function ProjectToolbar({
 
           {/* Template menu overlay */}
           {showTemplateMenu && (
-            <div ref={templateMenuRef} role="dialog" aria-label="Create from template" tabIndex={-1} className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-2 z-50 min-w-[260px] p-3 space-y-2">
+            <div ref={templateMenuRef} role="dialog" aria-label="Create from template" tabIndex={-1} onKeyDown={handleTemplateTrapKeyDown} className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-2 z-50 min-w-[260px] p-3 space-y-2">
               <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Create from template</p>
               {templateList.length === 0 ? (
                 <p className="text-xs text-slate-400">No templates. Create one in Project Settings.</p>
@@ -372,6 +368,7 @@ export default function ProjectToolbar({
               tabIndex={-1}
               className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 z-50 min-w-[180px]"
               onKeyDown={(e) => {
+                handleExportTrapKeyDown(e);
                 const itemCount = exportItemRefs.current.length;
                 if (e.key === 'ArrowDown') {
                   e.preventDefault();

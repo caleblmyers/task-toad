@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { gql } from '../api/client';
 import type { Notification } from '../types';
 import ErrorBanner from './shared/ErrorBanner';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -34,6 +35,8 @@ export default function NotificationCenter({ onClose }: NotificationCenterProps)
   const navigate = useNavigate();
   const panelRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  const { handleFocusTrapKeyDown } = useFocusTrap(panelRef, true);
 
   useEffect(() => {
     loadNotifications();
@@ -131,7 +134,7 @@ export default function NotificationCenter({ onClose }: NotificationCenterProps)
       className="absolute bottom-14 left-2 w-80 max-h-[28rem] bg-white border border-slate-200 rounded-xl shadow-xl flex flex-col z-50 animate-fade-in"
       role="menu"
       aria-label="Notifications"
-      onKeyDown={handleKeyDown}
+      onKeyDown={(e) => { handleFocusTrapKeyDown(e); handleKeyDown(e); }}
     >
       <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100">
         <span className="text-sm font-semibold text-slate-800">Notifications</span>

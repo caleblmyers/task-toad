@@ -8,6 +8,7 @@ import GlobalSearchModal from '../components/GlobalSearchModal';
 import UserAvatar from '../components/shared/UserAvatar';
 import { IconSun, IconMoon } from '../components/shared/Icons';
 import { useEventSource } from '../hooks/useEventSource';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 const SIDEBAR_COLLAPSED_KEY = 'task-toad-sidebar-collapsed';
 
@@ -101,21 +102,29 @@ export default function AppLayout() {
   // Mobile drawer state
   const [drawerOpen, setDrawerOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
+  const hamburgerRef = useRef<HTMLButtonElement>(null);
+
+  const { handleFocusTrapKeyDown: handleDrawerFocusTrap } = useFocusTrap(drawerRef, drawerOpen);
 
   // Persist collapse preference
   useEffect(() => {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
   }, [collapsed]);
 
+  const closeDrawer = useCallback(() => {
+    setDrawerOpen(false);
+    hamburgerRef.current?.focus();
+  }, []);
+
   // Close mobile drawer on Escape
   useEffect(() => {
     if (!drawerOpen) return;
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setDrawerOpen(false);
+      if (e.key === 'Escape') closeDrawer();
     };
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
-  }, [drawerOpen]);
+  }, [drawerOpen, closeDrawer]);
 
   // Lock body scroll when drawer is open
   useEffect(() => {
@@ -214,7 +223,7 @@ export default function AppLayout() {
                 key={item.to}
                 to={item.to}
                 end={item.end}
-                onClick={isDrawer ? () => setDrawerOpen(false) : undefined}
+                onClick={isDrawer ? closeDrawer : undefined}
                 className={({ isActive }) =>
                   `flex items-center gap-2 px-3 py-2 rounded hover:bg-slate-700 text-sm ${isActive ? 'bg-slate-700 text-white' : ''} ${!isExpanded ? 'justify-center' : ''}`
                 }
@@ -357,6 +366,7 @@ export default function AppLayout() {
       <div className="md:hidden flex items-center justify-between px-4 py-2 bg-slate-800 dark:bg-brand-dark text-white">
         <div className="flex items-center gap-2">
           <button
+            ref={hamburgerRef}
             type="button"
             onClick={() => setDrawerOpen(true)}
             className="p-1.5 rounded hover:bg-slate-700"
@@ -406,7 +416,7 @@ export default function AppLayout() {
         <div className="fixed inset-0 z-40 md:hidden">
           <div
             className="absolute inset-0 bg-black/40"
-            onClick={() => setDrawerOpen(false)}
+            onClick={closeDrawer}
             aria-hidden="true"
           />
           <div
@@ -414,10 +424,11 @@ export default function AppLayout() {
             className="relative w-56 h-full bg-slate-800 dark:bg-brand-dark text-white flex flex-col shadow-2xl"
             role="dialog"
             aria-label="Navigation menu"
+            onKeyDown={handleDrawerFocusTrap}
           >
             <button
               type="button"
-              onClick={() => setDrawerOpen(false)}
+              onClick={closeDrawer}
               className="absolute top-3 right-3 p-1 rounded hover:bg-slate-700 text-slate-400 hover:text-white"
               aria-label="Close navigation menu"
             >

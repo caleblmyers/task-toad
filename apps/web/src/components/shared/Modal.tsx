@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useId, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface ModalProps {
   isOpen: boolean;
@@ -17,9 +18,6 @@ const SIZE_MAP: Record<NonNullable<ModalProps['size']>, string> = {
   xl: 'max-w-6xl',
 };
 
-const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
 export default function Modal({
   isOpen,
   onClose,
@@ -30,25 +28,9 @@ export default function Modal({
 }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const previousFocusRef = useRef<Element | null>(null);
   const titleId = `modal-title-${useId()}`;
 
-  // Save and restore focus
-  useEffect(() => {
-    if (isOpen) {
-      previousFocusRef.current = document.activeElement;
-      // Focus the first focusable element inside the modal after render
-      requestAnimationFrame(() => {
-        const firstFocusable = contentRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
-        firstFocusable?.focus();
-      });
-    }
-    return () => {
-      if (previousFocusRef.current instanceof HTMLElement) {
-        previousFocusRef.current.focus();
-      }
-    };
-  }, [isOpen]);
+  const { handleFocusTrapKeyDown } = useFocusTrap(contentRef, isOpen);
 
   // Scroll lock
   useEffect(() => {
@@ -70,37 +52,6 @@ export default function Modal({
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
-
-  // Focus trap
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key !== 'Tab') return;
-      const container = contentRef.current;
-      if (!container) return;
-
-      const focusable = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
-      if (focusable.length === 0) {
-        e.preventDefault();
-        return;
-      }
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-
-      if (e.shiftKey) {
-        if (document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        }
-      } else {
-        if (document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    },
-    []
-  );
 
   // Backdrop click
   const handleOverlayClick = useCallback(
@@ -129,7 +80,7 @@ export default function Modal({
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
-      onKeyDown={handleKeyDown}
+      onKeyDown={handleFocusTrapKeyDown}
     >
       <div
         ref={contentRef}
