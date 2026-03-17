@@ -6,6 +6,26 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-17 (cont.)
 
+### Wave 26: Final Polish (3 workers, 3 tasks)
+
+**Worker 1 — Focus Traps:**
+- Extracted `useFocusTrap` hook from Modal.tsx — reusable Tab/Shift+Tab wrapping + focus save/restore
+- Applied to mobile drawer (AppLayout), template overlay, export overlay (ProjectToolbar), and NotificationCenter
+- Modal.tsx refactored to use the new hook (no duplicated logic)
+
+**Worker 2 — Responsive Layout:**
+- ProjectToolbar: view toggle icons-only below sm, search hidden below sm, breadcrumb truncates, toolbar wraps
+- TaskDetailPanel: full-screen overlay drawer below md with backdrop + close button, desktop unchanged (440px sidebar)
+
+**Worker 3 — Design System + DX:**
+- Badge `pink` variant added (8 total variants)
+- DependencyBadge, KanbanBoard (column pills + task cards), SprintSection (assignee), CodePreviewModal (subtask) migrated to Badge/Card
+- `useAsyncData` hook created and adopted by BurndownChart + Projects; dead `fetchData`/`fetchProjects` callbacks removed
+
+**Process:** Zero rejections. ProjectToolbar touched by workers 1 and 2 on different concerns — Git auto-merged cleanly. spawn.sh now creates per-worktree `.claude/settings.json` with full permissions for unattended workers.
+
+---
+
 ### Wave 25: Responsive + Badge Consolidation + Accessibility (3 workers, 5 tasks)
 
 **Worker 1 — Responsive Sidebar:**

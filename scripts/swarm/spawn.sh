@@ -64,6 +64,34 @@ for i in $(seq 1 "$WORKER_COUNT"); do
   echo "Generating Prisma client for worker-$i..."
   (cd "$WORKER_DIR/apps/api" && npx prisma generate 2>&1) || echo "Warning: prisma generate failed (non-fatal)"
 
+  # Grant full tool permissions (workers run unattended)
+  mkdir -p "$WORKER_DIR/.claude"
+  cat > "$WORKER_DIR/.claude/settings.json" << 'SETTINGS_EOF'
+{
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "WebFetch(*)",
+      "WebSearch(*)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push *)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean *)",
+      "Bash(docker rm *)",
+      "Bash(docker system *)"
+    ]
+  }
+}
+SETTINGS_EOF
+  git -C "$WORKER_DIR" update-index --assume-unchanged .claude/settings.json
+
   # Append role prompt to CLAUDE.md
   if [ -f "$PROMPTS_DIR/worker.md" ]; then
     PROMPT=$(sed \
@@ -99,6 +127,34 @@ else
   # Generate Prisma client for reviewer
   echo "Generating Prisma client for reviewer..."
   (cd "$REVIEWER_DIR/apps/api" && npx prisma generate 2>&1) || echo "Warning: prisma generate failed (non-fatal)"
+
+  # Grant full tool permissions (reviewer runs unattended)
+  mkdir -p "$REVIEWER_DIR/.claude"
+  cat > "$REVIEWER_DIR/.claude/settings.json" << 'SETTINGS_EOF'
+{
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "WebFetch(*)",
+      "WebSearch(*)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push *)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean *)",
+      "Bash(docker rm *)",
+      "Bash(docker system *)"
+    ]
+  }
+}
+SETTINGS_EOF
+  git -C "$REVIEWER_DIR" update-index --assume-unchanged .claude/settings.json
 
   if [ -f "$PROMPTS_DIR/reviewer.md" ]; then
     PROMPT=$(sed \
