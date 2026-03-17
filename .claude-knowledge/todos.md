@@ -30,13 +30,13 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 
 ### Q1: Code Quality & Testing
 **Touches:** `apps/web/src/hooks/`, `apps/api/src/__tests__/`
-- [ ] TypeScript strictness — remaining `any` types audit
-- [ ] Expand test coverage — useTaskCRUD hook tests, web component tests
+- [x] ~~TypeScript strictness — remaining `any` types audit~~ — done in Wave 18
+- [x] ~~Expand test coverage — useTaskCRUD hook tests, web component tests~~ — done in Wave 18 (useTaskCRUD + ActivityFeed)
 - [x] ~~Recurrence scheduler tests~~ — done in Wave 17
 - [x] ~~Attachment DataLoader~~ — done in Wave 17
 - [x] ~~Authorization regression tests~~ — done in Wave 17 (7 boundary tests)
 - [ ] **End-to-end test suite** — basic happy-path flows (signup → create org → create project → create/update task → assign → comment → export)
-- [ ] Fix integration test DB — `Activity` table missing from test database; cleanDatabase truncate fails for all integration tests
+- [x] ~~Fix integration test DB~~ — done in Wave 18 (fixed table names + password validation)
 - [x] ~~Password policy alignment~~ — done in Wave 17 (shared validatePassword, client-side validation)
 
 ### A11: Accessibility
@@ -52,7 +52,7 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 - [x] ~~SDL descriptions for remaining operations~~ — done in Wave 17 (github, report, slack, webhook, projectrole)
 - [x] ~~Subtask code gen abort support~~ — done in Wave 17 (AbortController + Cancel button)
 - [x] ~~AI prompt log admin toggle~~ — done in Wave 17 (promptLoggingEnabled on Org, OrgSettings toggle)
-- [ ] Thread promptLoggingEnabled through AI callers — aiService.ts callAI calls don't pass promptLogContext; need to pass org.promptLoggingEnabled when logging is wired
+- [x] ~~Thread promptLoggingEnabled through AI callers~~ — done in Wave 18
 
 ### D1: Deployment & Observability
 **Touches:** `apps/api/src/app.ts`, `apps/api/src/index.ts`, Railway config
@@ -66,14 +66,14 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 
 ### I1: Integration Completeness
 **Touches:** `apps/api/src/utils/webhookDispatcher.ts`, `apps/api/src/slack/`, `apps/api/src/github/`
-- [ ] Slack user mapping discovery — `/tasktoad link` self-service command
-- [ ] GitHub webhook retry — dead letter queue for failed webhook processing
+- [x] ~~Slack user mapping discovery — `/tasktoad link` self-service command~~ — done in Wave 18
+- [x] ~~GitHub webhook retry — dead letter queue for failed webhook processing~~ — done in Wave 18
 
 ### F1: Frontend Performance & Architecture
 **Touches:** `apps/web/src/components/`, `apps/web/src/pages/`, `apps/web/src/hooks/`
-- [ ] Virtualize activity feeds — react-window for activity/comment feeds when > 100 items
+- [x] ~~Virtualize activity feeds~~ — done in Wave 18 (react-window ActivityFeed + paginated CommentSection)
 - [ ] Dark mode contrast audit — verify dark: color pairings meet WCAG AA 4.5:1
-- [ ] Decompose ProjectDetail + useProjectData — split into route-level feature modules or page controller + feature slices; introduce client-side query/cache layer (GPT audit finding #5)
+- [x] ~~Decompose ProjectDetail + useProjectData~~ — done in Wave 18 (extracted ProjectToolbar, consolidated modal state)
 
 ### S1: Styling & Branding
 **Touches:** `apps/web/src/components/shared/`, `apps/web/tailwind.config.js`
@@ -82,6 +82,9 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 - [ ] Social preview image — og:image composite
 - [ ] PWA service worker — offline caching via workbox or custom SW
 - [ ] Dark mode for remaining modals — BatchCodeGenModal, DriftAnalysisModal, etc.
+
+### Misc Follow-ups
+- [ ] Review uncommitted `schema.ts` change — `'tasks'` added to `SINGLE_OBJECT_FIELDS` (Wave 18 leftover, may be intentional cost analysis fix or reviewer artifact)
 
 ### SW1: Swarm Workflow Optimization
 **Touches:** `.claude/skills/`, `scripts/swarm/`

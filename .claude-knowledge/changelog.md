@@ -6,6 +6,29 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-16
 
+### Wave 18: Q1 + F1 + I1 + W6 (3 workers, 6 tasks)
+
+**Q1 — Code Quality & Testing (Worker 1):**
+- Fixed integration test DB table names — corrected cleanDatabase truncate targets so integration tests no longer fail on missing tables
+- TypeScript strictness audit — remaining `any` types cleaned up
+- Expanded web test coverage — useTaskCRUD hook tests and ActivityFeed component tests
+- Password validation fixes aligned with shared policy
+
+**F1 — Frontend Performance & Architecture (Worker 2):**
+- Virtualized ActivityFeed with react-window for large activity lists (>100 items)
+- Paginated CommentSection for performance with many comments
+- Extracted ProjectToolbar component from ProjectDetail, consolidated modal state management
+
+**I1 — Integration Completeness (Worker 3):**
+- Slack self-service user mapping — `/tasktoad link` and `/tasktoad unlink` commands for users to map their own Slack↔TaskToad accounts
+- GitHub webhook dead letter queue — failed webhook deliveries stored for retry/inspection
+
+**W6 — AI Extras (Worker 3):**
+- Threaded promptLoggingEnabled through AI service layer — aiService.ts callers now pass org setting via promptLogContext
+
+**Open follow-ups:**
+- Uncommitted change in `schema.ts`: `'tasks'` added to `SINGLE_OBJECT_FIELDS` — needs review (may be leftover from reviewer or intentional cost analysis fix)
+
 ### Wave 17: Q1 + D1 + W6 (3 workers, 6 tasks)
 
 **Q1 — Code Quality & Testing (Worker 1):**
