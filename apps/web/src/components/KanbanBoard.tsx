@@ -300,7 +300,7 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
                         <div className="flex items-center justify-between mt-2">
                           <Badge variant={style.pillVariant}>{col}</Badge>
                           {subtaskCount > 0 && (
-                            <span className="text-xs text-slate-500">{subtaskCount} subtasks</span>
+                            <span className="text-xs text-slate-500">{subtaskCount} tasks</span>
                           )}
                         </div>
                       </div>

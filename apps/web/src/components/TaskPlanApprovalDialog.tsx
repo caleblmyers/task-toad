@@ -19,7 +19,7 @@ function formatHours(h: number): string {
 
 const PROGRESS_STEPS = [
   'Analyzing project scope…',
-  'Breaking down into tasks…',
+  'Breaking down into epics…',
   'Estimating effort and priority…',
   'Building dependency graph…',
   'Finalizing task plan…',
@@ -111,24 +111,36 @@ function TaskPlanCard({ task, checked, onToggle }: TaskPlanCardProps) {
             </div>
           )}
 
-          {task.subtasks.length > 0 && (
+          {task.tasks.length > 0 && (
             <button
               type="button"
               onClick={() => setExpanded(!expanded)}
               className="mt-2 text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1"
             >
               <span>{expanded ? '▾' : '▸'}</span>
-              <span>{task.subtasks.length} subtask{task.subtasks.length !== 1 ? 's' : ''} will be created</span>
+              <span>{task.tasks.length} task{task.tasks.length !== 1 ? 's' : ''} will be created</span>
             </button>
           )}
 
-          {expanded && task.subtasks.length > 0 && (
+          {expanded && task.tasks.length > 0 && (
             <ul className="mt-1.5 space-y-1 pl-3 border-l-2 border-slate-200">
-              {task.subtasks.map((st, i) => (
+              {task.tasks.map((ct, i) => (
                 <li key={i} className="text-xs text-slate-600">
-                  <span className="font-medium">{st.title}</span>
-                  {st.description && (
-                    <span className="text-slate-400"> — {st.description}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-medium">{ct.title}</span>
+                    {ct.priority && (
+                      <Badge variant={PRIORITY_VARIANT[ct.priority] ?? 'info'} size="sm">
+                        {ct.priority}
+                      </Badge>
+                    )}
+                    {ct.estimatedHours != null && (
+                      <Badge variant="neutral" size="sm">
+                        ~{formatHours(ct.estimatedHours)}
+                      </Badge>
+                    )}
+                  </div>
+                  {ct.description && (
+                    <span className="text-slate-400"> — {ct.description}</span>
                   )}
                 </li>
               ))}
@@ -241,7 +253,7 @@ export default function TaskPlanApprovalDialog({
           <h2 className="text-lg font-semibold text-slate-800">Review Task Plan</h2>
           {!loading && !error && (
             <p className="text-sm text-slate-500 mt-0.5">
-              {tasks.length} task{tasks.length !== 1 ? 's' : ''} generated based on project scope — deselect any you don&apos;t want, or use &lsquo;+ Add more&rsquo; below
+              {tasks.length} epic{tasks.length !== 1 ? 's' : ''} generated based on project scope — deselect any you don&apos;t want, or use &lsquo;+ Add more&rsquo; below
             </p>
           )}
         </div>
@@ -370,14 +382,14 @@ export default function TaskPlanApprovalDialog({
         {/* Action row */}
         <div className="flex items-center justify-between">
           <span className="text-sm text-slate-500">
-            {loading ? 'Generating…' : `${selectedCount} of ${tasks.length} task${tasks.length !== 1 ? 's' : ''} selected`}
+            {loading ? 'Generating…' : `${selectedCount} of ${tasks.length} epic${tasks.length !== 1 ? 's' : ''} selected`}
           </span>
           <div className="flex gap-3">
             <Button variant="ghost" onClick={onCancel} disabled={loading}>
               Cancel
             </Button>
             <Button size="lg" disabled={selectedCount === 0 || loading} onClick={() => onApprove(selectedTasks)} className="font-medium rounded-lg">
-              Approve & create {selectedCount} task{selectedCount !== 1 ? 's' : ''} →
+              Approve & create {selectedCount} epic{selectedCount !== 1 ? 's' : ''} →
             </Button>
           </div>
         </div>

@@ -35,7 +35,6 @@ function dueDateVariant(dueDate: string): 'danger' | 'warning' | 'neutral' {
 const taskTypeDot: Record<string, string> = {
   epic: 'bg-purple-500',
   story: 'bg-blue-500',
-  subtask: 'bg-slate-400',
 };
 
 interface TaskRowProps {

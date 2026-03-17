@@ -85,7 +85,7 @@ export function buildTaskPlanPrompt(
     : '';
   const taskPlanSchema = `
 
-Return a JSON array of 5–10 tasks (NEVER more than 10). For simple projects, 5 tasks; for complex ones, up to 10. Prefer fewer, well-scoped tasks over many trivial ones. Each item:
+Return a JSON array of 5–10 epics (NEVER more than 10). For simple projects, 5 epics; for complex ones, up to 10. Prefer fewer, well-scoped epics over many trivial ones. Each item:
 {
   "title": string,
   "description": string,
@@ -94,20 +94,20 @@ Return a JSON array of 5–10 tasks (NEVER more than 10). For simple projects, 5
   "estimatedHours": number,
   "priority": "low" | "medium" | "high" | "critical",
   "dependsOn": string[],
-  "subtasks": [{ "title": string, "description": string }],
+  "tasks": [{ "title": string, "description": string, "instructions": string, "estimatedHours": number, "priority": "low" | "medium" | "high" | "critical", "acceptanceCriteria": string, "suggestedTools": [{ "name": string, "category": string, "reason": string }] }],
   "acceptanceCriteria": string
 }
 "title" is a short action phrase. "description" is 1–2 sentences. "instructions" is 3–6 sentences of detailed step-by-step guidance for a human or AI agent.
 "category" is one of: "ai-model", "code-editor", "design-tool", "database", "cloud-service", "communication", "testing", "other".
-List 1–3 tools per task. Be specific (e.g. "Claude Sonnet", "Figma", "Vercel", "Jest").
+List 1–3 tools per epic. Be specific (e.g. "Claude Sonnet", "Figma", "Vercel", "Jest").
 "estimatedHours" is a realistic work estimate (e.g. 1, 2, 4, 8, 16). "priority" reflects business impact.
-"dependsOn" lists titles of OTHER tasks in this same list that must be completed first (empty array if none).
-"subtasks" is 2–6 concrete implementation steps that break down this task.
-"acceptanceCriteria" is a bullet list of testable conditions that define when the task is complete.`;
+"dependsOn" lists titles of OTHER epics in this same list that must be completed first (empty array if none).
+"tasks" is 2–6 implementation tasks that break down this epic. Each task has its own instructions, estimatedHours, priority, acceptanceCriteria, and suggestedTools.
+"acceptanceCriteria" is a bullet list of testable conditions that define when the epic is complete.`;
 
   return {
     systemPrompt: SYSTEM_JSON + taskPlanSchema,
-    userPrompt: `Break this project into implementation tasks.
+    userPrompt: `Break this project into implementation epics.
 
 Project: ${userInput('title', projectTitle)}
 Description: ${userInput('description', truncate(projectDescription, MAX_PROJECT_DESCRIPTION_CHARS))}
@@ -126,22 +126,24 @@ export function buildExpandTaskPrompt(
   const contextLine = context ? `\nAdditional context: ${userInput('context', context)}` : '';
   const kbLine = knowledgeBase ? `\nProject Knowledge Base (use for context):\n${userInput('knowledge_base', truncate(knowledgeBase, 800))}` : '';
   const dedupLine = siblingTitles && siblingTitles.length > 0
-    ? `\nIMPORTANT: Do NOT create subtasks with the same or very similar titles as these existing sibling tasks:\n${siblingTitles.slice(0, 30).join('\n')}`
+    ? `\nIMPORTANT: Do NOT create tasks with the same or very similar titles as these existing sibling tasks:\n${siblingTitles.slice(0, 30).join('\n')}`
     : '';
   return {
     systemPrompt: SYSTEM_JSON,
-    userPrompt: `Break this task into subtasks.
+    userPrompt: `Break this epic into implementation tasks.
 
-Task: ${userInput('title', taskTitle)}
-Task description: ${userInput('description', truncate(taskDescription, MAX_DESCRIPTION_CHARS))}
+Epic: ${userInput('title', taskTitle)}
+Epic description: ${userInput('description', truncate(taskDescription, MAX_DESCRIPTION_CHARS))}
 Project: ${userInput('project', projectName)}${contextLine}${kbLine}${dedupLine}
 
-Return a JSON array of subtasks — as many as needed to fully break down this task. Typically 2–8, but use your judgment based on complexity. Use the same schema:
+Return a JSON array of tasks — as many as needed to fully break down this epic. Typically 2–8, but use your judgment based on complexity. Use the same schema:
 {
   "title": string,
   "description": string,
   "instructions": string,
   "suggestedTools": [{ "name": string, "category": string, "reason": string }],
+  "estimatedHours": number,
+  "priority": "low" | "medium" | "high" | "critical",
   "acceptanceCriteria": string
 }`,
   };
@@ -656,13 +658,13 @@ Return JSON:
   "estimatedHours": number,
   "priority": "low" | "medium" | "high" | "critical",
   "dependsOn": string[],
-  "subtasks": [{ "title": string, "description": string }]
+  "tasks": [{ "title": string, "description": string, "instructions": string, "estimatedHours": number, "priority": "low" | "medium" | "high" | "critical", "acceptanceCriteria": string, "suggestedTools": [{ "name": string, "category": string, "reason": string }] }]
 }
 "instructions" should be 4–8 sentences of specific, actionable steps.
 "category" is one of: "ai-model", "code-editor", "design-tool", "database", "cloud-service", "communication", "testing", "other".
 "estimatedHours" is a realistic work estimate (e.g. 1, 2, 4, 8). "priority" reflects business impact.
 "dependsOn" lists titles from the "Other tasks" list that must be done before this one (empty array if none or no other tasks listed).
-"subtasks" is 2–6 concrete implementation steps.`,
+"tasks" is 2–6 implementation tasks that break down this item. Each task has its own instructions, estimatedHours, priority, acceptanceCriteria, and suggestedTools.`,
   };
 }
 

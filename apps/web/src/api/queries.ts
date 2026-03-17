@@ -124,7 +124,7 @@ export const DELETE_COMMENT_MUTATION = `mutation DeleteComment($commentId: ID!) 
 export const PREVIEW_TASK_PLAN_MUTATION = `mutation PreviewTaskPlan($projectId: ID!, $context: String, $appendToTitles: [String!]) {
   previewTaskPlan(projectId: $projectId, context: $context, appendToTitles: $appendToTitles) {
     title description instructions suggestedTools estimatedHours priority dependsOn
-    subtasks { title description }
+    tasks { title description instructions estimatedHours priority acceptanceCriteria suggestedTools }
   }
 }`;
 
@@ -160,7 +160,7 @@ export const GENERATE_PLANNED_FILE_MUTATION = `mutation GeneratePlannedFile($tas
   }
 }`;
 
-export const GENERATE_CODE_FROM_SUBTASK_MUTATION = `mutation GenerateCodeFromSubtask($taskId: ID!, $subtaskId: ID!, $styleGuide: String) {
+export const GENERATE_CODE_FROM_CHILD_TASK_MUTATION = `mutation GenerateCodeFromSubtask($taskId: ID!, $subtaskId: ID!, $styleGuide: String) {
   generateCodeFromSubtask(taskId: $taskId, subtaskId: $subtaskId, styleGuide: $styleGuide) {
     files { path content language description } summary estimatedTokensUsed delegationHint
   }

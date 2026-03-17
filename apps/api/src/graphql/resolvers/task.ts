@@ -131,7 +131,7 @@ export const taskMutations = {
     }
     const validStatuses = statusParse.success ? statusParse.data : ['todo', 'in_progress', 'in_review', 'done'];
     validateStatus(validStatuses, status);
-    const validTaskTypes = ['epic', 'story', 'task', 'subtask'];
+    const validTaskTypes = ['epic', 'story', 'task', 'bug'];
     const taskType = args.taskType ?? 'task';
     if (!validTaskTypes.includes(taskType)) {
       throw new ValidationError(`Invalid taskType "${taskType}". Valid: ${validTaskTypes.join(', ')}`);
@@ -360,10 +360,9 @@ export const taskMutations = {
     // Auto-assign taskType based on parent
     let taskType = args.taskType;
     if (!taskType) {
-      if (parent.taskType === 'epic') taskType = 'story';
-      else taskType = 'subtask';
+      taskType = 'task';
     }
-    const validTaskTypes = ['epic', 'story', 'task', 'subtask'];
+    const validTaskTypes = ['epic', 'story', 'task', 'bug'];
     if (!validTaskTypes.includes(taskType)) {
       throw new ValidationError(`Invalid taskType "${taskType}". Valid: ${validTaskTypes.join(', ')}`);
     }

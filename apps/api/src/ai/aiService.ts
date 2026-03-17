@@ -94,6 +94,13 @@ async function callAndParse<T>(
       promptLogContext,
     });
 
+    if (result.usage.stopReason === 'max_tokens') {
+      log.warn({ feature, outputTokens: result.usage.outputTokens, maxTokens: config.maxTokens }, 'AI response truncated (hit max_tokens)');
+      throw new GraphQLError('AI response was too long and got cut off. Try simplifying the task or breaking it into smaller pieces.', {
+        extensions: { code: 'AI_RESPONSE_TRUNCATED' },
+      });
+    }
+
     try {
       return parseJSON(result.raw, schema);
     } catch (err) {
@@ -109,6 +116,14 @@ async function callAndParse<T>(
           prefill,
           promptLogContext,
         });
+
+        if (retry.usage.stopReason === 'max_tokens') {
+          log.warn({ feature, outputTokens: retry.usage.outputTokens, maxTokens: config.maxTokens }, 'AI retry also truncated');
+          throw new GraphQLError('AI response was too long and got cut off. Try simplifying the task or breaking it into smaller pieces.', {
+            extensions: { code: 'AI_RESPONSE_TRUNCATED' },
+          });
+        }
+
         return parseJSON(retry.raw, schema);
       }
       throw err;
@@ -168,11 +183,11 @@ export async function expandTask(
   promptLogContext?: PromptLogContext
 ): Promise<TaskPlan[]> {
   const p = buildExpandTaskPrompt(taskTitle, taskDescription, projectName, context, knowledgeBase, siblingTitles);
-  const subtasks = await callAndParse(apiKey, 'expandTask', p, z.array(TaskPlanSchema), promptLogContext);
-  if (subtasks.length === 0) {
+  const childTaskPlans = await callAndParse(apiKey, 'expandTask', p, z.array(TaskPlanSchema), promptLogContext);
+  if (childTaskPlans.length === 0) {
     throw new GraphQLError('Failed to parse AI response');
   }
-  return subtasks;
+  return childTaskPlans;
 }
 
 export async function summarizeProject(

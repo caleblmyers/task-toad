@@ -82,7 +82,7 @@ describe('generateTaskPlan', () => {
         estimatedHours: 4,
         priority: 'high',
         dependsOn: [],
-        subtasks: [],
+        tasks: [],
         acceptanceCriteria: 'Login works',
       },
       {
@@ -92,7 +92,7 @@ describe('generateTaskPlan', () => {
         estimatedHours: 2,
         priority: 'medium',
         dependsOn: [],
-        subtasks: [],
+        tasks: [],
         acceptanceCriteria: 'Queries work',
       },
       {
@@ -102,7 +102,7 @@ describe('generateTaskPlan', () => {
         estimatedHours: 6,
         priority: 'medium',
         dependsOn: ['Setup auth'],
-        subtasks: [{ title: 'Login page', description: 'Create login form' }],
+        tasks: [{ title: 'Login page', description: 'Create login form' }],
         acceptanceCriteria: 'UI renders',
       },
     ];

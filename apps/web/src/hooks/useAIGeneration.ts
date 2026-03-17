@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { gql } from '../api/client';
 import {
   PREVIEW_TASK_PLAN_MUTATION, COMMIT_TASK_PLAN_MUTATION, SUMMARIZE_PROJECT_MUTATION,
-  GENERATE_INSTRUCTIONS_MUTATION, GENERATE_CODE_MUTATION, GENERATE_CODE_FROM_SUBTASK_MUTATION,
+  GENERATE_INSTRUCTIONS_MUTATION, GENERATE_CODE_MUTATION, GENERATE_CODE_FROM_CHILD_TASK_MUTATION,
   REGENERATE_FILE_MUTATION, PLAN_CODE_MUTATION, GENERATE_PLANNED_FILE_MUTATION,
   CREATE_PR_MUTATION, PARSE_BUG_REPORT_MUTATION, PREVIEW_PRD_MUTATION,
   COMMIT_PRD_MUTATION, BOOTSTRAP_REPO_MUTATION,
@@ -129,7 +129,7 @@ export function useAIGeneration({
           tasks: selectedTasks.map((t) => ({
             title: t.title, description: t.description, instructions: t.instructions,
             suggestedTools: t.suggestedTools, estimatedHours: t.estimatedHours,
-            priority: t.priority, dependsOn: t.dependsOn, subtasks: t.subtasks,
+            priority: t.priority, dependsOn: t.dependsOn, tasks: t.tasks,
           })),
           clearExisting: true,
         },
@@ -336,18 +336,18 @@ export function useAIGeneration({
     }
   }, [projectId, setErr]);
 
-  const handleGenerateCodeFromSubtask = useCallback(async (taskId: string, subtaskId: string): Promise<GeneratedCode | null> => {
+  const handleGenerateCodeFromChildTask = useCallback(async (taskId: string, subtaskId: string): Promise<GeneratedCode | null> => {
     const controller = new AbortController();
     subtaskAbortRef.current = controller;
     try {
       const styleGuide = projectId ? localStorage.getItem(`tasktoad-style-guide-${projectId}`) : null;
       const data = await gql<{ generateCodeFromSubtask: GeneratedCode }>(
-        GENERATE_CODE_FROM_SUBTASK_MUTATION, { taskId, subtaskId, styleGuide }, controller.signal,
+        GENERATE_CODE_FROM_CHILD_TASK_MUTATION, { taskId, subtaskId, styleGuide }, controller.signal,
       );
       return data.generateCodeFromSubtask;
     } catch (err: unknown) {
       if ((err as Error).name !== 'AbortError') {
-        setErr((err as Error).message || 'Subtask code generation failed');
+        setErr((err as Error).message || 'Child task code generation failed');
       }
       return null;
     } finally {
@@ -429,7 +429,7 @@ export function useAIGeneration({
     codeGenProgress,
     abortRef,
     openPreview, handleCommitPlan, handleSummarize,
-    handleGenerateInstructions, handleGenerateCode, handleGenerateCodeFromSubtask,
+    handleGenerateInstructions, handleGenerateCode, handleGenerateCodeFromChildTask,
     handleRegenerateFile, handleCreatePR,
     handlePlanCodeGeneration, handleGeneratePlannedFiles, handleRetryPlannedFile,
     handleParseBugReport, handlePreviewPRD, handleCommitPRD, handleBootstrapFromRepo,

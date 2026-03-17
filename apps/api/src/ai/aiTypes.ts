@@ -15,9 +15,14 @@ export const ToolSuggestionSchema = z.object({
   reason: z.string(),
 });
 
-export const SubtaskPlanSchema = z.object({
+export const ChildTaskPlanSchema = z.object({
   title: z.string(),
   description: z.string(),
+  instructions: z.string().optional().default(''),
+  estimatedHours: z.number().optional().default(2),
+  priority: z.enum(['low', 'medium', 'high', 'critical']).optional().default('medium'),
+  acceptanceCriteria: z.string().optional().default(''),
+  suggestedTools: z.array(ToolSuggestionSchema).optional().default([]),
 });
 
 export const TaskPlanSchema = z.object({
@@ -28,7 +33,7 @@ export const TaskPlanSchema = z.object({
   estimatedHours: z.number().optional().default(2),
   priority: z.enum(['low', 'medium', 'high', 'critical']).optional().default('medium'),
   dependsOn: z.array(z.string()).optional().default([]),
-  subtasks: z.array(SubtaskPlanSchema).optional().default([]),
+  tasks: z.array(ChildTaskPlanSchema).optional().default([]),
   acceptanceCriteria: z.string().optional().default(''),
 });
 
@@ -44,7 +49,7 @@ export const TaskInstructionsSchema = z.object({
   estimatedHours: z.number().optional().default(2),
   priority: z.enum(['low', 'medium', 'high', 'critical']).optional().default('medium'),
   dependsOn: z.array(z.string()).optional().default([]),
-  subtasks: z.array(SubtaskPlanSchema).optional().default([]),
+  tasks: z.array(ChildTaskPlanSchema).optional().default([]),
 });
 
 // ---------------------------------------------------------------------------
@@ -53,7 +58,7 @@ export const TaskInstructionsSchema = z.object({
 
 export type ProjectOption = z.infer<typeof ProjectOptionSchema>;
 export type ToolSuggestion = z.infer<typeof ToolSuggestionSchema>;
-export type SubtaskPlan = z.infer<typeof SubtaskPlanSchema>;
+export type ChildTaskPlan = z.infer<typeof ChildTaskPlanSchema>;
 export type TaskPlan = z.infer<typeof TaskPlanSchema>;
 export type SprintPlan = z.infer<typeof SprintPlanSchema>;
 export type TaskInstructions = z.infer<typeof TaskInstructionsSchema>;

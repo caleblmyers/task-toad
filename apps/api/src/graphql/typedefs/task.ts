@@ -85,9 +85,14 @@ export const taskTypeDefs = /* GraphQL */ `
     color: String!
   }
 
-  type SubtaskPreview {
+  type ChildTaskPreview {
     title: String!
     description: String!
+    instructions: String
+    estimatedHours: Float
+    priority: String
+    acceptanceCriteria: String
+    suggestedTools: String
   }
 
   type TaskPlanPreview {
@@ -98,7 +103,7 @@ export const taskTypeDefs = /* GraphQL */ `
     estimatedHours: Float
     priority: String!
     dependsOn: [String!]!
-    subtasks: [SubtaskPreview!]!
+    tasks: [ChildTaskPreview!]!
     acceptanceCriteria: String
   }
 
@@ -110,9 +115,14 @@ export const taskTypeDefs = /* GraphQL */ `
     status: String
   }
 
-  input SubtaskInput {
+  input ChildTaskInput {
     title: String!
     description: String!
+    instructions: String
+    estimatedHours: Float
+    priority: String
+    acceptanceCriteria: String
+    suggestedTools: String
   }
 
   input CommitTaskInput {
@@ -123,7 +133,7 @@ export const taskTypeDefs = /* GraphQL */ `
     estimatedHours: Float
     priority: String
     dependsOn: [String!]!
-    subtasks: [SubtaskInput!]!
+    tasks: [ChildTaskInput!]!
     acceptanceCriteria: String
   }
 `;

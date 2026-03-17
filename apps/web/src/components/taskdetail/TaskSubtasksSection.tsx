@@ -38,7 +38,7 @@ export default function TaskSubtasksSection({
     <div className="mb-4">
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
-          {task.taskType === 'epic' ? 'Stories / Children' : 'Subtasks'}
+          Tasks
         </p>
         {task.progress && task.progress.total > 0 && (
           <span className="text-xs text-slate-400">
@@ -132,7 +132,7 @@ export default function TaskSubtasksSection({
               type="text"
               value={newSubtaskTitle}
               onChange={(e) => setNewSubtaskTitle(e.target.value)}
-              placeholder={task.taskType === 'epic' ? 'New story title…' : 'New subtask title…'}
+              placeholder="New task title…"
               className="flex-1 text-sm border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-green"
               autoFocus
             />
@@ -145,7 +145,7 @@ export default function TaskSubtasksSection({
             className="text-xs text-slate-500 hover:text-slate-700 mt-2"
             disabled={disabled}
           >
-            + Add {task.taskType === 'epic' ? 'story' : 'subtask'}
+            + Add task
           </button>
         )
       )}
