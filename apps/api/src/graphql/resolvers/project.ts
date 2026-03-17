@@ -1,4 +1,7 @@
 import type { Context } from '../context.js';
+// Re-export shared types for cross-package type consistency (API ↔ Web).
+// These match the GraphQL response shapes consumed by the web client.
+export type { Project as SharedProject } from '@tasktoad/shared-types';
 import { logActivity } from '../../utils/activity.js';
 import { AuthorizationError, NotFoundError, ValidationError } from '../errors.js';
 import { requireAuth, requireOrg, requireProjectAccess } from './auth.js';
