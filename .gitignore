@@ -15,3 +15,4 @@ vite.config.d.ts
 # Swarm task queue (ephemeral per swarm run)
 .ai/swarm/tasks.json
 .ai/swarm/tasks-*.json
+.ai/e2e-test-results-*.md
