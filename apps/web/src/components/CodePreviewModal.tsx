@@ -54,6 +54,7 @@ interface CodePreviewModalProps {
   taskId?: string;
   onStartGeneration?: (taskId: string, filePaths?: string[]) => void;
   onRetryFile?: (taskId: string, filePath: string) => void;
+  onCancelSubtaskGeneration?: () => void;
 }
 
 const STYLE_GUIDE_KEY_PREFIX = 'tasktoad-style-guide-';
@@ -106,6 +107,7 @@ export default function CodePreviewModal({
   taskId,
   onStartGeneration,
   onRetryFile,
+  onCancelSubtaskGeneration,
 }: CodePreviewModalProps) {
   const [expandedIndex, setExpandedIndex] = useState(0);
   const [regeneratingPath, setRegeneratingPath] = useState<string | null>(null);
@@ -411,6 +413,18 @@ export default function CodePreviewModal({
                       >
                         {isGenerating ? 'Generating…' : isGenerated ? 'Regenerate' : 'Generate'}
                       </Button>
+                      {isGenerating && onCancelSubtaskGeneration && (
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            onCancelSubtaskGeneration();
+                            setGeneratingSubtaskId(null);
+                          }}
+                          className="text-xs px-2 py-1 rounded text-red-600 hover:text-red-700"
+                        >
+                          Cancel
+                        </Button>
+                      )}
                     </div>
                   </div>
                 );

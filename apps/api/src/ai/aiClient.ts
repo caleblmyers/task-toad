@@ -82,6 +82,7 @@ export interface PromptLogContext {
   userId: string;
   taskId?: string | null;
   projectId?: string | null;
+  promptLoggingEnabled?: boolean;
 }
 
 export interface CallAIParams {
@@ -157,7 +158,7 @@ export async function callAI(params: CallAIParams): Promise<CallAIResult> {
     }
 
     // Persist prompt log (fire-and-forget) with retention TTL and redaction
-    if (promptLogContext) {
+    if (promptLogContext && promptLogContext.promptLoggingEnabled !== false) {
       const costUSD = usage.inputTokens * 0.000001 + usage.outputTokens * 0.000005;
       const expiresAt = new Date(Date.now() + PROMPT_RETENTION_DAYS * 24 * 60 * 60 * 1000);
       promptLogContext.prisma.aIPromptLog.create({

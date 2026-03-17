@@ -221,6 +221,7 @@ export interface Org {
   apiKeyHint?: string | null;
   monthlyBudgetCentsUSD?: number | null;
   budgetAlertThreshold?: number;
+  promptLoggingEnabled?: boolean;
 }
 
 export interface AIFeatureUsage {
