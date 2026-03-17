@@ -6,6 +6,24 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-16
 
+### Wave 17: Q1 + D1 + W6 (3 workers, 6 tasks)
+
+**Q1 — Code Quality & Testing (Worker 1):**
+- Authorization regression tests: 7 integration tests covering cross-org addTaskAssignee, updateTask assigneeId, cross-project setCustomFieldValue, cross-org deleteComment, requireOrgUser/requireProjectField helpers, automation assign_to skip
+- Recurrence scheduler tests: 13 unit tests for cronMatchesNow/fieldMatches (wildcard, exact, step, range, comma, invalid cron); exported previously-internal functions
+- Password policy: shared validatePassword() (uppercase + lowercase + digit + 8 chars) replacing simple length check in signup/resetPassword/acceptInvite; client-side validation in Signup.tsx
+- Attachment DataLoader: taskAttachments loader following taskLabels pattern, wired into Task.attachments resolver
+
+**D1 — Deployment & Observability (Worker 2):**
+- Prometheus resolver metrics: graphql-yoga onExecute plugin measuring wall-clock duration per operation name
+- Prisma pool metrics: 30s interval collecting pool active/idle/wait gauges from prisma.$metrics.json(), cleared on shutdown
+- Deploy pipeline: added test step, uncommented Railway deploy with conditional gate, new smoke-test job with postgres service container and health endpoint verification
+
+**W6 — AI Extras (Worker 3):**
+- AI prompt log toggle: promptLoggingEnabled Boolean on Org (migration), wired through setAIBudget mutation, prompt log creation guarded by setting, OrgSettings toggle UI
+- SDL descriptions: added triple-quote descriptions to all query/mutation fields in github, report, slack, webhook, projectrole typedefs
+- Subtask code gen abort: AbortController in useAIGeneration for subtask generation, Cancel button in CodePreviewModal, threaded through useProjectData → ProjectDetail
+
 ### Production Hardening Sprint (GPT-5.4 Audit Response)
 
 **Phase 1 — Security Sprint:**

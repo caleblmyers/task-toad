@@ -32,11 +32,11 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 **Touches:** `apps/web/src/hooks/`, `apps/api/src/__tests__/`
 - [ ] TypeScript strictness — remaining `any` types audit
 - [ ] Expand test coverage — useTaskCRUD hook tests, web component tests
-- [ ] Recurrence scheduler tests — unit tests for cron matching logic, processRecurrence edge cases
-- [ ] Attachment DataLoader — Task.attachments does individual DB query per task; add to loaders.ts
-- [ ] **Authorization regression tests** — test all multi-tenant boundary checks added in production hardening (cross-org assignment, cross-project custom fields, cross-tenant comment deletion, automation assign_to org validation)
+- [x] ~~Recurrence scheduler tests~~ — done in Wave 17
+- [x] ~~Attachment DataLoader~~ — done in Wave 17
+- [x] ~~Authorization regression tests~~ — done in Wave 17 (7 boundary tests)
 - [ ] **End-to-end test suite** — basic happy-path flows (signup → create org → create project → create/update task → assign → comment → export)
-- [ ] Password policy alignment — backend must enforce same rules frontend claims (min length, complexity) in auth resolver
+- [x] ~~Password policy alignment~~ — done in Wave 17 (shared validatePassword, client-side validation)
 
 ### A11: Accessibility
 **Touches:** `apps/web/src/components/`
@@ -48,9 +48,9 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 
 ### W6: AI Extras
 **Touches:** `resolvers/ai.ts`, `apps/web/src/components/`
-- [ ] SDL descriptions for remaining ~30 operations (github, report, slack, webhook, projectrole)
-- [ ] Subtask code gen abort support — CodePreviewModal subtask generation lacks AbortController
-- [ ] AI prompt log admin toggle — per-org setting to disable prompt logging entirely
+- [x] ~~SDL descriptions for remaining operations~~ — done in Wave 17 (github, report, slack, webhook, projectrole)
+- [x] ~~Subtask code gen abort support~~ — done in Wave 17 (AbortController + Cancel button)
+- [x] ~~AI prompt log admin toggle~~ — done in Wave 17 (promptLoggingEnabled on Org, OrgSettings toggle)
 
 ### D1: Deployment & Observability
 **Touches:** `apps/api/src/app.ts`, `apps/api/src/index.ts`, Railway config
@@ -58,8 +58,8 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 - [ ] Railway alerting — restart loops, memory spikes, high CPU
 - [ ] Staging environment — Railway preview deployments from PRs
 - [ ] Database backup strategy — verify Railway automated backups, document restore
-- [ ] Wire Prometheus resolver duration metrics — some paths don't emit `graphql_resolver_duration`; remove dead metrics or wire them properly
-- [ ] Enable Railway deploy webhook in GitHub Actions (uncomment in deploy.yml)
+- [x] ~~Wire Prometheus resolver duration metrics~~ — done in Wave 17 (yoga plugin + Prisma pool interval)
+- [x] ~~Enable Railway deploy webhook in GitHub Actions~~ — done in Wave 17 (conditional deploy + smoke test job)
 - [ ] Object storage for attachments — migrate from local disk to S3/R2; current hardening (Content-Disposition, type validation) is interim only
 
 ### I1: Integration Completeness
