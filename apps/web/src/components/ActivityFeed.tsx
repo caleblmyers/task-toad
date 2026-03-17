@@ -69,7 +69,7 @@ const ActivityItem = memo(function ActivityItem({ activity, style }: { activity:
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-xs text-slate-600 dark:text-slate-300">{describeActivity(activity)}</p>
-        <p className="text-[10px] text-slate-400 dark:text-slate-500">{timeAgo(activity.createdAt)}</p>
+        <p className="text-[10px] text-slate-500 dark:text-slate-400">{timeAgo(activity.createdAt)}</p>
       </div>
     </div>
   );
@@ -82,7 +82,7 @@ interface ActivityFeedProps {
 
 export default function ActivityFeed({ activities, className = '' }: ActivityFeedProps) {
   if (activities.length === 0) {
-    return <p className="text-xs text-slate-400 dark:text-slate-500 py-1">No activity yet.</p>;
+    return <p className="text-xs text-slate-500 dark:text-slate-400 py-1">No activity yet.</p>;
   }
 
   return (

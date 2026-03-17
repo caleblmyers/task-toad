@@ -166,7 +166,7 @@ function PanelContent({
 
       {/* Recurrence */}
       <div className="mb-4">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
           {task.recurrenceRule && <span className="mr-1">↻</span>}Recurrence
         </p>
         <select
@@ -209,7 +209,7 @@ function PanelContent({
 
       {/* Description */}
       <div className="mb-4">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Description</p>
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Description</p>
         {editingDescription ? (
           <MarkdownEditor
             value={editDescValue}
@@ -233,7 +233,7 @@ function PanelContent({
         ) : (
           <button
             onClick={() => { setEditDescValue(''); setEditingDescription(true); }}
-            className="text-xs text-slate-400 hover:text-slate-600"
+            className="text-xs text-slate-500 hover:text-slate-600"
             disabled={disabled}
           >
             + Add description
@@ -243,7 +243,7 @@ function PanelContent({
 
       {/* Attachments */}
       <div className="mb-4">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Attachments</p>
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Attachments</p>
         {localAttachments.length > 0 && (
           <ul className="space-y-1 mb-2">
             {localAttachments.map(a => (
@@ -256,7 +256,7 @@ function PanelContent({
                 >
                   {a.fileName}
                 </a>
-                <span className="flex items-center gap-2 text-xs text-slate-400 flex-shrink-0">
+                <span className="flex items-center gap-2 text-xs text-slate-500 flex-shrink-0">
                   {a.sizeBytes < 1024 ? `${a.sizeBytes} B` : a.sizeBytes < 1048576 ? `${(a.sizeBytes / 1024).toFixed(1)} KB` : `${(a.sizeBytes / 1048576).toFixed(1)} MB`}
                   <button
                     onClick={() => handleDeleteAttachment(a.attachmentId)}
@@ -279,7 +279,7 @@ function PanelContent({
 
       {/* Acceptance Criteria */}
       <div className="mb-4">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
           <span className="mr-1">&#10003;</span>Acceptance Criteria
         </p>
         {editingAC ? (
@@ -305,7 +305,7 @@ function PanelContent({
         ) : (
           <button
             onClick={() => { setEditACValue(''); setEditingAC(true); }}
-            className="text-xs text-slate-400 hover:text-slate-600"
+            className="text-xs text-slate-500 hover:text-slate-600"
             disabled={disabled}
           >
             + Add acceptance criteria
@@ -315,7 +315,7 @@ function PanelContent({
 
       {/* Instructions */}
       <div className="mb-4">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Instructions</p>
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Instructions</p>
         {editingInstructions ? (
           <MarkdownEditor
             value={editInstrValue}
@@ -348,7 +348,7 @@ function PanelContent({
             </button>
             <button
               onClick={() => { setEditInstrValue(''); setEditingInstructions(true); }}
-              className="text-xs text-slate-400 hover:text-slate-600 px-2"
+              className="text-xs text-slate-500 hover:text-slate-600 px-2"
               disabled={disabled}
             >
               Write manually

@@ -12,7 +12,7 @@ const priorityStyles: Record<string, string> = {
   critical: 'bg-red-100 text-red-700',
   high: 'bg-orange-100 text-orange-700',
   medium: 'bg-blue-100 text-blue-700',
-  low: 'bg-slate-100 text-slate-500',
+  low: 'bg-slate-100 text-slate-700',
 };
 
 function formatHours(h: number): string {
@@ -27,7 +27,7 @@ function dueDateColor(dueDate: string): string {
   const diffDays = (due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
   if (diffDays < 0) return 'bg-red-100 text-red-700';
   if (diffDays <= 3) return 'bg-amber-100 text-amber-700';
-  return 'bg-slate-100 text-slate-500';
+  return 'bg-slate-100 text-slate-700';
 }
 
 const taskTypeDot: Record<string, string> = {
@@ -194,11 +194,11 @@ export const TaskRow = memo(function TaskRow({
             {task.labels.slice(0, 3).map((l) => (
               <span key={l.labelId} className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: l.color }} title={l.name} />
             ))}
-            {task.labels.length > 3 && <span className="text-[10px] text-slate-400">+{task.labels.length - 3}</span>}
+            {task.labels.length > 3 && <span className="text-[10px] text-slate-500">+{task.labels.length - 3}</span>}
           </div>
         )}
         {(task.storyPoints != null || task.estimatedHours != null) && (
-          <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+          <span className="text-xs text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
             {[
               task.storyPoints != null ? `${task.storyPoints}pt` : null,
               task.estimatedHours != null ? `~${formatHours(task.estimatedHours)}` : null,
@@ -341,8 +341,8 @@ export default function SprintSection({
               } transition-opacity`}
             />
             <span className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{sprint.name}</span>
-            <span className="text-xs text-slate-400">({countLabel})</span>
-            {dateRange && <span className="text-xs text-slate-400">{dateRange}</span>}
+            <span className="text-xs text-slate-500">({countLabel})</span>
+            {dateRange && <span className="text-xs text-slate-500">{dateRange}</span>}
             {sprint.isActive && (
               <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Active</span>
             )}
@@ -396,7 +396,7 @@ export default function SprintSection({
         onDrop={(e) => onDrop(e, sprint.sprintId, sprintTasks)}
       >
         {sprintTasks.length === 0 && dragOverInfo?.sectionId !== sprint.sprintId ? (
-          <p className="text-xs text-slate-400 py-2 px-1">No tasks assigned to this sprint.</p>
+          <p className="text-xs text-slate-500 py-2 px-1">No tasks assigned to this sprint.</p>
         ) : sprintTasks.length > VIRTUALIZE_THRESHOLD ? (
           <List
             style={{ height: Math.min(sprintTasks.length * ROW_HEIGHT, MAX_LIST_HEIGHT) }}

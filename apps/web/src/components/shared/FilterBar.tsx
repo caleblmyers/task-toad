@@ -45,7 +45,7 @@ interface FilterBarProps {
 
 const pillBase = 'text-xs px-2.5 py-1 rounded-full border transition-colors cursor-pointer';
 const pillActive = 'border-slate-400 dark:border-slate-500 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200';
-const pillInactive = 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-500';
+const pillInactive = 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-500';
 
 export default function FilterBar({
   statusFilter, priorityFilter, assigneeFilter,
@@ -310,7 +310,7 @@ export default function FilterBar({
               >
                 Save
               </button>
-              <button onClick={() => setShowSaveInput(false)} className="text-xs text-slate-400 hover:text-slate-600">
+              <button onClick={() => setShowSaveInput(false)} className="text-xs text-slate-500 hover:text-slate-600">
                 Cancel
               </button>
             </span>

@@ -54,7 +54,7 @@ function BacklogSection({
           className={`w-3.5 h-3.5 rounded border-slate-300 text-slate-600 cursor-pointer ${showCheckboxes ? 'opacity-100' : 'opacity-0 hover:opacity-100'} transition-opacity`}
         />
         <span className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Backlog (unassigned)</span>
-        <span className="text-xs text-slate-400">({sectionTasks.length} tasks)</span>
+        <span className="text-xs text-slate-500">({sectionTasks.length} tasks)</span>
       </div>
       <div
         ref={containerRef}
@@ -64,7 +64,7 @@ function BacklogSection({
         onDrop={(e) => onDrop(e, null, sectionTasks)}
       >
         {sectionTasks.length === 0 && dragOverInfo?.sectionId !== null ? (
-          <p className="text-xs text-slate-400 py-2 px-1">No unassigned tasks.</p>
+          <p className="text-xs text-slate-500 py-2 px-1">No unassigned tasks.</p>
         ) : sectionTasks.length > VIRTUALIZE_THRESHOLD ? (
           <List
             style={{ height: Math.min(sectionTasks.length * ROW_HEIGHT, MAX_LIST_HEIGHT) }}

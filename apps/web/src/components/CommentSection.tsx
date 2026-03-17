@@ -63,9 +63,9 @@ const CommentItem = memo(function CommentItem({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{comment.userEmail}</span>
-            <span className="text-xs text-slate-400">{timeAgo(comment.createdAt)}</span>
+            <span className="text-xs text-slate-500">{timeAgo(comment.createdAt)}</span>
             {comment.createdAt !== comment.updatedAt && (
-              <span className="text-xs text-slate-400">(edited)</span>
+              <span className="text-xs text-slate-500">(edited)</span>
             )}
           </div>
           {editing ? (
@@ -79,7 +79,7 @@ const CommentItem = memo(function CommentItem({
               />
               <div className="flex gap-1 mt-1">
                 <button onClick={handleSave} className="text-xs text-blue-600 hover:text-blue-800 px-2 py-0.5">Save</button>
-                <button onClick={() => { setEditing(false); setEditContent(comment.content); }} className="text-xs text-slate-400 hover:text-slate-600 px-2 py-0.5">Cancel</button>
+                <button onClick={() => { setEditing(false); setEditContent(comment.content); }} className="text-xs text-slate-500 hover:text-slate-600 px-2 py-0.5">Cancel</button>
               </div>
             </div>
           ) : (
@@ -89,13 +89,13 @@ const CommentItem = memo(function CommentItem({
               </div>
               <div className="flex gap-2 mt-1">
                 {!isReply && (
-                  <button onClick={() => onReply(comment.commentId)} className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">Reply</button>
+                  <button onClick={() => onReply(comment.commentId)} className="text-xs text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">Reply</button>
                 )}
                 {isOwner && (
-                  <button onClick={() => setEditing(true)} className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">Edit</button>
+                  <button onClick={() => setEditing(true)} className="text-xs text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">Edit</button>
                 )}
                 {canDelete && (
-                  <button onClick={() => onDelete(comment.commentId)} className="text-xs text-slate-400 hover:text-red-600">Delete</button>
+                  <button onClick={() => onDelete(comment.commentId)} className="text-xs text-slate-500 hover:text-red-600">Delete</button>
                 )}
               </div>
             </>
@@ -231,7 +231,7 @@ export default function CommentSection({
           Post
         </button>
       </div>
-      <p className="text-[10px] text-slate-400 -mt-2 mb-2">Supports markdown</p>
+      <p className="text-[10px] text-slate-500 -mt-2 mb-2">Supports markdown</p>
 
       {/* Comment list */}
       <div className="space-y-1">
@@ -272,7 +272,7 @@ export default function CommentSection({
                 />
                 <div className="flex gap-1 mt-1">
                   <button onClick={handleReplySubmit} disabled={!replyContent.trim() || submitting} className="text-xs text-blue-600 hover:text-blue-800 px-2 py-0.5 disabled:opacity-50">Reply</button>
-                  <button onClick={() => setReplyingTo(null)} className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 px-2 py-0.5">Cancel</button>
+                  <button onClick={() => setReplyingTo(null)} className="text-xs text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 px-2 py-0.5">Cancel</button>
                 </div>
               </div>
             )}
@@ -287,7 +287,7 @@ export default function CommentSection({
           </button>
         )}
         {comments.length === 0 && (
-          <p className="text-xs text-slate-400 dark:text-slate-500 py-1">No comments yet.</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 py-1">No comments yet.</p>
         )}
       </div>
     </div>

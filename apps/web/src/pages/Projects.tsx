@@ -82,7 +82,7 @@ export default function Projects() {
               >
                 <p className={`font-medium text-slate-800 ${p.archived ? 'italic' : ''}`}>
                   {p.name}
-                  {p.archived && <span className="ml-2 text-xs text-slate-400 font-normal not-italic">(archived)</span>}
+                  {p.archived && <span className="ml-2 text-xs text-slate-500 font-normal not-italic">(archived)</span>}
                 </p>
                 {p.description && (
                   <p className="text-sm text-slate-500 mt-0.5">{p.description}</p>
@@ -92,7 +92,7 @@ export default function Projects() {
                 <button
                   type="button"
                   onClick={() => handleArchive(p.projectId, !p.archived)}
-                  className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1 border border-slate-200 rounded hover:bg-slate-50 flex-shrink-0"
+                  className="text-xs text-slate-500 hover:text-slate-600 px-2 py-1 border border-slate-200 rounded hover:bg-slate-50 flex-shrink-0"
                 >
                   {p.archived ? 'Unarchive' : 'Archive'}
                 </button>

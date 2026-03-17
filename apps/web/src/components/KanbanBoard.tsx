@@ -4,7 +4,7 @@ import { parseDependsOn } from '../utils/taskHelpers';
 import DependencyBadge from './shared/DependencyBadge';
 
 const COLUMN_ACCENTS = [
-  { accent: 'border-t-slate-400',  barColor: 'border-l-slate-300',  pillClass: 'bg-slate-100 text-slate-500' },
+  { accent: 'border-t-slate-400',  barColor: 'border-l-slate-300',  pillClass: 'bg-slate-100 text-slate-700' },
   { accent: 'border-t-blue-500',   barColor: 'border-l-blue-400',   pillClass: 'bg-blue-100 text-blue-700' },
   { accent: 'border-t-purple-500', barColor: 'border-l-purple-400', pillClass: 'bg-purple-100 text-purple-700' },
   { accent: 'border-t-green-500',  barColor: 'border-l-green-400',  pillClass: 'bg-green-100 text-green-700' },
@@ -228,7 +228,7 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
 
             <div className="flex-1 px-2 pb-2 space-y-2 min-h-[4rem]" role="listbox" aria-label={`${col} column`}>
               {colTasks.length === 0 ? (
-                <div className="flex items-center justify-center h-16 text-xs text-slate-400">
+                <div className="flex items-center justify-center h-16 text-xs text-slate-500">
                   No tasks
                 </div>
               ) : (
@@ -292,7 +292,7 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
                       <div className="flex items-center justify-between mt-2">
                         <span className={`text-xs px-1.5 py-0.5 rounded ${style.pillClass}`}>{col}</span>
                         {subtaskCount > 0 && (
-                          <span className="text-xs text-slate-400">{subtaskCount} subtasks</span>
+                          <span className="text-xs text-slate-500">{subtaskCount} subtasks</span>
                         )}
                       </div>
                     </div>
