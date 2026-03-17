@@ -73,9 +73,24 @@ pnpm --filter web lint
 - **Logging:** Structured JSON logging via pino. Level configurable with `LOG_LEVEL` env var. Request logging via pino-http middleware.
 - **Prisma metrics:** `metrics` preview feature enabled in Prisma schema for pool monitoring.
 
+### Action Plan Pipeline
+
+Tasks with instructions can be auto-completed via the **Auto-Complete** button, which generates an action plan and executes it step-by-step via a job queue.
+
+- **Action types:** `generate_code`, `create_pr`, `review_pr`, `write_docs`, `manual_step`
+- **Pipeline flow (GitHub-connected projects):** `generate_code` → `create_pr` → `review_pr` → task status transitions to `in_review`
+- **Executors:** `apps/api/src/actions/executors/` — one file per action type
+- **Registry:** `apps/api/src/actions/registry.ts` — maps action types to executors
+- **Job executor:** `apps/api/src/infrastructure/jobs/actionExecutor.ts` — processes actions sequentially, handles budget checks, emits SSE events
+- **Event bus:** `apps/api/src/infrastructure/eventbus/` — typed domain events for real-time updates
+- **AI planner:** `promptBuilder.ts:buildActionPlanPrompt()` generates the action sequence; validated by `ActionPlanResponseSchema` in `aiTypes.ts`
+- **Frontend:** `ActionProgressPanel.tsx` shows live progress; `ActionPlanDialog.tsx` for plan preview/approval; SSE events refresh state in real-time
+- **Manual code generation is deprecated** — the standalone "Generate code" button has been removed from the UI. Auto-Complete is the sole code generation entry point. Backend mutations (`generateCodeFromTask`, `regenerateCodeFile`) still exist but are unused by the frontend.
+
 ### Real-Time
 
-- **SSE:** Server-Sent Events via fetch-based client (not native `EventSource`) for real-time notifications. API: `apps/api/src/utils/sseManager.ts`. Client: `apps/web/src/hooks/useEventSource.ts`.
+- **SSE:** Server-Sent Events via fetch-based client (not native `EventSource`) for real-time notifications and action plan progress. API: `apps/api/src/utils/sseManager.ts`. Client: `apps/web/src/hooks/useEventSource.ts`.
+- **SSE events:** `task.created`, `task.updated`, `tasks.bulk_updated`, `task.action_completed`, `task.action_plan_completed`, `sprint.created`, `sprint.updated`, `sprint.closed`
 
 ### Multiple Assignees
 
@@ -136,6 +151,9 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 - `apps/api/src/utils/logger.ts` — Structured logging (pino) with `LOG_LEVEL` env var
 - `apps/api/src/utils/sseManager.ts` — Server-Sent Events manager for real-time notifications
 - `apps/api/prisma/schema/` — Domain-split Prisma schema files (auth, org, project, projectrole, task, sprint, comment, activity, notification, report, github, aiusage, slack, webhook)
+- `apps/api/src/actions/` — Action plan executor registry and per-type executors (generateCode, createPR, reviewPR, writeDocs, manualStep)
+- `apps/api/src/infrastructure/jobs/actionExecutor.ts` — Job handler that processes action plan steps sequentially
+- `apps/api/src/infrastructure/eventbus/` — Typed domain event bus (task, sprint, action events)
 - `apps/api/src/routes/export.ts` — REST endpoints for project/activity CSV/JSON export
 - `apps/api/src/routes/docs.ts` — REST endpoint serving API documentation page
 - `apps/api/vitest.config.ts` — API test configuration (Vitest)
@@ -144,7 +162,8 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 - `apps/web/src/hooks/useProjectData.ts` — data fetching, mutations, sprint/task CRUD, AI ops
 - `apps/web/src/hooks/useTaskFiltering.ts` — search + filter logic
 - `apps/web/src/hooks/useKeyboardShortcuts.ts` — keyboard shortcut handling
-- `apps/web/src/hooks/useEventSource.ts` — fetch-based SSE client for real-time notifications
+- `apps/web/src/hooks/useEventSource.ts` — fetch-based SSE client for real-time notifications and action plan progress
+- `apps/web/src/components/ActionProgressPanel.tsx` — Live action plan progress display with inline review results
 - `apps/web/src/utils/taskHelpers.ts` — `TASK_FIELDS`, status↔column mapping
 - `apps/web/src/components/shared/` — reusable UI (SearchInput, FilterBar, Icons, Toast, etc.)
 - `apps/web/src/components/Skeleton.tsx` — Loading skeleton components

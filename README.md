@@ -8,7 +8,7 @@ Multi-tenant SaaS project management MVP with AI-assisted planning. Org-scoped p
 
 - **API**: Express + graphql-yoga + Prisma (PostgreSQL) + HMAC JWT + helmet/cors/rate-limit
 - **Web**: React 18 + Vite + Tailwind CSS
-- **AI**: Anthropic Claude (AI-assisted task planning, sprint planning, code generation, PR reviews, bug report parsing)
+- **AI**: Anthropic Claude (AI-assisted task planning, sprint planning, auto-complete pipeline with code generation → PR creation → AI review, bug report parsing)
 
 ## Prerequisites
 
@@ -24,8 +24,11 @@ task-toad/
 │   ├── api/          # Express + graphql-yoga API
 │   │   ├── prisma/   # Schema + migrations
 │   │   └── src/
-│   │       ├── graphql/  # schema.ts, context.ts, ai.ts
-│   │       └── utils/    # encryption.ts
+│   │       ├── graphql/       # schema.ts, context.ts, resolvers/, typedefs/
+│   │       ├── actions/       # Action plan executors (generate_code, create_pr, review_pr, etc.)
+│   │       ├── ai/            # AI service, prompt builder, response parser, types
+│   │       ├── infrastructure/ # Event bus, job queue, action executor
+│   │       └── utils/         # encryption, logger, metrics, sseManager
 │   └── web/          # React + Vite + Tailwind
 │       └── src/
 │           ├── components/         # KanbanBoard, BacklogView, TaskDetailPanel, etc.
@@ -119,11 +122,12 @@ pnpm dev:web   # Web at http://localhost:5173
 
 1. Open http://localhost:5173/signup and create an account
 2. Check the API console for the verification link (or configure SMTP for real email) and verify your email
-3. Create an organization
-4. Create a project
+3. Create an organization and set your Anthropic API key in Settings
+4. Create a project (optionally connect a GitHub repo)
 5. Add tasks manually or use AI to generate a task plan
-6. Create a sprint, plan it from the backlog, and track progress on the kanban board
-7. Invite team members from Settings → Team (invite links are printed to the API console in dev)
+6. Use **Auto-Complete** on tasks with instructions — generates code, creates a PR, and runs AI review automatically
+7. Create a sprint, plan it from the backlog, and track progress on the kanban board
+8. Invite team members from Settings → Team (invite links are printed to the API console in dev)
 
 ## GraphQL API
 
@@ -133,7 +137,7 @@ GraphiQL UI is available at `http://localhost:3001/graphql` in development.
 
 **Key queries:** `me`, `projects`, `project(projectId)`, `tasks(projectId)`, `sprints(projectId)`, `orgUsers`, `orgInvites`, `notifications`, `githubInstallations`, `automationRules`, `webhookEndpoints`, `slackIntegrations`
 
-**Key mutations:** `signup`, `login`, `createOrg`, `createProject`, `createTask`, `updateTask`, `createSprint`, `updateSprint`, `deleteSprint`, `generateTaskPlan`, `generateCodeFromTask`, `createPullRequestFromTask`, `connectGitHubRepo`, `createAutomationRule`, `createWebhookEndpoint`, `connectSlack`, `inviteOrgMember`, `acceptInvite`
+**Key mutations:** `signup`, `login`, `createOrg`, `createProject`, `createTask`, `updateTask`, `createSprint`, `updateSprint`, `deleteSprint`, `generateTaskPlan`, `previewTaskPlan`, `commitTaskPlan`, `createPullRequestFromTask`, `connectGitHubRepo`, `createAutomationRule`, `createWebhookEndpoint`, `connectSlack`, `inviteOrgMember`, `acceptInvite`
 
 ## Scripts
 

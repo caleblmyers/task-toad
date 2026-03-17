@@ -387,6 +387,30 @@ Without these denylist entries, a request for e.g. `/sw.js` while offline could 
 
 ---
 
+## 2026-03-17 — Action plan review_pr step and manual code gen deprecation
+
+**Decision:** Added `review_pr` as a new action type in the auto-complete pipeline. Deprecated the standalone "Generate code" UI feature in favor of Auto-Complete as the sole code generation entry point.
+
+**Pipeline flow (GitHub-connected projects):**
+`generate_code` → `create_pr` (requires approval) → `review_pr` (auto-runs) → task status → `in_review`
+
+**Key design choices:**
+- **review_pr always returns success** — a negative AI review is information, not a pipeline failure. The plan completes regardless of review outcome.
+- **Task status transition at plan completion only** — not mid-pipeline. Direct Prisma update (not via `updateTask` resolver) to avoid triggering the resolver's duplicate auto-review logic and automation rules.
+- **Budget check on review_pr** — consumes AI tokens, so budget enforcement applies.
+- **ActionContext extended** with `orgId`/`userId` from job payload, needed for budget checks and event emission.
+- **SSE for live progress** — `task.action_completed` and `task.action_plan_completed` events added to SSE whitelist. ProjectDetail subscribes and refreshes action plan state on these events.
+- **Inline review rendering** — `ReviewResultDisplay` in `ActionProgressPanel` parses the review JSON and shows approval badge, severity-colored comments (file:line), and suggestions.
+
+**What was kept (intentionally):**
+- Backend mutations (`generateCodeFromTask`, `regenerateCodeFile`) — the action executor uses the same underlying `aiGenerateCode` service function. Mutations may be useful for future API consumers.
+- `CodePreviewModal` component file — no longer rendered, can be deleted in a future cleanup pass.
+- `useAIGeneration` hook handlers — still wired in `useProjectData` but no longer triggered from UI.
+
+**Rationale:** The auto-complete pipeline provides a structured, reviewable workflow. Manual code gen was a standalone action with no review step and no status transition — it produced code but didn't move the task forward. Consolidating on Auto-Complete reduces UI complexity and ensures every code generation goes through review.
+
+---
+
 ## Stack Lock-in Notes
 
 - `graphql-yoga` requires casting as `unknown as express.RequestHandler` for TS compat in `app.ts`

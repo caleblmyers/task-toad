@@ -6,6 +6,39 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-17 (cont.)
 
+### Action Plan Pipeline: Review Step + Manual Code Gen Deprecation
+
+**review_pr action type (backend):**
+- Added `review_pr` to `ActionType` union and `ActionPlanItemSchema` Zod enum
+- New executor `actions/executors/reviewPR.ts` — reads PR number from prior `create_pr` result, fetches diff via `getPullRequestDiff()`, runs `reviewCode()` AI review. Always returns success (negative review is information, not failure).
+- Registered in action executor registry
+- Budget check added for `review_pr` actions
+- `ActionContext` extended with `orgId`/`userId` (passed from job payload)
+
+**Task status transition at plan completion:**
+- After plan marked `completed`, checks if any action was `review_pr` → transitions task to `in_review`
+- Emits `task.updated` event so frontend updates. Avoids duplicate auto-review trigger (direct Prisma update, not resolver path).
+
+**AI planner prompt updated:**
+- Added `review_pr` to action type guide with config instructions
+- Added rule: "If plan includes create_pr, always follow with review_pr"
+- Updated repo-connected line to mention review step
+
+**Real-time UI updates via SSE:**
+- Added `task.action_completed` and `task.action_plan_completed` to SSE event whitelist
+- ProjectDetail now subscribes to SSE — refreshes action plan on action events, reloads tasks on task.updated
+
+**Review results in ActionProgressPanel:**
+- `ReviewResultDisplay` component renders approval badge, summary, severity-colored comments (file:line), and suggestions inline
+- `review_pr` labeled as "AI Review" in action type labels
+
+**Manual code generation deprecated (frontend only):**
+- Removed "Generate code" button from TaskDetailPanel and TaskSubtasksSection
+- Removed CodePreviewModal rendering from ProjectDetail
+- Removed `onGenerateCode`/`generatingCode` props from component interfaces
+- Backend mutations kept (used by action executor via shared AI service)
+- Auto-Complete is now the sole code generation entry point in the UI
+
 ### Wave 26: Final Polish (3 workers, 3 tasks)
 
 **Worker 1 — Focus Traps:**

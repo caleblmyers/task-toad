@@ -40,6 +40,8 @@ All original work sets completed through Wave 25. Waves 22-26 addressed UX audit
 ### Architecture / DX
 - [ ] useAsyncData adoption — migrate other components with inline fetch-in-useEffect patterns
 - [ ] Task detail re-architecture (UX Audit Item 10) — collapsible sections, tabbed comments/activity
+- [ ] Dead code cleanup: remove `CodePreviewModal`, `BatchCodeGenModal`, manual code gen handlers from `useAIGeneration`/`useProjectData`, and `generateCodeFromTask`/`regenerateCodeFile` GraphQL mutations (backend). All superseded by action plan pipeline.
+- [ ] Deduplicate SSE connections — ProjectDetail creates a second SSE connection alongside AppLayout's. Consider a shared context or window event relay.
 
 ### Process (non-code)
 - [ ] Task descriptions creating new workspace packages should note: point `types` to source not dist

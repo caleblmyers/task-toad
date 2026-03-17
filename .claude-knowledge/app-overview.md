@@ -56,6 +56,10 @@ Browser → Vite dev server (localhost:5173)
 | GraphQL typeDefs (domain-split) | `apps/api/src/graphql/typedefs/*.ts` |
 | GraphQL resolvers (domain-split) | `apps/api/src/graphql/resolvers/*.ts` |
 | AI subsystem | `apps/api/src/ai/` (aiService, promptBuilder, aiTypes, etc.) |
+| Action plan executors | `apps/api/src/actions/executors/` (generateCode, createPR, reviewPR, writeDocs, manualStep) |
+| Action plan registry | `apps/api/src/actions/registry.ts` + `index.ts` |
+| Job executor (action pipeline) | `apps/api/src/infrastructure/jobs/actionExecutor.ts` |
+| Event bus (typed domain events) | `apps/api/src/infrastructure/eventbus/` |
 | Auth context (JWT verify) | `apps/api/src/graphql/context.ts` |
 | DataLoaders (N+1 prevention) | `apps/api/src/graphql/loaders.ts` |
 | AES-256-GCM encryption util | `apps/api/src/utils/encryption.ts` |
@@ -84,6 +88,8 @@ Browser → Vite dev server (localhost:5173)
 | Backlog view | `apps/web/src/components/BacklogView.tsx` |
 | Sprint create modal | `apps/web/src/components/SprintCreateModal.tsx` |
 | Fetch-based SSE client | `apps/web/src/hooks/useEventSource.ts` |
+| Action plan progress panel | `apps/web/src/components/ActionProgressPanel.tsx` |
+| Action plan preview/approval | `apps/web/src/components/ActionPlanDialog.tsx` |
 | Loading skeletons | `apps/web/src/components/Skeleton.tsx` |
 | AI task plan review dialog | `apps/web/src/components/TaskPlanApprovalDialog.tsx` |
 | Web test config | `apps/web/vitest.config.ts` |
@@ -117,3 +123,5 @@ Browser → Vite dev server (localhost:5173)
 - **Input blocking during generation:** All toolbar buttons, forms, view toggles, and detail panel inputs are disabled while any AI operation is in flight (`isGenerating` flag)
 - **Navigation warning:** `beforeunload` listener prevents accidental tab close during AI generation; `popstate` handler intercepts browser back/forward with a confirm dialog. If the user proceeds, the in-flight request is aborted via `AbortController`
 - **Status ↔ column sync:** Changing task status in the detail panel auto-moves it to the matching kanban column; dragging a task to a new column auto-updates its status. Mapping is fuzzy (e.g. "In Progress" ↔ `in_progress`, "Done"/"Completed" ↔ `done`)
+- **Auto-Complete pipeline:** Tasks with instructions show an "Auto-Complete" button that generates an action plan (via AI), then executes it step-by-step: `generate_code` → `create_pr` → `review_pr`. Progress updates in real-time via SSE. On completion, task status transitions to `in_review`. The standalone "Generate code" button has been removed — Auto-Complete is the sole code gen entry point.
+- **Action plan progress:** `ActionProgressPanel` renders live step-by-step progress with status icons, inline review results (approval badge, severity-colored comments, suggestions), and controls for manual steps/retry/skip/cancel.
