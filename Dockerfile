@@ -8,18 +8,23 @@ FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
+COPY packages/shared-types/package.json packages/shared-types/
 RUN pnpm install --frozen-lockfile --prod=false
 
-# Build API
-FROM deps AS api-build
-COPY apps/api/ apps/api/
+# Build shared-types first (dependency of both api and web)
+FROM deps AS shared-build
+COPY packages/shared-types/ packages/shared-types/
 COPY tsconfig.base.json ./
+RUN pnpm --filter @tasktoad/shared-types build
+
+# Build API
+FROM shared-build AS api-build
+COPY apps/api/ apps/api/
 RUN cd apps/api && npx prisma generate && cd ../.. && pnpm --filter api build
 
 # Build Web
-FROM deps AS web-build
+FROM shared-build AS web-build
 COPY apps/web/ apps/web/
-COPY tsconfig.base.json ./
 ARG VITE_API_URL=
 ARG VITE_GITHUB_APP_SLUG=tasktoad
 RUN pnpm --filter web build
