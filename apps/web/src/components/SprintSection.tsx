@@ -2,6 +2,7 @@ import { useState, useMemo, memo, useRef, useEffect, useCallback } from 'react';
 import { List } from 'react-window';
 import type { Task, Sprint, OrgUser } from '../types';
 import BurndownChart from './BurndownChart';
+import Badge from './shared/Badge';
 import DependencyBadge from './shared/DependencyBadge';
 import { useConfirmDialog } from './shared/ConfirmDialog';
 
@@ -9,12 +10,12 @@ const ROW_HEIGHT = 52;
 const MAX_LIST_HEIGHT = 600;
 const VIRTUALIZE_THRESHOLD = 20;
 
-const priorityStyles: Record<string, string> = {
-  critical: 'bg-red-100 text-red-700',
-  high: 'bg-orange-100 text-orange-700',
-  medium: 'bg-blue-100 text-blue-700',
-  low: 'bg-slate-100 text-slate-700',
-};
+function priorityVariant(p: string): 'danger' | 'warning' | 'info' | 'neutral' {
+  if (p === 'critical') return 'danger';
+  if (p === 'high') return 'warning';
+  if (p === 'low') return 'neutral';
+  return 'info';
+}
 
 function formatHours(h: number): string {
   if (h < 1) return `${Math.round(h * 60)}m`;
@@ -22,13 +23,13 @@ function formatHours(h: number): string {
   return `${h}h`;
 }
 
-function dueDateColor(dueDate: string): string {
+function dueDateVariant(dueDate: string): 'danger' | 'warning' | 'neutral' {
   const now = new Date();
   const due = new Date(dueDate + 'T00:00:00');
   const diffDays = (due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
-  if (diffDays < 0) return 'bg-red-100 text-red-700';
-  if (diffDays <= 3) return 'bg-amber-100 text-amber-700';
-  return 'bg-slate-100 text-slate-700';
+  if (diffDays < 0) return 'danger';
+  if (diffDays <= 3) return 'warning';
+  return 'neutral';
 }
 
 const taskTypeDot: Record<string, string> = {
@@ -185,10 +186,10 @@ export const TaskRow = memo(function TaskRow({
           if (t) onSelectTask(t);
         }} />
         {task.dueDate && (
-          <span className={`text-xs px-1.5 py-0.5 rounded ${dueDateColor(task.dueDate)}`}>{task.dueDate}</span>
+          <Badge variant={dueDateVariant(task.dueDate)} size="sm">{task.dueDate}</Badge>
         )}
         {task.priority && task.priority !== 'medium' && (
-          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${priorityStyles[task.priority] ?? ''}`}>{task.priority}</span>
+          <Badge variant={priorityVariant(task.priority)} size="sm">{task.priority}</Badge>
         )}
         {task.labels && task.labels.length > 0 && (
           <div className="flex items-center gap-0.5">
@@ -346,7 +347,7 @@ export default function SprintSection({
             <span className="text-xs text-slate-500">({countLabel})</span>
             {dateRange && <span className="text-xs text-slate-500">{dateRange}</span>}
             {sprint.isActive && (
-              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Active</span>
+              <Badge variant="success">Active</Badge>
             )}
           </div>
           {sprint.goal && <p className="text-xs text-slate-500 mt-0.5 ml-6">{sprint.goal}</p>}

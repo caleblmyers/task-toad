@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { gql } from '../api/client';
 import type { Task, Project } from '../types';
 import { statusLabel } from '../utils/taskHelpers';
+import Badge from '../components/shared/Badge';
 import ErrorBanner from '../components/shared/ErrorBanner';
 
 interface TaskSearchHit {
@@ -15,12 +16,12 @@ interface GlobalSearchResult {
   projects: Project[];
 }
 
-const statusColors: Record<string, string> = {
-  done: 'bg-green-100 text-green-700',
-  in_progress: 'bg-blue-100 text-blue-700',
-  in_review: 'bg-amber-100 text-amber-700',
-  todo: 'bg-slate-100 text-slate-500',
-};
+function statusVariant(s: string): 'success' | 'info' | 'warning' | 'neutral' {
+  if (s === 'done') return 'success';
+  if (s === 'in_progress') return 'info';
+  if (s === 'in_review') return 'warning';
+  return 'neutral';
+}
 
 const QUERY = `query GlobalSearch($query: String!, $limit: Int) {
   globalSearch(query: $query, limit: $limit) {
@@ -153,9 +154,9 @@ export default function Search() {
                       <p className="text-sm text-slate-800 truncate">{hit.task.title}</p>
                       <p className="text-xs text-slate-400 mt-0.5">{hit.projectName}</p>
                     </div>
-                    <span className={`text-xs px-2 py-0.5 rounded font-medium flex-shrink-0 ${statusColors[hit.task.status] ?? 'bg-slate-100 text-slate-500'}`}>
+                    <Badge variant={statusVariant(hit.task.status)} className="flex-shrink-0">
                       {statusLabel(hit.task.status)}
-                    </span>
+                    </Badge>
                   </button>
                 ))}
               </div>

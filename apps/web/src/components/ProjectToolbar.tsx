@@ -52,6 +52,7 @@ export default function ProjectToolbar({
   const [bootstrapping, setBootstrapping] = useState(false);
   const templateMenuRef = useRef<HTMLDivElement>(null);
   const templateBtnRef = useRef<HTMLButtonElement>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
 
   // Close template menu on Escape or click-outside
   useEffect(() => {
@@ -74,6 +75,27 @@ export default function ProjectToolbar({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showTemplateMenu]);
+
+  // Close export menu on Escape or click-outside
+  useEffect(() => {
+    if (!showExportMenu) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowExportMenu(false);
+      }
+    };
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showExportMenu]);
 
   const handleProjectNameSave = async () => {
     if (!editProjectNameValue.trim()) return;
@@ -223,7 +245,7 @@ export default function ProjectToolbar({
             {filtering.hasActiveFilters && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
           </button>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="relative flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={() => d.setShowAddForm(!d.showAddForm)} disabled={d.isGenerating}>
             {d.showAddForm ? <><IconClose className="w-3.5 h-3.5" /> Cancel</> : <><IconPlus className="w-3.5 h-3.5" /> Add task</>}
           </Button>
@@ -274,101 +296,101 @@ export default function ProjectToolbar({
               </span>
             }
             items={[
-              { label: 'Template', onClick: () => { setShowTemplateMenu((v) => !v); if (!showTemplateMenu) loadTemplates(); }, disabled: d.isGenerating },
-              { label: 'Import/Export', onClick: () => setShowExportMenu((v) => !v) },
+              { label: 'Template', onClick: () => { setShowTemplateMenu((v) => { if (!v) loadTemplates(); return !v; }); setShowExportMenu(false); }, disabled: d.isGenerating },
+              { label: 'Import/Export', onClick: () => { setShowExportMenu((v) => !v); setShowTemplateMenu(false); } },
               { label: 'Project Settings', onClick: () => onOpenModal('project-settings') },
               { label: 'Knowledge Base', onClick: () => onOpenModal('knowledge-base') },
               { label: gitHubRepo ? `GitHub: ${gitHubRepo.repositoryOwner}/${gitHubRepo.repositoryName}` : 'Connect GitHub', icon: <IconGitHub className="w-3.5 h-3.5" />, onClick: () => onOpenModal('github') },
               { label: 'Keyboard Shortcuts', icon: <IconKeyboard className="w-3.5 h-3.5" />, onClick: () => onOpenModal('shortcut-help') },
             ] satisfies DropdownMenuItem[]}
           />
-        </div>
-      </div>
 
-      {/* Template menu overlay */}
-      {showTemplateMenu && (
-        <div ref={templateMenuRef} className="absolute right-16 top-12 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-2 z-50 min-w-[260px] p-3 space-y-2">
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Create from template</p>
-          {templateList.length === 0 ? (
-            <p className="text-xs text-slate-400">No templates. Create one in Project Settings.</p>
-          ) : (
-            <>
-              <select
-                value={selectedTemplateId ?? ''}
-                onChange={(e) => setSelectedTemplateId(e.target.value || null)}
-                className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded px-2 py-1 dark:bg-slate-700 dark:text-slate-200"
-              >
-                <option value="">Select template...</option>
-                {templateList.map((t) => (
-                  <option key={t.taskTemplateId} value={t.taskTemplateId}>{t.name}</option>
-                ))}
-              </select>
-              {selectedTemplateId && (
+          {/* Template menu overlay */}
+          {showTemplateMenu && (
+            <div ref={templateMenuRef} className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-2 z-50 min-w-[260px] p-3 space-y-2">
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Create from template</p>
+              {templateList.length === 0 ? (
+                <p className="text-xs text-slate-400">No templates. Create one in Project Settings.</p>
+              ) : (
                 <>
-                  <input
-                    type="text"
-                    value={templateTitle}
-                    onChange={(e) => setTemplateTitle(e.target.value)}
-                    placeholder="Task title"
-                    className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 dark:bg-slate-700 dark:text-slate-200"
-                    autoFocus
-                  />
-                  <button
-                    onClick={handleCreateFromTemplate}
-                    disabled={!templateTitle.trim()}
-                    className="w-full px-3 py-1.5 bg-brand-green text-white text-sm rounded hover:bg-brand-green-hover disabled:opacity-50"
+                  <select
+                    value={selectedTemplateId ?? ''}
+                    onChange={(e) => setSelectedTemplateId(e.target.value || null)}
+                    className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded px-2 py-1 dark:bg-slate-700 dark:text-slate-200"
                   >
-                    Create Task
-                  </button>
+                    <option value="">Select template...</option>
+                    {templateList.map((t) => (
+                      <option key={t.taskTemplateId} value={t.taskTemplateId}>{t.name}</option>
+                    ))}
+                  </select>
+                  {selectedTemplateId && (
+                    <>
+                      <input
+                        type="text"
+                        value={templateTitle}
+                        onChange={(e) => setTemplateTitle(e.target.value)}
+                        placeholder="Task title"
+                        className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 dark:bg-slate-700 dark:text-slate-200"
+                        autoFocus
+                      />
+                      <button
+                        onClick={handleCreateFromTemplate}
+                        disabled={!templateTitle.trim()}
+                        className="w-full px-3 py-1.5 bg-brand-green text-white text-sm rounded hover:bg-brand-green-hover disabled:opacity-50"
+                      >
+                        Create Task
+                      </button>
+                    </>
+                  )}
                 </>
               )}
-            </>
+              <button
+                onClick={() => setShowTemplateMenu(false)}
+                className="text-xs text-slate-400 hover:text-slate-600"
+              >
+                Close
+              </button>
+            </div>
           )}
-          <button
-            onClick={() => setShowTemplateMenu(false)}
-            className="text-xs text-slate-400 hover:text-slate-600"
-          >
-            Close
-          </button>
-        </div>
-      )}
 
-      {/* Export menu overlay */}
-      {showExportMenu && (
-        <div className="absolute right-16 top-12 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 z-50 min-w-[180px]">
-          <button
-            className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-            onClick={() => { downloadExport(`project/${d.projectId}/csv`, `${d.project?.name ?? 'tasks'}.csv`); setShowExportMenu(false); }}
-          >
-            Export Tasks (CSV)
-          </button>
-          <button
-            className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-            onClick={() => { downloadExport(`project/${d.projectId}/json`, `${d.project?.name ?? 'tasks'}.json`); setShowExportMenu(false); }}
-          >
-            Export Tasks (JSON)
-          </button>
-          <button
-            className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-            onClick={() => { downloadExport(`project/${d.projectId}/activity/csv`, `${d.project?.name ?? 'activity'}-activity.csv`); setShowExportMenu(false); }}
-          >
-            Export Activity (CSV)
-          </button>
-          <button
-            className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-            onClick={() => { downloadExport(`project/${d.projectId}/activity/json`, `${d.project?.name ?? 'activity'}-activity.json`); setShowExportMenu(false); }}
-          >
-            Export Activity (JSON)
-          </button>
-          <hr className="my-1 border-slate-100" />
-          <button
-            className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-            onClick={() => { onOpenModal('csv-import'); setShowExportMenu(false); }}
-          >
-            Import CSV
-          </button>
+          {/* Export menu overlay */}
+          {showExportMenu && (
+            <div ref={exportMenuRef} className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 z-50 min-w-[180px]">
+              <button
+                className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                onClick={() => { downloadExport(`project/${d.projectId}/csv`, `${d.project?.name ?? 'tasks'}.csv`); setShowExportMenu(false); }}
+              >
+                Export Tasks (CSV)
+              </button>
+              <button
+                className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                onClick={() => { downloadExport(`project/${d.projectId}/json`, `${d.project?.name ?? 'tasks'}.json`); setShowExportMenu(false); }}
+              >
+                Export Tasks (JSON)
+              </button>
+              <button
+                className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                onClick={() => { downloadExport(`project/${d.projectId}/activity/csv`, `${d.project?.name ?? 'activity'}-activity.csv`); setShowExportMenu(false); }}
+              >
+                Export Activity (CSV)
+              </button>
+              <button
+                className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                onClick={() => { downloadExport(`project/${d.projectId}/activity/json`, `${d.project?.name ?? 'activity'}-activity.json`); setShowExportMenu(false); }}
+              >
+                Export Activity (JSON)
+              </button>
+              <hr className="my-1 border-slate-100" />
+              <button
+                className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                onClick={() => { onOpenModal('csv-import'); setShowExportMenu(false); }}
+              >
+                Import CSV
+              </button>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Status editor */}
       {showStatusEditor && (

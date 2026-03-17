@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Task, Sprint, OrgUser, Label } from '../../types';
 import { statusLabel } from '../../utils/taskHelpers';
+import Badge from '../shared/Badge';
 import TaskCustomFieldsSection from './TaskCustomFieldsSection';
 
 interface TaskFieldsPanelProps {
@@ -22,12 +23,12 @@ interface TaskFieldsPanelProps {
   onRemoveAssignee?: (taskId: string, userId: string) => Promise<void>;
 }
 
-const priorityStyles: Record<string, string> = {
-  critical: 'bg-red-100 text-red-700',
-  high: 'bg-orange-100 text-orange-700',
-  medium: 'bg-blue-100 text-blue-700',
-  low: 'bg-slate-100 text-slate-500',
-};
+function priorityVariant(p: string): 'danger' | 'warning' | 'info' | 'neutral' {
+  if (p === 'critical') return 'danger';
+  if (p === 'high') return 'warning';
+  if (p === 'low') return 'neutral';
+  return 'info';
+}
 
 function formatHours(h: number): string {
   if (h < 1) return `${Math.round(h * 60)}m`;
@@ -188,9 +189,7 @@ export default function TaskFieldsPanel({
       {/* Metadata: priority + estimate */}
       {(task.priority !== 'medium' || task.estimatedHours != null) && (
         <div className="mb-4 flex items-center gap-2">
-          <span className={`text-xs px-2 py-0.5 rounded font-medium ${priorityStyles[task.priority] ?? priorityStyles.medium}`}>
-            {task.priority}
-          </span>
+          <Badge variant={priorityVariant(task.priority)}>{task.priority}</Badge>
           {task.estimatedHours != null && (
             <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
               ~{formatHours(task.estimatedHours)}

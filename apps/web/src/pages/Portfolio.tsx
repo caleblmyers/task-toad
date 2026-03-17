@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { gql } from '../api/client';
+import Badge from '../components/shared/Badge';
 
 interface ProjectSummary {
   projectId: string;
@@ -22,11 +23,11 @@ const PORTFOLIO_QUERY = `query PortfolioOverview {
   }
 }`;
 
-function healthBadge(score: number | null): { label: string; className: string } {
-  if (score === null) return { label: 'N/A', className: 'bg-slate-100 text-slate-500' };
-  if (score > 70) return { label: 'Healthy', className: 'bg-green-100 text-green-700' };
-  if (score >= 40) return { label: 'At Risk', className: 'bg-yellow-100 text-yellow-700' };
-  return { label: 'Critical', className: 'bg-red-100 text-red-700' };
+function healthInfo(score: number | null): { label: string; variant: 'success' | 'warning' | 'danger' | 'neutral' } {
+  if (score === null) return { label: 'N/A', variant: 'neutral' };
+  if (score > 70) return { label: 'Healthy', variant: 'success' };
+  if (score >= 40) return { label: 'At Risk', variant: 'warning' };
+  return { label: 'Critical', variant: 'danger' };
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -139,7 +140,7 @@ export default function Portfolio() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {projects.map((p) => {
-            const badge = healthBadge(p.healthScore);
+            const health = healthInfo(p.healthScore);
             return (
               <Link
                 key={p.projectId}
@@ -149,9 +150,7 @@ export default function Portfolio() {
                 {/* Header */}
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="text-sm font-semibold text-slate-800 truncate">{p.name}</h2>
-                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${badge.className}`}>
-                    {badge.label}
-                  </span>
+                  <Badge variant={health.variant} size="sm">{health.label}</Badge>
                 </div>
 
                 {/* Progress + metrics */}

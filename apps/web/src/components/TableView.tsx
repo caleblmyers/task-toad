@@ -2,6 +2,14 @@ import { useState } from 'react';
 import { List } from 'react-window';
 import type { Task, Sprint, OrgUser } from '../types';
 import { statusLabel } from '../utils/taskHelpers';
+import Badge from './shared/Badge';
+
+function priorityVariant(p: string): 'danger' | 'warning' | 'info' | 'neutral' {
+  if (p === 'critical') return 'danger';
+  if (p === 'high') return 'warning';
+  if (p === 'low') return 'neutral';
+  return 'info';
+}
 
 const TABLE_ROW_HEIGHT = 40;
 const MAX_TABLE_HEIGHT = 600;
@@ -132,7 +140,7 @@ export default function TableView({
                               </select>
                             </div>
                             <div className={tdClass}>
-                              <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${task.priority === 'critical' ? 'bg-red-100 text-red-700' : task.priority === 'high' ? 'bg-orange-100 text-orange-700' : task.priority === 'low' ? 'bg-slate-100 text-slate-500' : 'bg-blue-100 text-blue-700'}`}>{task.priority}</span>
+                              <Badge variant={priorityVariant(task.priority)} size="sm">{task.priority}</Badge>
                             </div>
                             <div className={tdClass} onClick={(e) => e.stopPropagation()}>
                               <select value={task.assigneeId ?? ''} onChange={(e) => onAssignUser(task.taskId, e.target.value || null)} className={`${selectClass} max-w-[120px]`}>
@@ -196,14 +204,7 @@ export default function TableView({
                       </select>
                     </td>
                     <td className={tdClass}>
-                      <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                        task.priority === 'critical' ? 'bg-red-100 text-red-700' :
-                        task.priority === 'high' ? 'bg-orange-100 text-orange-700' :
-                        task.priority === 'low' ? 'bg-slate-100 text-slate-500' :
-                        'bg-blue-100 text-blue-700'
-                      }`}>
-                        {task.priority}
-                      </span>
+                      <Badge variant={priorityVariant(task.priority)} size="sm">{task.priority}</Badge>
                     </td>
                     <td className={tdClass} onClick={(e) => e.stopPropagation()}>
                       <select

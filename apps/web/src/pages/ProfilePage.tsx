@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
 import { useAuth } from '../auth/context';
+import Card from '../components/shared/Card';
 import UserAvatar from '../components/shared/UserAvatar';
 
 interface ProfileData {
@@ -90,7 +91,7 @@ export default function ProfilePage() {
     <div className="max-w-lg space-y-8">
       <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-200">Profile</h1>
 
-      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-6 space-y-6">
+      <Card className="space-y-6">
         <div className="flex items-center gap-4">
           <UserAvatar
             email={profile.email}
@@ -169,7 +170,7 @@ export default function ProfilePage() {
             {saving ? 'Saving...' : 'Save'}
           </button>
         </form>
-      </div>
+      </Card>
     </div>
   );
 }
