@@ -343,6 +343,42 @@ Railway provides automated PostgreSQL backup and recovery:
 
 ---
 
+## 2026-03-17 — PWA cache invalidation strategy and navigateFallback
+
+**Decision:** Document the PWA service worker update lifecycle and verify the `navigateFallback` denylist is complete.
+
+### Service worker update lifecycle
+
+- **`registerType: 'autoUpdate'`** — Vite PWA checks for a new service worker on every page load. If a new SW is found, it installs in the background and automatically activates (no user prompt). The old SW is replaced on the next navigation.
+- **Triggering a new SW:** Any change to precached assets (JS, CSS, HTML, images) changes the Workbox precache manifest hash, which produces a new `sw.js`. Deploying any code change automatically triggers a SW update for all clients on next load.
+- **Manual version bump:** Not needed in normal operation — the precache manifest hash handles versioning. If needed, adding a `version` comment in `vite.config.ts` PWA config forces a new SW even without asset changes.
+
+### Breaking API changes
+
+- **Not a concern for caching:** The `/api/*` runtime cache uses `NetworkFirst` strategy with a 5-minute / 50-entry expiration. API responses are always fetched from the network first; the cache only serves stale data when offline. Breaking API changes are served fresh immediately.
+- **If stale cache causes issues:** The 5-minute `maxAgeSeconds` means stale API data expires quickly. For truly breaking changes (e.g., response shape changes), deploy the API first, then the frontend — clients will get fresh API responses and a new SW on next load.
+
+### Emergency service worker unregister
+
+If a bad service worker is deployed and causes issues, users can run in browser console:
+```js
+navigator.serviceWorker.getRegistrations().then(r => r.forEach(r => r.unregister()));
+```
+Then hard-refresh (`Ctrl+Shift+R`). For a server-side fix, deploy a no-op SW that immediately calls `self.skipWaiting()` and `clients.claim()`.
+
+### navigateFallback denylist
+
+The `navigateFallback: '/offline.html'` setting serves the offline page for navigation requests when the network is unavailable. The denylist prevents non-navigation paths from being served the offline page:
+
+- `/^\/api\//` — API requests (handled by NetworkFirst runtime cache)
+- `/^\/assets\//` — Vite hashed static assets (already precached by Workbox)
+- `/^\/sw\.js$/` — The service worker script itself
+- `/^\/workbox-/` — Workbox runtime chunks
+
+Without these denylist entries, a request for e.g. `/sw.js` while offline could incorrectly return the offline HTML page instead of failing cleanly.
+
+---
+
 ## Stack Lock-in Notes
 
 - `graphql-yoga` requires casting as `unknown as express.RequestHandler` for TS compat in `app.ts`
