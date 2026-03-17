@@ -45,7 +45,7 @@ afterAll(async () => {
 describe('signup', () => {
   it('creates a user in the database with a hashed password', async () => {
     const email = 'test@example.com';
-    const password = 'securepassword123';
+    const password = 'SecurePass123';
 
     const result = await authMutations.signup(null, { email, password }, makeContext());
     expect(result).toBe(true);
@@ -60,10 +60,10 @@ describe('signup', () => {
   });
 
   it('rejects duplicate email with ConflictError', async () => {
-    await signupUser('dup@example.com', 'password123');
+    await signupUser('dup@example.com', 'Password123');
 
     await expect(
-      authMutations.signup(null, { email: 'dup@example.com', password: 'password456' }, makeContext()),
+      authMutations.signup(null, { email: 'dup@example.com', password: 'Password456' }, makeContext()),
     ).rejects.toThrow('Email already in use');
   });
 
@@ -76,10 +76,12 @@ describe('signup', () => {
 
 describe('login', () => {
   const email = 'login@example.com';
-  const password = 'correcthorse';
+  const password = 'CorrectHorse1';
 
   beforeEach(async () => {
     await signupUser(email, password);
+    // Mark email as verified so login succeeds
+    await prisma.user.update({ where: { email }, data: { emailVerifiedAt: new Date() } });
   });
 
   it('returns a valid JWT token on success', async () => {
@@ -95,13 +97,13 @@ describe('login', () => {
 
   it('rejects wrong password with AuthenticationError', async () => {
     await expect(
-      authMutations.login(null, { email, password: 'wrongpassword' }, makeContext()),
+      authMutations.login(null, { email, password: 'WrongPassword1' }, makeContext()),
     ).rejects.toThrow('Invalid email or password');
   });
 
   it('rejects nonexistent email with AuthenticationError', async () => {
     await expect(
-      authMutations.login(null, { email: 'nobody@example.com', password: 'anything' }, makeContext()),
+      authMutations.login(null, { email: 'nobody@example.com', password: 'Anything123' }, makeContext()),
     ).rejects.toThrow('Invalid email or password');
   });
 });
@@ -109,7 +111,7 @@ describe('login', () => {
 describe('createOrg', () => {
   it('creates an org and attaches user as admin', async () => {
     // First create a user
-    await signupUser('orguser@example.com', 'password123');
+    await signupUser('orguser@example.com', 'Password123');
     const user = await prisma.user.findUnique({ where: { email: 'orguser@example.com' } });
     expect(user).not.toBeNull();
 

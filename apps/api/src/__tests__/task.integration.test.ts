@@ -35,7 +35,7 @@ beforeEach(async () => {
   await cleanDatabase();
 
   // Create user + org + project
-  await authMutations.signup(null, { email: 'task-test@example.com', password: 'password123' }, {
+  await authMutations.signup(null, { email: 'task-test@example.com', password: 'Password123' }, {
     user: null, org: null, prisma, loaders: createLoaders(prisma),
   } as Context);
 

@@ -46,7 +46,7 @@ beforeEach(async () => {
   await cleanDatabase();
 
   // Create user + org
-  await authMutations.signup(null, { email: 'notif-test@example.com', password: 'password123' }, {
+  await authMutations.signup(null, { email: 'notif-test@example.com', password: 'Password123' }, {
     user: null, org: null, prisma, loaders: createLoaders(prisma),
   } as Context);
 
@@ -122,7 +122,7 @@ describe('markNotificationRead', () => {
 
   it('throws NotFoundError for another user\'s notification', async () => {
     // Create another user
-    await authMutations.signup(null, { email: 'other@example.com', password: 'password123' }, {
+    await authMutations.signup(null, { email: 'other@example.com', password: 'Password123' }, {
       user: null, org: null, prisma, loaders: createLoaders(prisma),
     } as Context);
     const otherUser = await prisma.user.findUniqueOrThrow({ where: { email: 'other@example.com' } });

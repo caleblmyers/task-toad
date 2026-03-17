@@ -43,7 +43,7 @@ beforeEach(async () => {
   await cleanDatabase();
 
   // Create user + org
-  await authMutations.signup(null, { email: 'proj-test@example.com', password: 'password123' }, {
+  await authMutations.signup(null, { email: 'proj-test@example.com', password: 'Password123' }, {
     user: null, org: null, prisma, loaders: createLoaders(prisma),
   } as Context);
 
@@ -74,7 +74,7 @@ describe('createProject', () => {
 
   it('rejects non-admin users with AuthorizationError', async () => {
     // Create a member user
-    await authMutations.signup(null, { email: 'member@example.com', password: 'password123' }, {
+    await authMutations.signup(null, { email: 'member@example.com', password: 'Password123' }, {
       user: null, org: null, prisma, loaders: createLoaders(prisma),
     } as Context);
     const member = await prisma.user.findUniqueOrThrow({ where: { email: 'member@example.com' } });
@@ -166,7 +166,7 @@ describe('project query', () => {
     const project = await projectMutations.createProject(null, { name: 'Other Org Project' }, makeContext());
 
     // Create a second org + user
-    await authMutations.signup(null, { email: 'other@example.com', password: 'password123' }, {
+    await authMutations.signup(null, { email: 'other@example.com', password: 'Password123' }, {
       user: null, org: null, prisma, loaders: createLoaders(prisma),
     } as Context);
     const otherUser = await prisma.user.findUniqueOrThrow({ where: { email: 'other@example.com' } });
