@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import type { TaskPlanPreview } from '../types';
 import Modal from './shared/Modal';
 import Button from './shared/Button';
+import Badge from './shared/Badge';
 
-const PRIORITY_STYLES: Record<string, string> = {
-  critical: 'bg-red-100 text-red-700',
-  high: 'bg-orange-100 text-orange-700',
-  medium: 'bg-blue-100 text-blue-700',
-  low: 'bg-slate-100 text-slate-500',
+const PRIORITY_VARIANT: Record<string, 'danger' | 'accent' | 'info' | 'neutral'> = {
+  critical: 'danger',
+  high: 'accent',
+  medium: 'info',
+  low: 'neutral',
 };
 
 function formatHours(h: number): string {
@@ -69,7 +70,7 @@ interface TaskPlanCardProps {
 
 function TaskPlanCard({ task, checked, onToggle }: TaskPlanCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const priorityClass = PRIORITY_STYLES[task.priority] ?? PRIORITY_STYLES.medium;
+  const priorityVar = PRIORITY_VARIANT[task.priority] ?? 'info';
 
   return (
     <div
@@ -87,13 +88,13 @@ function TaskPlanCard({ task, checked, onToggle }: TaskPlanCardProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-slate-800 text-sm">{task.title}</span>
-            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${priorityClass}`}>
+            <Badge variant={priorityVar} size="sm">
               {task.priority}
-            </span>
+            </Badge>
             {task.estimatedHours != null && (
-              <span className="text-xs text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+              <Badge variant="neutral" size="sm">
                 ~{formatHours(task.estimatedHours)}
-              </span>
+              </Badge>
             )}
           </div>
 
@@ -103,9 +104,9 @@ function TaskPlanCard({ task, checked, onToggle }: TaskPlanCardProps) {
             <div className="flex items-center gap-1 mt-1.5 flex-wrap">
               <span className="text-xs text-slate-400">Depends on:</span>
               {task.dependsOn.map((dep) => (
-                <span key={dep} className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded">
+                <Badge key={dep} variant="warning" size="sm">
                   {dep}
-                </span>
+                </Badge>
               ))}
             </div>
           )}

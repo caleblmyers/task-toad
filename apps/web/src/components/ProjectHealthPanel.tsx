@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
 import { IconClose } from './shared/Icons';
+import Badge from './shared/Badge';
 
 interface HealthIssue {
   title: string;
@@ -22,16 +23,16 @@ interface Props {
   onClose: () => void;
 }
 
-const statusColors: Record<string, string> = {
-  healthy: 'bg-emerald-100 text-emerald-700',
-  'at-risk': 'bg-amber-100 text-amber-700',
-  critical: 'bg-red-100 text-red-700',
+const statusVariant: Record<string, 'success' | 'warning' | 'danger'> = {
+  healthy: 'success',
+  'at-risk': 'warning',
+  critical: 'danger',
 };
 
-const severityColors: Record<string, string> = {
-  high: 'bg-red-100 text-red-700',
-  medium: 'bg-amber-100 text-amber-700',
-  low: 'bg-slate-100 text-slate-500',
+const severityVariant: Record<string, 'danger' | 'warning' | 'neutral'> = {
+  high: 'danger',
+  medium: 'warning',
+  low: 'neutral',
 };
 
 function scoreColor(score: number): string {
@@ -137,9 +138,9 @@ export default function ProjectHealthPanel({ projectId, disabled, onClose }: Pro
                 </span>
               </div>
               <div>
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${statusColors[health.status] ?? 'bg-slate-100 text-slate-500'}`}>
+                <Badge variant={statusVariant[health.status] ?? 'neutral'} size="sm" className="font-semibold">
                   {health.status}
-                </span>
+                </Badge>
                 <div className="mt-1.5 h-1.5 w-32 bg-slate-100 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full ${scoreTrackColor(health.healthScore)}`}
@@ -157,9 +158,9 @@ export default function ProjectHealthPanel({ projectId, disabled, onClose }: Pro
                   {health.issues.map((issue, i) => (
                     <div key={i} className="bg-slate-50 rounded-lg p-3">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${severityColors[issue.severity] ?? 'bg-slate-100 text-slate-500'}`}>
+                        <Badge variant={severityVariant[issue.severity] ?? 'neutral'} size="sm" className="font-semibold">
                           {issue.severity}
-                        </span>
+                        </Badge>
                         <span className="text-sm font-medium text-slate-700">{issue.title}</span>
                       </div>
                       <p className="text-xs text-slate-500">{issue.description}</p>

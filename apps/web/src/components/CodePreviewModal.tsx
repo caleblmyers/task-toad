@@ -3,6 +3,7 @@ import { gql } from '../api/client';
 import { computeDiff, type DiffLine } from '../utils/diff';
 import Modal from './shared/Modal';
 import Button from './shared/Button';
+import Badge from './shared/Badge';
 
 interface GeneratedFile {
   path: string;
@@ -292,9 +293,7 @@ export default function CodePreviewModal({
           <h2 className="text-lg font-semibold text-slate-800">Generated Code</h2>
           <div className="flex items-center gap-3">
             {hasStyleGuide && (
-              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                Style guide active
-              </span>
+              <Badge variant="info" size="sm">Style guide active</Badge>
             )}
             <span className="text-xs text-slate-400">
               Tokens: {(isSubtaskMode ? subtaskTokens : estimatedTokensUsed).toLocaleString()} · Cost: ~${((isSubtaskMode ? subtaskTokens : estimatedTokensUsed) * 0.000005).toFixed(4)}

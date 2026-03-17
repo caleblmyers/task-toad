@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
 import { WEBHOOK_DELIVERIES_QUERY, REPLAY_WEBHOOK_DELIVERY_MUTATION } from '../api/queries';
 import { useConfirmDialog } from './shared/ConfirmDialog';
+import Badge from './shared/Badge';
 
 interface WebhookEndpoint {
   id: string;
@@ -37,11 +38,11 @@ const SUPPORTED_EVENTS = [
 
 const WEBHOOKS_QUERY = `query { webhookEndpoints { id url events enabled description lastError lastFiredAt createdAt } }`;
 
-const STATUS_BADGE: Record<string, { bg: string; text: string }> = {
-  success: { bg: 'bg-green-100', text: 'text-green-700' },
-  retrying: { bg: 'bg-amber-100', text: 'text-amber-700' },
-  failed: { bg: 'bg-red-100', text: 'text-red-700' },
-  pending: { bg: 'bg-slate-100', text: 'text-slate-500' },
+const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
+  success: 'success',
+  retrying: 'warning',
+  failed: 'danger',
+  pending: 'neutral',
 };
 
 export default function WebhookSettings() {
@@ -342,15 +343,15 @@ export default function WebhookSettings() {
                     ) : (
                       <ul className="space-y-1.5">
                         {deliveries.map((d) => {
-                          const badge = STATUS_BADGE[d.status] ?? STATUS_BADGE.pending;
+                          const variant = STATUS_VARIANT[d.status] ?? 'neutral';
                           return (
                             <li
                               key={d.id}
                               className="flex items-center gap-2 text-xs"
                             >
-                              <span className={`px-1.5 py-0.5 rounded ${badge.bg} ${badge.text}`}>
+                              <Badge variant={variant} size="sm">
                                 {d.status}
-                              </span>
+                              </Badge>
                               <span className="text-slate-700">{d.event}</span>
                               {d.statusCode && (
                                 <span className="text-slate-400">{d.statusCode}</span>

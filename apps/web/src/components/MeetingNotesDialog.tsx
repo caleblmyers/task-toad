@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { gql } from '../api/client';
 import { IconClose } from './shared/Icons';
 import Modal from './shared/Modal';
+import Badge from './shared/Badge';
 
 interface ExtractedTask {
   title: string;
@@ -22,11 +23,11 @@ interface Props {
   onClose: () => void;
 }
 
-const priorityStyles: Record<string, string> = {
-  critical: 'bg-red-100 text-red-700',
-  high: 'bg-orange-100 text-orange-700',
-  medium: 'bg-blue-100 text-blue-700',
-  low: 'bg-slate-100 text-slate-500',
+const priorityVariant: Record<string, 'danger' | 'accent' | 'info' | 'neutral'> = {
+  critical: 'danger',
+  high: 'accent',
+  medium: 'info',
+  low: 'neutral',
 };
 
 export default function MeetingNotesDialog({ projectId, onTasksCreated, onClose }: Props) {
@@ -173,9 +174,9 @@ export default function MeetingNotesDialog({ projectId, onTasksCreated, onClose 
                         )}
                         <div className="flex items-center gap-2 mt-1.5">
                           {task.priority && (
-                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${priorityStyles[task.priority] ?? 'bg-slate-100 text-slate-500'}`}>
+                            <Badge variant={priorityVariant[task.priority] ?? 'neutral'} size="sm">
                               {task.priority}
-                            </span>
+                            </Badge>
                           )}
                           {task.assigneeName && (
                             <span className="text-[10px] text-slate-400">
