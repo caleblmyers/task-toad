@@ -51,21 +51,29 @@ export default function ProjectToolbar({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [bootstrapping, setBootstrapping] = useState(false);
   const templateMenuRef = useRef<HTMLDivElement>(null);
-  const templateBtnRef = useRef<HTMLButtonElement>(null);
+  const templateSelectRef = useRef<HTMLSelectElement>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
+  const exportItemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const [activeExportIndex, setActiveExportIndex] = useState(0);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
-  // Close template menu on Escape or click-outside
+  // Close template menu on Escape or click-outside, manage focus
   useEffect(() => {
     if (!showTemplateMenu) return;
+    // Auto-focus select element when overlay opens
+    requestAnimationFrame(() => {
+      templateSelectRef.current?.focus();
+    });
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setShowTemplateMenu(false);
-        templateBtnRef.current?.focus();
+        previousFocusRef.current?.focus();
       }
     };
     const handleClickOutside = (e: MouseEvent) => {
       if (templateMenuRef.current && !templateMenuRef.current.contains(e.target as Node)) {
         setShowTemplateMenu(false);
+        previousFocusRef.current?.focus();
       }
     };
     document.addEventListener('keydown', handleKeyDown);
@@ -76,23 +84,22 @@ export default function ProjectToolbar({
     };
   }, [showTemplateMenu]);
 
-  // Close export menu on Escape or click-outside
+  // Close export menu on Escape or click-outside, manage focus + keyboard nav
   useEffect(() => {
     if (!showExportMenu) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setShowExportMenu(false);
-      }
-    };
+    setActiveExportIndex(0);
+    // Auto-focus first menu item
+    requestAnimationFrame(() => {
+      exportItemRefs.current[0]?.focus();
+    });
     const handleClickOutside = (e: MouseEvent) => {
       if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
         setShowExportMenu(false);
+        previousFocusRef.current?.focus();
       }
     };
-    document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showExportMenu]);
@@ -296,8 +303,8 @@ export default function ProjectToolbar({
               </span>
             }
             items={[
-              { label: 'Template', onClick: () => { setShowTemplateMenu((v) => { if (!v) loadTemplates(); return !v; }); setShowExportMenu(false); }, disabled: d.isGenerating },
-              { label: 'Import/Export', onClick: () => { setShowExportMenu((v) => !v); setShowTemplateMenu(false); } },
+              { label: 'Template', onClick: () => { previousFocusRef.current = document.activeElement as HTMLElement; setShowTemplateMenu((v) => { if (!v) loadTemplates(); return !v; }); setShowExportMenu(false); }, disabled: d.isGenerating },
+              { label: 'Import/Export', onClick: () => { previousFocusRef.current = document.activeElement as HTMLElement; setShowExportMenu((v) => !v); setShowTemplateMenu(false); } },
               { label: 'Project Settings', onClick: () => onOpenModal('project-settings') },
               { label: 'Knowledge Base', onClick: () => onOpenModal('knowledge-base') },
               { label: gitHubRepo ? `GitHub: ${gitHubRepo.repositoryOwner}/${gitHubRepo.repositoryName}` : 'Connect GitHub', icon: <IconGitHub className="w-3.5 h-3.5" />, onClick: () => onOpenModal('github') },
@@ -307,13 +314,14 @@ export default function ProjectToolbar({
 
           {/* Template menu overlay */}
           {showTemplateMenu && (
-            <div ref={templateMenuRef} className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-2 z-50 min-w-[260px] p-3 space-y-2">
+            <div ref={templateMenuRef} role="dialog" aria-label="Create from template" tabIndex={-1} className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-2 z-50 min-w-[260px] p-3 space-y-2">
               <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Create from template</p>
               {templateList.length === 0 ? (
                 <p className="text-xs text-slate-400">No templates. Create one in Project Settings.</p>
               ) : (
                 <>
                   <select
+                    ref={templateSelectRef}
                     value={selectedTemplateId ?? ''}
                     onChange={(e) => setSelectedTemplateId(e.target.value || null)}
                     className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded px-2 py-1 dark:bg-slate-700 dark:text-slate-200"
@@ -355,26 +363,61 @@ export default function ProjectToolbar({
 
           {/* Export menu overlay */}
           {showExportMenu && (
-            <div ref={exportMenuRef} className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 z-50 min-w-[180px]">
+            <div
+              ref={exportMenuRef}
+              role="menu"
+              aria-label="Export options"
+              tabIndex={-1}
+              className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 z-50 min-w-[180px]"
+              onKeyDown={(e) => {
+                const itemCount = exportItemRefs.current.length;
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  const next = (activeExportIndex + 1) % itemCount;
+                  setActiveExportIndex(next);
+                  exportItemRefs.current[next]?.focus();
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  const prev = (activeExportIndex - 1 + itemCount) % itemCount;
+                  setActiveExportIndex(prev);
+                  exportItemRefs.current[prev]?.focus();
+                } else if (e.key === 'Escape') {
+                  setShowExportMenu(false);
+                  previousFocusRef.current?.focus();
+                }
+              }}
+            >
               <button
+                ref={(el) => { exportItemRefs.current[0] = el; }}
+                role="menuitem"
+                tabIndex={activeExportIndex === 0 ? 0 : -1}
                 className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
                 onClick={() => { downloadExport(`project/${d.projectId}/csv`, `${d.project?.name ?? 'tasks'}.csv`); setShowExportMenu(false); }}
               >
                 Export Tasks (CSV)
               </button>
               <button
+                ref={(el) => { exportItemRefs.current[1] = el; }}
+                role="menuitem"
+                tabIndex={activeExportIndex === 1 ? 0 : -1}
                 className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
                 onClick={() => { downloadExport(`project/${d.projectId}/json`, `${d.project?.name ?? 'tasks'}.json`); setShowExportMenu(false); }}
               >
                 Export Tasks (JSON)
               </button>
               <button
+                ref={(el) => { exportItemRefs.current[2] = el; }}
+                role="menuitem"
+                tabIndex={activeExportIndex === 2 ? 0 : -1}
                 className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
                 onClick={() => { downloadExport(`project/${d.projectId}/activity/csv`, `${d.project?.name ?? 'activity'}-activity.csv`); setShowExportMenu(false); }}
               >
                 Export Activity (CSV)
               </button>
               <button
+                ref={(el) => { exportItemRefs.current[3] = el; }}
+                role="menuitem"
+                tabIndex={activeExportIndex === 3 ? 0 : -1}
                 className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
                 onClick={() => { downloadExport(`project/${d.projectId}/activity/json`, `${d.project?.name ?? 'activity'}-activity.json`); setShowExportMenu(false); }}
               >
@@ -382,6 +425,9 @@ export default function ProjectToolbar({
               </button>
               <hr className="my-1 border-slate-100" />
               <button
+                ref={(el) => { exportItemRefs.current[4] = el; }}
+                role="menuitem"
+                tabIndex={activeExportIndex === 4 ? 0 : -1}
                 className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
                 onClick={() => { onOpenModal('csv-import'); setShowExportMenu(false); }}
               >
