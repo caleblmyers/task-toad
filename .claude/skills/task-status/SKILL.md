@@ -1,5 +1,5 @@
 ---
-name: swarm-status
+name: task-status
 description: Show the current status of all swarm tasks, workers, and any blockers or issues. Use when the user asks "swarm status", "how are workers doing", "check swarm", or "task status".
 disable-model-invocation: false
 user-invocable: true
@@ -82,4 +82,4 @@ Worker STATUS is one of:
 - **Working** — has in_progress tasks
 - **Awaiting review** — has completed tasks pending reviewer
 - **Blocked** — has blocked tasks or review rejections
-- **Idle** — all tasks merged, could take new work (suggest `/swarm-assign`)
+- **Idle** — all tasks merged, could take new work (suggest `/task-assign`)

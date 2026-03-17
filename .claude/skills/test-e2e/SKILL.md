@@ -1,5 +1,5 @@
 ---
-name: e2e-test
+name: test-e2e
 description: Run end-to-end smoke test of the full TaskToad pipeline. Tests signup, org creation, API key setup, AI project generation, code generation, and GitHub PR creation. Use when the user says "run e2e test", "test full flow", or "smoke test".
 user-invocable: true
 ---

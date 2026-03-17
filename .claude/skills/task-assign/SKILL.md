@@ -1,5 +1,5 @@
 ---
-name: swarm-assign
+name: task-assign
 description: Dynamically add new tasks to a running worker's queue without affecting other workers. Use when a worker finishes early and the user says "assign more tasks to worker-N", "worker N is done add more", or "add tasks for worker-2".
 disable-model-invocation: false
 user-invocable: true
@@ -11,7 +11,7 @@ You are adding tasks to a worker that has finished its current tasks while other
 
 ## Arguments
 
-The user should specify which worker (e.g., `/swarm-assign worker-2` or just mention which worker is free).
+The user should specify which worker (e.g., `/task-assign worker-2` or just mention which worker is free).
 
 ## Steps
 

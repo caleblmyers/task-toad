@@ -1,6 +1,6 @@
 ---
-name: debug-worker
-description: Run as a debugger agent — watch for bug reports, investigate root causes, fix or document. Use when told to debug, or with /debug-worker.
+name: test-debugger
+description: Run as a debugger agent — watch for bug reports, investigate root causes, fix or document. Use when told to debug, or with /test-debugger.
 user-invocable: true
 ---
 

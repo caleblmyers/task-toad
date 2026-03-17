@@ -1,6 +1,6 @@
 ---
-name: swarm-worker
-description: Start working as a swarm worker. Reads tasks.json, finds tasks assigned to this worker, and implements them. Use when inside a worker worktree and the user says "/swarm-worker", "start working", or "begin tasks".
+name: task-worker
+description: Start working as a swarm worker. Reads tasks.json, finds tasks assigned to this worker, and implements them. Use when inside a worker worktree and the user says "/task-worker", "start working", or "begin tasks".
 disable-model-invocation: false
 user-invocable: true
 ---

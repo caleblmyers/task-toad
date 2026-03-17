@@ -1,6 +1,6 @@
 ---
-name: swarm-reviewer
-description: Start reviewing as the swarm reviewer. Watches tasks.json for completed tasks, reviews and merges them. Use when inside the reviewer worktree and the user says "/swarm-reviewer", "start reviewing", or "begin review".
+name: task-reviewer
+description: Start reviewing as the swarm reviewer. Watches tasks.json for completed tasks, reviews and merges them. Use when inside the reviewer worktree and the user says "/task-reviewer", "start reviewing", or "begin review".
 disable-model-invocation: false
 user-invocable: true
 ---

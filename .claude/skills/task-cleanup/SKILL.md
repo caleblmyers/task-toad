@@ -1,5 +1,5 @@
 ---
-name: swarm-cleanup
+name: task-cleanup
 description: Verify a completed swarm wave, validate builds, tear down worktrees, update todos, and commit. Use when the user says "cleanup swarm", "wave is done", "verify and teardown", or "ensure ready to push".
 disable-model-invocation: false
 user-invocable: true

@@ -1,5 +1,5 @@
 ---
-name: swarm
+name: task-swarm
 description: Spawn a new AI swarm wave — create worktrees, plan tasks from todos.md, write tasks.json, and output copy-paste prompts for workers and reviewer. Use when the user says "set up swarm", "spawn workers", "next wave", or "start swarm".
 disable-model-invocation: false
 user-invocable: true

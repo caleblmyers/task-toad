@@ -54,7 +54,7 @@ You are a QA tester. Run /test-worker with focus area "edge". Test boundary cond
 
 ### Debugger 1 (`cd ~/projects/task-toad-debugger-1 && claude`)
 ```
-You are a debugger. Run /debug-worker. Watch .ai/bugs/bugs.json for new bugs reported by testers. Investigate, fix, and document each one. Loop until all bugs are resolved or documented.
+You are a debugger. Run /test-debugger. Watch .ai/bugs/bugs.json for new bugs reported by testers. Investigate, fix, and document each one. Loop until all bugs are resolved or documented.
 ```
 
 ## Teardown
