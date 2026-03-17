@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { gql } from '../api/client';
 import {
   PREVIEW_TASK_PLAN_MUTATION, COMMIT_TASK_PLAN_MUTATION, SUMMARIZE_PROJECT_MUTATION,
-  GENERATE_INSTRUCTIONS_MUTATION, GENERATE_CODE_FROM_SUBTASK_MUTATION,
+  GENERATE_INSTRUCTIONS_MUTATION, GENERATE_CODE_MUTATION, GENERATE_CODE_FROM_SUBTASK_MUTATION,
   REGENERATE_FILE_MUTATION, PLAN_CODE_MUTATION, GENERATE_PLANNED_FILE_MUTATION,
   CREATE_PR_MUTATION, PARSE_BUG_REPORT_MUTATION, PREVIEW_PRD_MUTATION,
   COMMIT_PRD_MUTATION, BOOTSTRAP_REPO_MUTATION,
@@ -315,12 +315,26 @@ export function useAIGeneration({
     await handleGeneratePlannedFiles(taskId, [filePath]);
   }, [handleGeneratePlannedFiles]);
 
-  // ── Single-call code generation (existing, kept as fast path) ──
+  // ── Single-call code generation ──
 
   const handleGenerateCode = useCallback(async (task: Task) => {
-    // Always use multi-step plan-then-generate
-    await handlePlanCodeGeneration(task);
-  }, [handlePlanCodeGeneration]);
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setGeneratingCode(task.taskId);
+    try {
+      const styleGuide = projectId ? localStorage.getItem(`tasktoad-style-guide-${projectId}`) : null;
+      const data = await gql<{ generateCodeFromTask: GeneratedCode }>(
+        GENERATE_CODE_MUTATION, { taskId: task.taskId, styleGuide }, controller.signal,
+      );
+      setGeneratedCode(data.generateCodeFromTask);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      setErr(error instanceof Error ? error.message : 'Failed to generate code');
+    } finally {
+      setGeneratingCode(null);
+      if (abortRef.current === controller) abortRef.current = null;
+    }
+  }, [projectId, setErr]);
 
   const handleGenerateCodeFromSubtask = useCallback(async (taskId: string, subtaskId: string): Promise<GeneratedCode | null> => {
     const controller = new AbortController();
