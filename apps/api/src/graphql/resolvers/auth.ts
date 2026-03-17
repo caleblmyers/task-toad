@@ -20,6 +20,7 @@ import {
   ValidationError,
   ConflictError,
 } from '../errors.js';
+import { validatePassword } from '../../utils/passwordPolicy.js';
 
 // ── Shared auth helpers (imported by other resolver modules) ──
 
@@ -75,8 +76,9 @@ export const authQueries = {
 
 export const authMutations = {
   signup: async (_parent: unknown, args: { email: string; password: string }, context: Context) => {
-    if (args.password.length < 8) {
-      throw new ValidationError('Password must be at least 8 characters');
+    const pwResult = validatePassword(args.password);
+    if (!pwResult.valid) {
+      throw new ValidationError(pwResult.errors.join('; '));
     }
     const existing = await context.prisma.user.findUnique({ where: { email: args.email } });
     if (existing) throw new ConflictError('Email already in use');
@@ -171,8 +173,9 @@ export const authMutations = {
   },
 
   resetPassword: async (_parent: unknown, args: { token: string; newPassword: string }, context: Context) => {
-    if (args.newPassword.length < 8) {
-      throw new ValidationError('Password must be at least 8 characters');
+    const pwResult = validatePassword(args.newPassword);
+    if (!pwResult.valid) {
+      throw new ValidationError(pwResult.errors.join('; '));
     }
     const hashedToken = hashToken(args.token);
     const user = await context.prisma.user.findFirst({
@@ -249,8 +252,12 @@ export const authMutations = {
       });
       userId = existingUser.userId;
     } else {
-      if (!args.password || args.password.length < 8) {
-        throw new ValidationError('Password must be at least 8 characters');
+      if (!args.password) {
+        throw new ValidationError('Password is required for new accounts');
+      }
+      const invitePwResult = validatePassword(args.password);
+      if (!invitePwResult.valid) {
+        throw new ValidationError(invitePwResult.errors.join('; '));
       }
       const passwordHash = await bcrypt.hash(args.password, 10);
       const newUser = await context.prisma.user.create({

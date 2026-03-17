@@ -679,10 +679,7 @@ export const taskMutations = {
 export const taskFieldResolvers = {
   Task: {
     attachments: async (parent: { taskId: string }, _args: unknown, context: Context) => {
-      const attachments = await context.prisma.attachment.findMany({
-        where: { taskId: parent.taskId },
-        orderBy: { createdAt: 'desc' },
-      });
+      const attachments = await context.loaders.taskAttachments.load(parent.taskId);
       return attachments.map(a => ({ ...a, createdAt: a.createdAt.toISOString() }));
     },
     labels: async (parent: { taskId: string }, _args: unknown, context: Context) => {
