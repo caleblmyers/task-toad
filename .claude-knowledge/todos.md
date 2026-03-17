@@ -36,6 +36,7 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 - [x] ~~Attachment DataLoader~~ — done in Wave 17
 - [x] ~~Authorization regression tests~~ — done in Wave 17 (7 boundary tests)
 - [ ] **End-to-end test suite** — basic happy-path flows (signup → create org → create project → create/update task → assign → comment → export)
+- [ ] Fix integration test DB — `Activity` table missing from test database; cleanDatabase truncate fails for all integration tests
 - [x] ~~Password policy alignment~~ — done in Wave 17 (shared validatePassword, client-side validation)
 
 ### A11: Accessibility
@@ -51,6 +52,7 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 - [x] ~~SDL descriptions for remaining operations~~ — done in Wave 17 (github, report, slack, webhook, projectrole)
 - [x] ~~Subtask code gen abort support~~ — done in Wave 17 (AbortController + Cancel button)
 - [x] ~~AI prompt log admin toggle~~ — done in Wave 17 (promptLoggingEnabled on Org, OrgSettings toggle)
+- [ ] Thread promptLoggingEnabled through AI callers — aiService.ts callAI calls don't pass promptLogContext; need to pass org.promptLoggingEnabled when logging is wired
 
 ### D1: Deployment & Observability
 **Touches:** `apps/api/src/app.ts`, `apps/api/src/index.ts`, Railway config

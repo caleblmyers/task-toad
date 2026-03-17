@@ -24,6 +24,10 @@ Summaries of work completed each session. Most recent first.
 - SDL descriptions: added triple-quote descriptions to all query/mutation fields in github, report, slack, webhook, projectrole typedefs
 - Subtask code gen abort: AbortController in useAIGeneration for subtask generation, Cancel button in CodePreviewModal, threaded through useProjectData → ProjectDetail
 
+**Open follow-ups:**
+- Integration test DB missing `Activity` table — all integration tests fail in cleanDatabase truncate (pre-existing)
+- `promptLoggingEnabled` not yet threaded through aiService.ts callers — toggle guard exists in aiClient.ts but callers don't pass promptLogContext with the org setting
+
 ### Production Hardening Sprint (GPT-5.4 Audit Response)
 
 **Phase 1 — Security Sprint:**
