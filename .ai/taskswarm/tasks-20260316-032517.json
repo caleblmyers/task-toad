@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "created": "2026-03-16T07:03:40.823Z",
+  "swarmId": "swarm-20260316-030335",
+  "config": {
+    "mainRepo": "/home/caleb/projects/task-toad",
+    "workerCount": 2,
+    "groups": [
+      "W1",
+      "W2",
+      "W6"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "task-001",
+      "title": "Cursor-based pagination, fix mutation return types, and auto-generated API docs",
+      "assignee": "worker-1",
+      "status": "merged",
+      "dependencies": [],
+      "files": [
+        "apps/api/src/graphql/resolvers/task.ts",
+        "apps/api/src/graphql/resolvers/ai.ts",
+        "apps/api/src/graphql/resolvers/notification.ts",
+        "apps/api/src/graphql/typedefs/comment.ts",
+        "apps/api/src/graphql/typedefs/notification.ts",
+        "apps/api/src/graphql/typedefs/report.ts",
+        "apps/api/src/graphql/schema.ts",
+        "apps/api/src/app.ts",
+        "apps/api/src/routes/docs.ts",
+        "apps/api/package.json"
+      ],
+      "description": "Three related API quality improvements: fix mutation return types, add cursor-based pagination, and generate API documentation.\n\n**1. Fix inconsistent mutation return types:**\n- `deleteComment` (resolvers/task.ts line 389-399, typedef in comment.ts line 37): Currently returns `Boolean!`. Change to return the deleted `Comment` object — fetch the comment before deleting, delete it, then return the fetched object. Update typedef: `deleteComment(commentId: ID!): Comment!`.\n- `markAllNotificationsRead` (resolvers/notification.ts line 60-67, typedef in notification.ts line 28): Currently returns `Boolean!`. Change to return `Int!` representing the count of notifications marked read (use the `count` from `updateMany` result). Update typedef: `markAllNotificationsRead: Int!`.\n\n**2. Add cursor-based pagination to `activities` and `reports` queries:**\n- `activities` query (resolvers/task.ts lines 61-77, typedef in comment.ts line 31): Currently `activities(projectId: ID, taskId: ID, limit: Int): [Activity!]!` with only `take`. Add cursor-based pagination:\n  - New typedef: `activities(projectId: ID, taskId: ID, limit: Int, cursor: String): ActivityConnection!`\n  - New type: `type ActivityConnection { activities: [Activity!]!, hasMore: Boolean!, nextCursor: String }`\n  - Resolver: use Prisma cursor pagination (`cursor: { activityId: cursor }, skip: 1` when cursor provided). Set `hasMore` by fetching `limit + 1` and checking length. `nextCursor` is the last activity's `activityId`.\n- `reports` query (resolvers/ai.ts lines 837-851, typedef in report.ts line 49): Same pattern. `reports(projectId: ID!, type: String, limit: Int, cursor: String): ReportConnection!` with `type ReportConnection { reports: [Report!]!, hasMore: Boolean!, nextCursor: String }`.\n- Follow the existing `TaskConnection` pattern (typedefs/task.ts line 95) as a reference.\n\n**3. Auto-generated API documentation:**\n- Install `spectaql` or use a simpler approach: create a route at `GET /api/docs` that serves a static HTML page with the full GraphQL schema SDL and operation documentation.\n- Simplest approach: add a `GET /api/docs` route in a new `apps/api/src/routes/docs.ts` that:\n  - Uses `printSchema` from `graphql` to get the SDL from the built schema\n  - Renders a simple HTML page with the schema, organized by type (queries, mutations, types)\n  - Include auth instructions (Bearer token required for all except signup/login)\n  - Include example requests using fetch\n- Register the route in `app.ts`.\n- Alternative: use `graphql-yoga`'s built-in GraphiQL (already available in dev) and just enable it in production by configuring the yoga options. Check if `graphiql: true` can be set in production mode in `schema.ts`.\n\n**Important:** After modifying any Prisma-related queries, ensure you DON'T need a migration — these changes are resolver/typedef only. Run `pnpm typecheck && pnpm lint && pnpm build` to validate.\n\nAcceptance criteria:\n- `deleteComment` returns the deleted `Comment` object\n- `markAllNotificationsRead` returns the count of updated notifications\n- `activities` and `reports` queries support cursor-based pagination with `hasMore` and `nextCursor`\n- `GET /api/docs` serves API documentation (or GraphiQL is enabled in production)\n- `pnpm typecheck && pnpm lint && pnpm build` all pass",
+      "startedAt": "2026-03-16T07:08:23.267Z",
+      "completedAt": "2026-03-16T07:11:43.114Z",
+      "reviewedAt": "2026-03-16T07:15:09.125Z"
+    },
+    {
+      "id": "task-002",
+      "title": "Custom fields on tasks + saved filters/views + JSON column migration",
+      "assignee": "worker-2",
+      "status": "merged",
+      "dependencies": [],
+      "files": [
+        "apps/api/prisma/schema/task.prisma",
+        "apps/api/prisma/schema/sprint.prisma",
+        "apps/api/prisma/schema/project.prisma",
+        "apps/api/src/graphql/typedefs/task.ts",
+        "apps/api/src/graphql/typedefs/project.ts",
+        "apps/api/src/graphql/resolvers/task.ts",
+        "apps/api/src/graphql/resolvers/project.ts",
+        "apps/web/src/components/taskdetail/TaskFieldsPanel.tsx",
+        "apps/web/src/components/taskdetail/TaskCustomFieldsSection.tsx",
+        "apps/web/src/hooks/useTaskFiltering.ts",
+        "apps/web/src/components/shared/FilterBar.tsx",
+        "apps/web/src/components/ProjectSettingsModal.tsx"
+      ],
+      "description": "Add custom fields, saved filter views, and migrate JSON string columns to proper types. Run `npx prisma migrate dev` after schema changes.\n\n**1. Custom fields on tasks** — Full vertical slice:\n- **Prisma models** (task.prisma): Add `CustomField` model with fields: `id`, `orgId`, `projectId`, `name`, `fieldType` (enum: TEXT, NUMBER, DATE, DROPDOWN), `options` (String? — JSON array for dropdown options), `required` (Boolean, default false), `position` (Int). Add `CustomFieldValue` model: `id`, `customFieldId`, `taskId`, `value` (String — stores all types as strings, parsed by type). Add relations to Task and Project.\n- **GraphQL types** (typedefs/task.ts): Add `CustomField { id, name, fieldType, options, required, position }` and `CustomFieldValue { id, field: CustomField!, value: String }` types. Add `Task.customFieldValues: [CustomFieldValue!]!` field. Add mutations: `createCustomField(projectId, name, fieldType, options?, required?)`, `updateCustomField(id, name?, options?, required?)`, `deleteCustomField(id)`, `setCustomFieldValue(taskId, customFieldId, value)`. Add query: `customFields(projectId): [CustomField!]!`.\n- **Resolvers** (resolvers/task.ts): Implement CRUD. Field resolver on Task for `customFieldValues` using a DataLoader or direct query. `setCustomFieldValue` should upsert (create or update).\n- **Frontend** — Create `TaskCustomFieldsSection.tsx` in `taskdetail/`: Render each custom field with appropriate input (text input, number input, date picker, dropdown select). Add to TaskDetailPanel after the existing fields panel.\n- **Project settings** — Add a \"Custom Fields\" section in `ProjectSettingsModal.tsx` where admins can create/edit/delete custom fields for the project, with drag-to-reorder.\n- **FilterBar integration** — Add custom field filters to FilterBar. For each custom field, add a filter control (text search for TEXT, range for NUMBER, date picker for DATE, dropdown for DROPDOWN). Update `useTaskFiltering.ts` to filter by custom field values.\n\n**2. Saved filters / views:**\n- **Prisma model** (project.prisma): Add `SavedFilter { id, projectId, userId, name, filters (String — JSON), isDefault (Boolean, default false), createdAt }`. Add relation to Project.\n- **GraphQL** (typedefs/project.ts): Type + `savedFilters(projectId)` query + `saveFilter(projectId, name, filters)`, `updateFilter(id, name?, filters?)`, `deleteFilter(id)` mutations.\n- **FilterBar UI**: Add a \"Save current filter\" button and a dropdown to load saved filters. Show saved filter names as pills/tabs above the filter bar.\n\n**3. JSON string columns → proper types:**\n- `Sprint.columns`: Change from `String` with JSON default to proper handling. Since Prisma doesn't have a native `String[]` for all DBs, keep as `String` but add a helper function `parseColumns(sprint)` and `serializeColumns(columns)` to centralize the JSON.parse/stringify calls scattered across resolvers. Remove raw `JSON.parse` calls from resolvers and hooks.\n- `Task.suggestedTools`: Same pattern — add `parseSuggestedTools(task)` helper.\n- This is NOT a migration — just code cleanup to centralize JSON parsing.\n\nAcceptance criteria:\n- Custom fields can be created per project with 4 field types (text, number, date, dropdown)\n- Custom field values render in TaskDetailPanel with appropriate inputs\n- Custom fields appear as filter options in FilterBar\n- Saved filters can be created, loaded, and deleted\n- JSON string column parsing is centralized in helper functions\n- Prisma migration runs successfully\n- `pnpm typecheck && pnpm lint && pnpm build` all pass",
+      "startedAt": "2026-03-16T07:08:27.506Z",
+      "completedAt": "2026-03-16T07:20:37.311Z",
+      "reviewNotes": "Typecheck fails: Prisma client does not know about CustomField, CustomFieldValue, or SavedFilter models. You need to run prisma generate (cd apps/api && npx prisma generate) after adding schema models so the Prisma client types are regenerated. All 17 errors are Property X does not exist on type PrismaClient. After running prisma migrate dev, run pnpm typecheck to verify, then mark completed again.",
+      "reviewedAt": "2026-03-16T07:22:12.933Z"
+    },
+    {
+      "id": "task-003",
+      "title": "Task templates, file attachments, and recurring tasks",
+      "assignee": "worker-2",
+      "status": "deferred",
+      "dependencies": [
+        "task-002"
+      ],
+      "files": [
+        "apps/api/prisma/schema/task.prisma",
+        "apps/api/prisma/schema/project.prisma",
+        "apps/api/src/graphql/typedefs/task.ts",
+        "apps/api/src/graphql/typedefs/project.ts",
+        "apps/api/src/graphql/resolvers/task.ts",
+        "apps/api/src/graphql/resolvers/project.ts",
+        "apps/api/src/app.ts",
+        "apps/api/src/routes/upload.ts",
+        "apps/api/package.json",
+        "apps/web/src/components/taskdetail/TaskAttachmentsSection.tsx",
+        "apps/web/src/components/TaskDetailPanel.tsx",
+        "apps/web/src/components/TaskTemplateModal.tsx",
+        "apps/web/src/pages/ProjectDetail.tsx",
+        "apps/web/src/hooks/useTaskCRUD.ts"
+      ],
+      "description": "Add task templates, file attachments, and recurring tasks. This task depends on task-002 (same branch, same files). Run `npx prisma migrate dev` after schema changes. Rebase on main after task-002 is merged before starting this task.\n\n**1. Task templates** — Full vertical slice:\n- **Prisma model** (project.prisma): `TaskTemplate { id, orgId, projectId, name, title, description, status, priority, taskType, estimatedHours, storyPoints, labels (String — JSON array of label names), customFieldDefaults (String — JSON), createdAt }`. Add relation to Project.\n- **GraphQL** (typedefs/project.ts): Type + `taskTemplates(projectId)` query + `createTaskTemplate(projectId, name, title, description?, ...)`, `updateTaskTemplate(id, ...)`, `deleteTaskTemplate(id)`, `createTaskFromTemplate(templateId, projectId)` mutations.\n- **Resolvers** (resolvers/project.ts): `createTaskFromTemplate` fetches the template, creates a task with all template fields pre-filled, applies label associations, returns the created task.\n- **Frontend** — `TaskTemplateModal.tsx`: Modal listing existing templates with \"Use\" and \"Delete\" buttons. \"Create template\" form pre-filled from current task (if opened from task detail) or blank. Add \"Templates\" button in ProjectDetail toolbar (near the Add Task button, around line 336).\n\n**2. File attachments** — Full vertical slice:\n- **Prisma model** (task.prisma): `Attachment { id, orgId, taskId, filename, originalName, mimeType, sizeBytes, uploadedBy, createdAt }`. Add relation to Task. Files stored on disk at `uploads/{orgId}/{id}-{filename}`.\n- **Backend** — Install `multer` (`pnpm --filter api add multer @types/multer`). Create `apps/api/src/routes/upload.ts`:\n  - `POST /api/upload` — multer middleware (10MB limit, validate mime types), requires auth (read JWT from Authorization header), creates Attachment record, returns attachment metadata. Store files in `uploads/` directory (create if missing).\n  - `GET /api/files/:id` — serve file by attachment ID (validate org ownership), set Content-Disposition header.\n  - `DELETE /api/files/:id` — delete file from disk + DB record.\n- Register routes in `app.ts` (before the GraphQL handler).\n- **GraphQL** (typedefs/task.ts): Add `Attachment { id, filename, originalName, mimeType, sizeBytes, createdAt }` type. Add `Task.attachments: [Attachment!]!` field resolver. Add `deleteAttachment(id: ID!): Boolean!` mutation (REST handles upload, GraphQL handles metadata queries + delete).\n- **Frontend** — `TaskAttachmentsSection.tsx` in `taskdetail/`: File list with download links, delete buttons, drag-and-drop upload area (use native `<input type=\"file\">` with drag events — no extra deps). Upload via `fetch('/api/upload', { method: 'POST', body: formData })`. Add to TaskDetailPanel after the description section.\n\n**3. Recurring tasks:**\n- **Prisma fields** (task.prisma): Add to Task model: `recurrenceRule String?` (cron expression or simple rule like \"daily\", \"weekly\", \"monthly\"), `recurrenceParentId String?` (FK to parent recurring task), `nextRecurrence DateTime?`.\n- **GraphQL** (typedefs/task.ts): Add `recurrenceRule`, `recurrenceParentId`, `nextRecurrence` to Task type. Add to `updateTask` input.\n- **Logic**: When a recurring task is marked `done`, check if it has a `recurrenceRule`. If so, create a new task with the same fields, reset status to `todo`, set `recurrenceParentId` to the original task, calculate `nextRecurrence` based on the rule. Implement this in the `updateTask` resolver when status changes to `done`.\n- **Frontend** — Add a recurrence toggle/selector in `TaskFieldsPanel.tsx`: dropdown with options (None, Daily, Weekly, Monthly, Custom cron). Show \"Recurring\" badge on task cards.\n\nAcceptance criteria:\n- Task templates can be created, listed, and used to create new tasks\n- Files can be uploaded (drag-and-drop or file picker), downloaded, and deleted on tasks\n- Recurring tasks auto-create a new instance when marked done\n- Prisma migration runs successfully\n- `pnpm typecheck && pnpm lint && pnpm build` all pass"
+    }
+  ]
+}

@@ -1,0 +1,148 @@
+{
+  "version": 1,
+  "created": "2026-03-16T08:14:11.520Z",
+  "swarmId": "swarm-20260316-041402",
+  "config": {
+    "mainRepo": "/home/caleb/projects/task-toad",
+    "workerCount": 3,
+    "groups": [
+      "P1",
+      "A11",
+      "I1"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "task-001",
+      "title": "Graceful shutdown handlers + env validation + connection pooling docs",
+      "set": "P1",
+      "worker": "worker-1",
+      "status": "merged",
+      "branch": "swarm/worker-1",
+      "files": [
+        "apps/api/src/index.ts",
+        "apps/api/.env.example"
+      ],
+      "description": "Add production-grade graceful shutdown to the API server, improve environment validation, and document connection pooling.\n\n**Graceful Shutdown (`apps/api/src/index.ts`):**\nThe current entry point creates a PrismaClient, starts Express on `process.env.PORT`, and runs a 15-minute `setInterval` for due date reminders — but has NO shutdown handlers. On SIGTERM/SIGINT:\n1. Store references to the server, prisma client, and interval handle.\n2. Add `process.on('SIGTERM')` and `process.on('SIGINT')` handlers that: log \"Shutting down gracefully...\", stop accepting new connections (`server.close()`), clear the reminder interval, disconnect Prisma (`prisma.$disconnect()`), close any SSE connections (import `closeAllConnections` from `utils/sseManager.ts` if it exists, or iterate the manager), then `process.exit(0)`. Add a 10-second force-kill timeout (`setTimeout(() => process.exit(1), 10000).unref()`).\n3. Add `process.on('unhandledRejection')` and `process.on('uncaughtException')` handlers that log the error and exit(1).\n4. On startup, verify DB connectivity with `prisma.$queryRaw\\`SELECT 1\\`` — if it fails, log error and exit(1) instead of silently hanging.\n\n**Environment Validation (`apps/api/src/app.ts` already has Zod validation at line 25-43):**\nDon't touch app.ts (belongs to P2's file set). Instead, in `index.ts` after the env schema passes, add warnings (not errors) via `logger.warn()` if: `SMTP_HOST` is not set in production, `ANTHROPIC_API_KEY` is not set, `ENCRYPTION_MASTER_KEY` is the default value.\n\n**`.env.example` updates:**\nAdd comments documenting: `# Connection pooling: append ?connection_limit=20&pool_timeout=10 to DATABASE_URL for production`, `# SENTRY_DSN= (optional, for error tracking)`, and any other missing env vars found during implementation.",
+      "acceptanceCriteria": "- SIGTERM and SIGINT trigger graceful shutdown: Prisma disconnects, intervals clear, server stops\n- 10-second force-kill timeout prevents zombie processes\n- unhandledRejection and uncaughtException are caught and logged\n- Startup verifies DB connectivity before accepting requests\n- Production env warnings logged for missing SMTP_HOST, ANTHROPIC_API_KEY\n- .env.example documents connection pooling params\n- `pnpm typecheck` and `pnpm lint` pass\n- No changes to apps/api/src/app.ts (that file belongs to P2)",
+      "startedAt": "2026-03-16T08:22:01.960Z",
+      "completedAt": "2026-03-16T08:25:04.363Z",
+      "reviewedAt": "2026-03-16T08:28:26.136Z"
+    },
+    {
+      "id": "task-002",
+      "title": "React Error Boundary + static asset caching headers",
+      "set": "P1",
+      "worker": "worker-1",
+      "status": "merged",
+      "branch": "swarm/worker-1",
+      "files": [
+        "apps/web/src/components/ErrorBoundary.tsx",
+        "apps/web/src/App.tsx",
+        "apps/api/src/app.ts"
+      ],
+      "description": "Add a global React Error Boundary so the app shows a friendly fallback UI instead of a blank white screen on component errors. Also add proper Cache-Control headers for static assets.\n\n**Error Boundary (`apps/web/src/components/ErrorBoundary.tsx` — new file):**\nCreate a class component (React error boundaries must be class components) that:\n1. Catches errors in `componentDidCatch(error, errorInfo)` and logs them to console.error.\n2. Renders a fallback UI: centered card with a warning icon, heading \"Something went wrong\", the error message (in a collapsible `<details>` for debugging), and a \"Reload page\" button that calls `window.location.reload()`.\n3. Also include a \"Go home\" link that navigates to `/`.\n4. Style with Tailwind classes consistent with the app's design (slate colors, rounded cards).\n5. Accept an optional `fallback` prop for custom fallback UI.\n\n**App.tsx integration (`apps/web/src/App.tsx`):**\nWrap the entire `<Routes>` block (currently lines ~28-65) in `<ErrorBoundary>`. Import from `../components/ErrorBoundary`. Also wrap with `<Suspense fallback={<div className=\"flex items-center justify-center h-screen\"><div className=\"w-8 h-8 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin\" /></div>}>` for lazy-loaded route components.\n\n**Static asset caching (`apps/api/src/app.ts`):**\nThe production static file serving is at line ~160-173 using `express.static()`. Update to:\n1. For hashed assets in `dist/assets/` — serve with `Cache-Control: public, max-age=31536000, immutable` (1 year, content-addressed).\n2. For `index.html` and other root files — serve with `Cache-Control: no-cache` (always revalidate).\nImplement by adding a separate `express.static()` for the `assets` subdirectory with `maxAge: '1y'` and `immutable: true`, before the general static handler. The general handler should set `setHeaders: (res, path) => { if (path.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache'); }`.",
+      "acceptanceCriteria": "- ErrorBoundary class component catches errors and shows fallback UI with reload/home buttons\n- Error message shown in collapsible details for debugging\n- App.tsx wraps Routes in ErrorBoundary and Suspense\n- Hashed assets served with Cache-Control: public, max-age=31536000, immutable\n- index.html served with Cache-Control: no-cache\n- `pnpm typecheck` and `pnpm lint` pass\n- `pnpm build` succeeds",
+      "startedAt": "2026-03-16T08:25:12.142Z",
+      "completedAt": "2026-03-16T08:26:19.642Z",
+      "reviewedAt": "2026-03-16T08:28:26.523Z"
+    },
+    {
+      "id": "task-003",
+      "title": "Shared accessible Modal component + convert all 19 modals + ARIA labels",
+      "set": "A11",
+      "worker": "worker-2",
+      "status": "merged",
+      "branch": "swarm/worker-2",
+      "files": [
+        "apps/web/src/components/shared/Modal.tsx",
+        "apps/web/src/components/BatchCodeGenModal.tsx",
+        "apps/web/src/components/BugReportModal.tsx",
+        "apps/web/src/components/CSVImportModal.tsx",
+        "apps/web/src/components/CloseSprintModal.tsx",
+        "apps/web/src/components/CodePreviewModal.tsx",
+        "apps/web/src/components/DriftAnalysisModal.tsx",
+        "apps/web/src/components/GitHubRepoModal.tsx",
+        "apps/web/src/components/GlobalSearchModal.tsx",
+        "apps/web/src/components/KnowledgeBaseModal.tsx",
+        "apps/web/src/components/MeetingNotesDialog.tsx",
+        "apps/web/src/components/PRDBreakdownModal.tsx",
+        "apps/web/src/components/ProjectChatPanel.tsx",
+        "apps/web/src/components/ProjectSettingsModal.tsx",
+        "apps/web/src/components/SprintCreateModal.tsx",
+        "apps/web/src/components/SprintPlanModal.tsx",
+        "apps/web/src/components/SprintReportPanel.tsx",
+        "apps/web/src/components/SprintTransitionModal.tsx",
+        "apps/web/src/components/TaskPlanApprovalDialog.tsx",
+        "apps/web/src/components/shared/KeyboardShortcutHelp.tsx",
+        "apps/web/src/components/shared/ToastContainer.tsx",
+        "apps/web/src/components/shared/SearchInput.tsx",
+        "apps/web/src/components/shared/Icons.tsx"
+      ],
+      "description": "Create a reusable accessible Modal wrapper component, then convert all 19 existing modal/dialog components to use it. Also add ARIA labels to icon-only buttons and live regions to toasts.\n\n**Shared Modal (`apps/web/src/components/shared/Modal.tsx` — new file):**\nCreate a `<Modal>` component with props: `isOpen`, `onClose`, `title` (for aria-labelledby), `size?: 'sm' | 'md' | 'lg' | 'xl'`, `children`. Implementation:\n1. `role=\"dialog\"`, `aria-modal=\"true\"`, `aria-labelledby` pointing to a generated ID on the title element.\n2. **Focus trap:** On mount, find all focusable elements inside the modal. On Tab, cycle focus within the modal (last→first, Shift+Tab first→last). Save `document.activeElement` on open and restore focus on close.\n3. **Escape to close:** `useEffect` with `keydown` listener for Escape key calling `onClose`.\n4. **Backdrop click:** The overlay `div` calls `onClose` on click; the inner container stops propagation.\n5. **Portal:** Render via `createPortal` to `document.body` to avoid z-index stacking issues.\n6. **Animation:** Keep the existing `fixed inset-0 z-50` pattern with `bg-black/40` backdrop.\n7. Size maps: sm=max-w-md, md=max-w-2xl, lg=max-w-4xl, xl=max-w-6xl.\n\nDo NOT add any npm dependencies for focus trapping — implement it manually (query `[tabindex], a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])`).\n\n**Convert all 19 modals:** Each modal currently uses a raw `<div className=\"fixed inset-0 z-50...\">` wrapper. Replace with `<Modal isOpen={...} onClose={...} title=\"...\" size=\"...\">`. Remove the duplicated backdrop div, the manual z-50/fixed positioning, and any ad-hoc Escape key handlers. Keep the modal's inner content (header with title, body, footer) intact.\n\nThe 19 components: BatchCodeGenModal, BugReportModal, CSVImportModal, CloseSprintModal, CodePreviewModal, DriftAnalysisModal, GitHubRepoModal, GlobalSearchModal, KnowledgeBaseModal, MeetingNotesDialog, PRDBreakdownModal, ProjectChatPanel, ProjectSettingsModal, SprintCreateModal, SprintPlanModal, SprintReportPanel, SprintTransitionModal, TaskPlanApprovalDialog, KeyboardShortcutHelp.\n\nNote: ProjectChatPanel and SprintReportPanel are side panels, not centered modals. The Modal component should support a `variant?: 'centered' | 'panel-right'` prop for these.\n\n**ARIA labels on icon-only buttons:** Audit all components for buttons that only contain an icon (SVG or emoji like ✕, ↻, ✎). Add `aria-label` with a descriptive action. Key locations: close buttons on all modals (add to Modal component itself), AppLayout settings/notifications/search buttons, SearchInput clear button, ToastContainer close button, CodePreviewModal regenerate/feedback buttons, FilterBar delete-filter buttons.\n\n**Live regions:** Add `role=\"status\"` and `aria-live=\"polite\"` to the ToastContainer wrapper. For error toasts, use `role=\"alert\"` and `aria-live=\"assertive\"`. Add `aria-hidden=\"true\"` to decorative SVG icons in Icons.tsx.\n\n**Color contrast:** In Icons.tsx, ensure all SVGs have `aria-hidden=\"true\"` so screen readers skip decorative icons.",
+      "acceptanceCriteria": "- Shared Modal component has: focus trap, Escape to close, aria-modal, aria-labelledby, backdrop click, focus restoration\n- All 19 modal/dialog components converted to use shared Modal\n- No raw `fixed inset-0 z-50` modal wrappers remain outside Modal.tsx\n- All icon-only buttons have aria-label attributes\n- ToastContainer has aria-live region\n- SVG icons in Icons.tsx have aria-hidden=\"true\"\n- `pnpm typecheck` and `pnpm lint` pass\n- No new npm dependencies added",
+      "startedAt": "2026-03-16T08:22:04.805Z",
+      "completedAt": "2026-03-16T08:36:56.781Z",
+      "reviewedAt": "2026-03-16T08:39:19.919Z"
+    },
+    {
+      "id": "task-004",
+      "title": "Skip-to-content, form labels, KanbanBoard keyboard navigation",
+      "set": "A11",
+      "worker": "worker-2",
+      "status": "merged",
+      "branch": "swarm/worker-2",
+      "files": [
+        "apps/web/src/pages/AppLayout.tsx",
+        "apps/web/src/components/KanbanBoard.tsx",
+        "apps/web/src/components/NotificationCenter.tsx"
+      ],
+      "description": "Add remaining WCAG 2.1 AA accessibility improvements: skip navigation link, form label associations, keyboard-accessible kanban board, and semantic improvements.\n\n**Skip-to-content link (`apps/web/src/pages/AppLayout.tsx`):**\nAdd a visually-hidden skip link as the very first child of the layout: `<a href=\"#main-content\" className=\"sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[60] focus:px-4 focus:py-2 focus:bg-slate-800 focus:text-white focus:rounded-lg\">Skip to main content</a>`. Add `id=\"main-content\"` to the `<main>` element. Also:\n1. Add `aria-label` to the sidebar `<nav>` element (e.g., `aria-label=\"Main navigation\"`).\n2. Add `aria-label` to icon-only buttons in the header bar: the settings gear (~line 135-142), notifications bell (~line 149-168), and quick-search button (~line 111-121). The notifications bell should also have an `aria-label` that includes the unread count (e.g., `aria-label=\"Notifications (3 unread)\"` or just `aria-label=\"Notifications\"` when 0).\n3. Add `aria-live=\"polite\"` to the notification count badge so screen readers announce updates.\n4. The \"Live updates active\" indicator (~line 78-82) should have `aria-live=\"polite\"` and `role=\"status\"`.\n\n**KanbanBoard keyboard navigation (`apps/web/src/components/KanbanBoard.tsx`):**\nThe current implementation uses HTML5 drag-and-drop with no keyboard alternative (WCAG 2.5.1 violation). Add keyboard support:\n1. Make task cards focusable with `tabIndex={0}`.\n2. On a focused card, pressing Enter or Space enters \"move mode\" — show a visual indicator (e.g., dashed border or highlight) and announce via an `aria-live` region.\n3. In move mode, Left/Right arrow keys move the task to the adjacent column. Call `onColumnChange(taskId, newColumn)` — the same handler used by drag-and-drop.\n4. Press Enter/Space again or Escape to exit move mode.\n5. Add `aria-description=\"Press Enter to move this task between columns\"` to each card.\n6. Add `role=\"listbox\"` to each column container and `role=\"option\"` to each task card within it, with `aria-selected` for the currently-focused card.\n\n**Notification Center (`apps/web/src/components/NotificationCenter.tsx`):**\nIf this component exists, ensure the notification dropdown has `role=\"menu\"`, individual items have `role=\"menuitem\"`, and the panel is keyboard navigable (arrow keys between items, Enter to activate, Escape to close).\n\n**Form label associations:**\nIn AppLayout, ensure any `<select>` or `<input>` elements have associated `<label>` elements via `htmlFor`/`id` pairs. The quick-search input in GlobalSearchModal should have a visually-hidden label.",
+      "acceptanceCriteria": "- Skip-to-content link visible on focus, jumps to #main-content\n- Sidebar nav has aria-label=\"Main navigation\"\n- All icon-only buttons in AppLayout header have aria-labels\n- Notification badge count announced via aria-live\n- KanbanBoard cards focusable with Tab\n- Enter/Space on card enters move mode, arrow keys move between columns\n- Escape exits move mode\n- aria-live region announces card movement\n- `pnpm typecheck` and `pnpm lint` pass",
+      "startedAt": "2026-03-16T08:40:05.780Z",
+      "completedAt": "2026-03-16T08:44:50.553Z",
+      "reviewedAt": "2026-03-16T08:46:44.695Z"
+    },
+    {
+      "id": "task-005",
+      "title": "Webhook delivery tracking model + retry queue with exponential backoff",
+      "set": "I1",
+      "worker": "worker-3",
+      "status": "merged",
+      "branch": "swarm/worker-3",
+      "files": [
+        "apps/api/prisma/schema/webhook.prisma",
+        "apps/api/src/utils/webhookDispatcher.ts",
+        "apps/api/src/graphql/typedefs/webhook.ts",
+        "apps/api/src/graphql/resolvers/webhook.ts",
+        "apps/api/src/graphql/resolvers/task.ts",
+        "apps/api/src/graphql/resolvers/sprint.ts"
+      ],
+      "description": "Add persistent webhook delivery tracking and a retry queue with exponential backoff so failed webhooks are retried automatically and delivery history is visible.\n\n**Prisma model (`apps/api/prisma/schema/webhook.prisma`):**\nAdd a `WebhookDelivery` model alongside the existing `WebhookEndpoint`:\n```\nmodel WebhookDelivery {\n  id            String   @id @default(uuid())\n  endpointId    String   @map(\"endpoint_id\")\n  event         String\n  payload       String   // JSON string\n  status        String   @default(\"pending\") // pending, success, failed, retrying\n  statusCode    Int?     @map(\"status_code\")\n  responseBody  String?  @map(\"response_body\") // first 500 chars\n  attemptCount  Int      @default(0) @map(\"attempt_count\")\n  nextRetryAt   DateTime? @map(\"next_retry_at\")\n  createdAt     DateTime @default(now()) @map(\"created_at\")\n  completedAt   DateTime? @map(\"completed_at\")\n  endpoint      WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)\n  @@index([endpointId, status])\n  @@index([status, nextRetryAt])\n  @@map(\"webhook_deliveries\")\n}\n```\nAdd `deliveries WebhookDelivery[]` relation to `WebhookEndpoint`. Run `npx prisma migrate dev --name add_webhook_deliveries`.\n\n**Webhook dispatcher overhaul (`apps/api/src/utils/webhookDispatcher.ts`):**\nRefactor `dispatchWebhooks()` to:\n1. For each matching endpoint, create a `WebhookDelivery` record with status `pending`.\n2. Attempt delivery (existing HTTP POST logic with HMAC signature).\n3. On success (2xx): update delivery to `status: 'success'`, store `statusCode`, set `completedAt`.\n4. On failure: update delivery to `status: 'retrying'`, increment `attemptCount`, calculate `nextRetryAt` using exponential backoff (delays: 5s, 30s, 2min, 10min, 1hr — 5 attempts max). After 5 attempts, set `status: 'failed'`.\n5. Add a `processRetryQueue()` function that queries deliveries WHERE `status = 'retrying' AND nextRetryAt <= now()`, then re-attempts them. Call this on a 30-second `setInterval` in `index.ts` (store the handle for graceful shutdown).\n6. Add a `replayDelivery(deliveryId)` function that resets a failed delivery to `pending` and re-dispatches.\n7. Truncate `responseBody` to 500 chars to prevent DB bloat.\n\n**Fix missing webhook dispatches:**\n- `apps/api/src/graphql/resolvers/task.ts`: The `createComment` resolver (~line 321-382) dispatches SSE but does NOT call `dispatchWebhooks()` for `comment.created`. Add it.\n- `apps/api/src/graphql/resolvers/sprint.ts`: The `createSprint` resolver doesn't dispatch `sprint.created`. Add it.\n\n**GraphQL types (`apps/api/src/graphql/typedefs/webhook.ts`):**\nAdd:\n```graphql\ntype WebhookDelivery {\n  id: ID!\n  endpointId: ID!\n  event: String!\n  status: String!\n  statusCode: Int\n  attemptCount: Int!\n  nextRetryAt: String\n  createdAt: String!\n  completedAt: String\n}\n```\nAdd query: `webhookDeliveries(endpointId: ID!, limit: Int): [WebhookDelivery!]!`\nAdd mutation: `replayWebhookDelivery(deliveryId: ID!): WebhookDelivery!`\n\n**GraphQL resolvers (`apps/api/src/graphql/resolvers/webhook.ts`):**\nImplement `webhookDeliveries` query (fetch last N deliveries for an endpoint, ordered by createdAt desc, default limit 50) and `replayWebhookDelivery` mutation (reset status to pending, clear nextRetryAt, re-dispatch).",
+      "acceptanceCriteria": "- WebhookDelivery model created with migration\n- Every webhook dispatch creates a delivery record\n- Failed deliveries retry with exponential backoff (5s, 30s, 2min, 10min, 1hr)\n- After 5 failed attempts, delivery marked as 'failed'\n- 30-second retry processor runs in background\n- comment.created and sprint.created events now dispatch webhooks\n- webhookDeliveries query returns delivery history\n- replayWebhookDelivery mutation re-dispatches failed deliveries\n- `pnpm typecheck` and `pnpm lint` pass\n- Migration files committed",
+      "startedAt": "2026-03-16T08:22:04.506Z",
+      "completedAt": "2026-03-16T08:25:53.090Z",
+      "reviewedAt": "2026-03-16T08:29:17.395Z"
+    },
+    {
+      "id": "task-006",
+      "title": "Webhook delivery dashboard UI + Slack command expansion + email HTML templates",
+      "set": "I1",
+      "worker": "worker-3",
+      "status": "merged",
+      "branch": "swarm/worker-3",
+      "files": [
+        "apps/web/src/components/WebhookSettings.tsx",
+        "apps/web/src/api/queries.ts",
+        "apps/api/src/slack/slackWebhookHandler.ts",
+        "apps/api/src/slack/slackClient.ts",
+        "apps/api/src/utils/email.ts"
+      ],
+      "description": "Add webhook delivery history UI, expand Slack slash commands, and create branded HTML email templates.\n\n**Webhook Delivery Dashboard (`apps/web/src/components/WebhookSettings.tsx`):**\nThe existing component shows webhook endpoints with CRUD. Add a delivery history section:\n1. When a webhook endpoint is expanded/selected, show a \"Deliveries\" tab alongside the existing config.\n2. Query `webhookDeliveries(endpointId, limit: 20)` and display as a list: event name, status badge (green=success, yellow=retrying, red=failed, gray=pending), status code, attempt count, timestamp.\n3. For failed deliveries, show a \"Replay\" button that calls `replayWebhookDelivery(deliveryId)` mutation.\n4. Show summary stats at the top of each endpoint: success count, failure count, last delivery time.\n5. Add the new queries/mutations to `apps/web/src/api/queries.ts`.\n\n**Slack command expansion (`apps/api/src/slack/slackWebhookHandler.ts`):**\nCurrently only handles `create` and `help` commands. Add:\n1. `/tasktoad list` — fetch the user's assigned tasks (up to 10) from the org's first project. Return a Block Kit formatted list with task title, status emoji (todo=⬜, in_progress=🔵, done=✅), and priority. If no tasks, show \"No tasks assigned to you.\"\n2. `/tasktoad status` — fetch project summary: total tasks, by-status breakdown, active sprint name. Format as a Block Kit section with fields.\n3. Update `help` command to include the new commands.\n4. In `slackClient.ts`, add `formatTaskList()` and `formatProjectStatus()` Block Kit builders.\n\n**Email HTML templates (`apps/api/src/utils/email.ts`):**\nThe current `sendEmail()` sends plain text with optional HTML. Replace the three text-only template helpers with HTML templates:\n1. `buildVerifyEmailHtml(url)` — branded header with app name, body explaining email verification, prominent CTA button linking to the URL, footer with support info.\n2. `buildResetPasswordHtml(url)` — similar structure, urgency messaging, CTA button, expiry warning.\n3. `buildInviteHtml(orgName, url)` — invitation context, org name mention, CTA button.\n4. Use inline CSS (email clients don't support `<style>` blocks reliably). Base template: max-width 600px, light gray background, white card, slate-700 text, blue CTA buttons (#1e40af). Include both `html` and `text` versions in `sendEmail()` calls.\n5. Add a `buildEmailBase(title, bodyHtml)` helper to reduce duplication across templates.",
+      "acceptanceCriteria": "- Webhook delivery history visible per endpoint with status badges\n- Replay button works for failed deliveries\n- `/tasktoad list` returns Block Kit formatted assigned tasks\n- `/tasktoad status` returns project summary with task breakdown\n- Help command shows all available commands\n- Email verification, reset, and invite have branded HTML templates\n- Plain text fallback still works\n- `pnpm typecheck` and `pnpm lint` pass",
+      "startedAt": "2026-03-16T08:29:56.930Z",
+      "completedAt": "2026-03-16T08:33:10.617Z",
+      "reviewedAt": "2026-03-16T08:35:16.330Z"
+    }
+  ]
+}

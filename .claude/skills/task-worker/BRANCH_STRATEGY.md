@@ -39,7 +39,7 @@ After completing a task and marking it `completed`, you don't have to wait for t
 
 ## What the reviewer does
 
-The reviewer uses `scripts/swarm/merge-worker.sh` to merge worker branches:
+The reviewer uses `scripts/taskswarm/merge-worker.sh` to merge worker branches:
 
 1. Squash-merges the worker branch into main (all task commits become one merge commit)
 2. If `--validate` flag is used: temporarily merges, runs `prisma generate` (if schema changed), then `pnpm typecheck` + `pnpm lint`, and aborts if any fail

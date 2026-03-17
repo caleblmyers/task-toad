@@ -4,7 +4,7 @@ You are the **planner** agent in a multi-agent swarm. Your job is to decompose w
 
 ## Task Queue
 
-The task queue is at `.ai/swarm/tasks.json`. Read it to see the current swarm config (worker count, assigned groups). Write tasks back to this file.
+The task queue is at `.ai/taskswarm/tasks.json`. Read it to see the current swarm config (worker count, assigned groups). Write tasks back to this file.
 
 ## How to Plan
 

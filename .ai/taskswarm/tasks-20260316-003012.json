@@ -1,0 +1,166 @@
+{
+  "version": 1,
+  "created": "2026-03-16T04:07:08.401Z",
+  "swarmId": "swarm-20260316-000701",
+  "config": {
+    "mainRepo": "/home/caleb/projects/task-toad",
+    "workerCount": 3,
+    "groups": [
+      "SCHEMA-SPLIT",
+      "I6"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "task-001",
+      "group": "SCHEMA-SPLIT",
+      "title": "Split schema.prisma into domain-based model files",
+      "description": "Modularize the monolithic schema.prisma into separate domain files using Prisma's multi-file schema support (Prisma 5.14.0+).\n\n**Strategy:** Prisma automatically discovers all `.prisma` files in the `prisma/` directory (and subdirectories). Move each domain's models into their own file.\n\n**1. Keep `apps/api/prisma/schema.prisma` with ONLY:**\n```prisma\ngenerator client {\n  provider = \"prisma-client-js\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n  url      = env(\"DATABASE_URL\")\n}\n```\nRemove ALL model definitions from this file.\n\n**2. Create domain files in `apps/api/prisma/models/`:**\n\n- `auth.prisma` — `User` model, `OrgInvite` model\n- `org.prisma` — `Org` model\n- `project.prisma` — `Project` model\n- `task.prisma` — `Task` model, `Label` model, `TaskLabel` model\n- `sprint.prisma` — `Sprint` model\n- `comment.prisma` — `Comment` model\n- `activity.prisma` — `Activity` model\n- `notification.prisma` — `Notification` model\n- `report.prisma` — `Report` model\n- `github.prisma` — `GitHubInstallation` model, `GitHubCommitLink` model, `GitHubPullRequestLink` model\n- `aiusage.prisma` — `AIUsageLog` model\n\nEach file contains the COMPLETE model definition including all fields, relations, indexes, and @@map directives. Do NOT split a model across files — each model must be fully contained in one file.\n\n**3. Verify Prisma can parse the split:**\n```bash\ncd apps/api && npx prisma validate\n```\nThis checks syntax without touching the DB.\n\n**4. Verify the generated client is identical:**\n```bash\ncd apps/api && npx prisma generate\n```\nThis should succeed with no changes to the generated client.\n\n**5. Run typecheck:**\n```bash\npnpm --filter api typecheck\n```\n\n**IMPORTANT:** The migration files in `prisma/migrations/` are NOT touched. Only the schema definition is reorganized. The generated Prisma client is identical.\n\n**IMPORTANT:** Make sure Prisma's `prismaSchemaFolder` preview feature is enabled if needed. In Prisma 5.14+, add to the generator block:\n```prisma\ngenerator client {\n  provider        = \"prisma-client-js\"\n  previewFeatures = [\"prismaSchemaFolder\"]\n}\n```\nThen move all `.prisma` files (including the main one) into a `prisma/schema/` folder, or keep the main `schema.prisma` at `prisma/schema.prisma` and put models alongside it. Check the Prisma docs — the simplest approach is to use `prismaSchemaFolder` preview feature and put everything in `prisma/schema/`.\n\nActually, the cleanest approach for Prisma 5.14+:\n1. Create `apps/api/prisma/schema/` directory\n2. Move `schema.prisma` → `prisma/schema/schema.prisma` (with just generator+datasource, plus `previewFeatures = [\"prismaSchemaFolder\"]`)\n3. Create domain files in `prisma/schema/` (same directory): `auth.prisma`, `org.prisma`, etc.\n4. Update any scripts/commands that reference `prisma/schema.prisma` — check `package.json` scripts\n5. Prisma CLI auto-discovers all `.prisma` files in the schema folder\n\n**Verification:** `npx prisma validate` passes, `npx prisma generate` succeeds, `pnpm --filter api typecheck` passes.",
+      "files": [
+        "apps/api/prisma/schema.prisma",
+        "apps/api/prisma/schema/schema.prisma",
+        "apps/api/prisma/schema/auth.prisma",
+        "apps/api/prisma/schema/org.prisma",
+        "apps/api/prisma/schema/project.prisma",
+        "apps/api/prisma/schema/task.prisma",
+        "apps/api/prisma/schema/sprint.prisma",
+        "apps/api/prisma/schema/comment.prisma",
+        "apps/api/prisma/schema/activity.prisma",
+        "apps/api/prisma/schema/notification.prisma",
+        "apps/api/prisma/schema/report.prisma",
+        "apps/api/prisma/schema/github.prisma",
+        "apps/api/prisma/schema/aiusage.prisma",
+        "apps/api/package.json"
+      ],
+      "acceptanceCriteria": [
+        "schema.prisma contains ONLY generator + datasource blocks",
+        "Each domain has its own .prisma file with complete model definitions",
+        "npx prisma validate passes",
+        "npx prisma generate succeeds with identical client output",
+        "pnpm --filter api typecheck passes",
+        "No migration files are modified",
+        "All 15 models accounted for across domain files"
+      ],
+      "dependsOn": [],
+      "assignee": "worker-1",
+      "status": "merged",
+      "startedAt": "2026-03-16T04:18:02.369Z",
+      "completedAt": "2026-03-16T04:20:19.742Z",
+      "reviewedAt": "2026-03-16T04:23:52.415Z"
+    },
+    {
+      "id": "task-002",
+      "group": "SCHEMA-SPLIT",
+      "title": "Split schema.ts typeDefs into domain-based modules",
+      "description": "Modularize the monolithic schema.ts (517 lines) by splitting typeDefs into domain-specific files. Resolvers are already split — this makes typeDefs match.\n\n**Strategy:** Each domain file exports a typeDef string. The main schema.ts concatenates them.\n\n**1. Create `apps/api/src/graphql/typedefs/` directory with these files:**\n\nEach file exports a `const typeDefs = /* GraphQL */ ` ... `` string:\n\n- **`auth.ts`** — Types: `User`, `OrgInvite`, `AuthPayload`. Queries: `me`, `org`, `orgUsers`, `orgInvites`. Mutations: `signup`, `login`, `sendVerificationEmail`, `verifyEmail`, `requestPasswordReset`, `resetPassword`, `inviteOrgMember`, `acceptInvite`, `revokeInvite`.\n\n- **`org.ts`** — Types: `Org`, `OrgUser`. Mutations: `createOrg`, `setOrgApiKey`, `setAIBudget`.\n\n- **`project.ts`** — Types: `Project`, `ProjectOption`, `ProjectStats`, `CountEntry`, `AssigneeCount`. Queries: `projects`, `project`, `projectStats`. Mutations: `createProject`, `updateProject`, `archiveProject`, `generateProjectOptions`, `createProjectFromOption`.\n\n- **`task.ts`** — Types: `Task`, `TaskProgress`, `TaskConnection`, `Label`, `SubtaskPreview`, `TaskPlanPreview`, `ExtractedTask`. Inputs: `SubtaskInput`, `CommitTaskInput`. Queries: `tasks`, `epics`, `labels`. Mutations: `createTask`, `updateTask`, `createSubtask`, `bulkUpdateTasks`, `createLabel`, `deleteLabel`, `addTaskLabel`, `removeTaskLabel`, `generateTaskPlan`, `previewTaskPlan`, `commitTaskPlan`, `expandTask`, `generateTaskInstructions`.\n\n- **`sprint.ts`** — Types: `Sprint`, `SprintPlanItem`, `CloseSprintResult`, `SprintVelocityPoint`, `BurndownDay`, `SprintBurndownData`. Inputs: `IncompleteTaskAction`, `SprintPlanInput`. Queries: `sprints`, `sprintVelocity`, `sprintBurndown`. Mutations: `createSprint`, `updateSprint`, `deleteSprint`, `closeSprint`, `previewSprintPlan`, `commitSprintPlan`.\n\n- **`comment.ts`** — Types: `Comment`, `Activity`. Queries: `comments`, `activities`. Mutations: `createComment`, `updateComment`, `deleteComment`.\n\n- **`notification.ts`** — Types: `Notification`. Queries: `notifications`, `unreadNotificationCount`. Mutations: `markNotificationRead`, `markAllNotificationsRead`.\n\n- **`report.ts`** — Types: `Report`, `StandupReport`, `SprintReportResult`, `ProjectHealth`, `HealthIssue`. Queries: `reports`, `generateStandupReport`, `generateSprintReport`, `analyzeProjectHealth`, `projectHealth`, `extractTasksFromNotes`. Mutations: `saveReport`, `deleteReport`, `summarizeProject`.\n\n- **`github.ts`** — Types: `GitHubInstallation`, `GitHubRepoLink`, `TaskCommit`, `TaskPullRequest`, `GitHubPullRequest`, `GitHubRepo`. Inputs: `GitHubFileInput`. Queries: `githubInstallations`, `githubInstallationRepos`, `githubProjectRepo`. Mutations: `linkGitHubInstallation`, `connectGitHubRepo`, `disconnectGitHubRepo`, `createGitHubRepo`, `createPullRequestFromTask`, `syncTaskToGitHub`.\n\n- **`ai.ts`** — Types: `GeneratedFile`, `CodeGeneration`, `AIUsageLog`, `AIUsageSummary`, `AIFeatureUsage`. Queries: `aiUsage`. Mutations: `generateCodeFromTask`, `regenerateCodeFile`.\n\n- **`search.ts`** — Types: `GlobalSearchResult`, `TaskSearchHit`. Queries: `globalSearch`.\n\n**2. Each domain file has this structure:**\n```typescript\nexport const authTypeDefs = /* GraphQL */ `\n  # Types\n  type User {\n    ...\n  }\n  \n  # Don't include Query/Mutation wrapper — just the field definitions\n  # Export as fragments that schema.ts will assemble\n`;\n\n// Also export query and mutation field strings separately:\nexport const authQueryFields = /* GraphQL */ `\n  me: User\n  orgUsers: [OrgUser!]!\n`;\n\nexport const authMutationFields = /* GraphQL */ `\n  signup(email: String!, password: String!): AuthPayload!\n  login(email: String!, password: String!): AuthPayload!\n`;\n```\n\n**3. Update `apps/api/src/graphql/schema.ts`:**\nReplace the monolithic typeDefs string with imports and concatenation:\n```typescript\nimport { authTypeDefs, authQueryFields, authMutationFields } from './typedefs/auth.js';\nimport { orgTypeDefs, orgQueryFields, orgMutationFields } from './typedefs/org.js';\n// ... etc\n\nconst typeDefs = /* GraphQL */ `\n  ${authTypeDefs}\n  ${orgTypeDefs}\n  ${projectTypeDefs}\n  ${taskTypeDefs}\n  ${sprintTypeDefs}\n  ${commentTypeDefs}\n  ${notificationTypeDefs}\n  ${reportTypeDefs}\n  ${githubTypeDefs}\n  ${aiTypeDefs}\n  ${searchTypeDefs}\n\n  type Query {\n    ${authQueryFields}\n    ${orgQueryFields}\n    ${projectQueryFields}\n    ${taskQueryFields}\n    ${sprintQueryFields}\n    ${commentQueryFields}\n    ${notificationQueryFields}\n    ${reportQueryFields}\n    ${githubQueryFields}\n    ${aiQueryFields}\n    ${searchQueryFields}\n  }\n\n  type Mutation {\n    ${authMutationFields}\n    ${orgMutationFields}\n    ${projectMutationFields}\n    ${taskMutationFields}\n    ${sprintMutationFields}\n    ${commentMutationFields}\n    ${notificationMutationFields}\n    ${reportMutationFields}\n    ${githubMutationFields}\n    ${aiMutationFields}\n  }\n`;\n\nexport const schema = createSchema({ typeDefs, resolvers });\n```\n\n**4. Verify:** `pnpm --filter api typecheck` passes. The GraphQL schema is functionally identical.\n\n**CRITICAL:** The Query and Mutation types MUST be defined exactly once in schema.ts (not in domain files). Domain files only export type definitions and query/mutation FIELD strings.",
+      "files": [
+        "apps/api/src/graphql/schema.ts",
+        "apps/api/src/graphql/typedefs/auth.ts",
+        "apps/api/src/graphql/typedefs/org.ts",
+        "apps/api/src/graphql/typedefs/project.ts",
+        "apps/api/src/graphql/typedefs/task.ts",
+        "apps/api/src/graphql/typedefs/sprint.ts",
+        "apps/api/src/graphql/typedefs/comment.ts",
+        "apps/api/src/graphql/typedefs/notification.ts",
+        "apps/api/src/graphql/typedefs/report.ts",
+        "apps/api/src/graphql/typedefs/github.ts",
+        "apps/api/src/graphql/typedefs/ai.ts",
+        "apps/api/src/graphql/typedefs/search.ts"
+      ],
+      "acceptanceCriteria": [
+        "schema.ts reduced to ~50 lines (imports + concatenation)",
+        "11 domain typeDef files created matching resolver organization",
+        "Each domain file exports typeDefs + queryFields + mutationFields strings",
+        "Query and Mutation root types defined once in schema.ts",
+        "All 27 queries and 39 mutations accounted for across domain files",
+        "pnpm --filter api typecheck passes",
+        "GraphQL schema is functionally identical (no API changes)"
+      ],
+      "dependsOn": [],
+      "assignee": "worker-2",
+      "status": "merged",
+      "startedAt": "2026-03-16T04:18:03.030Z",
+      "completedAt": "2026-03-16T04:20:49.224Z",
+      "reviewedAt": "2026-03-16T04:24:07.778Z"
+    },
+    {
+      "id": "task-003",
+      "group": "I6",
+      "title": "Project export — REST endpoints for CSV and JSON download",
+      "description": "Add REST endpoints to export project data (tasks, sprints, comments) as CSV or JSON.\n\nUsing REST (not GraphQL) because these return file downloads with Content-Disposition headers.\n\n**1. Create `apps/api/src/routes/export.ts`:**\n\n```typescript\nimport { Router } from 'express';\nimport { PrismaClient } from '@prisma/client';\nimport { jwtVerify } from 'jose';\nimport { JWT_SECRET } from '../graphql/context.js';\n\nconst router = Router();\nconst prisma = new PrismaClient();\n```\n\nAuth middleware — verify JWT from Authorization header:\n```typescript\nasync function requireAuth(req, res, next) {\n  const token = req.headers.authorization?.replace('Bearer ', '');\n  if (!token) return res.status(401).json({ error: 'No token' });\n  try {\n    const { payload } = await jwtVerify(token, JWT_SECRET);\n    const user = await prisma.user.findUnique({ where: { userId: payload.sub as string } });\n    if (!user) return res.status(401).json({ error: 'User not found' });\n    req.user = user;\n    next();\n  } catch { return res.status(401).json({ error: 'Invalid token' }); }\n}\n```\n\n**GET /api/export/project/:projectId/json:**\n- Verify project belongs to user's org\n- Fetch: project (name, description, statuses), tasks (all fields, with labels and comments), sprints (all fields)\n- Return JSON with `Content-Disposition: attachment; filename=\"{projectName}.json\"`\n- Structure: `{ project: {...}, tasks: [...], sprints: [...] }`\n\n**GET /api/export/project/:projectId/csv:**\n- Fetch same task data\n- Convert to CSV with columns: taskId, title, description, status, priority, assignee, sprint, dueDate, storyPoints, estimatedHours, labels, createdAt\n- Return with `Content-Type: text/csv` and `Content-Disposition: attachment; filename=\"{projectName}-tasks.csv\"`\n\nCSV helper (no library needed):\n```typescript\nfunction toCSV(rows: Record<string, string | number | null>[]): string {\n  if (rows.length === 0) return '';\n  const headers = Object.keys(rows[0]);\n  const lines = [headers.join(',')];\n  for (const row of rows) {\n    lines.push(headers.map(h => {\n      const val = row[h] ?? '';\n      const str = String(val);\n      return str.includes(',') || str.includes('\"') || str.includes('\\n')\n        ? `\"${str.replace(/\"/g, '\"\"')}\"`\n        : str;\n    }).join(','));\n  }\n  return lines.join('\\n');\n}\n```\n\n**2. Register routes in `apps/api/src/app.ts`:**\n```typescript\nimport { exportRouter } from './routes/export.js';\napp.use('/api/export', exportRouter);\n```\nPlace AFTER the webhook route but BEFORE the yoga middleware.\n\n**Verification:** `pnpm --filter api typecheck` passes.",
+      "files": [
+        "apps/api/src/routes/export.ts",
+        "apps/api/src/app.ts"
+      ],
+      "acceptanceCriteria": [
+        "GET /api/export/project/:projectId/json returns full project data as JSON download",
+        "GET /api/export/project/:projectId/csv returns tasks as CSV download",
+        "Both endpoints verify JWT auth and org membership",
+        "CSV properly escapes commas, quotes, and newlines in values",
+        "Content-Disposition headers set for file download",
+        "Routes registered in app.ts before yoga middleware",
+        "pnpm --filter api typecheck passes"
+      ],
+      "dependsOn": [],
+      "assignee": "worker-3",
+      "status": "merged",
+      "startedAt": "2026-03-16T04:18:02.623Z",
+      "completedAt": "2026-03-16T04:20:18.585Z",
+      "reviewedAt": "2026-03-16T04:28:13.645Z"
+    },
+    {
+      "id": "task-004",
+      "group": "I6",
+      "title": "Activity/audit log export — REST endpoint",
+      "description": "Add REST endpoints to export activity/audit log data.\n\n**1. Update `apps/api/src/routes/export.ts`:**\n\nAdd two new endpoints:\n\n**GET /api/export/project/:projectId/activity/json:**\n- Optional query params: `?from=ISO_DATE&to=ISO_DATE` (date range filter)\n- Fetch activities for project, include user email for readability\n- Return JSON array with Content-Disposition\n- Limit to 10000 records to prevent OOM\n\n**GET /api/export/project/:projectId/activity/csv:**\n- Same data as JSON but as CSV\n- Columns: date, user, action, field, oldValue, newValue, taskId\n- Content-Disposition with filename\n\nDate range filtering:\n```typescript\nconst from = req.query.from ? new Date(req.query.from as string) : undefined;\nconst to = req.query.to ? new Date(req.query.to as string) : undefined;\nconst where = {\n  projectId,\n  ...(from || to ? { createdAt: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } } : {})\n};\n```\n\nInclude user info:\n```typescript\nconst activities = await prisma.activity.findMany({\n  where,\n  include: { user: { select: { email: true } } },\n  orderBy: { createdAt: 'desc' },\n  take: 10000\n});\n```\n\n**Verification:** `pnpm --filter api typecheck` passes.",
+      "files": [
+        "apps/api/src/routes/export.ts"
+      ],
+      "acceptanceCriteria": [
+        "GET /api/export/project/:projectId/activity/json returns activity log",
+        "GET /api/export/project/:projectId/activity/csv returns activity as CSV",
+        "Optional date range filtering via from/to query params",
+        "Activities include user email for readability",
+        "Reasonable limit (10k records) to prevent OOM",
+        "pnpm --filter api typecheck passes"
+      ],
+      "dependsOn": [
+        "task-003"
+      ],
+      "assignee": "worker-3",
+      "status": "merged",
+      "startedAt": "2026-03-16T04:20:22.462Z",
+      "completedAt": "2026-03-16T04:20:53.163Z",
+      "reviewedAt": "2026-03-16T04:28:13.658Z"
+    },
+    {
+      "id": "task-005",
+      "group": "I6",
+      "title": "Export UI buttons + CSV import with column mapping",
+      "description": "Add export buttons to the project UI and a CSV import feature.\n\n**1. Add export buttons to ProjectDetail (`apps/web/src/pages/ProjectDetail.tsx`):**\n- Add a dropdown menu button with a download icon in the toolbar\n- Dropdown options: 'Export Tasks (CSV)', 'Export Tasks (JSON)', 'Export Activity (CSV)', 'Export Activity (JSON)'\n- Each option triggers a file download via fetch to the REST endpoint:\n```typescript\nconst downloadExport = async (path: string, filename: string) => {\n  const token = localStorage.getItem('task-toad-id-token');\n  const res = await fetch(`/api/export/${path}`, {\n    headers: { Authorization: `Bearer ${token}` }\n  });\n  const blob = await res.blob();\n  const url = URL.createObjectURL(blob);\n  const a = document.createElement('a');\n  a.href = url;\n  a.download = filename;\n  a.click();\n  URL.revokeObjectURL(url);\n};\n```\n\n**2. Create `apps/web/src/components/CSVImportModal.tsx`:**\n\nA modal for importing tasks from CSV:\n- File upload input (accept .csv)\n- Parse CSV client-side (simple split-based parser, no library)\n- Column mapping UI: for each CSV column header, dropdown to map to task field (title, description, status, priority, assignee, dueDate, storyPoints, estimatedHours, skip)\n- Auto-detect: map columns with matching names automatically\n- Preview: show first 5 rows with mapped fields\n- 'Import' button creates tasks via existing `createTask` GraphQL mutation (loop through rows)\n- Progress indicator: 'Importing 3/15...'\n- On complete: toast 'Imported X tasks', refresh task list\n\nCSV parser (handles quoted fields):\n```typescript\nfunction parseCSV(text: string): { headers: string[]; rows: string[][] } {\n  const lines = text.split('\\n').filter(l => l.trim());\n  const parseLine = (line: string) => {\n    const fields: string[] = [];\n    let current = '';\n    let inQuotes = false;\n    for (const char of line) {\n      if (char === '\"') { inQuotes = !inQuotes; }\n      else if (char === ',' && !inQuotes) { fields.push(current.trim()); current = ''; }\n      else { current += char; }\n    }\n    fields.push(current.trim());\n    return fields;\n  };\n  return { headers: parseLine(lines[0]), rows: lines.slice(1).map(parseLine) };\n}\n```\n\n**3. Wire into ProjectDetail:**\n- Add 'Import CSV' option in the dropdown (or separate button)\n- Opens CSVImportModal\n- On import complete, refresh tasks\n\n**4. Update `apps/web/src/hooks/useProjectData.ts`:**\n- Add `handleBulkCreateTasks(tasks: Array<{title, description?, status?, priority?}>)` that creates tasks sequentially via the existing createTask mutation\n\n**Verification:** `pnpm --filter web typecheck` passes.",
+      "files": [
+        "apps/web/src/pages/ProjectDetail.tsx",
+        "apps/web/src/components/CSVImportModal.tsx",
+        "apps/web/src/hooks/useProjectData.ts"
+      ],
+      "acceptanceCriteria": [
+        "Export dropdown with CSV/JSON options for tasks and activity",
+        "File downloads work via fetch to REST endpoints",
+        "CSVImportModal parses uploaded CSV and shows column mapping",
+        "Auto-detect maps matching column names",
+        "Preview shows first 5 rows with mapped fields",
+        "Import creates tasks via existing createTask mutation",
+        "Progress indicator during import",
+        "pnpm --filter web typecheck passes"
+      ],
+      "dependsOn": [
+        "task-003"
+      ],
+      "assignee": "worker-3",
+      "status": "merged",
+      "startedAt": "2026-03-16T04:20:57.106Z",
+      "completedAt": "2026-03-16T04:23:13.062Z",
+      "reviewedAt": "2026-03-16T04:28:13.672Z"
+    }
+  ]
+}

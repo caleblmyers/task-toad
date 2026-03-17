@@ -1,0 +1,270 @@
+{
+  "version": 1,
+  "created": "2026-03-14T06:16:05.563Z",
+  "swarmId": "swarm-20260314-021559",
+  "config": {
+    "mainRepo": "/home/caleb/projects/task-toad",
+    "workerCount": 3,
+    "groups": [
+      "S1",
+      "I1",
+      "I3"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "task-001",
+      "group": "S1",
+      "title": "Add Sprint goal and Story points to schema + resolvers",
+      "description": "Add the Sprint goal field and Task storyPoints field to the database and GraphQL layer.\n\n**1. Prisma schema (`apps/api/prisma/schema.prisma`):**\n- Add `goal String? @map(\"goal\")` to the Sprint model (after `name`)\n- Add `storyPoints Int? @map(\"story_points\")` to the Task model (after `estimatedHours`)\n\n**2. Create migration:**\nCreate `apps/api/prisma/migrations/YYYYMMDDHHMMSS_add_sprint_goal_story_points/migration.sql`:\n```sql\nALTER TABLE \"sprints\" ADD COLUMN \"goal\" TEXT;\nALTER TABLE \"tasks\" ADD COLUMN \"story_points\" INTEGER;\n```\nUse a timestamp-based directory name matching the existing migration naming convention.\n\n**3. GraphQL typeDefs (`apps/api/src/graphql/schema.ts`):**\n- Add `goal: String` to the `Sprint` type\n- Add `storyPoints: Int` to the `Task` type\n- Add `goal: String` parameter to `createSprint` and `updateSprint` mutations\n- Add `storyPoints: Int` parameter to `updateTask` mutation\n\n**4. Sprint resolvers (`apps/api/src/graphql/resolvers/sprint.ts`):**\n- In `createSprint`: accept `args.goal`, pass to `prisma.sprint.create({ data: { ..., goal: args.goal ?? null } })`\n- In `updateSprint`: accept `args.goal`, include in update data if provided\n- In `sprintVelocity`: add `pointsCompleted` and `pointsTotal` alongside existing hours-based velocity. Calculate by summing `storyPoints` of completed vs total tasks in the sprint.\n\n**5. Task resolvers (`apps/api/src/graphql/resolvers/task.ts`):**\n- In `updateTask`: accept `storyPoints` arg (Int), include in update data\n\n**6. Update `SprintVelocityPoint` type in schema.ts:**\nAdd `pointsCompleted: Int!` and `pointsTotal: Int!` fields.\n\n**Verification:** `pnpm --filter api typecheck` passes. Migration SQL is valid.",
+      "files": [
+        "apps/api/prisma/schema.prisma",
+        "apps/api/src/graphql/schema.ts",
+        "apps/api/src/graphql/resolvers/sprint.ts",
+        "apps/api/src/graphql/resolvers/task.ts"
+      ],
+      "acceptanceCriteria": [
+        "Sprint model has goal field (nullable String)",
+        "Task model has storyPoints field (nullable Int)",
+        "Migration SQL file created and valid",
+        "createSprint and updateSprint accept goal parameter",
+        "updateTask accepts storyPoints parameter",
+        "sprintVelocity returns both hours and points metrics",
+        "pnpm --filter api typecheck passes"
+      ],
+      "dependsOn": [],
+      "assignee": "worker-1",
+      "status": "merged",
+      "startedAt": "2026-03-14T06:24:48.574Z",
+      "completedAt": "2026-03-14T06:28:04.773Z",
+      "reviewedAt": "2026-03-14T06:29:43.429Z"
+    },
+    {
+      "id": "task-002",
+      "group": "S1",
+      "title": "Add Sprint goal and Story points to frontend",
+      "description": "Wire the Sprint goal and Story points into the frontend components.\n\n**1. SprintCreateModal (`apps/web/src/components/SprintCreateModal.tsx`):**\n- Add `goal` state (string, default empty)\n- Add a textarea below the sprint name input: label 'Sprint Goal (optional)', placeholder 'What is this sprint's objective?'\n- Pass `goal` to the createSprint/updateSprint mutation\n- When editing (initialSprint provided), pre-fill goal from sprint data\n\n**2. BacklogView (`apps/web/src/components/BacklogView.tsx`):**\n- In the sprint header section, show the sprint goal below the sprint name if it exists (small text, slate-500)\n- In task rows, show story points next to estimated hours: `{task.storyPoints ? ` + '`${task.storyPoints}pt`' + ` : ''}`\n- If task has both storyPoints and estimatedHours, show both separated by a dot\n\n**3. TaskDetailPanel (`apps/web/src/components/TaskDetailPanel.tsx`):**\n- Add a Story Points field in the task metadata section (near priority/due date)\n- Use a small number input (min 0, max 100), label 'Story Points'\n- On blur or enter, call `onUpdateTask(task.taskId, { storyPoints: value })`\n- Show current value from task.storyPoints\n\n**4. useProjectData hook (`apps/web/src/hooks/useProjectData.ts`):**\n- Add `storyPoints: $storyPoints` to the `updateTask` mutation variables and args\n- Add `goal: $goal` to sprint create/update mutations and args\n- Update Sprint query fields to include `goal`\n\n**5. Types (`apps/web/src/types.ts`):**\n- Add `storyPoints?: number | null` to Task type\n- Add `goal?: string | null` to Sprint type\n\n**6. TASK_FIELDS (`apps/web/src/utils/taskHelpers.ts`):**\n- Add `storyPoints` to the TASK_FIELDS string\n\n**Verification:** `pnpm --filter web typecheck` passes.",
+      "files": [
+        "apps/web/src/components/SprintCreateModal.tsx",
+        "apps/web/src/components/BacklogView.tsx",
+        "apps/web/src/components/TaskDetailPanel.tsx",
+        "apps/web/src/hooks/useProjectData.ts",
+        "apps/web/src/utils/taskHelpers.ts",
+        "apps/web/src/types.ts"
+      ],
+      "acceptanceCriteria": [
+        "SprintCreateModal has goal textarea, pre-fills on edit",
+        "BacklogView shows sprint goal and story points on tasks",
+        "TaskDetailPanel has story points number input",
+        "useProjectData passes storyPoints in updateTask and goal in sprint mutations",
+        "TASK_FIELDS includes storyPoints",
+        "Sprint and Task types updated",
+        "pnpm --filter web typecheck passes"
+      ],
+      "dependsOn": [
+        "task-001"
+      ],
+      "assignee": "worker-1",
+      "status": "merged",
+      "startedAt": "2026-03-14T06:28:39.156Z",
+      "completedAt": "2026-03-14T06:31:06.042Z",
+      "reviewedAt": "2026-03-14T06:32:44.391Z"
+    },
+    {
+      "id": "task-003",
+      "group": "S1",
+      "title": "Add Epics support with task type field and hierarchy",
+      "description": "Add an epic/story/subtask hierarchy by introducing a `taskType` field on the Task model. The existing `parentTaskId` already supports hierarchy.\n\n**1. Prisma schema (`apps/api/prisma/schema.prisma`):**\n- Add `taskType String @default(\"task\") @map(\"task_type\")` to Task model (after `status`)\n- Valid values: 'epic', 'story', 'task', 'subtask'\n\n**2. Migration:**\nCreate migration directory and SQL:\n```sql\nALTER TABLE \"tasks\" ADD COLUMN \"task_type\" TEXT NOT NULL DEFAULT 'task';\n```\n\n**3. GraphQL typeDefs (`apps/api/src/graphql/schema.ts`):**\n- Add `taskType: String!` to the `Task` type\n- Add `taskType: String` parameter to `createTask` mutation\n- Add `taskType: String` parameter to `updateTask` mutation\n- Add new query: `epics(projectId: ID!): [Task!]!`\n- Add new mutation: `createSubtask(parentTaskId: ID!, title: String!, taskType: String): Task!`\n- Add `children: [Task!]!` field to Task type\n- Add `progress: TaskProgress` field to Task type\n- Add new type: `type TaskProgress { total: Int! completed: Int! percentage: Float! }`\n\n**4. Task resolvers (`apps/api/src/graphql/resolvers/task.ts`):**\n- In `createTask`: accept `taskType` arg (default 'task'), validate it's one of ['epic', 'story', 'task', 'subtask']\n- In `updateTask`: accept `taskType` arg\n- Add `epics` query: `prisma.task.findMany({ where: { projectId, taskType: 'epic', parentTaskId: null, archived: false } })`\n- Add `createSubtask` mutation: validates parent exists and belongs to user's org, creates task with `parentTaskId`, inherits `projectId` and `orgId` from parent. Auto-assigns taskType: if parent is 'epic' → 'story', if parent is 'story' or 'task' → 'subtask', else 'subtask'.\n- Add `Task.children` field resolver: `(parent) => prisma.task.findMany({ where: { parentTaskId: parent.taskId, archived: false }, orderBy: { position: 'asc' } })`\n- Add `Task.progress` field resolver: only for epics/stories — count children by status, return `{ total, completed (status=done), percentage }`\n\n**Verification:** `pnpm --filter api typecheck` passes.",
+      "files": [
+        "apps/api/prisma/schema.prisma",
+        "apps/api/src/graphql/schema.ts",
+        "apps/api/src/graphql/resolvers/task.ts"
+      ],
+      "acceptanceCriteria": [
+        "Task model has taskType field (default 'task')",
+        "Migration SQL file created",
+        "createTask and updateTask accept taskType parameter",
+        "epics(projectId) query returns epic-type tasks",
+        "createSubtask mutation creates child tasks with correct type inference",
+        "Task.children field resolver returns nested tasks",
+        "Task.progress field resolver returns completion stats",
+        "pnpm --filter api typecheck passes"
+      ],
+      "dependsOn": [
+        "task-001"
+      ],
+      "assignee": "worker-1",
+      "status": "merged",
+      "startedAt": "2026-03-14T06:31:11.090Z",
+      "completedAt": "2026-03-14T06:34:09.047Z",
+      "reviewedAt": "2026-03-14T06:36:55.533Z"
+    },
+    {
+      "id": "task-004",
+      "group": "S1",
+      "title": "Add Epics frontend — grouping, hierarchy UI, and task type badges",
+      "description": "Add epic hierarchy visualization to the frontend.\n\n**1. BacklogView (`apps/web/src/components/BacklogView.tsx`):**\n- Group tasks by epic: tasks with `parentTaskId` pointing to an epic render nested under it\n- Epic rows: bolder text, expand/collapse chevron, progress bar showing children completion percentage\n- Unparented tasks (taskType='task' with no parent) render as before\n- Add a 'Create Epic' button alongside existing add task UI that calls createTask with taskType='epic'\n\n**2. TaskDetailPanel (`apps/web/src/components/TaskDetailPanel.tsx`):**\n- Show task type badge near the title: Epic (purple bg), Story (blue bg), Task (slate bg), Subtask (gray bg)\n- For epics/stories: show children list below description with status badges and mini progress bar\n- For stories/tasks with a parent: show parent epic/story link (clickable, navigates to parent task)\n- Add 'Add child task' button for epics/stories that calls createSubtask mutation\n\n**3. KanbanBoard (`apps/web/src/components/KanbanBoard.tsx`):**\n- Show small task type indicator on cards (colored dot: purple=epic, blue=story, slate=task)\n- Epics visually distinct: slightly thicker left border using the type color\n\n**4. useProjectData (`apps/web/src/hooks/useProjectData.ts`):**\n- Add `handleCreateSubtask(parentTaskId: string, title: string)` handler that calls createSubtask mutation\n- Load epic hierarchy data when needed\n- Export the new handler\n\n**5. Types (`apps/web/src/types.ts`):**\n- Add `taskType: string` to Task type\n- Add `children?: Task[]` to Task type\n- Add `progress?: { total: number; completed: number; percentage: number }` to Task type\n\n**6. TASK_FIELDS (`apps/web/src/utils/taskHelpers.ts`):**\n- Add `taskType` to the TASK_FIELDS string\n- Note: do NOT add `children` or `progress` to TASK_FIELDS — these are fetched separately to avoid deep nesting in list queries\n\n**Verification:** `pnpm --filter web typecheck` passes.",
+      "files": [
+        "apps/web/src/components/BacklogView.tsx",
+        "apps/web/src/components/TaskDetailPanel.tsx",
+        "apps/web/src/components/KanbanBoard.tsx",
+        "apps/web/src/hooks/useProjectData.ts",
+        "apps/web/src/types.ts",
+        "apps/web/src/utils/taskHelpers.ts"
+      ],
+      "acceptanceCriteria": [
+        "BacklogView groups tasks under epics with expand/collapse",
+        "Epic rows show progress bar of children completion",
+        "TaskDetailPanel shows task type badge and parent link",
+        "Epics/stories show children list in detail panel",
+        "Create subtask button works for epics and stories",
+        "KanbanBoard shows task type indicator on cards",
+        "TASK_FIELDS includes taskType",
+        "pnpm --filter web typecheck passes"
+      ],
+      "dependsOn": [
+        "task-002",
+        "task-003"
+      ],
+      "assignee": "worker-1",
+      "status": "merged",
+      "startedAt": "2026-03-14T06:34:21.500Z",
+      "completedAt": "2026-03-14T06:38:01.559Z",
+      "reviewedAt": "2026-03-14T06:38:46.303Z"
+    },
+    {
+      "id": "task-005",
+      "group": "I1",
+      "title": "Add AI commit message and PR description enrichment",
+      "description": "Enhance the PR creation flow with AI-generated commit messages and rich PR descriptions.\n\n**1. AI types (`apps/api/src/ai/aiTypes.ts`):**\n- Add `'generateCommitMessage'` and `'enrichPRDescription'` to the `AIFeature` union type\n\n**2. AI config (`apps/api/src/ai/aiConfig.ts`):**\n- Add feature configs:\n```typescript\ngenerateCommitMessage: { maxTokens: 256, cacheTTLMs: 0, retryOnValidationFailure: false },\nenrichPRDescription: { maxTokens: 1024, cacheTTLMs: 0, retryOnValidationFailure: false },\n```\n\n**3. Prompt builder (`apps/api/src/ai/promptBuilder.ts`):**\n\nAdd `buildCommitMessagePrompt(data)` function:\n- Input: `{ taskTitle: string, taskDescription: string, files: Array<{path: string}> }`\n- System prompt: `SYSTEM_PROSE`\n- User prompt: 'Generate a concise git commit message (max 72 chars first line, optional body after blank line) for this task implementation. Task: {title}. Description: {desc}. Files changed: {paths joined}. Use conventional commits format (feat:, fix:, etc). Return ONLY the commit message text.'\n- Use `userInput()` for task data, `truncate()` for description (200 chars)\n\nAdd `buildEnrichPRDescriptionPrompt(data)` function:\n- Input: `{ taskTitle: string, taskDescription: string, taskInstructions: string, files: Array<{path: string, language: string}> }`\n- System prompt: `SYSTEM_PROSE`\n- User prompt: 'Generate a pull request description in markdown for this task. Task: {title}. Description: {desc}. Instructions: {instructions}. Files: {paths}. Include: ## Summary (2-3 sentences), ## Changes (bullet list), ## Testing (how to verify). Return ONLY the markdown.'\n- Use `userInput()` tags, truncate description (400 chars) and instructions (800 chars)\n\n**4. AI service (`apps/api/src/ai/aiService.ts`):**\nAdd two functions that call `callAI` directly (not `callAndParse` — these return prose, not JSON):\n- `generateCommitMessage(apiKey, taskTitle, taskDescription, files): Promise<string>` — calls `callAI` with the commit message prompt, returns `result.raw.trim()`\n- `enrichPRDescription(apiKey, taskTitle, taskDescription, taskInstructions, files): Promise<string>` — same pattern, returns markdown\n\n**5. Export from `apps/api/src/ai/index.ts`:**\nAdd both to function exports.\n\n**6. GitHub service (`apps/api/src/github/githubService.ts`):**\n- Import `generateCommitMessage` and `enrichPRDescription` from `../../ai/index.js`\n- Add `apiKey?: string` to `CreatePullRequestFromTaskInput` in `apps/api/src/github/githubTypes.ts`\n- In `createPullRequestFromTask()`, if `input.apiKey` is provided:\n  - Wrap in try/catch: call `generateCommitMessage(apiKey, task.title, task.description ?? '', files)`, use result as commit message. On failure, fall back to existing `'AI: implement task ${task.title}'`\n  - Wrap in try/catch: call `enrichPRDescription(apiKey, task.title, task.description ?? '', task.instructions ?? '', files.map(f => ({path: f.path, language: ''})))`, use result as PR body. On failure, fall back to existing body builder.\n  - To get task.instructions, add `instructions` to the select in the task query on line 32-35\n\n**7. GitHub resolver (`apps/api/src/graphql/resolvers/github.ts`):**\n- In `createPullRequestFromTask` resolver, get the API key using the same pattern as AI resolvers: import `requireApiKey` from `./auth.js`, call it, pass to the service as `apiKey`. Wrap in try/catch — if no API key configured, pass undefined (features degrade gracefully).\n\n**Verification:** `pnpm --filter api typecheck` passes.",
+      "files": [
+        "apps/api/src/ai/aiTypes.ts",
+        "apps/api/src/ai/aiConfig.ts",
+        "apps/api/src/ai/promptBuilder.ts",
+        "apps/api/src/ai/aiService.ts",
+        "apps/api/src/ai/index.ts",
+        "apps/api/src/github/githubService.ts",
+        "apps/api/src/github/githubTypes.ts",
+        "apps/api/src/graphql/resolvers/github.ts"
+      ],
+      "acceptanceCriteria": [
+        "generateCommitMessage and enrichPRDescription in AIFeature union",
+        "Feature configs added with appropriate maxTokens",
+        "Prompt builders use userInput() and truncation",
+        "AI service functions return raw text (prose, not JSON)",
+        "githubService uses AI commit message and PR body with graceful fallback",
+        "API key passed from resolver, optional (degrades gracefully if missing)",
+        "pnpm --filter api typecheck passes"
+      ],
+      "dependsOn": [],
+      "assignee": "worker-2",
+      "status": "merged",
+      "startedAt": "2026-03-14T06:25:01.026Z",
+      "completedAt": "2026-03-14T06:28:39.972Z",
+      "reviewedAt": "2026-03-14T06:31:02.549Z"
+    },
+    {
+      "id": "task-006",
+      "group": "I1",
+      "title": "Add multi-file context injection for code generation",
+      "description": "Enhance code generation quality by injecting existing project files into the prompt.\n\n**1. New file: `apps/api/src/github/githubFileService.ts`:**\nCreate a service that fetches the file tree from a connected GitHub repo:\n```typescript\nimport { githubRequest } from './githubAppClient.js';\nimport { getInstallationToken } from './githubAppAuth.js';\nimport type { GitHubRepoLink } from './githubTypes.js';\nimport { createChildLogger } from '../utils/logger.js';\n\nconst log = createChildLogger('github');\n\nconst GET_TREE = `\n  query GetTree($owner: String!, $name: String!, $expression: String!) {\n    repository(owner: $owner, name: $name) {\n      object(expression: $expression) {\n        ... on Tree {\n          entries { name type path object { ... on Blob { byteSize } } }\n        }\n      }\n    }\n  }\n`;\n\nconst IGNORED_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', 'coverage', '__pycache__', '.cache']);\nconst CODE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.py', '.go', '.rs', '.sql', '.prisma', '.graphql', '.css', '.scss']);\nconst MAX_FILES = 30;\n\nexport interface ProjectFile {\n  path: string;\n  language: string;\n  size: number;\n}\n```\n\nExport `fetchProjectFileTree(repo: GitHubRepoLink): Promise<ProjectFile[]>`:\n- Get installation token\n- Fetch root tree via GitHub GraphQL\n- Filter: exclude IGNORED_DIRS, include only CODE_EXTENSIONS\n- Map extensions to languages: `.ts`→'typescript', `.tsx`→'tsx', `.py`→'python', `.go`→'go', `.rs`→'rust', `.sql`→'sql', `.prisma`→'prisma', `.graphql`→'graphql', `.css`→'css', `.jsx`→'jsx', `.js`→'javascript'\n- Sort by size descending, cap at MAX_FILES\n- Wrap in try/catch, return empty array on failure (log the error)\n\nNote: GitHub's tree query only returns one level. For a deeper view, also query `expression: \"main:src\"` and `expression: \"main:apps\"` (common directories). Merge results and deduplicate by path.\n\n**2. Export from `apps/api/src/github/index.ts`:**\nAdd `fetchProjectFileTree` and `ProjectFile` type.\n\n**3. Update prompt builder (`apps/api/src/ai/promptBuilder.ts`):**\n- Change `buildGenerateCodePrompt` parameter `existingFiles?: string[]` to `existingFiles?: Array<{path: string; language: string; size: number}>`\n- Format in prompt: `'\\nExisting project files (for context — do NOT regenerate these):\\n' + files.map(f => '- ' + f.path + ' (' + f.language + ', ' + f.size + ' bytes)').join('\\n')`\n- Keep the cap at 30 files\n\n**4. Update AI service (`apps/api/src/ai/aiService.ts`):**\n- Change `generateCode` parameter `existingFiles?: string[]` to `existingFiles?: Array<{path: string; language: string; size: number}>`\n- Pass through to prompt builder\n\n**5. Update AI resolver (`apps/api/src/graphql/resolvers/ai.ts`):**\n- In `generateCodeFromTask` mutation, after loading the task:\n  - Import `getProjectRepo` and `fetchProjectFileTree` from `../../github/index.js`\n  - Try to get the project's repo: `const repo = await getProjectRepo(task.projectId)`\n  - If repo exists: `const projectFiles = await fetchProjectFileTree(repo).catch(() => undefined)`\n  - Pass `projectFiles` to `aiGenerateCode()` as the `existingFiles` parameter\n\n**Verification:** `pnpm --filter api typecheck` passes.",
+      "files": [
+        "apps/api/src/github/githubFileService.ts",
+        "apps/api/src/github/index.ts",
+        "apps/api/src/ai/promptBuilder.ts",
+        "apps/api/src/ai/aiService.ts",
+        "apps/api/src/graphql/resolvers/ai.ts"
+      ],
+      "acceptanceCriteria": [
+        "githubFileService exports fetchProjectFileTree",
+        "Filters out node_modules, dist, .git etc.",
+        "Caps at 30 files sorted by relevance",
+        "promptBuilder includes file list in code gen prompt",
+        "generateCodeFromTask resolver fetches file tree if repo connected",
+        "Fails silently if repo not connected or fetch fails",
+        "pnpm --filter api typecheck passes"
+      ],
+      "dependsOn": [],
+      "assignee": "worker-2",
+      "status": "merged",
+      "startedAt": "2026-03-14T06:29:00.729Z",
+      "completedAt": "2026-03-14T06:30:56.614Z",
+      "reviewedAt": "2026-03-14T06:31:37.422Z"
+    },
+    {
+      "id": "task-007",
+      "group": "I1",
+      "title": "Add pre-flight cost estimation display for code generation",
+      "description": "Show users the estimated token cost alongside generated code output.\n\n**1. New file: `apps/api/src/ai/costEstimator.ts`:**\n```typescript\nimport { COST_PER_INPUT_TOKEN, COST_PER_OUTPUT_TOKEN } from './aiConfig.js';\n\nexport interface CostEstimate {\n  inputTokens: number;\n  outputTokens: number;\n  totalCostUSD: number;\n  formatted: string;\n}\n\nexport function formatCost(inputTokens: number, outputTokens: number): CostEstimate {\n  const totalCostUSD = (inputTokens * COST_PER_INPUT_TOKEN) + (outputTokens * COST_PER_OUTPUT_TOKEN);\n  return {\n    inputTokens,\n    outputTokens,\n    totalCostUSD,\n    formatted: `${inputTokens + outputTokens} tokens ($${totalCostUSD.toFixed(4)})`,\n  };\n}\n```\n\n**2. Update CodePreviewModal (`apps/web/src/components/CodePreviewModal.tsx`):**\n- The `estimatedTokensUsed` field already exists and is displayed in the modal\n- Enhance the display to show cost in dollars alongside tokens\n- Add a small info line in the header area: `Tokens: {n} · Cost: ~$X.XXXX`\n- Calculate cost client-side using Haiku pricing: output tokens × $0.000005 per token\n- Format: `const cost = (estimatedTokensUsed * 0.000005).toFixed(4)`\n- Style: small text, slate-400 color, next to existing token display\n\n**Verification:** `pnpm --filter web typecheck` passes. Cost displays correctly in preview modal.",
+      "files": [
+        "apps/api/src/ai/costEstimator.ts",
+        "apps/web/src/components/CodePreviewModal.tsx"
+      ],
+      "acceptanceCriteria": [
+        "costEstimator.ts exports formatCost function",
+        "CodePreviewModal shows token count and dollar cost estimate",
+        "Cost calculation uses correct Haiku pricing",
+        "pnpm typecheck passes for both packages"
+      ],
+      "dependsOn": [],
+      "assignee": "worker-2",
+      "status": "merged",
+      "startedAt": "2026-03-14T06:31:01.787Z",
+      "completedAt": "2026-03-14T06:31:58.017Z",
+      "reviewedAt": "2026-03-14T06:33:43.330Z"
+    },
+    {
+      "id": "task-008",
+      "group": "I3",
+      "title": "Add CI/CD pipeline with GitHub Actions",
+      "description": "Create GitHub Actions workflows for CI (lint, typecheck, build).\n\n**1. Create `.github/workflows/ci.yml`:**\n```yaml\nname: CI\non:\n  push:\n    branches: [main]\n  pull_request:\n    branches: [main]\n\njobs:\n  ci:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: pnpm/action-setup@v4\n        with:\n          version: 9\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n          cache: pnpm\n      - run: pnpm install --frozen-lockfile\n      - run: pnpm lint\n      - run: pnpm typecheck\n      - run: pnpm build\n```\n\n**2. Create `.github/workflows/deploy.yml`:**\n```yaml\nname: Deploy\non:\n  workflow_dispatch:\n  push:\n    branches: [main]\n    paths:\n      - 'apps/**'\n      - 'package.json'\n      - 'pnpm-lock.yaml'\n\njobs:\n  deploy:\n    runs-on: ubuntu-latest\n    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'\n    steps:\n      - uses: actions/checkout@v4\n      - uses: pnpm/action-setup@v4\n        with:\n          version: 9\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n          cache: pnpm\n      - run: pnpm install --frozen-lockfile\n      - run: pnpm build\n      - run: echo 'Deployment target not configured yet.'\n```\n\n**3. Create `Dockerfile` at repo root:**\nMulti-stage build for API:\n```dockerfile\nFROM node:22-slim AS base\nRUN corepack enable && corepack prepare pnpm@9 --activate\nWORKDIR /app\n\nFROM base AS deps\nCOPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./\nCOPY apps/api/package.json apps/api/\nCOPY apps/web/package.json apps/web/\nRUN pnpm install --frozen-lockfile --prod=false\n\nFROM deps AS api-build\nCOPY apps/api/ apps/api/\nCOPY tsconfig.base.json ./\nRUN pnpm --filter api build\n\nFROM deps AS web-build\nCOPY apps/web/ apps/web/\nCOPY tsconfig.base.json ./\nRUN pnpm --filter web build\n\nFROM node:22-slim AS api\nRUN corepack enable && corepack prepare pnpm@9 --activate\nWORKDIR /app\nCOPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./\nCOPY apps/api/package.json apps/api/\nRUN pnpm install --frozen-lockfile --prod\nCOPY --from=api-build /app/apps/api/dist apps/api/dist\nCOPY apps/api/prisma apps/api/prisma\nRUN cd apps/api && npx prisma generate\nEXPOSE 3001\nCMD [\"node\", \"apps/api/dist/index.js\"]\n```\n\n**4. Create `.dockerignore`:**\n```\nnode_modules\ndist\n.git\n*.md\n.env*\n.ai\n.claude*\ninfra\n```\n\n**Verification:** YAML syntax is valid (check with a YAML linter or `cat` the files). Dockerfile syntax is valid.",
+      "files": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/deploy.yml",
+        "Dockerfile",
+        ".dockerignore"
+      ],
+      "acceptanceCriteria": [
+        "CI workflow runs lint, typecheck, build on push/PR to main",
+        "Deploy workflow builds with placeholder deploy step",
+        "Dockerfile multi-stage builds API image",
+        "Dockerfile generates Prisma client in production image",
+        ".dockerignore excludes node_modules, .env, .git",
+        "YAML and Dockerfile syntax valid"
+      ],
+      "dependsOn": [],
+      "assignee": "worker-3",
+      "status": "merged",
+      "startedAt": "2026-03-14T06:24:49.856Z",
+      "completedAt": "2026-03-14T06:26:13.307Z",
+      "reviewedAt": "2026-03-14T06:27:09.044Z"
+    },
+    {
+      "id": "task-009",
+      "group": "I3",
+      "title": "Add Railway deployment config and documentation",
+      "description": "Set up Railway deployment configuration for the simplest production path.\n\n**1. Create `railway.toml` at repo root:**\n```toml\n[build]\nbuilder = \"nixpacks\"\nbuildCommand = \"pnpm install --frozen-lockfile && pnpm --filter api build && cd apps/api && npx prisma generate\"\n\n[deploy]\nstartCommand = \"cd apps/api && npx prisma migrate deploy && node dist/index.js\"\nhealthcheckPath = \"/graphql\"\nhealthcheckTimeout = 30\nrestartPolicyType = \"on_failure\"\nrestartPolicyMaxRetries = 3\n\n[service]\ninternalPort = 3001\n```\n\n**2. Update `apps/api/.env.example`:**\nAdd production notes as comments:\n```\n# Production: DATABASE_URL provided by Railway Postgres addon\n# Production: PORT auto-set by Railway\n# Production: Set NODE_ENV=production\n# Production: CORS_ORIGINS should be your frontend domain\n```\n\n**3. Update `apps/web/.env.example`:**\nAdd note: `# Production: VITE_API_URL should point to your API service URL (e.g. https://api.tasktoad.dev)`\n\n**4. Create `DEPLOY.md` at repo root:**\nDocument:\n- Prerequisites (Railway account, GitHub repo connected)\n- Quick start: create Railway project → add Postgres → deploy from GitHub\n- Environment variables reference (all required vars with descriptions)\n- Database: auto-migration on deploy via `prisma migrate deploy` in startCommand\n- Frontend: deploy web as static site (Railway static, Vercel, Netlify, or serve from API)\n- Custom domain setup notes\n- Local Docker testing: `docker build --target api -t tasktoad-api . && docker run -p 3001:3001 --env-file apps/api/.env tasktoad-api`\n\n**Verification:** `railway.toml` syntax is valid. DEPLOY.md is comprehensive.",
+      "files": [
+        "railway.toml",
+        "apps/api/.env.example",
+        "apps/web/.env.example",
+        "DEPLOY.md"
+      ],
+      "acceptanceCriteria": [
+        "railway.toml configures API build, deploy, and healthcheck",
+        "Auto-migration runs on deploy via startCommand",
+        "Environment variable examples have production notes",
+        "DEPLOY.md documents full deployment process",
+        "Docker testing instructions included"
+      ],
+      "dependsOn": [
+        "task-008"
+      ],
+      "assignee": "worker-3",
+      "status": "merged",
+      "startedAt": "2026-03-14T06:26:19.319Z",
+      "completedAt": "2026-03-14T06:27:06.579Z",
+      "reviewedAt": "2026-03-14T06:29:59.318Z"
+    }
+  ]
+}

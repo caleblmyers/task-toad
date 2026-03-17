@@ -6,9 +6,9 @@ Parallelize development across multiple Claude Code instances, each working in i
 
 ```
 Main repo (planner runs here)
-  .ai/swarm/tasks.json           <- shared task queue (gitignored)
-  .ai/swarm/prompts/*.md         <- role templates (committed)
-  scripts/swarm/*.sh             <- spawn/teardown/status (committed)
+  .ai/taskswarm/tasks.json           <- shared task queue (gitignored)
+  .ai/taskswarm/prompts/*.md         <- role templates (committed)
+  scripts/taskswarm/*.sh             <- spawn/teardown/status (committed)
        |
   task-toad-worker-1/            <- worktree on branch swarm/worker-1
   task-toad-worker-2/            <- worktree on branch swarm/worker-2
@@ -28,7 +28,7 @@ Main repo (planner runs here)
 ### 1. Spawn the swarm
 
 ```bash
-bash scripts/swarm/spawn.sh 3    # creates 3 workers + 1 reviewer
+bash scripts/taskswarm/spawn.sh 3    # creates 3 workers + 1 reviewer
 ```
 
 This creates sibling worktree directories, installs dependencies, copies `.env` files, and appends role-specific instructions to each worktree's `CLAUDE.md`.
@@ -42,7 +42,7 @@ claude
 
 Paste this kickoff prompt:
 
-> You are the planner agent. Read `.ai/swarm/prompts/planner.md` for your role instructions. Plan groups J, A, and C from `.claude-knowledge/todos.md` and distribute across 3 workers. Group J should be planned first as it unblocks other groups that touch schema.ts.
+> You are the planner agent. Read `.ai/taskswarm/prompts/planner.md` for your role instructions. Plan groups J, A, and C from `.claude-knowledge/todos.md` and distribute across 3 workers. Group J should be planned first as it unblocks other groups that touch schema.ts.
 
 ### 3. Start the workers (one terminal each)
 
@@ -71,13 +71,13 @@ Paste this kickoff prompt:
 ### 5. Monitor progress
 
 ```bash
-bash scripts/swarm/status.sh
+bash scripts/taskswarm/status.sh
 ```
 
 ### 6. Teardown
 
 ```bash
-bash scripts/swarm/teardown.sh
+bash scripts/taskswarm/teardown.sh
 ```
 
 ## Task Lifecycle
@@ -120,29 +120,29 @@ See `todos.md` for the full Optimal Wave Plan and priority ordering.
 
 ```bash
 # Claim a task
-bash scripts/swarm/task-update.sh task-001 in_progress --startedAt
+bash scripts/taskswarm/task-update.sh task-001 in_progress --startedAt
 
 # Mark complete
-bash scripts/swarm/task-update.sh task-001 completed --completedAt
+bash scripts/taskswarm/task-update.sh task-001 completed --completedAt
 
 # Mark merged
-bash scripts/swarm/task-update.sh task-001 merged --reviewedAt
+bash scripts/taskswarm/task-update.sh task-001 merged --reviewedAt
 
 # Send back for fixes
-bash scripts/swarm/task-update.sh task-001 in_progress --reviewNotes="typecheck fails in auth.ts"
+bash scripts/taskswarm/task-update.sh task-001 in_progress --reviewNotes="typecheck fails in auth.ts"
 
 # Mark blocked
-bash scripts/swarm/task-update.sh task-001 blocked --reviewNotes="need file not in list"
+bash scripts/taskswarm/task-update.sh task-001 blocked --reviewNotes="need file not in list"
 ```
 
 ### Merge a worker branch
 
 ```bash
 # Merge with validation (typecheck)
-bash scripts/swarm/merge-worker.sh swarm/worker-1 --validate
+bash scripts/taskswarm/merge-worker.sh swarm/worker-1 --validate
 
 # Merge without validation
-bash scripts/swarm/merge-worker.sh swarm/worker-1
+bash scripts/taskswarm/merge-worker.sh swarm/worker-1
 ```
 
 This squash-merges the worker branch into main locally. Run from any directory.
@@ -150,7 +150,7 @@ This squash-merges the worker branch into main locally. Run from any directory.
 ### View task statuses
 
 ```bash
-bash scripts/swarm/status.sh
+bash scripts/taskswarm/status.sh
 ```
 
 ## Monitoring & Troubleshooting
@@ -158,7 +158,7 @@ bash scripts/swarm/status.sh
 ### Worker is stuck
 
 1. Check tasks.json for the task status and any `reviewNotes`
-2. Set the task to `blocked`: `bash scripts/swarm/task-update.sh task-XXX blocked --reviewNotes="issue"`
+2. Set the task to `blocked`: `bash scripts/taskswarm/task-update.sh task-XXX blocked --reviewNotes="issue"`
 3. Reassign to a different worker if necessary
 
 ### Add more tasks mid-swarm

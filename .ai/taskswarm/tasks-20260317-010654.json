@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "created": "2026-03-17T04:48:45.318Z",
+  "swarmId": "swarm-20260317-004834",
+  "config": {
+    "mainRepo": "/home/caleb/projects/task-toad",
+    "workerCount": 3,
+    "groups": []
+  },
+  "tasks": [
+    {
+      "id": "task-001",
+      "title": "Responsive collapsible sidebar with mobile drawer",
+      "assignee": "worker-1",
+      "status": "merged",
+      "branch": "",
+      "files": [
+        "apps/web/src/pages/AppLayout.tsx",
+        "apps/web/src/components/Skeleton.tsx"
+      ],
+      "description": "The AppLayout sidebar is currently a fixed `w-56` (224px) `<aside>` that's always visible and has no responsive behavior — zero `md:`, `sm:`, or `lg:` classes exist anywhere. Add responsive sidebar collapse with mobile drawer.\n\n**Implementation:**\n\n1. **Desktop (md+ breakpoints):** Keep sidebar visible by default. Add a collapse toggle button (hamburger/chevron icon) in the sidebar header that toggles between `w-56` and `w-14` (icon-only rail). When collapsed: hide nav text labels, show only icons, hide the user email/role text, keep avatar visible. Use `transition-all duration-200` for smooth animation. Persist preference in `localStorage` under key `task-toad-sidebar-collapsed`.\n\n2. **Mobile (<md breakpoint):** Hide sidebar by default (`hidden md:flex` on the aside). Add a hamburger button in a new thin top bar (`md:hidden`) that opens the sidebar as an overlay drawer. The drawer should slide in from the left with a backdrop overlay (`bg-black/40`). Clicking the backdrop or any nav link closes the drawer. The top bar should show the TaskToad logo + hamburger button.\n\n3. **Notification overlays:** The NotificationCenter (line 226) and NotificationSettings (lines 228-242) use `absolute` positioning relative to the sidebar. Ensure they still work when sidebar is collapsed (desktop) or in drawer mode (mobile). They may need to be repositioned or rendered in a portal.\n\n4. **Quick search button:** The `⌘K` quick search button (line 147-157) should remain visible in both collapsed and expanded states — show just the search icon when collapsed.\n\n5. **Card migration in Skeleton.tsx:** While here, replace the inline card pattern in KanbanColumnSkeleton (line 45: `bg-white dark:bg-slate-900 rounded-lg p-3 shadow-sm border border-slate-200 dark:border-slate-700`) with `<Card padding=\"sm\">`. Import Card from `./shared/Card`.\n\nDo NOT add responsive behavior to ProjectToolbar or ProjectDetail — those are separate concerns for a future wave. Only touch AppLayout and Skeleton.",
+      "acceptanceCriteria": "Desktop (md+): sidebar toggles between expanded (w-56) and collapsed (w-14) rail with smooth animation. Preference persists in localStorage. Mobile (<md): sidebar hidden by default, hamburger button opens drawer overlay, clicking backdrop or nav link closes it. Notification overlays work in both states. Skeleton.tsx uses Card component. pnpm typecheck && pnpm lint && pnpm build passes.",
+      "startedAt": "2026-03-17T04:53:22.757Z",
+      "completedAt": "2026-03-17T04:57:55.719Z",
+      "reviewedAt": "2026-03-17T05:04:00.457Z"
+    },
+    {
+      "id": "task-002",
+      "title": "Badge adoption round 2: taskdetail components (6 files)",
+      "assignee": "worker-2",
+      "status": "merged",
+      "branch": "",
+      "files": [
+        "apps/web/src/components/taskdetail/TaskAIReviewSection.tsx",
+        "apps/web/src/components/taskdetail/TaskAIHistory.tsx",
+        "apps/web/src/components/taskdetail/TaskTitleEditor.tsx",
+        "apps/web/src/components/taskdetail/TaskGitHubSection.tsx",
+        "apps/web/src/components/taskdetail/TaskDetailPanel.tsx",
+        "apps/web/src/components/shared/Badge.tsx"
+      ],
+      "description": "Continue Badge component adoption from Wave 24. The Badge component (`shared/Badge.tsx`) currently has 5 variants: success (green), warning (amber), danger (red), info (blue), neutral (slate). Several taskdetail components use inline pill patterns that should be migrated.\n\n**Badge.tsx enhancement needed first:** The current 5 variants don't cover purple (used for epics, merged PRs, code gen) or orange (used for high priority). Add two new variants to Badge:\n- `purple`: `'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'`\n- `accent`: `'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'`\n\nUpdate the `BadgeVariant` type union accordingly.\n\n**Migrations:**\n\n1. **TaskAIReviewSection.tsx** (lines 37-49): Replace the inline `<span className=\"...bg-green-100 text-green-700\">Approved</span>` and `<span className=\"...bg-red-100 text-red-700\">Changes Requested</span>` with `<Badge variant=\"success\">` and `<Badge variant=\"danger\">`. These badges contain SVG icons as children — Badge's `inline-flex items-center` already handles icon+text layout.\n\n2. **TaskAIHistory.tsx** (lines 24-31): Replace `FEATURE_BADGES` color record. Map: Instructions -> info, Code Gen -> purple, Expand -> success, Plan -> accent, Review -> danger, Bug Report -> warning. Line 114 cached badge: `<Badge variant=\"success\" size=\"sm\">cached</Badge>`.\n\n3. **TaskTitleEditor.tsx** (lines 57-62): Replace task type ternary. Map: epic -> purple, story -> info, subtask -> neutral, default -> neutral.\n\n4. **TaskGitHubSection.tsx** (lines 69-74): Replace PR state ternary. Map: MERGED -> purple, OPEN -> success, CLOSED -> danger.\n\n5. **TaskDetailPanel.tsx** (lines 22-29): The `TYPE_COLORS` record maps custom field types to colors. Simplify: map DROPDOWN -> info, TEXT -> neutral, NUMBER -> accent, DATE -> warning, CHECKBOX -> success, then any remaining -> neutral.",
+      "acceptanceCriteria": "Badge.tsx has 7 variants (added purple + accent). All 5 taskdetail files import and use Badge. No inline bg-*-100 text-*-700 patterns remain in these files (except where Badge className override is used). pnpm typecheck && pnpm lint passes. Visual: badges render with correct colors matching the originals.",
+      "startedAt": "2026-03-17T04:53:29.669Z",
+      "completedAt": "2026-03-17T04:56:17.459Z",
+      "reviewedAt": "2026-03-17T04:58:59.390Z"
+    },
+    {
+      "id": "task-003",
+      "title": "Badge adoption round 2: modals and panels (5 files)",
+      "assignee": "worker-2",
+      "status": "merged",
+      "branch": "",
+      "files": [
+        "apps/web/src/components/CodePreviewModal.tsx",
+        "apps/web/src/components/MeetingNotesDialog.tsx",
+        "apps/web/src/components/ProjectHealthPanel.tsx",
+        "apps/web/src/components/TaskPlanApprovalDialog.tsx",
+        "apps/web/src/components/WebhookSettings.tsx"
+      ],
+      "description": "Continue Badge adoption for modal and panel components. This task depends on task-002 completing the Badge variant expansion (purple + accent) but these files don't overlap.\n\n**Migrations:**\n\n1. **CodePreviewModal.tsx:** Line 295: `<span className=\"text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full\">Style guide active</span>` -> `<Badge variant=\"info\" size=\"sm\">Style guide active</Badge>`. Line 476-480: This is a toggle *button* styled like a badge — leave as-is (Badge is not a button).\n\n2. **MeetingNotesDialog.tsx** (lines 25-30): Replace `priorityStyles` record. Map: critical -> danger, high -> accent, medium -> info, low -> neutral. Update usage sites to use `<Badge variant={...}>`.\n\n3. **ProjectHealthPanel.tsx** (lines 25-35): Replace `statusColors` and `severityColors` records. Map health: healthy -> success, at-risk -> warning, critical -> danger. Map severity: high -> danger, medium -> warning, low -> neutral. Note: emerald-100/emerald-700 is close enough to Badge's success (green-100/green-700).\n\n4. **TaskPlanApprovalDialog.tsx** (lines 6-11): Replace `PRIORITY_STYLES` record same as MeetingNotesDialog. Lines 90-96: priority badge and hours badge — use `<Badge variant={priorityVariant(task.priority)} size=\"sm\">` and `<Badge variant=\"neutral\" size=\"sm\">~{formatHours(...)}</Badge>`. Line 106-108: dependency badge with border — use `<Badge variant=\"warning\" size=\"sm\">`.\n\n5. **WebhookSettings.tsx** (lines 40-45): Replace `STATUS_BADGE` record. Map: success -> success, retrying -> warning, failed -> danger, pending -> neutral. Update the `<span>` at the usage site to `<Badge>`.\n\nFor all files: import Badge from the correct relative path (`./shared/Badge` for components).",
+      "acceptanceCriteria": "All 5 files import and use Badge. No inline bg-*-100 text-*-700 pill patterns remain (except CodePreviewModal diff toggle button which stays as a button). pnpm typecheck && pnpm lint passes.",
+      "startedAt": "2026-03-17T04:56:25.041Z",
+      "completedAt": "2026-03-17T04:59:02.731Z",
+      "reviewedAt": "2026-03-17T05:04:54.876Z"
+    },
+    {
+      "id": "task-004",
+      "title": "Add ARIA accessibility to ProjectToolbar template and export overlays",
+      "assignee": "worker-3",
+      "status": "merged",
+      "branch": "",
+      "files": [
+        "apps/web/src/components/ProjectToolbar.tsx"
+      ],
+      "description": "The DropdownMenu component already has full ARIA compliance (role=\"menu\", role=\"menuitem\", aria-haspopup, aria-expanded, keyboard nav). However, the template and export overlays in ProjectToolbar.tsx are plain `<div>` elements with no ARIA attributes or keyboard management. These can't use DropdownMenu since they contain custom content (select, input, buttons), but they need basic ARIA and keyboard support.\n\n**Template overlay (lines 286-331):**\n1. Add `role=\"dialog\"` and `aria-label=\"Create from template\"` to the overlay div\n2. Add focus management: when the overlay opens, auto-focus the select element (or first focusable element). When it closes (Escape or Close button), return focus to the overflow menu trigger. Use a ref + `requestAnimationFrame` pattern.\n3. Escape key already closes the overlay (existing useEffect at lines 58-76). Verify it works and that focus returns to trigger.\n\n**Export overlay (lines 334-369):**\n1. Add `role=\"menu\"` and `aria-label=\"Export options\"` to the overlay div\n2. Add `role=\"menuitem\"` to each export button\n3. Add keyboard navigation: track `activeIndex` state, ArrowDown/ArrowUp cycle through items, Enter activates. Use an `onKeyDown` handler on the menu div.\n4. Add focus management: auto-focus first item on open, return focus to trigger on close. Use refs for the menu items.\n\n**Both overlays:**\n- The overflow DropdownMenu triggers these via onClick handlers in items array. After DropdownMenu closes (it auto-closes on item click), the overlay opens. Focus should move to the overlay.\n- Ensure `tabIndex={-1}` on container divs if they need to receive focus programmatically.\n- The overlays already close each other when one opens (line 277-278: `setShowExportMenu(false)` / `setShowTemplateMenu(false)`).",
+      "acceptanceCriteria": "Template overlay has role=\"dialog\" + aria-label + auto-focus on open + focus return on close. Export overlay has role=\"menu\" + role=\"menuitem\" + arrow key navigation + auto-focus + focus return. Both accessible via keyboard. pnpm typecheck && pnpm lint passes.",
+      "startedAt": "2026-03-17T04:53:17.698Z",
+      "completedAt": "2026-03-17T04:55:35.118Z",
+      "reviewedAt": "2026-03-17T04:59:57.854Z"
+    },
+    {
+      "id": "task-005",
+      "title": "PWA docs: cache invalidation strategy + navigateFallback verification",
+      "assignee": "worker-3",
+      "status": "merged",
+      "branch": "",
+      "files": [
+        "apps/web/vite.config.ts",
+        ".claude-knowledge/decisions.md"
+      ],
+      "description": "Clean up two documentation follow-ups open since Waves 20-21.\n\n**1. PWA cache invalidation strategy (Wave 20 follow-up):**\nDocument in `.claude-knowledge/decisions.md` how to force a service worker update on breaking API changes. Read `apps/web/vite.config.ts` to understand the current PWA config (workbox settings, runtime caching, navigateFallback). Then add a section to `decisions.md` covering:\n- How Vite PWA autoUpdate works (checks for new SW on page load, auto-activates)\n- How to force cache bust: bump the SW version or change precache manifest (any code change triggers new SW)\n- For breaking API changes: the NetworkFirst strategy for `/api/*` means API responses aren't stale-cached\n- Emergency SW unregister: `navigator.serviceWorker.getRegistrations().then(r => r.forEach(r => r.unregister()))` in browser console\n\n**2. PWA navigateFallback behavior (Wave 21 follow-up):**\nVerify in `apps/web/vite.config.ts` that `offline.html` is only served for navigation requests. Check the `navigateFallbackDenylist` — it should cover `/api/` but also any other non-navigation paths (e.g., source maps, manifest). If the denylist is incomplete, add entries for `/assets/`, `/sw.js`, `/workbox-*.js`. Document findings in decisions.md.\n\nThis is primarily documentation with a possible minor config fix to vite.config.ts.",
+      "acceptanceCriteria": "decisions.md has a PWA section covering: cache invalidation strategy, SW update lifecycle, navigateFallback denylist verification. Any needed denylist entries added to vite.config.ts. pnpm build passes (vite config is valid).",
+      "startedAt": "2026-03-17T04:55:37.855Z",
+      "completedAt": "2026-03-17T04:56:41.709Z",
+      "reviewedAt": "2026-03-17T05:00:37.005Z"
+    }
+  ]
+}

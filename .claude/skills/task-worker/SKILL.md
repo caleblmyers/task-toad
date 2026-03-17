@@ -5,7 +5,7 @@ disable-model-invocation: false
 user-invocable: true
 ---
 
-Start working. Read your tasks from /home/caleb/projects/task-toad/.ai/swarm/tasks.json, find tasks assigned to you, and begin implementing them. Follow the workflow in your CLAUDE.md. After completing each task, run `pnpm typecheck && pnpm lint && pnpm build` to validate before marking complete.
+Start working. Read your tasks from /home/caleb/projects/task-toad/.ai/taskswarm/tasks.json, find tasks assigned to you, and begin implementing them. Follow the workflow in your CLAUDE.md. After completing each task, run `pnpm typecheck && pnpm lint && pnpm build` to validate before marking complete.
 
 ## Task Parallelism (Don't Wait Idle)
 

@@ -1,0 +1,179 @@
+{
+  "version": 1,
+  "created": "2026-03-16T11:42:32.455Z",
+  "swarmId": "swarm-20260316-074224",
+  "config": {
+    "mainRepo": "/home/caleb/projects/task-toad",
+    "workerCount": 3,
+    "groups": []
+  },
+  "tasks": [
+    {
+      "id": "task-001",
+      "title": "Shared Button component library — extract from 57+ primary + 65+ ghost ad-hoc button patterns",
+      "set": "S1",
+      "assignee": "worker-1",
+      "status": "merged",
+      "description": "Create a reusable `<Button>` component and convert the highest-traffic button patterns:\n\n**1. Create Button component** — Create `apps/web/src/components/shared/Button.tsx` with variants: `primary` (bg-brand-green text-white hover:bg-brand-green-hover), `secondary` (border border-slate-300 text-slate-700 hover:bg-slate-50), `ghost` (text-slate-600 hover:text-slate-800, no bg/border), `danger` (bg-red-500 text-white hover:bg-red-600 OR text-red-600 hover:text-red-800 for ghost-danger). Props: `variant` (default 'primary'), `size` ('sm' | 'md' | 'lg', default 'md'), `disabled`, `loading` (shows spinner), `className` (for overrides), plus all native button HTML attributes via `React.ButtonHTMLAttributes<HTMLButtonElement>`. Sizes: `sm` = `px-3 py-1 text-xs`, `md` = `px-4 py-1.5 text-sm`, `lg` = `px-5 py-2 text-sm`. All variants include `disabled:opacity-50 disabled:cursor-not-allowed` and `transition-colors`. Export as default.\n\n**2. Convert primary buttons in key modals** — Replace ad-hoc primary button classes in the 10 highest-traffic components with `<Button>`: `ProjectSettingsModal.tsx` (5 buttons), `TaskPlanApprovalDialog.tsx` (4 buttons), `SprintPlanModal.tsx` (2 buttons), `CloseSprintModal.tsx` (4 buttons), `PRDBreakdownModal.tsx` (2 buttons). Import Button and replace the `<button className=\"px-3 py-1.5 bg-brand-green text-white text-sm rounded hover:bg-brand-green-hover disabled:opacity-50\">` pattern with `<Button size=\"sm\">`. Keep the same visual result.\n\n**3. Convert ghost buttons in ProjectDetail** — `apps/web/src/pages/ProjectDetail.tsx` has ~19 ghost-style toolbar buttons. Replace the most repetitive patterns (the action toolbar buttons like Summarize, Health, Trends, Notes, etc.) with `<Button variant=\"ghost\" size=\"sm\">`. Don't replace one-off styled buttons or links.",
+      "files": [
+        "apps/web/src/components/shared/Button.tsx",
+        "apps/web/src/components/ProjectSettingsModal.tsx",
+        "apps/web/src/components/TaskPlanApprovalDialog.tsx",
+        "apps/web/src/components/SprintPlanModal.tsx",
+        "apps/web/src/components/CloseSprintModal.tsx",
+        "apps/web/src/components/PRDBreakdownModal.tsx",
+        "apps/web/src/pages/ProjectDetail.tsx"
+      ],
+      "acceptance": [
+        "Button.tsx exists with primary, secondary, ghost, danger variants",
+        "Button supports sm, md, lg sizes with correct padding/font",
+        "Button supports loading prop with spinner",
+        "Button extends React.ButtonHTMLAttributes for native props",
+        "At least 15 ad-hoc buttons converted to <Button> across the listed files",
+        "Visual output matches previous ad-hoc styles exactly",
+        "pnpm typecheck && pnpm lint && pnpm build all pass"
+      ],
+      "startedAt": "2026-03-16T11:45:51.672Z",
+      "completedAt": "2026-03-16T11:49:31.228Z",
+      "reviewedAt": "2026-03-16T11:53:44.973Z"
+    },
+    {
+      "id": "task-002",
+      "title": "Dark mode infrastructure — Tailwind config + CSS vars + base component dark: variants",
+      "set": "S1",
+      "assignee": "worker-1",
+      "status": "merged",
+      "description": "Set up dark mode infrastructure so it can be toggled when ready, without a visible toggle yet:\n\n**1. Tailwind dark mode config** — In `apps/web/tailwind.config.js`, add `darkMode: 'class'` to enable class-based dark mode (adding `dark` class to `<html>` activates it). This is the standard approach for user-preference-based toggling.\n\n**2. Dark mode CSS custom properties** — In `apps/web/src/index.css`, add a `.dark` selector block with dark variants of the brand colors: `--brand-green: #66BB6A` (slightly lighter for dark bg), `--brand-green-hover: #4CAF50`, `--brand-green-light: #1B3A1B` (dark green tint instead of light), `--brand-dark: #0F1A24` (even darker). This means brand token classes automatically adapt when dark mode is active.\n\n**3. Base layout dark: variants** — Add `dark:` Tailwind classes to the core layout elements only (not every component — just the shell):\n- `apps/web/src/pages/AppLayout.tsx`: main content area `bg-slate-50` → add `dark:bg-slate-900`, sidebar `bg-slate-800` → add `dark:bg-brand-dark`, text colors on sidebar\n- `apps/web/src/pages/Login.tsx` / `Signup.tsx`: page bg `bg-slate-100` → add `dark:bg-slate-900`, card `bg-white` → add `dark:bg-slate-800`, text colors\n- `apps/web/src/pages/Home.tsx`: same pattern for the centered layout\n- `apps/web/src/components/shared/Button.tsx` (just created in task-001): add dark: variants to each variant style\n- `apps/web/src/components/shared/Modal.tsx`: backdrop and modal card dark variants\n\nDo NOT add dark: to every component — just the outermost shell and the two shared components (Button, Modal). The rest will be done incrementally. Add a comment in tailwind.config.js: `// To activate: add 'dark' class to <html> element`.",
+      "files": [
+        "apps/web/tailwind.config.js",
+        "apps/web/src/index.css",
+        "apps/web/src/pages/AppLayout.tsx",
+        "apps/web/src/pages/Login.tsx",
+        "apps/web/src/pages/Signup.tsx",
+        "apps/web/src/pages/Home.tsx",
+        "apps/web/src/components/shared/Button.tsx",
+        "apps/web/src/components/shared/Modal.tsx"
+      ],
+      "acceptance": [
+        "tailwind.config.js has darkMode: 'class'",
+        "index.css has .dark block with adjusted brand color variables",
+        "AppLayout has dark: variants on main bg, sidebar",
+        "Login, Signup, Home pages have dark: variants on page bg and card",
+        "Button.tsx and Modal.tsx have dark: variants",
+        "Adding 'dark' class to <html> visually switches to dark theme on layout shell",
+        "Light mode is completely unchanged (no visual regression)",
+        "pnpm typecheck && pnpm lint && pnpm build all pass"
+      ],
+      "startedAt": "2026-03-16T11:49:37.545Z",
+      "completedAt": "2026-03-16T11:51:25.830Z",
+      "reviewedAt": "2026-03-16T11:53:45.361Z"
+    },
+    {
+      "id": "task-003",
+      "title": "Integration test foundation — test database setup + auth resolver tests",
+      "set": "Q1",
+      "assignee": "worker-2",
+      "status": "merged",
+      "description": "Set up integration test infrastructure and write the first resolver tests:\n\n**1. Test database setup** — Create `apps/api/src/__tests__/setup.integration.ts` that: (a) creates a test Prisma client pointing to a test database (use `DATABASE_URL` from env or default to `postgresql://postgres:postgres@localhost:5432/tasktoad_test`), (b) runs `prisma migrate deploy` or `prisma db push` to ensure schema is up to date, (c) provides a `cleanDatabase()` function that truncates all tables between tests (use `prisma.$executeRaw` with TRUNCATE CASCADE), (d) exports the test prisma client and cleanup utilities. Create `apps/api/vitest.config.integration.ts` that extends the base config but only runs `*.integration.test.ts` files. Add a `test:integration` script to `apps/api/package.json`: `\"test:integration\": \"vitest run --config vitest.config.integration.ts\"`.\n\n**2. Auth resolver integration tests** — Create `apps/api/src/__tests__/auth.integration.test.ts` with tests that hit the actual Prisma database:\n- `signup` — creates user in DB, verify password is hashed (not plaintext), verify user record exists with correct email\n- `signup` duplicate email — returns ConflictError\n- `signup` short password — returns ValidationError\n- `login` — returns valid JWT token, verify token can be decoded with jose\n- `login` wrong password — returns AuthenticationError\n- `login` nonexistent email — returns AuthenticationError\n- `createOrg` — creates org, attaches user as admin\n\nFor each test, build a mock `Context` object with the test Prisma client and a mock user (for authenticated operations). Use `beforeEach` to clean the database. Tests should call the resolver functions directly (import from `resolvers/auth.ts`), not through HTTP/GraphQL yoga.\n\n**3. Root integration test script** — Add `\"test:integration\": \"pnpm --filter api test:integration\"` to root `package.json`.",
+      "files": [
+        "apps/api/src/__tests__/setup.integration.ts",
+        "apps/api/src/__tests__/auth.integration.test.ts",
+        "apps/api/vitest.config.integration.ts",
+        "apps/api/package.json",
+        "package.json"
+      ],
+      "acceptance": [
+        "Test database setup creates/connects to tasktoad_test database",
+        "cleanDatabase() truncates all tables between tests",
+        "Auth tests cover: signup success, duplicate email, short password, login success, wrong password, nonexistent email",
+        "Tests call resolver functions directly with mock Context",
+        "pnpm --filter api test:integration runs and all tests pass (requires running Postgres)",
+        "pnpm typecheck && pnpm lint && pnpm build all pass"
+      ],
+      "startedAt": "2026-03-16T11:45:48.472Z",
+      "completedAt": "2026-03-16T11:49:04.336Z",
+      "reviewedAt": "2026-03-16T11:50:45.890Z"
+    },
+    {
+      "id": "task-004",
+      "title": "TypeScript strictness — add Zod validation to 7 unvalidated JSON.parse calls + fix as unknown casts",
+      "set": "Q1",
+      "assignee": "worker-2",
+      "status": "merged",
+      "description": "Improve type safety by adding Zod validation to all unvalidated JSON.parse calls in the API:\n\n**1. Create shared Zod schemas** — In `apps/api/src/utils/zodSchemas.ts` (new file), define reusable schemas: `StringArraySchema = z.array(z.string())` (for columns, events, statuses), `TriggerConditionSchema` (for automation triggers — already exists in projectrole.ts, move to shared location), `ActionSchema` (for automation actions). Export all schemas.\n\n**2. Add Zod validation to 7 unvalidated JSON.parse calls:**\n- `apps/api/src/graphql/resolvers/sprint.ts:221` — `JSON.parse(target.columns) as string[]` → use `StringArraySchema.parse(JSON.parse(target.columns))`\n- `apps/api/src/graphql/resolvers/task.ts:116,156` — `JSON.parse(project.statuses) as string[]` → same pattern\n- `apps/api/src/graphql/resolvers/ai.ts:538` — `JSON.parse(args.epics)` → add appropriate Zod schema for epics input\n- `apps/api/src/graphql/resolvers/slack.ts:206` — `JSON.parse(parent.events) as string[]` → `StringArraySchema.parse()`\n- `apps/api/src/utils/automationEngine.ts:42,57` — `JSON.parse(rule.trigger/action)` → use TriggerConditionSchema and ActionSchema\n- `apps/api/src/utils/notificationUtils.ts:35` — `JSON.parse(int.events) as string[]` → `StringArraySchema.parse()`\n- `apps/api/src/utils/webhookDispatcher.ts:133` — `JSON.parse(ep.events) as string[]` → `StringArraySchema.parse()`\n\nFor each, wrap in try-catch: if Zod validation fails, log a warning and use a safe fallback (empty array for string arrays, skip execution for triggers/actions). Do NOT throw to the user — these are internal data that should always be valid, and a Zod error means data corruption that shouldn't crash the request.\n\n**3. Fix `as unknown` casts** — In `apps/api/src/graphql/resolvers/task.ts:592-593` and `search.ts:34`, the `as unknown as { ... }` casts are covering for missing Prisma include types. Fix by adding the correct `include` clause to the Prisma query and letting the type flow naturally. In `export.ts:214,311`, the `rows as unknown as Record<>` casts for CSV may need a proper type for the csv-stringify input.",
+      "files": [
+        "apps/api/src/utils/zodSchemas.ts",
+        "apps/api/src/graphql/resolvers/sprint.ts",
+        "apps/api/src/graphql/resolvers/task.ts",
+        "apps/api/src/graphql/resolvers/ai.ts",
+        "apps/api/src/graphql/resolvers/slack.ts",
+        "apps/api/src/utils/automationEngine.ts",
+        "apps/api/src/utils/notificationUtils.ts",
+        "apps/api/src/utils/webhookDispatcher.ts",
+        "apps/api/src/graphql/resolvers/search.ts",
+        "apps/api/src/routes/export.ts"
+      ],
+      "acceptance": [
+        "zodSchemas.ts exists with StringArraySchema and shared automation schemas",
+        "All 7 unvalidated JSON.parse calls now use Zod .parse() or .safeParse()",
+        "Zod failures log warnings and use safe fallbacks (don't throw to user)",
+        "as unknown casts in task.ts and search.ts eliminated via correct Prisma includes",
+        "No new any types introduced",
+        "pnpm typecheck && pnpm lint && pnpm build all pass"
+      ],
+      "startedAt": "2026-03-16T11:49:11.887Z",
+      "completedAt": "2026-03-16T11:56:36.051Z",
+      "reviewedAt": "2026-03-16T11:59:34.605Z"
+    },
+    {
+      "id": "task-005",
+      "title": "AI code review UI — review button on TaskDetailPanel + results display for in-review tasks",
+      "set": "W6",
+      "assignee": "worker-3",
+      "status": "merged",
+      "description": "The backend for AI code review is fully implemented (`reviewPullRequest` mutation, `reviewCode` in aiService, `getPullRequestDiff` in GitHub service). This task adds the frontend UI:\n\n**1. AI Review button** — In `apps/web/src/components/TaskDetailPanel.tsx`, add an \"AI Review\" button in the task detail toolbar area (near the existing generate instructions button, around line 234). The button should be visible when: (a) the task has a linked PR (`task.pullRequests.length > 0`), AND (b) the task status is `in_review` or the user clicks manually. Show the button as `<Button variant=\"secondary\" size=\"sm\">AI Review</Button>` (using the new Button component if available, otherwise ad-hoc). When clicked, call the `reviewPullRequest` mutation with the task's first PR number.\n\n**2. Review results display** — Create `apps/web/src/components/taskdetail/TaskAIReviewSection.tsx` that displays the code review results. Props: `review: CodeReview | null`, `loading: boolean`. Layout: (a) approval badge — green checkmark or red X with \"Approved\" / \"Changes Requested\", (b) summary paragraph, (c) comments list — each with file path, line number, severity (info/warning/error), and message, (d) suggestions list — each with title and description. Use the existing card/section styling pattern from other taskdetail sections (similar to TaskDependenciesSection). Add a `CodeReview` type to `apps/web/src/types.ts`: `{ summary: string; approved: boolean; comments: Array<{ file: string; line: number; severity: string; message: string }>; suggestions: Array<{ title: string; description: string }> }`.\n\n**3. Wire into useTaskCRUD** — In `apps/web/src/hooks/useTaskCRUD.ts`, add a `handleReviewPR` function that calls the `reviewPullRequest(taskId, prNumber)` mutation and returns the CodeReview result. Add state for `reviewResult` and `reviewLoading`. Pass these through to TaskDetailPanel.",
+      "files": [
+        "apps/web/src/components/TaskDetailPanel.tsx",
+        "apps/web/src/components/taskdetail/TaskAIReviewSection.tsx",
+        "apps/web/src/hooks/useTaskCRUD.ts",
+        "apps/web/src/types.ts"
+      ],
+      "acceptance": [
+        "AI Review button visible on tasks with linked PRs",
+        "Clicking button calls reviewPullRequest mutation with correct taskId and prNumber",
+        "Loading state shown while review is in progress",
+        "Review results display: approval badge, summary, comments with file/line, suggestions",
+        "CodeReview type added to types.ts",
+        "handleReviewPR function added to useTaskCRUD",
+        "pnpm typecheck && pnpm lint && pnpm build all pass"
+      ],
+      "startedAt": "2026-03-16T11:45:43.195Z",
+      "completedAt": "2026-03-16T11:48:40.108Z",
+      "reviewedAt": "2026-03-16T11:52:12.468Z"
+    },
+    {
+      "id": "task-006",
+      "title": "Enhanced API documentation — interactive schema explorer with auth examples and rate limit docs",
+      "set": "W6",
+      "assignee": "worker-3",
+      "status": "merged",
+      "description": "Enhance the existing `/api/docs` route from basic HTML to a comprehensive, interactive API reference:\n\n**1. Improve docs.ts** — In `apps/api/src/routes/docs.ts`, enhance the auto-generated HTML page to be a proper API reference. The current implementation extracts queries/mutations from SDL and renders them as code blocks. Improve it to:\n- Group operations by domain (Auth, Project, Task, Sprint, Comment, AI, Search, Notification, Slack, Webhook, GitHub)\n- For each operation, show: name, description (extract from SDL comments if present), arguments with types, return type\n- Add an \"Authentication\" section at the top explaining: Bearer token in Authorization header, how to get a token via login mutation, token expiration (7 days)\n- Add a \"Rate Limits\" section documenting: global (200/min), auth (10/min for signup/login), sensitive (5/min for password reset), export (5/10min), SSE (5 concurrent)\n- Add a \"Quick Start\" section with curl examples for: login, create project, create task, list tasks\n- Style the page with the brand colors (brand-green for headers, brand-dark for code blocks)\n- Add a sidebar/table of contents for navigation\n\n**2. Schema download endpoint** — Add `GET /api/docs/schema.graphql` that returns the raw SDL text (using `printSchema()` which is already imported). This lets external tools consume the schema.\n\n**3. JSON schema endpoint** — Add `GET /api/docs/schema.json` that returns the introspection result as JSON (use `graphql`'s `introspectionFromSchema()` or execute the standard introspection query). This enables tools like Postman, Insomnia, or graphql-codegen to auto-import the schema.",
+      "files": [
+        "apps/api/src/routes/docs.ts"
+      ],
+      "acceptance": [
+        "GET /api/docs shows operations grouped by domain with arguments and return types",
+        "Authentication section with Bearer token instructions and curl examples",
+        "Rate limits section documenting all rate limit tiers",
+        "Quick Start section with working curl examples",
+        "GET /api/docs/schema.graphql returns raw SDL text",
+        "GET /api/docs/schema.json returns introspection JSON",
+        "Page styled with brand colors and navigable via sidebar/TOC",
+        "pnpm typecheck && pnpm lint && pnpm build all pass"
+      ],
+      "startedAt": "2026-03-16T11:48:43.392Z",
+      "completedAt": "2026-03-16T11:50:31.516Z",
+      "reviewedAt": "2026-03-16T11:52:13.319Z"
+    }
+  ]
+}

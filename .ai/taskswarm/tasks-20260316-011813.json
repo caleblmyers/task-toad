@@ -1,0 +1,224 @@
+{
+  "version": 1,
+  "created": "2026-03-16T05:00:09.415Z",
+  "swarmId": "swarm-20260316-010002",
+  "config": {
+    "mainRepo": "/home/caleb/projects/task-toad",
+    "workerCount": 3,
+    "groups": [
+      "A1",
+      "A4",
+      "A5"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "task-001",
+      "group": "A1",
+      "title": "Install dataloader and create loader factory with per-request instances",
+      "description": "Set up the DataLoader infrastructure for the GraphQL API.\n\n**1. Install dataloader:**\n```bash\npnpm --filter api add dataloader\n```\n\n**2. Create `apps/api/src/graphql/loaders.ts`:**\n\n```typescript\nimport DataLoader from 'dataloader';\nimport { PrismaClient } from '@prisma/client';\n\nexport interface Loaders {\n  taskById: DataLoader<string, Task | null>;\n  projectById: DataLoader<string, Project | null>;\n  sprintById: DataLoader<string, Sprint | null>;\n  userById: DataLoader<string, User | null>;\n  taskLabels: DataLoader<string, Label[]>;\n  taskPullRequests: DataLoader<string, PullRequestLink[]>;\n  taskCommits: DataLoader<string, CommitLink[]>;\n  taskChildren: DataLoader<string, Task[]>;\n  taskProgress: DataLoader<string, { total: number; completed: number } | null>;\n  sprintTasks: DataLoader<string, Task[]>;\n}\n\nexport function createLoaders(prisma: PrismaClient): Loaders {\n  return {\n    taskById: new DataLoader(async (ids) => {\n      const tasks = await prisma.task.findMany({ where: { taskId: { in: [...ids] } } });\n      const map = new Map(tasks.map(t => [t.taskId, t]));\n      return ids.map(id => map.get(id) ?? null);\n    }),\n\n    projectById: new DataLoader(async (ids) => {\n      const projects = await prisma.project.findMany({ where: { projectId: { in: [...ids] } } });\n      const map = new Map(projects.map(p => [p.projectId, p]));\n      return ids.map(id => map.get(id) ?? null);\n    }),\n\n    sprintById: new DataLoader(async (ids) => {\n      const sprints = await prisma.sprint.findMany({ where: { sprintId: { in: [...ids] } } });\n      const map = new Map(sprints.map(s => [s.sprintId, s]));\n      return ids.map(id => map.get(id) ?? null);\n    }),\n\n    userById: new DataLoader(async (ids) => {\n      const users = await prisma.user.findMany({ where: { userId: { in: [...ids] } } });\n      const map = new Map(users.map(u => [u.userId, u]));\n      return ids.map(id => map.get(id) ?? null);\n    }),\n\n    taskLabels: new DataLoader(async (taskIds) => {\n      const taskLabels = await prisma.taskLabel.findMany({\n        where: { taskId: { in: [...taskIds] } },\n        include: { label: true }\n      });\n      const map = new Map<string, Label[]>();\n      for (const tl of taskLabels) {\n        if (!map.has(tl.taskId)) map.set(tl.taskId, []);\n        map.get(tl.taskId)!.push(tl.label);\n      }\n      return taskIds.map(id => map.get(id) ?? []);\n    }),\n\n    taskPullRequests: new DataLoader(async (taskIds) => {\n      const prs = await prisma.gitHubPullRequestLink.findMany({\n        where: { taskId: { in: [...taskIds] } }\n      });\n      const map = new Map<string, typeof prs>();\n      for (const pr of prs) {\n        if (!map.has(pr.taskId)) map.set(pr.taskId, []);\n        map.get(pr.taskId)!.push(pr);\n      }\n      return taskIds.map(id => map.get(id) ?? []);\n    }),\n\n    taskCommits: new DataLoader(async (taskIds) => {\n      const commits = await prisma.gitHubCommitLink.findMany({\n        where: { taskId: { in: [...taskIds] } }\n      });\n      const map = new Map<string, typeof commits>();\n      for (const c of commits) {\n        if (!map.has(c.taskId)) map.set(c.taskId, []);\n        map.get(c.taskId)!.push(c);\n      }\n      return taskIds.map(id => map.get(id) ?? []);\n    }),\n\n    taskChildren: new DataLoader(async (parentIds) => {\n      const children = await prisma.task.findMany({\n        where: { parentTaskId: { in: [...parentIds] }, archived: false },\n        orderBy: { position: 'asc' }\n      });\n      const map = new Map<string, typeof children>();\n      for (const c of children) {\n        if (!map.has(c.parentTaskId!)) map.set(c.parentTaskId!, []);\n        map.get(c.parentTaskId!)!.push(c);\n      }\n      return parentIds.map(id => map.get(id) ?? []);\n    }),\n\n    taskProgress: new DataLoader(async (taskIds) => {\n      // For epics/stories: count total and completed children\n      const children = await prisma.task.findMany({\n        where: { parentTaskId: { in: [...taskIds] }, archived: false },\n        select: { parentTaskId: true, status: true }\n      });\n      const map = new Map<string, { total: number; completed: number }>();\n      for (const c of children) {\n        if (!map.has(c.parentTaskId!)) map.set(c.parentTaskId!, { total: 0, completed: 0 });\n        const p = map.get(c.parentTaskId!)!;\n        p.total++;\n        if (c.status === 'done') p.completed++;\n      }\n      return taskIds.map(id => map.get(id) ?? null);\n    }),\n\n    sprintTasks: new DataLoader(async (sprintIds) => {\n      const tasks = await prisma.task.findMany({\n        where: { sprintId: { in: [...sprintIds] }, parentTaskId: null }\n      });\n      const map = new Map<string, typeof tasks>();\n      for (const t of tasks) {\n        if (!t.sprintId) continue;\n        if (!map.has(t.sprintId)) map.set(t.sprintId, []);\n        map.get(t.sprintId)!.push(t);\n      }\n      return sprintIds.map(id => map.get(id) ?? []);\n    }),\n  };\n}\n```\n\nUse the actual Prisma-generated types — import them from `@prisma/client`. The loader return types should match what the field resolvers currently return.\n\n**3. Update Context (`apps/api/src/graphql/context.ts`):**\n\nAdd `loaders` to the Context interface:\n```typescript\nimport { createLoaders, Loaders } from './loaders.js';\n\nexport interface Context {\n  user: { ... } | null;\n  org: { ... } | null;\n  prisma: PrismaClient;\n  loaders: Loaders;\n}\n```\n\nIn `buildContext`, create loaders per request:\n```typescript\nreturn { user: ..., org: ..., prisma, loaders: createLoaders(prisma) };\n```\nDo this in ALL return paths (including unauthenticated returns).\n\n**Verification:** `pnpm --filter api typecheck` passes.",
+      "files": [
+        "apps/api/src/graphql/loaders.ts",
+        "apps/api/src/graphql/context.ts",
+        "apps/api/package.json"
+      ],
+      "acceptanceCriteria": [
+        "dataloader package installed",
+        "loaders.ts exports createLoaders factory with 10 DataLoader instances",
+        "Context interface includes loaders: Loaders",
+        "buildContext creates fresh loaders per request in all code paths",
+        "Types match Prisma-generated models",
+        "pnpm --filter api typecheck passes"
+      ],
+      "dependsOn": [],
+      "assignee": "worker-1",
+      "status": "merged",
+      "startedAt": "2026-03-16T05:04:04.206Z",
+      "completedAt": "2026-03-16T05:06:11.237Z",
+      "reviewedAt": "2026-03-16T05:08:16.156Z"
+    },
+    {
+      "id": "task-002",
+      "group": "A1",
+      "title": "Refactor Task field resolvers to use DataLoaders",
+      "description": "Replace individual Prisma queries in Task field resolvers with DataLoader calls.\n\n**File: `apps/api/src/graphql/resolvers/task.ts`**\n\nUpdate `taskFieldResolvers.Task`:\n\n- `labels`: Replace `prisma.taskLabel.findMany({ where: { taskId } })` with `context.loaders.taskLabels.load(task.taskId)`\n- `pullRequests`: Replace `prisma.gitHubPullRequestLink.findMany(...)` with `context.loaders.taskPullRequests.load(task.taskId)`\n- `commits`: Replace `prisma.gitHubCommitLink.findMany(...)` with `context.loaders.taskCommits.load(task.taskId)`\n- `children`: Replace `prisma.task.findMany({ where: { parentTaskId } })` with `context.loaders.taskChildren.load(task.taskId)`\n- `progress`: Replace the subtask count query with `context.loaders.taskProgress.load(task.taskId)` — return null for non-epic/story tasks (check `task.taskType`)\n\nEach field resolver receives `(parent, args, context)` where `parent` is the Task object. Use `parent.taskId` to call the loader.\n\nAlso refactor `githubIssueUrl` field resolver if it does a separate query — it can use `context.loaders.projectById.load(parent.projectId)` instead of `prisma.project.findUnique`.\n\n**Verification:** `pnpm --filter api typecheck` passes.",
+      "files": [
+        "apps/api/src/graphql/resolvers/task.ts"
+      ],
+      "acceptanceCriteria": [
+        "Task.labels uses taskLabels DataLoader",
+        "Task.pullRequests uses taskPullRequests DataLoader",
+        "Task.commits uses taskCommits DataLoader",
+        "Task.children uses taskChildren DataLoader",
+        "Task.progress uses taskProgress DataLoader",
+        "Task.githubIssueUrl uses projectById DataLoader if applicable",
+        "No direct Prisma calls remain in Task field resolvers",
+        "pnpm --filter api typecheck passes"
+      ],
+      "dependsOn": [
+        "task-001"
+      ],
+      "assignee": "worker-1",
+      "status": "merged",
+      "startedAt": "2026-03-16T05:09:20.726Z",
+      "completedAt": "2026-03-16T05:09:53.923Z",
+      "reviewedAt": "2026-03-16T05:15:45.905Z"
+    },
+    {
+      "id": "task-003",
+      "group": "A1",
+      "title": "Refactor entity lookups and sprint queries to use DataLoaders",
+      "description": "Replace repeated `findUnique` patterns and N+1 loop queries across resolvers with DataLoader calls.\n\n**1. `apps/api/src/graphql/resolvers/ai.ts`:**\nReplace all `prisma.task.findUnique({ where: { taskId: args.taskId } })` patterns with `context.loaders.taskById.load(args.taskId)`. This appears in:\n- `generateTaskInstructions`\n- `expandTask`\n- `generateCodeFromTask`\n- `regenerateCodeFile`\n- `reviewPullRequest` (if it exists)\n- Any other resolver that fetches a single task by ID\n\nSimilarly replace `prisma.project.findUnique(...)` with `context.loaders.projectById.load(projectId)` where project is fetched separately from the task.\n\n**NOTE:** Some resolvers fetch task WITH `include: { project: true }`. For those, you can either:\n- Use `taskById.load()` then `projectById.load(task.projectId)` (two batched calls, still efficient)\n- Or keep the `include` for cases where you always need both — DataLoader is most valuable for field resolvers and repeated single-entity lookups\n\nUse judgment: if a resolver always needs task + project together and is only called once per request, the include is fine. If the pattern repeats across many resolvers, use loaders.\n\n**2. `apps/api/src/graphql/resolvers/sprint.ts`:**\nRefactor `sprintVelocity`:\n- Replace the `for (const sprint of closedSprints)` loop with `context.loaders.sprintTasks.loadMany(sprintIds)` to batch-load all sprint tasks in one query\n- Group results by sprint in memory\n\n**3. `apps/api/src/graphql/resolvers/github.ts`:**\nReplace task/project lookups with DataLoader calls where applicable.\n\n**4. `apps/api/src/graphql/resolvers/notification.ts`:**\nIf there are entity lookups, use loaders.\n\n**Verification:** `pnpm --filter api typecheck` passes.",
+      "files": [
+        "apps/api/src/graphql/resolvers/ai.ts",
+        "apps/api/src/graphql/resolvers/sprint.ts",
+        "apps/api/src/graphql/resolvers/github.ts",
+        "apps/api/src/graphql/resolvers/notification.ts"
+      ],
+      "acceptanceCriteria": [
+        "AI resolvers use taskById/projectById loaders for entity lookups",
+        "sprintVelocity uses sprintTasks loader instead of loop queries",
+        "GitHub resolvers use loaders where applicable",
+        "No N+1 loop-query patterns remain in resolver files",
+        "pnpm --filter api typecheck passes"
+      ],
+      "dependsOn": [
+        "task-001"
+      ],
+      "assignee": "worker-1",
+      "status": "merged",
+      "startedAt": "2026-03-16T05:09:57.738Z",
+      "completedAt": "2026-03-16T05:12:31.148Z",
+      "reviewedAt": "2026-03-16T05:16:32.683Z"
+    },
+    {
+      "id": "task-004",
+      "group": "A1",
+      "title": "Add missing database indexes and optimize burndown/search queries",
+      "description": "Add missing indexes and optimize the two most expensive queries.\n\n**1. Add indexes to Prisma schema files:**\n\nIn `apps/api/prisma/schema/task.prisma`, add to Task model:\n```prisma\n  @@index([orgId, archived])\n```\n\nIn `apps/api/prisma/schema/activity.prisma`, add to Activity model:\n```prisma\n  @@index([taskId, createdAt])\n```\n\n**2. Create migration:**\n```sql\nCREATE INDEX \"tasks_org_id_archived_idx\" ON \"tasks\"(\"org_id\", \"archived\");\nCREATE INDEX \"activities_task_id_created_at_idx\" ON \"activities\"(\"task_id\", \"created_at\");\n```\n\n**3. Optimize burndown chart (`apps/api/src/graphql/resolvers/sprint.ts`):**\nIn the `sprintBurndown` resolver, push date filtering to the database:\n```typescript\nconst activities = await context.prisma.activity.findMany({\n  where: {\n    taskId: { in: taskIds },\n    action: 'task.updated',\n    field: 'status',\n    createdAt: { gte: startDate, lte: endDateOrToday },\n  },\n  orderBy: { createdAt: 'asc' }\n});\n```\nThen group by day in memory (single pass) instead of filtering per day.\n\n**4. Optimize global search (`apps/api/src/graphql/resolvers/search.ts`):**\nAdd `orderBy: { createdAt: 'desc' }` to both project and task queries for consistent results. Consider adding a comment noting that PostgreSQL full-text search should replace LIKE queries when the dataset grows (tracked in A1 todos).\n\n**Verification:** `npx prisma validate` passes, `pnpm --filter api typecheck` passes.",
+      "files": [
+        "apps/api/prisma/schema/task.prisma",
+        "apps/api/prisma/schema/activity.prisma",
+        "apps/api/src/graphql/resolvers/sprint.ts",
+        "apps/api/src/graphql/resolvers/search.ts"
+      ],
+      "acceptanceCriteria": [
+        "Task(orgId, archived) index added",
+        "Activity(taskId, createdAt) index added",
+        "Migration SQL created",
+        "Burndown query filters activities in DB not in-memory",
+        "Search queries have consistent ordering",
+        "npx prisma validate passes",
+        "pnpm --filter api typecheck passes"
+      ],
+      "dependsOn": [],
+      "assignee": "worker-1",
+      "status": "merged",
+      "startedAt": "2026-03-16T05:06:18.898Z",
+      "completedAt": "2026-03-16T05:07:52.493Z",
+      "reviewedAt": "2026-03-16T05:11:31.617Z"
+    },
+    {
+      "id": "task-005",
+      "group": "A4",
+      "title": "Optimize AI caching — increase LRU size, enable task plan caching",
+      "description": "Improve AI response caching for lower latency and reduced token spend.\n\n**1. Increase LRU cache size (`apps/api/src/ai/aiCache.ts`):**\nFind the cache size constant (likely `MAX_SIZE = 50` or similar) and increase to `500`. Memory impact is negligible (~2MB).\n\n**2. Enable caching for common AI operations (`apps/api/src/ai/aiConfig.ts`):**\nUpdate feature configs:\n```typescript\ngenerateTaskPlan: { maxTokens: ..., cacheTTLMs: 86400000, retryOnValidationFailure: true }  // 24hr\nexpandTask: { maxTokens: ..., cacheTTLMs: 43200000, retryOnValidationFailure: true }        // 12hr\ngenerateTaskInstructions: { maxTokens: ..., cacheTTLMs: 3600000, retryOnValidationFailure: true } // 1hr\n```\nKeep `cacheTTLMs: 0` for operations that should always be fresh (standup, health, sprint reports — data changes frequently).\n\n**3. Move response schema to system prompt (`apps/api/src/ai/promptBuilder.ts`):**\nIn `buildTaskPlanPrompt`, the output format instructions (JSON schema definition) are included in the user prompt. Move them to the system prompt string instead:\n- Extract the 'Return a JSON array...' instruction block\n- Append it to the system prompt (SYSTEM_JSON already says 'return only valid JSON' — extend it with the specific schema)\n- This saves ~100-150 tokens per call since system prompts are cached across requests by the API\n\n**4. Cap file list in code generation (`apps/api/src/ai/promptBuilder.ts`):**\nIn `buildGenerateCodePrompt`, find where project files are included (capped at 30). Reduce to 15:\n```typescript\nconst fileContext = existingFiles?.slice(0, 15) // was 30\n```\n\n**Verification:** `pnpm --filter api typecheck` passes.",
+      "files": [
+        "apps/api/src/ai/aiCache.ts",
+        "apps/api/src/ai/aiConfig.ts",
+        "apps/api/src/ai/promptBuilder.ts"
+      ],
+      "acceptanceCriteria": [
+        "LRU cache size increased to 500",
+        "generateTaskPlan cached with 24hr TTL",
+        "expandTask cached with 12hr TTL",
+        "generateTaskInstructions cached with 1hr TTL",
+        "Response schema moved from user prompt to system prompt",
+        "File list capped at 15 in code gen prompt",
+        "pnpm --filter api typecheck passes"
+      ],
+      "dependsOn": [],
+      "assignee": "worker-2",
+      "status": "merged",
+      "startedAt": "2026-03-16T05:04:01.765Z",
+      "completedAt": "2026-03-16T05:04:52.764Z",
+      "reviewedAt": "2026-03-16T05:06:10.478Z"
+    },
+    {
+      "id": "task-006",
+      "group": "A4",
+      "title": "Add GitHub API response caching",
+      "description": "Cache GitHub API responses to reduce rate limit risk and improve latency.\n\n**1. Create a simple cache utility (`apps/api/src/github/githubCache.ts`):**\n```typescript\ninterface CacheEntry<T> {\n  data: T;\n  expiresAt: number;\n}\n\nconst cache = new Map<string, CacheEntry<unknown>>();\n\nexport function getCached<T>(key: string): T | null {\n  const entry = cache.get(key);\n  if (!entry || Date.now() > entry.expiresAt) {\n    cache.delete(key);\n    return null;\n  }\n  return entry.data as T;\n}\n\nexport function setCache<T>(key: string, data: T, ttlMs: number): void {\n  cache.set(key, { data, expiresAt: Date.now() + ttlMs });\n  // Simple eviction: if cache gets too large, clear oldest entries\n  if (cache.size > 200) {\n    const firstKey = cache.keys().next().value;\n    if (firstKey) cache.delete(firstKey);\n  }\n}\n\nexport function invalidateCache(prefix: string): void {\n  for (const key of cache.keys()) {\n    if (key.startsWith(prefix)) cache.delete(key);\n  }\n}\n```\n\n**2. Add caching to `apps/api/src/github/githubRepositoryService.ts`:**\n- `listInstallationRepos(installationId)` — cache with key `repos:${installationId}`, TTL 1 hour\n- Check cache before API call, store result after\n\n**3. Add caching to `apps/api/src/github/githubFileService.ts`:**\n- `fetchProjectFileTree(repo)` — cache with key `filetree:${owner}:${name}`, TTL 6 hours\n\n**4. Invalidate on webhook (`apps/api/src/github/githubWebhookHandler.ts`):**\n- On `push` events, call `invalidateCache('filetree:' + owner + ':' + repo)`\n- On `installation` events, call `invalidateCache('repos:' + installationId)`\n\n**Verification:** `pnpm --filter api typecheck` passes.",
+      "files": [
+        "apps/api/src/github/githubCache.ts",
+        "apps/api/src/github/githubRepositoryService.ts",
+        "apps/api/src/github/githubFileService.ts",
+        "apps/api/src/github/githubWebhookHandler.ts"
+      ],
+      "acceptanceCriteria": [
+        "githubCache.ts with get/set/invalidate functions",
+        "listInstallationRepos cached with 1hr TTL",
+        "fetchProjectFileTree cached with 6hr TTL",
+        "Webhook events invalidate relevant cache entries",
+        "Cache has size limit with eviction",
+        "pnpm --filter api typecheck passes"
+      ],
+      "dependsOn": [],
+      "assignee": "worker-2",
+      "status": "merged",
+      "startedAt": "2026-03-16T05:04:57.155Z",
+      "completedAt": "2026-03-16T05:05:59.224Z",
+      "reviewedAt": "2026-03-16T05:09:21.876Z"
+    },
+    {
+      "id": "task-007",
+      "group": "A5",
+      "title": "Install missing ESLint dependencies and add React lint rules",
+      "description": "Fix the broken lint setup by declaring ESLint dependencies properly.\n\n**1. Install ESLint and plugins at root (`package.json`):**\n```bash\npnpm add -D -w eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin eslint-config-prettier eslint-plugin-react eslint-plugin-react-hooks\n```\n\n**2. Update `.eslintrc.cjs`:**\nAdd React plugin rules for the tsx/jsx overrides section:\n```javascript\n{\n  files: ['**/*.{ts,tsx}'],\n  extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended', 'plugin:react/recommended', 'plugin:react-hooks/recommended', 'prettier'],\n  plugins: ['@typescript-eslint', 'react', 'react-hooks'],\n  settings: { react: { version: 'detect' } },\n  rules: {\n    // existing rules...\n    'react/react-in-jsx-scope': 'off',  // not needed with React 17+ JSX transform\n    'react/prop-types': 'off',  // using TypeScript\n  }\n}\n```\n\n**3. Verify lint runs:**\n```bash\npnpm lint\n```\nFix any new lint errors introduced by the React/hooks rules (likely exhaustive-deps warnings). If there are many, you can set `react-hooks/exhaustive-deps` to `warn` instead of `error` for now.\n\n**Verification:** `pnpm lint` runs without 'Permission denied' error. May have warnings but no hard failures.",
+      "files": [
+        "package.json",
+        ".eslintrc.cjs",
+        "pnpm-lock.yaml"
+      ],
+      "acceptanceCriteria": [
+        "eslint and all plugins declared in root devDependencies",
+        "React and react-hooks plugins configured in .eslintrc.cjs",
+        "react-in-jsx-scope disabled (React 17+ not needed)",
+        "pnpm lint runs without Permission denied error",
+        "No hard lint failures (warnings acceptable)"
+      ],
+      "dependsOn": [],
+      "assignee": "worker-3",
+      "status": "merged",
+      "startedAt": "2026-03-16T05:04:07.261Z",
+      "completedAt": "2026-03-16T05:06:35.789Z",
+      "reviewedAt": "2026-03-16T05:13:15.183Z"
+    },
+    {
+      "id": "task-008",
+      "group": "A5",
+      "title": "Add compression middleware, Vite chunk splitting, fix workspace config",
+      "description": "Production performance and build config improvements.\n\n**1. Add compression middleware (`apps/api/src/app.ts`):**\n```bash\npnpm --filter api add compression && pnpm --filter api add -D @types/compression\n```\nThen add to Express stack after body parsing, before routes:\n```typescript\nimport compression from 'compression';\napp.use(compression());\n```\nPlace it before the export router and GraphQL middleware.\n\n**2. Configure Vite chunk splitting (`apps/web/vite.config.ts`):**\nAdd build optimization:\n```typescript\nexport default defineConfig({\n  plugins: [react()],\n  build: {\n    rollupOptions: {\n      output: {\n        manualChunks: {\n          react: ['react', 'react-dom'],\n          router: ['react-router-dom'],\n        },\n      },\n    },\n  },\n  server: { ... }\n});\n```\nThis splits React and Router into separate chunks for better browser caching.\n\n**3. Fix pnpm-workspace.yaml:**\nRemove the non-existent `packages/*` entry:\n```yaml\npackages:\n  - \"apps/*\"\n  - \"infra\"\n```\n\n**Verification:** `pnpm build` passes, `pnpm --filter web build` produces split chunks.",
+      "files": [
+        "apps/api/src/app.ts",
+        "apps/api/package.json",
+        "apps/web/vite.config.ts",
+        "pnpm-workspace.yaml",
+        "pnpm-lock.yaml"
+      ],
+      "acceptanceCriteria": [
+        "compression middleware added to Express stack",
+        "Vite manualChunks splits react and router",
+        "pnpm-workspace.yaml references only existing directories",
+        "pnpm build passes",
+        "pnpm --filter web build produces split chunk files"
+      ],
+      "dependsOn": [],
+      "assignee": "worker-3",
+      "status": "merged",
+      "startedAt": "2026-03-16T05:06:39.148Z",
+      "completedAt": "2026-03-16T05:07:41.517Z",
+      "reviewedAt": "2026-03-16T05:14:00.912Z"
+    }
+  ]
+}

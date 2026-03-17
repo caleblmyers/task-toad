@@ -1,0 +1,180 @@
+{
+  "version": 1,
+  "created": "2026-03-16T11:03:28.120Z",
+  "swarmId": "swarm-20260316-070321",
+  "config": {
+    "mainRepo": "/home/caleb/projects/task-toad",
+    "workerCount": 3,
+    "groups": []
+  },
+  "tasks": [
+    {
+      "id": "task-001",
+      "title": "Memoize TaskRow + CommentItem + ActivityFeed + cache parsed JSON in KanbanBoard/GanttChart",
+      "set": "F1",
+      "assignee": "worker-1",
+      "status": "merged",
+      "description": "Fix the most impactful frontend performance issues — component memoization and JSON parse caching:\n\n**1. Memoize TaskRow** — In `apps/web/src/components/SprintSection.tsx`, wrap the `TaskRow` component export with `React.memo()`. TaskRow currently re-renders on every parent state change (drag, selection, checkbox toggle) even when its own props haven't changed. The `orgUsers.find()` call at line 53 is an O(n) lookup on every render — move it into a `useMemo` inside TaskRow. Ensure the memo comparison works by checking that parent components (`BacklogView.tsx`) use stable references for callback props (wrap with `useCallback` where needed).\n\n**2. Memoize CommentItem** — In `apps/web/src/components/CommentSection.tsx`, wrap the `CommentItem` function component (lines 27-105) with `React.memo()`. In the parent rendering section (lines 226-268), wrap the `onReply`, `onUpdate`, `onDelete` callbacks with `useCallback` so they don't break the memo.\n\n**3. Memoize ActivityFeed items** — In `apps/web/src/components/ActivityFeed.tsx`, extract the activity item rendering (lines 69-80) into a separate `ActivityItem` component wrapped in `React.memo()`. The `describeActivity()` and `timeAgo()` calls are pure functions of the activity object, so memo will prevent re-computation.\n\n**4. Cache parsed JSON** — In `apps/web/src/components/KanbanBoard.tsx` (line 55), `JSON.parse(task.dependsOn)` is called inside a `useMemo` for every task. Create a utility function `parseDependsOn(raw: string | null): string[]` in `apps/web/src/utils/taskHelpers.ts` that caches the parsed result using a WeakMap or simple Map keyed by the raw string. Use this utility in KanbanBoard (line 55) and GanttChart (line 187) instead of inline `JSON.parse`. Also create `parseColumns(raw: string): string[]` for the 6 Sprint.columns parse sites — this is shared with W2's JSON helpers task but the utility file location doesn't overlap (taskHelpers.ts vs the actual component files).",
+      "files": [
+        "apps/web/src/components/SprintSection.tsx",
+        "apps/web/src/components/BacklogView.tsx",
+        "apps/web/src/components/CommentSection.tsx",
+        "apps/web/src/components/ActivityFeed.tsx",
+        "apps/web/src/components/KanbanBoard.tsx",
+        "apps/web/src/components/GanttChart.tsx",
+        "apps/web/src/utils/taskHelpers.ts"
+      ],
+      "acceptance": [
+        "TaskRow is wrapped in React.memo with stable callback props",
+        "CommentItem is wrapped in React.memo with useCallback'd parent callbacks",
+        "ActivityFeed items extracted as memoized ActivityItem component",
+        "parseDependsOn utility created in taskHelpers.ts with caching",
+        "KanbanBoard and GanttChart use parseDependsOn instead of inline JSON.parse",
+        "No functional regressions — drag-and-drop, selection, keyboard nav all still work",
+        "pnpm typecheck && pnpm lint && pnpm build all pass"
+      ],
+      "startedAt": "2026-03-16T11:07:14.727Z",
+      "completedAt": "2026-03-16T11:10:53.501Z",
+      "reviewedAt": "2026-03-16T11:16:46.855Z"
+    },
+    {
+      "id": "task-002",
+      "title": "Lazy-load route components + optimize portfolioOverview N+1 queries",
+      "set": "F1",
+      "assignee": "worker-1",
+      "status": "merged",
+      "description": "Two independent performance improvements — route code-splitting and API query optimization:\n\n**1. Route lazy-loading** — In `apps/web/src/App.tsx`, convert the heaviest page imports to `React.lazy()`: `ProjectDetail` (346 lines), `Portfolio` (imports GanttChart at 436 lines), `OrgSettings`, `Search`. Keep small pages (Login, Signup, CreateOrg, Home) as eager imports since they're on the critical auth path. The existing `<Suspense>` wrapper (line 33) already exists — just ensure the fallback shows the existing loading spinner. Example: `const ProjectDetail = lazy(() => import('./pages/ProjectDetail'));`. Also lazy-load the heavy modal components that are rarely used: `GanttChart`, `BatchCodeGenModal`, `DriftAnalysisModal` — these are imported in ProjectDetail but only rendered when their specific view/modal is active.\n\n**2. Optimize portfolioOverview resolver** — In `apps/api/src/graphql/resolvers/project.ts` (lines 30-94), the `portfolioOverview` query does 1 + 2N database queries (fetch projects, then per-project: fetch tasks + fetch active sprint). Optimize to 3 total queries: (a) fetch all projects, (b) fetch ALL tasks for those projects in one query with `where: { projectId: { in: projectIds } }`, then group by projectId in JavaScript, (c) fetch ALL active sprints for those projects in one query with `where: { projectId: { in: projectIds }, isActive: true, closedAt: null }`. This reduces 11 queries (5 projects) to 3 queries.",
+      "files": [
+        "apps/web/src/App.tsx",
+        "apps/api/src/graphql/resolvers/project.ts"
+      ],
+      "acceptance": [
+        "ProjectDetail, Portfolio, OrgSettings, Search are lazy-loaded with React.lazy",
+        "Existing Suspense fallback shows loading state during chunk load",
+        "Build output shows separate chunks for lazy-loaded routes",
+        "portfolioOverview uses at most 3 queries regardless of project count",
+        "Portfolio page still renders correctly with all metrics",
+        "pnpm typecheck && pnpm lint && pnpm build all pass"
+      ],
+      "startedAt": "2026-03-16T11:10:58.038Z",
+      "completedAt": "2026-03-16T11:12:20.096Z",
+      "reviewedAt": "2026-03-16T11:21:09.456Z"
+    },
+    {
+      "id": "task-003",
+      "title": "Task templates — Prisma model, GraphQL CRUD, create-from-template UI",
+      "set": "W2",
+      "assignee": "worker-2",
+      "status": "merged",
+      "description": "Full vertical slice for reusable task templates:\n\n**1. Prisma model** — Create `apps/api/prisma/schema/template.prisma` with a `TaskTemplate` model: `id` (cuid), `orgId` (FK to Org), `projectId` (FK to Project, nullable — null means org-wide template), `name` (String), `description` (String?), `instructions` (String?), `acceptanceCriteria` (String?), `priority` (String, default 'medium'), `taskType` (String, default 'task'), `estimatedHours` (Float?), `storyPoints` (Int?), `createdAt` (DateTime). Add indexes on `[orgId]` and `[projectId]`. Add the reverse relation on Org and Project models (in `auth.prisma` and `project.prisma`). Run `npx prisma generate` and `npx prisma migrate dev --name add-task-templates`.\n\n**2. GraphQL types + resolvers** — Add to `apps/api/src/graphql/typedefs/template.ts`: `TaskTemplate` type, `taskTemplates(projectId: ID)` query (returns org-wide + project templates), `createTaskTemplate(...)` mutation, `updateTaskTemplate(...)` mutation, `deleteTaskTemplate(id)` mutation, `createTaskFromTemplate(templateId: ID!, projectId: ID!, title: String!)` mutation. Add resolvers in `apps/api/src/graphql/resolvers/template.ts`. The `createTaskFromTemplate` mutation should create a new Task pre-filled with the template's fields, overriding with the provided title. Register in `resolvers/index.ts` and `typedefs/index` (or schema.ts). All require org membership.\n\n**3. Frontend UI** — In `apps/web/src/pages/ProjectDetail.tsx`, add a \"Template\" button in the toolbar actions area (near the + Add task button). Clicking it opens a dropdown/modal showing available templates for this project. Selecting a template opens a simple form pre-filled with the template's fields, letting the user modify the title before creating. Add a \"Save as Template\" option in the task detail panel (`TaskDetailPanel.tsx` or its toolbar) that creates a template from the current task's fields. Add template management (list/edit/delete) to `ProjectSettingsModal.tsx` as a new tab.",
+      "files": [
+        "apps/api/prisma/schema/template.prisma",
+        "apps/api/prisma/schema/auth.prisma",
+        "apps/api/prisma/schema/project.prisma",
+        "apps/api/src/graphql/typedefs/template.ts",
+        "apps/api/src/graphql/resolvers/template.ts",
+        "apps/api/src/graphql/resolvers/index.ts",
+        "apps/api/src/graphql/schema.ts",
+        "apps/web/src/pages/ProjectDetail.tsx",
+        "apps/web/src/components/ProjectSettingsModal.tsx"
+      ],
+      "acceptance": [
+        "TaskTemplate model exists with migration applied",
+        "Run npx prisma generate && pnpm typecheck passes",
+        "taskTemplates query returns org-wide + project-specific templates",
+        "createTaskFromTemplate creates a task pre-filled with template fields",
+        "ProjectDetail toolbar has Template button with template picker",
+        "Save as Template option exists on task detail",
+        "Template management tab in ProjectSettingsModal (list/edit/delete)",
+        "pnpm typecheck && pnpm lint && pnpm build all pass"
+      ],
+      "startedAt": "2026-03-16T11:06:58.002Z",
+      "completedAt": "2026-03-16T11:17:46.137Z",
+      "reviewedAt": "2026-03-16T11:24:07.546Z"
+    },
+    {
+      "id": "task-004",
+      "title": "JSON string column helpers + custom field reorder UI in ProjectSettingsModal",
+      "set": "W2",
+      "assignee": "worker-2",
+      "status": "merged",
+      "description": "Centralize scattered JSON.parse calls and add the missing custom field reorder UI:\n\n**1. JSON string column helpers** — Create centralized parsing utilities in `apps/web/src/utils/jsonHelpers.ts` (new file): `parseColumns(raw: string | null): string[]` (with fallback to `['todo', 'in_progress', 'done']`), `parseOptions(raw: string | null): string[]` (with fallback to `[]`), `parseStatuses(raw: string | null): string[]` (with fallback to `['todo', 'in_progress', 'done']`). Each should have a try-catch returning the fallback on parse failure. Then replace all 6 `JSON.parse(*.columns)` calls across: `ProjectDetail.tsx:701`, `SprintCreateModal.tsx:22`, `CloseSprintModal.tsx:32`, `useTaskCRUD.ts:132,210,305`. Replace all 3 `JSON.parse(*.options)` calls in: `TaskCustomFieldsSection.tsx:69`, `ProjectSettingsModal.tsx:321`, `FilterBar.tsx:99`. Replace the `JSON.parse(*.statuses)` call in `useProjectData.ts:157`. Import from the new helpers file.\n\n**2. Custom field reorder UI** — In `apps/web/src/components/ProjectSettingsModal.tsx`, in the Custom Fields tab (around lines 310-379), add Up/Down arrow buttons next to each custom field in the list. Clicking Up swaps the field with the one above it (lower position number); Down swaps with below. Each swap calls the existing `updateCustomField` mutation with the new `position` value for both affected fields. Show the fields sorted by position. Disable Up on the first field and Down on the last. Use simple arrow buttons (▲/▼) — no drag-and-drop needed.",
+      "files": [
+        "apps/web/src/utils/jsonHelpers.ts",
+        "apps/web/src/pages/ProjectDetail.tsx",
+        "apps/web/src/components/SprintCreateModal.tsx",
+        "apps/web/src/components/CloseSprintModal.tsx",
+        "apps/web/src/hooks/useTaskCRUD.ts",
+        "apps/web/src/components/taskdetail/TaskCustomFieldsSection.tsx",
+        "apps/web/src/components/ProjectSettingsModal.tsx",
+        "apps/web/src/components/shared/FilterBar.tsx",
+        "apps/web/src/hooks/useProjectData.ts"
+      ],
+      "acceptance": [
+        "jsonHelpers.ts exists with parseColumns, parseOptions, parseStatuses functions",
+        "All 6 Sprint.columns JSON.parse calls replaced with parseColumns()",
+        "All 3 CustomField.options JSON.parse calls replaced with parseOptions()",
+        "Project.statuses JSON.parse call replaced with parseStatuses()",
+        "Custom fields in ProjectSettingsModal show Up/Down arrow buttons",
+        "Clicking Up/Down swaps position with adjacent field via updateCustomField mutation",
+        "Fields render sorted by position",
+        "pnpm typecheck && pnpm lint && pnpm build all pass"
+      ],
+      "startedAt": "2026-03-16T11:24:18.895Z",
+      "completedAt": "2026-03-16T11:28:29.261Z",
+      "reviewedAt": "2026-03-16T11:29:54.222Z"
+    },
+    {
+      "id": "task-005",
+      "title": "CLAUDE.md refresh + knowledge base audit + update decisions.md",
+      "set": "SW1",
+      "assignee": "worker-3",
+      "status": "merged",
+      "description": "Update project documentation to reflect current state after 11 waves of development:\n\n**1. CLAUDE.md refresh** — Read the current `CLAUDE.md` and update it to reflect the full current state:\n- **Commands section:** Add `pnpm test` (runs Vitest across both packages). Add `pnpm dev` as the recommended dev command.\n- **GraphQL Schema section:** Add missing queries: `taskTemplates`, `slackUserMappings`, `sprintVelocity`, `sprintBurndown`, `portfolioOverview`, `globalSearch`, `projectStats`, `unreadNotificationCount`. Add missing mutations: `generateProjectOptions`, `createProjectFromOption`, `previewTaskPlan`, `commitTaskPlan`, `addTaskAssignee`, `removeTaskAssignee`, `mapSlackUser`, `unmapSlackUser`, `createTaskTemplate`, `createTaskFromTemplate`. Note the `Authorization: Bearer <token>` header requirement.\n- **Key Files section:** Add new key files: `apps/api/src/utils/metrics.ts` (Prometheus), `apps/api/src/utils/logger.ts` (pino), `apps/api/src/graphql/loaders.ts` (DataLoaders), `apps/web/src/utils/jsonHelpers.ts` (JSON column parsers), `apps/web/vitest.config.ts`, `apps/api/vitest.config.ts`.\n- **Architecture section:** Add notes about: health check at `/api/health`, metrics at `/api/metrics`, Prisma `metrics` preview feature, fetch-based SSE client (not native EventSource), multiple assignees via TaskAssignee join table.\n- **Env Files section:** Add `LOG_LEVEL` and `SENTRY_DSN` (optional) to the API env vars list.\n\n**2. Knowledge base audit** — Read `app-overview.md`, `skills.md`, and `decisions.md`. For each:\n- `app-overview.md`: Verify the data model section includes TaskAssignee, TaskTemplate, SlackUserMapping, WebhookDelivery models. Update the file map if needed.\n- `skills.md`: Add patterns for: Vitest test setup, prom-client metrics, pino-http logging, React.lazy code-splitting.\n- `decisions.md`: Add decisions from Waves 9-11: SSE moved from EventSource to fetch-based client (security), Prisma metrics preview feature enabled, Vitest chosen over Jest (simpler config, faster), prom-client for metrics (industry standard).",
+      "files": [
+        "CLAUDE.md",
+        ".claude-knowledge/app-overview.md",
+        ".claude-knowledge/skills.md",
+        ".claude-knowledge/decisions.md"
+      ],
+      "acceptance": [
+        "CLAUDE.md Commands section includes pnpm test",
+        "CLAUDE.md GraphQL Schema section lists all current queries and mutations",
+        "CLAUDE.md Key Files section includes metrics.ts, logger.ts, loaders.ts, vitest configs",
+        "CLAUDE.md Architecture section mentions /api/health, /api/metrics, fetch-based SSE",
+        "app-overview.md data model includes TaskAssignee, SlackUserMapping, WebhookDelivery",
+        "decisions.md includes SSE migration, Vitest choice, Prisma metrics decisions",
+        "skills.md includes Vitest, prom-client, pino-http patterns",
+        "No stale or contradictory information remains in any knowledge base file"
+      ],
+      "startedAt": "2026-03-16T11:06:51.580Z",
+      "completedAt": "2026-03-16T11:23:05.701Z",
+      "reviewNotes": "CLAUDE.md includes the Role Swarm Worker (worker-3) section at the end. This is worktree-specific and must NOT be committed to main. Remove everything after the Notes section that ends with Package manager is pnpm. The legitimate doc updates are all good - just drop the worker role block, re-commit, and mark completed.",
+      "reviewedAt": "2026-03-16T11:25:30.530Z"
+    },
+    {
+      "id": "task-006",
+      "title": "Swarm status dashboard file overlap warnings + worker branch strategy docs",
+      "set": "SW1",
+      "assignee": "worker-3",
+      "status": "merged",
+      "description": "Improve swarm tooling based on 11 waves of process issues:\n\n**1. Swarm status file overlap warnings** — In `scripts/swarm/status.sh`, after displaying the current task summary, add a section that detects potential merge conflicts. For each pair of in-progress or completed (not yet merged) tasks across different workers, compare their `files` arrays. If any files overlap, print a warning: `⚠ OVERLAP: task-001 (worker-1) and task-005 (worker-3) both touch: apps/api/src/utils/sseManager.ts`. Use `jq` or `node` to parse tasks.json and compute file intersections. This helps the reviewer anticipate merge conflicts before they happen.\n\n**2. Worker branch strategy documentation** — Create `.claude/skills/swarm-worker/BRANCH_STRATEGY.md` documenting the recommended git workflow for workers:\n- Workers should commit after each task completion (not batch all tasks into one commit)\n- If a worker's first task is merged and they have a second task on the same branch, they should `git rebase main` before starting the second task to incorporate the merge\n- If a worker's first task is rejected, fix it on the same branch before starting the next task\n- Workers should NOT create separate branches per task (the worktree IS the branch)\n- Document the `scripts/swarm/merge-worker.sh` behavior: it squash-merges into main, runs prisma generate if schema changed, validates typecheck/lint/build\n\n**3. Task description standard notes** — Update `.claude/skills/swarm/SKILL.md` to include standard boilerplate that gets auto-added to task descriptions based on content: (a) if the task mentions adding a Prisma model, auto-add to acceptance criteria: 'Run npx prisma generate && pnpm typecheck passes'. (b) if the task mentions installing a new npm package, auto-add: 'Verify pnpm typecheck passes — add @types/* or .d.ts if needed'. Add these as reminders in the Planning section of the skill.",
+      "files": [
+        "scripts/swarm/status.sh",
+        ".claude/skills/swarm-worker/BRANCH_STRATEGY.md",
+        ".claude/skills/swarm/SKILL.md"
+      ],
+      "acceptance": [
+        "status.sh shows file overlap warnings between in-flight tasks across workers",
+        "Overlap detection works with jq or node parsing of tasks.json files arrays",
+        "BRANCH_STRATEGY.md documents commit-per-task, rebase-after-merge, rejection handling",
+        "swarm/SKILL.md includes standard Prisma and npm package acceptance criteria reminders",
+        "All scripts are executable and work correctly",
+        "pnpm typecheck && pnpm lint && pnpm build all pass (no code changes, but verify)"
+      ],
+      "startedAt": "2026-03-16T11:12:50.374Z",
+      "completedAt": "2026-03-16T11:16:44.359Z",
+      "reviewedAt": "2026-03-16T11:22:29.306Z"
+    }
+  ]
+}

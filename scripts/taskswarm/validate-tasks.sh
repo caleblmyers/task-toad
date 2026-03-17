@@ -5,7 +5,7 @@ set -euo pipefail
 # Validates task file arrays: checks for missing files, typos, and cross-worker conflicts.
 
 MAIN_REPO="$(cd "$(dirname "$0")/../.." && pwd)"
-TASKS_FILE="${1:-$MAIN_REPO/.ai/swarm/tasks.json}"
+TASKS_FILE="${1:-$MAIN_REPO/.ai/taskswarm/tasks.json}"
 
 if [ ! -f "$TASKS_FILE" ]; then
   echo "Error: tasks file not found: $TASKS_FILE"

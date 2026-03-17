@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "created": "2026-03-17T03:27:09.562Z",
+  "swarmId": "swarm-20260316-232657",
+  "config": {
+    "mainRepo": "/home/caleb/projects/task-toad",
+    "workerCount": 3,
+    "groups": [
+      "Testing",
+      "D1+F1",
+      "Polish"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "task-001",
+      "group": "Testing",
+      "title": "S3 upload unit tests + notification/SSE integration tests + export rate limit fix",
+      "description": "Bundle three testing follow-ups into one task:\n\n**1. S3 Upload Unit Tests** — Create `apps/api/src/__tests__/s3.unit.test.ts`. Mock `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to test the S3 utility functions without a real S3 bucket:\n- Test `uploadToS3(key, buffer, contentType)` — verify it calls `PutObjectCommand` with correct Bucket/Key/Body/ContentType\n- Test `getSignedDownloadUrl(key, expiresIn)` — verify it calls `getSignedUrl` with correct params and default 900s expiry\n- Test `deleteFromS3(key)` — verify `DeleteObjectCommand` called\n- Test `buildS3Key(orgId, taskId, filename)` — verify key format `attachments/{orgId}/{taskId}/{timestamp}-{filename}`\n- Test `checkS3Health()` — mock `HeadBucketCommand` success/failure, verify return values `'ok'`/`'not configured'`/error string\n- Test the `isS3Configured` flag — when env vars missing, functions should throw or return appropriate errors\n\nMock pattern: `vi.mock('@aws-sdk/client-s3', () => ({ S3Client: vi.fn(), PutObjectCommand: vi.fn(), ... }))` at the top of the test file.\n\n**2. Notification/SSE Tests** — Create `apps/api/src/__tests__/notification.integration.test.ts`. Test notification resolvers using the existing integration test infrastructure (setup.integration.ts, real DB):\n- Test `notifications(unreadOnly)` — create 3 notifications, verify filtering works\n- Test `unreadNotificationCount` — verify count matches\n- Test `markNotificationRead(notificationId)` — verify isRead toggled\n- Test `markAllNotificationsRead()` — verify batch update returns count\n- Test `updateNotificationPreference(type, inApp, email)` — verify upsert creates/updates\n- Test SSE manager unit: `addClient`, `broadcast`, `getClientCount`, connection limit (5 per user) — mock `Response` objects\n\n**3. Export Rate Limit Fix** — In `apps/api/src/__tests__/export.integration.test.ts`, the tenant isolation test may hit 429 from the strict 5-req/10-min export limiter. Fix by checking `process.env.NODE_ENV === 'test'` in the rate limiter config in `apps/api/src/app.ts` — skip or increase the export rate limit when running tests. Add a comment explaining why.\n\nAcceptance criteria: All new tests pass (`pnpm --filter api test`). S3 tests mock AWS SDK (no real S3 needed). Notification tests use real DB. Export tests don't hit 429. `pnpm typecheck && pnpm lint` pass.",
+      "assignee": "worker-1",
+      "status": "merged",
+      "dependsOn": [],
+      "files": [
+        "apps/api/src/__tests__/s3.unit.test.ts",
+        "apps/api/src/__tests__/notification.integration.test.ts",
+        "apps/api/src/__tests__/export.integration.test.ts",
+        "apps/api/src/app.ts"
+      ],
+      "startedAt": "2026-03-17T03:29:43.121Z",
+      "completedAt": "2026-03-17T03:34:49.587Z",
+      "reviewedAt": "2026-03-17T03:37:05.112Z"
+    },
+    {
+      "id": "task-002",
+      "group": "D1+F1",
+      "title": "D1 deployment ops documentation + dark mode WCAG AA contrast audit",
+      "description": "Two items bundled: deployment documentation for remaining D1 ops items, and dark mode contrast verification.\n\n**1. D1 Deployment Documentation** — The `.claude-knowledge/decisions.md` already has S3 and monitoring basics from Wave 20. Expand with concrete, actionable documentation for the 4 remaining D1 items:\n\n**External uptime monitoring:** Add a section to `decisions.md` documenting how to set up UptimeRobot (free tier) to poll `GET /api/health` every 5 minutes. Include the expected response shape: `{ status: 'ok', db: 'ok', s3: 'ok'|'not configured', uptime: number, timestamp: string }`. Note that 503 = DB unreachable.\n\n**Railway alerting:** Document Railway's built-in alerting capabilities — restart loop detection (3 retries per `railway.toml`), deploy failure notifications, and how to enable email/Slack alerts in Railway dashboard settings.\n\n**Staging environment:** Document how to set up Railway preview environments — create a second Railway service from the same repo, configure `RAILWAY_DEPLOY_ENABLED=true` only on the production service, use branch-based deploys for staging. Note the `deploy.yml` workflow already supports conditional deployment.\n\n**Database backup:** Document Railway's automated PostgreSQL backup system — daily automated backups, point-in-time recovery available via Railway dashboard, how to download a backup for local restore.\n\n**2. Dark Mode Contrast Audit** — Verify dark mode color pairings meet WCAG AA (4.5:1 for normal text). Known risk areas:\n- `dark:text-slate-400` (#94a3b8) on `dark:bg-slate-900` (#0f172a) — ratio ~3.6:1 (FAILS). Fix: use `dark:text-slate-300` on slate-900 backgrounds.\n- `dark:text-slate-400` on `dark:bg-slate-800` (#1e293b) — ratio ~4.5:1 (borderline PASS). Acceptable for secondary text but upgrade to `dark:text-slate-300` for labels/timestamps.\n- Badge contrasts: `dark:bg-slate-600` + `dark:text-slate-400` — ~3.5:1 (FAILS). Fix: `dark:text-slate-200` on `dark:bg-slate-600`.\n\nAudit these components for violations and fix:\n- `apps/web/src/components/TaskDetailPanel.tsx` — section labels with `dark:text-slate-400`\n- `apps/web/src/components/shared/Button.tsx` — ghost variant `dark:text-slate-400`\n- `apps/web/src/components/GlobalSearchModal.tsx` — status badges\n- `apps/web/src/components/ProjectDetail.tsx` — mixed slate-800/900 backgrounds\n- Spot-check 3-4 other components with `dark:text-slate-400`\n\nAcceptance criteria: Decisions.md has actionable docs for all 4 D1 ops items. No `dark:text-slate-400` on `dark:bg-slate-900` backgrounds. All dark text-on-background pairings meet 4.5:1. `pnpm typecheck && pnpm build` pass.",
+      "assignee": "worker-2",
+      "status": "merged",
+      "dependsOn": [],
+      "files": [
+        ".claude-knowledge/decisions.md",
+        "apps/web/src/components/TaskDetailPanel.tsx",
+        "apps/web/src/components/shared/Button.tsx",
+        "apps/web/src/components/GlobalSearchModal.tsx",
+        "apps/web/src/components/ProjectDetail.tsx"
+      ],
+      "startedAt": "2026-03-17T03:29:42.966Z",
+      "completedAt": "2026-03-17T03:34:06.725Z",
+      "reviewedAt": "2026-03-17T03:37:40.036Z"
+    },
+    {
+      "id": "task-003",
+      "group": "Polish",
+      "title": "PWA offline fallback + S3 presigned URL config + extend shared-types + og:image PNG",
+      "description": "Four polish follow-ups bundled together:\n\n**1. PWA Offline Fallback** — Add an offline fallback page for when the app is offline and the requested page isn't cached.\n\nCreate `apps/web/public/offline.html` — a minimal, self-contained HTML page (no external CSS/JS dependencies) with TaskToad branding: dark background (#1B2631), brand green accent, \"You are offline\" message, and a \"Try again\" button that calls `window.location.reload()`. Keep it under 5KB.\n\nUpdate `apps/web/vite.config.ts` VitePWA config to add the offline fallback:\n```typescript\nworkbox: {\n  navigateFallback: '/offline.html',\n  navigateFallbackDenylist: [/^\\/api\\//],  // Don't serve offline.html for API calls\n  // ... existing config\n}\n```\n\n**2. S3 Presigned URL Expiry Config** — In `apps/api/src/utils/s3.ts`, make the default 900s presigned URL expiry configurable via env var:\n- Read `ATTACHMENT_URL_EXPIRY_SECONDS` from `process.env`, parse as int, default to 900\n- Use this as the default value for `expiresIn` parameter in `getSignedDownloadUrl`\n- Add `ATTACHMENT_URL_EXPIRY_SECONDS` to `apps/api/.env.example` with comment\n\n**3. Extend Shared-Types** — Move more query-specific types from `apps/web/src/types.ts` into `packages/shared-types/src/index.ts`:\n- Move `ProjectStats`, `TaskConnection`, `CloseSprintResult`, `SprintPlanItem` — these are GraphQL response shapes used by both API resolvers and web client\n- Keep truly web-only types in `apps/web/src/types.ts`: `SubtaskPreview`, `TaskPlanPreview`, `AIFeatureUsage`, `AIUsageSummary`, `ProjectOption`, `ToolSuggestion`, `CodeReviewComment`, `CodeReview`\n- Update imports in `apps/web/src/types.ts` to re-export from shared-types\n- Add type imports in 2-3 more API resolver files (e.g., `resolvers/sprint.ts`, `resolvers/comment.ts`) following the existing `export type { Sprint as SharedSprint }` pattern\n\n**4. og:image PNG Fallback** — Create `apps/web/public/og-image.png` as a PNG version of the existing `og-image.svg`. Since we can't programmatically convert SVG to PNG, create a simple PNG-compatible alternative: a 1200x630 SVG that uses only basic shapes and text (no filters/effects that break rasterization). Update `apps/web/index.html` to reference PNG instead of SVG in the og:image meta tag — social platforms (LinkedIn, Slack, WhatsApp) handle PNG more reliably than SVG.\n\nAcceptance criteria: `pnpm build` generates SW with offline fallback. S3 URL expiry reads from env. Shared-types has 4 new exports. og:image meta tag points to PNG-compatible image. `pnpm typecheck && pnpm build` pass.",
+      "assignee": "worker-3",
+      "status": "merged",
+      "dependsOn": [],
+      "files": [
+        "apps/web/public/offline.html",
+        "apps/web/vite.config.ts",
+        "apps/api/src/utils/s3.ts",
+        "apps/api/.env.example",
+        "packages/shared-types/src/index.ts",
+        "apps/web/src/types.ts",
+        "apps/api/src/graphql/resolvers/sprint.ts",
+        "apps/api/src/graphql/resolvers/comment.ts",
+        "apps/web/public/og-image.svg",
+        "apps/web/index.html"
+      ],
+      "startedAt": "2026-03-17T03:29:32.695Z",
+      "completedAt": "2026-03-17T03:34:09.256Z",
+      "reviewedAt": "2026-03-17T03:38:21.373Z"
+    }
+  ]
+}

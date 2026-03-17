@@ -12,7 +12,7 @@ If you find a bug, missing import, type error, or any issue — do NOT fix it yo
 
 ## Main Repo
 
-The main repo is at `{{MAIN_REPO}}`. The task queue is at `{{MAIN_REPO}}/.ai/swarm/tasks.json`.
+The main repo is at `{{MAIN_REPO}}`. The task queue is at `{{MAIN_REPO}}/.ai/taskswarm/tasks.json`.
 
 **Important:** You work in a reviewer worktree, but all git and merge operations target the main repo. Use the helper scripts which handle paths automatically.
 
@@ -42,7 +42,7 @@ Loop continuously until all tasks are `merged`:
 
    d. **Merge and validate** using the helper script:
       ```bash
-      bash {{MAIN_REPO}}/scripts/swarm/merge-worker.sh <worker-branch> --validate
+      bash {{MAIN_REPO}}/scripts/taskswarm/merge-worker.sh <worker-branch> --validate
       ```
       The `--validate` flag auto-detects Prisma changes, runs `prisma generate` if needed, then runs full `pnpm typecheck` and `pnpm lint`.
 
@@ -84,12 +84,12 @@ Loop continuously until all tasks are `merged`:
 
    g. Update task status:
       ```bash
-      bash {{MAIN_REPO}}/scripts/swarm/task-update.sh TASK_ID merged --reviewedAt
+      bash {{MAIN_REPO}}/scripts/taskswarm/task-update.sh TASK_ID merged --reviewedAt
       ```
 
    h. If validation/build fails or you find issues in the diff:
       ```bash
-      bash {{MAIN_REPO}}/scripts/swarm/task-update.sh TASK_ID in_progress --reviewNotes="description of what needs fixing"
+      bash {{MAIN_REPO}}/scripts/taskswarm/task-update.sh TASK_ID in_progress --reviewNotes="description of what needs fixing"
       ```
       The worker will see the notes and fix the issue automatically.
 
@@ -122,7 +122,7 @@ If a worker's code passes typecheck but fails build or lint, send it back. The u
 
 ## Swarm Process Issues Log
 
-When you encounter issues with the swarm workflow itself, log them to `{{MAIN_REPO}}/.ai/swarm/issues.md`. This helps the user improve future swarms.
+When you encounter issues with the swarm workflow itself, log them to `{{MAIN_REPO}}/.ai/taskswarm/issues.md`. This helps the user improve future swarms.
 
 **Log issues like:**
 - Worker submitted code that fails typecheck/build repeatedly — was the task description missing key context? (e.g., "run prisma generate after adding schema")

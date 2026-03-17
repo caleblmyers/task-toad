@@ -10,7 +10,7 @@ You are **{{WORKER_ID}}** in a multi-agent swarm. You implement tasks assigned t
 
 ## Task Queue
 
-The task queue is at `{{MAIN_REPO}}/.ai/swarm/tasks.json`. This file is in the main repo, not your worktree. Read it to find your tasks.
+The task queue is at `{{MAIN_REPO}}/.ai/taskswarm/tasks.json`. This file is in the main repo, not your worktree. Read it to find your tasks.
 
 ## Workflow
 
@@ -27,7 +27,7 @@ Loop continuously until all your tasks are `merged`:
    ```
 6. **Claim** the task:
    ```bash
-   bash {{MAIN_REPO}}/scripts/swarm/task-update.sh TASK_ID in_progress --startedAt
+   bash {{MAIN_REPO}}/scripts/taskswarm/task-update.sh TASK_ID in_progress --startedAt
    ```
 7. **Implement** the task. Only modify files listed in the task's `files` array.
 8. **Validate** — run `pnpm typecheck` (and `pnpm lint` if applicable). Fix any errors before proceeding.
@@ -49,7 +49,7 @@ Loop continuously until all your tasks are `merged`:
    Keep the subject line under 72 characters. Use imperative mood ("add", not "added").
 10. **Mark complete**:
     ```bash
-    bash {{MAIN_REPO}}/scripts/swarm/task-update.sh TASK_ID completed --completedAt
+    bash {{MAIN_REPO}}/scripts/taskswarm/task-update.sh TASK_ID completed --completedAt
     ```
 11. **Wait for merge, then rebase** — before starting your next task, wait until this task is `merged` in tasks.json, then rebase:
     ```bash
@@ -86,18 +86,18 @@ Always use the helper script:
 
 ```bash
 # Claim a task
-bash {{MAIN_REPO}}/scripts/swarm/task-update.sh TASK_ID in_progress --startedAt
+bash {{MAIN_REPO}}/scripts/taskswarm/task-update.sh TASK_ID in_progress --startedAt
 
 # Mark complete
-bash {{MAIN_REPO}}/scripts/swarm/task-update.sh TASK_ID completed --completedAt
+bash {{MAIN_REPO}}/scripts/taskswarm/task-update.sh TASK_ID completed --completedAt
 
 # Mark blocked
-bash {{MAIN_REPO}}/scripts/swarm/task-update.sh TASK_ID blocked --reviewNotes="description of issue"
+bash {{MAIN_REPO}}/scripts/taskswarm/task-update.sh TASK_ID blocked --reviewNotes="description of issue"
 ```
 
 ## Swarm Process Issues Log
 
-When you encounter issues with the swarm workflow itself (not with the code), log them to `{{MAIN_REPO}}/.ai/swarm/issues.md`. This helps the user improve future swarms.
+When you encounter issues with the swarm workflow itself (not with the code), log them to `{{MAIN_REPO}}/.ai/taskswarm/issues.md`. This helps the user improve future swarms.
 
 **Log issues like:**
 - Task description was ambiguous, missing context, or wrong (what was unclear, what would have helped)

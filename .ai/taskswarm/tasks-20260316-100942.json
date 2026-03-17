@@ -1,0 +1,219 @@
+{
+  "version": 1,
+  "created": "2026-03-16T13:22:06.704Z",
+  "swarmId": "swarm-20260316-092159",
+  "config": {
+    "mainRepo": "/home/caleb/projects/task-toad",
+    "workerCount": 3,
+    "groups": []
+  },
+  "tasks": [
+    {
+      "id": "task-001",
+      "title": "AI module unit tests — tokenEstimator, responseParser, aiCache, promptBuilder",
+      "set": "Q1",
+      "worker": "worker-1",
+      "status": "merged",
+      "commitType": "test",
+      "commitScope": "api",
+      "description": "Add comprehensive unit tests for the AI subsystem in `apps/api/src/ai/`. These modules are core to all AI features but have zero test coverage.\n\n**1. tokenEstimator tests** (`apps/api/src/ai/__tests__/tokenEstimator.test.ts`):\n- Test `estimateTokens(text)`: empty string → 0, short text (\"hello world\") → ~3, long text (1000 chars) → ~250. Verify it returns a number ≥ 0.\n- Test `checkPromptSize(system, user, maxOutput)`: normal case passes (short prompts, 8192 max), throws `GraphQLError` with code `PROMPT_TOO_LARGE` when prompts would exceed 200K context window. Test the 80% warning threshold by mocking the logger and verifying `log.warn` is called.\n\n**2. responseParser tests** (`apps/api/src/ai/__tests__/responseParser.test.ts`):\n- Test `stripFences(raw)`: bare JSON returns unchanged, ` ```json\\n{...}\\n``` ` extracts inner content, preamble text before fences (\"Here are the tasks:\\n```json\\n[...]\\n```\") extracts correctly, bare JSON with trailing text extracts by bracket matching, no JSON at all returns trimmed string.\n- Test `parseJSON(raw, schema)`: valid JSON matching schema returns parsed data, invalid JSON throws `GraphQLError('Failed to parse AI response')`, valid JSON not matching schema throws `GraphQLError('AI response did not match expected format')`. Use a simple `z.object({ title: z.string() })` test schema.\n\n**3. aiCache tests** (`apps/api/src/ai/__tests__/aiCache.test.ts`):\n- Import `aiCache` and `hashPrompt` from `../aiCache.js`.\n- Test `hashPrompt`: same inputs produce same hash, different inputs produce different hashes.\n- Test `aiCache.set/get`: set a value, get returns it, get with wrong key returns undefined.\n- Test TTL expiry: set with short TTL (50ms), wait 60ms, get returns undefined. Use `vi.advanceTimersByTime()` with `vi.useFakeTimers()`.\n- Test LRU eviction: fill cache beyond capacity (500 entries), verify oldest entries are evicted.\n\n**4. promptBuilder tests** (`apps/api/src/ai/__tests__/promptBuilder.test.ts`):\n- Test `buildTaskPlanPrompt`: verify it returns `{ systemPrompt, userPrompt }`, systemPrompt contains the task count cap (\"5–10 tasks\" and \"NEVER more than 10\"), userPrompt contains the project title wrapped in `<user_input>` tags.\n- Test `buildProjectOptionsPrompt`: returns 2-key object, userPrompt mentions \"exactly 3 distinct project interpretations\".\n- Test `userInput(label, value)`: wraps correctly with `<user_input label=\"...\">...</user_input>` tags.\n- Test context compression: pass a 500-char description to `buildTaskPlanPrompt`, verify userPrompt truncates it (the function uses `truncate(desc, 400)`).\n\nAll tests are pure unit tests — no database, no network. Mock the pino logger where needed (`vi.mock('../utils/logger.js')`).",
+      "files": [
+        "apps/api/src/ai/__tests__/tokenEstimator.test.ts",
+        "apps/api/src/ai/__tests__/responseParser.test.ts",
+        "apps/api/src/ai/__tests__/aiCache.test.ts",
+        "apps/api/src/ai/__tests__/promptBuilder.test.ts"
+      ],
+      "acceptanceCriteria": [
+        "pnpm --filter api test passes with all new tests green",
+        "pnpm typecheck passes",
+        "At least 20 test cases across the 4 test files",
+        "No database or network calls — pure unit tests only",
+        "Logger is mocked to prevent console noise during tests"
+      ],
+      "startedAt": "2026-03-16T13:28:35.565Z",
+      "completedAt": "2026-03-16T13:32:46.593Z",
+      "reviewedAt": "2026-03-16T13:39:01.735Z"
+    },
+    {
+      "id": "task-002",
+      "title": "CI test gate + task/sprint integration tests",
+      "set": "Q1",
+      "worker": "worker-1",
+      "status": "merged",
+      "commitType": "test",
+      "commitScope": "api",
+      "description": "Add a test execution step to the CI pipeline and expand integration test coverage beyond auth to task and sprint CRUD.\n\n**1. CI test gate** (`.github/workflows/ci.yml`):\nCurrently the CI workflow runs `pnpm lint`, `pnpm typecheck`, `pnpm build` but does NOT run tests. Add a test step:\n- Add a `services:` block for PostgreSQL 16 (image: `postgres:16`, env: `POSTGRES_PASSWORD=postgres`, ports: `5432:5432`, health check: `pg_isready`).\n- Add a step before tests: `env: TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/tasktoad_test` and run `pnpm --filter api test` then `pnpm --filter web test`.\n- Place the test step AFTER typecheck but BEFORE build (tests should gate the build).\n- Unit tests (`pnpm --filter web test`) don't need PostgreSQL, so they can run unconditionally.\n\n**2. Task CRUD integration tests** (`apps/api/src/__tests__/task.integration.test.ts`):\nFollow the existing pattern in `auth.integration.test.ts` — import from `setup.integration.ts`, use `setupTestDatabase()`/`cleanDatabase()`/`teardownTestDatabase()`.\n- **Setup:** Create a user + org + project in `beforeAll` (reuse the signup/createOrg pattern from auth tests, then use `prisma.project.create()`).\n- **createTask:** Call the `createTask` resolver directly (import from `apps/api/src/graphql/resolvers/task.ts`). Verify task is created in DB with correct title, status='todo', projectId, orgId. Test validation: empty title should throw.\n- **updateTask:** Create a task, then update its status to 'in_progress'. Verify DB reflects the change. Test: update title, update priority, update description.\n- **deleteTask (archiveTask):** Create a task, archive it via `updateTask` with `archived: true`. Verify `archived` flag is set.\n- **bulkUpdateTasks:** Create 3 tasks, bulk update status to 'done'. Verify all 3 updated.\n\nTo call resolvers directly, you need a `Context` object. Build it manually:\n```typescript\nconst ctx = { prisma, user, orgId: org.id, loaders: buildLoaders(prisma) };\n```\nImport `buildLoaders` from `apps/api/src/graphql/loaders.ts`. The resolvers expect `(_parent, args, context)` — pass `{}` as parent.\n\n**3. Sprint integration tests** (`apps/api/src/__tests__/sprint.integration.test.ts`):\n- **Setup:** Same as above — user + org + project.\n- **createSprint:** Call resolver, verify sprint created with name, projectId, orgId. Verify `isActive` defaults to false.\n- **updateSprint:** Activate a sprint (`isActive: true`), verify only one active sprint per project (create a second sprint, activate it, verify the first is deactivated).\n- **deleteSprint:** Create a sprint, delete it, verify it's gone from DB.\n\nAll integration tests use the `vitest.config.integration.ts` configuration (30s timeout). They will NOT run in CI initially if `TEST_DATABASE_URL` isn't set — that's fine, they'll run when the PostgreSQL service is available.",
+      "files": [
+        ".github/workflows/ci.yml",
+        "apps/api/src/__tests__/task.integration.test.ts",
+        "apps/api/src/__tests__/sprint.integration.test.ts"
+      ],
+      "acceptanceCriteria": [
+        "pnpm typecheck passes",
+        "pnpm --filter api test passes (unit tests)",
+        "CI workflow includes PostgreSQL service and pnpm test step",
+        "task.integration.test.ts has at least 6 test cases (create, update status/title/priority, archive, bulk update)",
+        "sprint.integration.test.ts has at least 4 test cases (create, activate, single-active enforcement, delete)",
+        "Integration tests use the existing setup.integration.ts helpers"
+      ],
+      "startedAt": "2026-03-16T13:32:53.865Z",
+      "completedAt": "2026-03-16T13:36:50.055Z",
+      "reviewedAt": "2026-03-16T13:39:01.751Z"
+    },
+    {
+      "id": "task-003",
+      "title": "Fix lazyWithRetry + lazy-load remaining modals + cache/cost fixes",
+      "set": "F1",
+      "worker": "worker-2",
+      "status": "merged",
+      "commitType": "fix",
+      "commitScope": "web",
+      "description": "Bundle of frontend performance fixes: fix the broken chunk retry logic, lazy-load 10 more conditional modals, fix the unbounded dependsOn cache, and improve the GraphQL cost limit rule.\n\n**1. Fix lazyWithRetry** (`apps/web/src/App.tsx`, lines 16-30):\nThe current implementation has a bug — the retry path recursively calls `lazyWithRetry()` which returns a `LazyExoticComponent`, not a module promise. The `as never` cast hides this. Replace with an async loop:\n```typescript\nfunction lazyWithRetry<T extends ComponentType<unknown>>(\n  importFn: () => Promise<{ default: T }>,\n  retries = 2,\n): React.LazyExoticComponent<T> {\n  return lazy(async () => {\n    for (let i = 0; i <= retries; i++) {\n      try {\n        return await importFn();\n      } catch (err) {\n        if (i === retries) throw err;\n        await new Promise((r) => setTimeout(r, 1000));\n      }\n    }\n    throw new Error('Unreachable');\n  });\n}\n```\n\nMove `lazyWithRetry` to a utility file `apps/web/src/utils/lazyWithRetry.ts` so it can be imported by both App.tsx and ProjectDetail.tsx. Export it as a named export.\n\n**2. Lazy-load remaining conditional modals** (`apps/web/src/pages/ProjectDetail.tsx`, lines 27-40):\nThese 10 modals are eagerly imported but only rendered conditionally behind state flags. Convert them to `lazyWithRetry`:\n- `GitHubRepoModal` (line 31, shown when `showGitHubModal`)\n- `StandupReportPanel` (line 32, shown when `showStandup`)\n- `ProjectHealthPanel` (line 33, shown when `showHealth`)\n- `TrendAnalysisPanel` (line 34, shown when `showTrends`)\n- `MeetingNotesDialog` (line 35, shown when `showMeetingNotes`)\n- `CSVImportModal` (line 36, shown when `showCSVImport`)\n- `KnowledgeBaseModal` (line 37, shown when `showKnowledgeBase`)\n- `BugReportModal` (line 38, shown when `showBugReport`)\n- `PRDBreakdownModal` (line 39, shown when `showPRDBreakdown`)\n- `SprintTransitionModal` (line 40, shown when `showTransition`)\n\nWrap each lazy modal's render site with `<Suspense fallback={<div className=\"flex items-center justify-center p-8\"><div className=\"animate-spin rounded-full h-8 w-8 border-b-2 border-brand-green\" /></div>}>`. Since these are modals that appear on user action, the brief spinner is fine.\n\n**3. Fix dependsOnCache memory leak** (`apps/web/src/utils/taskHelpers.ts`, lines 3-17):\nThe `dependsOnCache` Map has no size limit. Add a max size of 1000 entries with oldest-entry eviction:\n```typescript\nconst MAX_CACHE_SIZE = 1000;\n// ... in parseDependsOn, before .set():\nif (dependsOnCache.size >= MAX_CACHE_SIZE) {\n  const firstKey = dependsOnCache.keys().next().value;\n  if (firstKey !== undefined) dependsOnCache.delete(firstKey);\n}\n```\n\n**4. Cost limit unknown list field handling** (`apps/api/src/graphql/schema.ts`, around line 155-165):\nIn the `computeSelectionCost` function, fields NOT in `COST_MAP` that have selection sets (sub-selections) don't get a list multiplier — they recurse with `multiplier = 1`. Fix: if a field has `node.selectionSet` and the field name is NOT in `COST_MAP`, apply `DEFAULT_LIST_MULTIPLIER` (10) as the multiplier. This catches new list fields like `customFieldValues`, `taskAssignees`, etc. that were added after the cost map was written.",
+      "files": [
+        "apps/web/src/App.tsx",
+        "apps/web/src/utils/lazyWithRetry.ts",
+        "apps/web/src/pages/ProjectDetail.tsx",
+        "apps/web/src/utils/taskHelpers.ts",
+        "apps/api/src/graphql/schema.ts"
+      ],
+      "acceptanceCriteria": [
+        "pnpm typecheck passes",
+        "pnpm lint passes",
+        "pnpm build succeeds (lazy chunks split correctly by Vite)",
+        "lazyWithRetry uses async loop pattern — no recursive LazyExoticComponent creation, no `as never` cast",
+        "lazyWithRetry extracted to utils/lazyWithRetry.ts and imported by both App.tsx and ProjectDetail.tsx",
+        "All 10 conditional modals in ProjectDetail are lazy-loaded via lazyWithRetry",
+        "dependsOnCache has MAX_CACHE_SIZE=1000 with oldest-entry eviction",
+        "Cost limit rule applies DEFAULT_LIST_MULTIPLIER to unknown fields with selection sets"
+      ],
+      "startedAt": "2026-03-16T13:28:31.834Z",
+      "completedAt": "2026-03-16T13:32:57.141Z",
+      "reviewedAt": "2026-03-16T13:43:24.776Z"
+    },
+    {
+      "id": "task-004",
+      "title": "List virtualization with react-window + position rebalancing",
+      "set": "F1",
+      "worker": "worker-2",
+      "status": "merged",
+      "commitType": "feat",
+      "commitScope": "web",
+      "description": "Add virtual scrolling to long task lists and fractional position rebalancing to prevent position convergence.\n\n**1. Install react-window** — run `pnpm --filter web add react-window && pnpm --filter web add -D @types/react-window`. Verify `pnpm typecheck` passes — add `@types/*` or declare module in a `.d.ts` if type resolution fails.\n\n**2. Virtualize SprintSection task lists** (`apps/web/src/components/SprintSection.tsx`):\nBacklogView delegates rendering to SprintSection and BacklogSection. The virtualization should happen inside SprintSection where `TaskRow` elements are mapped.\n\n- Find where tasks are mapped to `<TaskRow>` elements. Wrap with `FixedSizeList` from react-window when the task count exceeds a threshold (e.g., 20 tasks). Below the threshold, render normally (no virtualization overhead for small lists).\n- `FixedSizeList` needs a fixed `height` — use `Math.min(tasks.length * ROW_HEIGHT, MAX_LIST_HEIGHT)` where `ROW_HEIGHT = 52` (px, matches TaskRow height) and `MAX_LIST_HEIGHT = 600`.\n- Each row renderer receives `{ index, style }` — render `<TaskRow>` with `style` applied to the wrapper div.\n- Apply the same pattern in BacklogSection (inside `BacklogView.tsx`) if it separately maps tasks.\n\n**3. Virtualize TableView** (`apps/web/src/components/TableView.tsx`):\nTableView renders all tasks as `<tr>` rows in a `<table>`. For virtualization:\n- Keep the `<table>` and `<thead>` as-is (static header).\n- Replace the `<tbody>` with a `FixedSizeList` that renders `<div>` rows styled with CSS grid to maintain column alignment.\n- Each virtual row should match the existing column widths. Use `display: grid; grid-template-columns: <matching widths>` on each row div.\n- Set `itemSize={40}` (standard table row height).\n- Only virtualize when `tasks.length > 50` — below that, render the standard `<table>` approach.\n- Wrap the virtualized section in a container with `overflow: auto` and a max height.\n\n**4. Fractional position rebalancing** (`apps/web/src/components/KanbanBoard.tsx`):\nThe `computePosition` function (lines 21-34) calculates midpoints between adjacent tasks. After many reorders in the same spot, positions converge (e.g., 500, 500.5, 500.25...) losing precision.\n\nAdd a `rebalancePositions` check:\n```typescript\nconst MIN_POSITION_GAP = 0.001;\n\nfunction needsRebalance(sorted: Task[]): boolean {\n  for (let i = 1; i < sorted.length; i++) {\n    const prev = sorted[i - 1].position ?? (i - 1) * 1000;\n    const curr = sorted[i].position ?? i * 1000;\n    if (Math.abs(curr - prev) < MIN_POSITION_GAP) return true;\n  }\n  return false;\n}\n```\nAfter each reorder in `handleKeyboardReorder`, check `needsRebalance` on the column's sorted tasks. If true, reassign evenly-spaced positions (`(i + 1) * 1000`) to all tasks in the column via `onReorderTask`. This is a background normalization — the user sees the immediate reorder, then positions are silently rebalanced.",
+      "files": [
+        "apps/web/package.json",
+        "apps/web/src/components/BacklogView.tsx",
+        "apps/web/src/components/SprintSection.tsx",
+        "apps/web/src/components/TableView.tsx",
+        "apps/web/src/components/KanbanBoard.tsx"
+      ],
+      "acceptanceCriteria": [
+        "pnpm typecheck passes — add @types/react-window or declare module if needed",
+        "pnpm lint passes",
+        "pnpm build succeeds",
+        "react-window installed as dependency",
+        "SprintSection virtualizes task lists when > 20 tasks via FixedSizeList",
+        "TableView virtualizes rows when > 50 tasks",
+        "Small lists render without virtualization (no perf overhead for small projects)",
+        "KanbanBoard detects position convergence (gap < 0.001) and rebalances column positions"
+      ],
+      "startedAt": "2026-03-16T13:33:01.093Z",
+      "completedAt": "2026-03-16T13:38:46.099Z",
+      "reviewedAt": "2026-03-16T13:43:24.791Z"
+    },
+    {
+      "id": "task-005",
+      "title": "Dark mode rollout — all views + user toggle with persistence",
+      "set": "S1",
+      "worker": "worker-3",
+      "status": "merged",
+      "commitType": "feat",
+      "commitScope": "web",
+      "description": "Extend dark mode from the current 6 files (Button, Modal, AppLayout, Home, Login, Signup) to ALL remaining views and components. Add a user-facing dark mode toggle.\n\n**Current state:** Tailwind `darkMode: 'class'` is configured. CSS custom properties in `index.css` define dark brand colors under `.dark`. Button and Modal already have `dark:` variants. AppLayout, Home, Login, Signup have dark mode. Everything else (64+ files) does NOT.\n\n**1. Dark mode toggle** (`apps/web/src/pages/AppLayout.tsx`):\nAdd a dark mode toggle button in the sidebar footer (near the user info area):\n```typescript\nconst [darkMode, setDarkMode] = useState(() => {\n  const stored = localStorage.getItem('task-toad-dark-mode');\n  if (stored !== null) return stored === 'true';\n  return window.matchMedia('(prefers-color-scheme: dark)').matches;\n});\nuseEffect(() => {\n  document.documentElement.classList.toggle('dark', darkMode);\n  localStorage.setItem('task-toad-dark-mode', String(darkMode));\n}, [darkMode]);\n```\nRender a sun/moon icon button that toggles `darkMode`. Add simple SVG `IconSun`/`IconMoon` to `apps/web/src/components/shared/Icons.tsx` if they don't exist.\n\n**2. Core view components** — add `dark:` variants to backgrounds, text, borders, and interactive elements. The mapping is consistent across all files:\n- `bg-white` → add `dark:bg-slate-900`\n- `bg-slate-50` → add `dark:bg-slate-800`\n- `bg-slate-100` → add `dark:bg-slate-700`\n- `text-slate-500/600` → add `dark:text-slate-400`\n- `text-slate-700/800/900` → add `dark:text-slate-200/300`\n- `border-slate-200/300` → add `dark:border-slate-600/700`\n- `hover:bg-slate-50/100` → add `dark:hover:bg-slate-700/800`\n- Input fields: add `dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200`\n\nFiles to update:\n- `ProjectDetail.tsx` (~12 bg-slate patterns)\n- `TaskDetailPanel.tsx` (~7 patterns)\n- `BacklogView.tsx` (~4 patterns)\n- `KanbanBoard.tsx` (~3 patterns)\n- `TableView.tsx` (~2 patterns)\n- `SprintSection.tsx` (~8 patterns)\n- `CommentSection.tsx`, `CalendarView.tsx` (~6), `ProjectDashboard.tsx` (~7), `GanttChart.tsx` (~6)\n- `BulkActionBar.tsx` — already dark (`bg-slate-800`), may need minimal adjustment\n\n**3. Shared components:**\n- `FilterBar.tsx`: select dropdowns, filter chips\n- `SearchInput.tsx`: input background, border, placeholder\n- `ToastContainer.tsx`: toast background, text\n- `KeyboardShortcutHelp.tsx`: overlay, key badges\n- `DependencyBadge.tsx`: badge background\n- `MarkdownContent.tsx`: prose text, code blocks, blockquotes\n- `MarkdownEditor.tsx`: textarea, preview area\n- `Skeleton.tsx`: pulse animations `bg-slate-200` → add `dark:bg-slate-700`\n\n**4. Remaining pages:** `ProfilePage.tsx`, `OrgSettings.tsx` — form inputs, section cards, tables.\n\nDo NOT change semantic colors (status.*, priority.*) or brand colors — those are already handled by CSS custom properties.",
+      "files": [
+        "apps/web/src/pages/AppLayout.tsx",
+        "apps/web/src/pages/ProjectDetail.tsx",
+        "apps/web/src/pages/ProfilePage.tsx",
+        "apps/web/src/pages/OrgSettings.tsx",
+        "apps/web/src/components/TaskDetailPanel.tsx",
+        "apps/web/src/components/BacklogView.tsx",
+        "apps/web/src/components/KanbanBoard.tsx",
+        "apps/web/src/components/TableView.tsx",
+        "apps/web/src/components/SprintSection.tsx",
+        "apps/web/src/components/CommentSection.tsx",
+        "apps/web/src/components/CalendarView.tsx",
+        "apps/web/src/components/ProjectDashboard.tsx",
+        "apps/web/src/components/GanttChart.tsx",
+        "apps/web/src/components/BulkActionBar.tsx",
+        "apps/web/src/components/Skeleton.tsx",
+        "apps/web/src/components/shared/FilterBar.tsx",
+        "apps/web/src/components/shared/SearchInput.tsx",
+        "apps/web/src/components/shared/ToastContainer.tsx",
+        "apps/web/src/components/shared/KeyboardShortcutHelp.tsx",
+        "apps/web/src/components/shared/DependencyBadge.tsx",
+        "apps/web/src/components/shared/MarkdownContent.tsx",
+        "apps/web/src/components/shared/MarkdownEditor.tsx",
+        "apps/web/src/components/shared/Icons.tsx"
+      ],
+      "acceptanceCriteria": [
+        "pnpm typecheck passes",
+        "pnpm lint passes",
+        "pnpm build succeeds",
+        "Dark mode toggle button in AppLayout sidebar with sun/moon icon",
+        "Dark mode preference persisted to localStorage and restored on page load",
+        "System preference (prefers-color-scheme: dark) used as default when no stored preference",
+        "All core views (ProjectDetail, TaskDetailPanel, BacklogView, KanbanBoard, TableView) have dark: variants",
+        "All shared components (FilterBar, SearchInput, ToastContainer, Skeleton) have dark: variants",
+        "Form inputs across all components have dark: bg/border/text variants",
+        "Semantic colors (status, priority) and brand colors are NOT modified"
+      ],
+      "startedAt": "2026-03-16T13:28:32.784Z",
+      "completedAt": "2026-03-16T14:00:38.947Z",
+      "reviewNotes": "MUST REBASE before resubmitting. Run: git rebase main. TableView.tsx has a merge conflict because worker-2 added react-window virtualization (FixedSizeList). After resolving the conflict, make sure dark: variants are applied to BOTH the non-virtualized table path AND the new virtualized CSS grid rows. Then mark task as completed again.",
+      "reviewedAt": "2026-03-16T14:04:14.991Z"
+    },
+    {
+      "id": "task-006",
+      "title": "Convert remaining ad-hoc buttons to shared Button + PWA manifest",
+      "set": "S1",
+      "worker": "worker-3",
+      "status": "merged",
+      "commitType": "refactor",
+      "commitScope": "web",
+      "description": "Convert the remaining ~26 ad-hoc button elements to use the shared `<Button>` component, and add a PWA manifest for installability.\n\n**1. Button component adoption:**\n\nThe shared `<Button>` component (`apps/web/src/components/shared/Button.tsx`) supports variants (primary, secondary, ghost, danger), sizes (sm, md, lg), loading state, and dark mode. ~31 buttons were converted in Wave 13, but ~26 remain.\n\nSearch for remaining ad-hoc `<button` elements that use inline Tailwind classes instead of the shared component. Common patterns to find and convert:\n- `<button className=\"...bg-brand-green...\"` → `<Button variant=\"primary\">`\n- `<button className=\"...border border-slate-300...\"` → `<Button variant=\"secondary\">`\n- `<button className=\"...text-slate-600...\"` → `<Button variant=\"ghost\">`\n- `<button className=\"...text-red-600...\"` → `<Button variant=\"danger\">`\n\nKey files to check:\n- `apps/web/src/pages/Login.tsx` — submit button\n- `apps/web/src/pages/Signup.tsx` — submit button\n- `apps/web/src/pages/ForgotPassword.tsx` — submit button\n- `apps/web/src/pages/ResetPassword.tsx` — submit button\n- `apps/web/src/pages/VerifyEmail.tsx` — resend button\n- `apps/web/src/pages/AcceptInvite.tsx` — accept button\n- `apps/web/src/pages/CreateOrg.tsx` — submit button\n- `apps/web/src/pages/NewProject.tsx` — generate/create buttons\n- `apps/web/src/components/SprintCreateModal.tsx` — create/cancel buttons\n- `apps/web/src/components/SprintPlanModal.tsx` — plan/cancel buttons\n- `apps/web/src/components/CloseSprintModal.tsx` — close/cancel buttons\n- `apps/web/src/components/TaskPlanApprovalDialog.tsx` — approve/reject/cancel buttons\n- `apps/web/src/components/CodePreviewModal.tsx` — create PR/cancel buttons\n- `apps/web/src/components/BatchCodeGenModal.tsx` — generate/cancel buttons\n- Various cancel buttons across modals (often `text-slate-600 hover:text-slate-800`)\n\nFor each conversion:\n- Import `Button` from the shared component (adjust path as needed)\n- Replace `<button className=\"...\" onClick={...}>Text</button>` with `<Button variant=\"...\" size=\"...\" onClick={...}>Text</Button>`\n- If the button has `disabled={loading}` with an inline spinner, use `<Button loading={isLoading}>` instead\n- Cancel buttons → `variant=\"ghost\"` or `variant=\"secondary\"`\n- Destructive actions (delete, archive) → `variant=\"danger\"`\n\nDo NOT convert icon-only buttons (small action buttons with just an SVG icon and no text) — those have specific sizing that doesn't match the Button component.\n\n**2. PWA manifest** (`apps/web/public/manifest.json`):\nCreate a web app manifest:\n```json\n{\n  \"name\": \"TaskToad\",\n  \"short_name\": \"TaskToad\",\n  \"description\": \"AI-powered project management for teams\",\n  \"start_url\": \"/\",\n  \"display\": \"standalone\",\n  \"background_color\": \"#1B2631\",\n  \"theme_color\": \"#4CAF50\",\n  \"icons\": [\n    { \"src\": \"/favicon.png\", \"sizes\": \"192x192\", \"type\": \"image/png\" },\n    { \"src\": \"/logo.png\", \"sizes\": \"512x512\", \"type\": \"image/png\" }\n  ]\n}\n```\nLink it in `apps/web/index.html`:\n```html\n<link rel=\"manifest\" href=\"/manifest.json\" />\n<meta name=\"apple-mobile-web-app-capable\" content=\"yes\" />\n<meta name=\"apple-mobile-web-app-status-bar-style\" content=\"black-translucent\" />\n```",
+      "files": [
+        "apps/web/src/pages/Login.tsx",
+        "apps/web/src/pages/Signup.tsx",
+        "apps/web/src/pages/ForgotPassword.tsx",
+        "apps/web/src/pages/ResetPassword.tsx",
+        "apps/web/src/pages/VerifyEmail.tsx",
+        "apps/web/src/pages/AcceptInvite.tsx",
+        "apps/web/src/pages/CreateOrg.tsx",
+        "apps/web/src/pages/NewProject.tsx",
+        "apps/web/src/components/SprintCreateModal.tsx",
+        "apps/web/src/components/SprintPlanModal.tsx",
+        "apps/web/src/components/CloseSprintModal.tsx",
+        "apps/web/src/components/TaskPlanApprovalDialog.tsx",
+        "apps/web/src/components/CodePreviewModal.tsx",
+        "apps/web/src/components/BatchCodeGenModal.tsx",
+        "apps/web/public/manifest.json",
+        "apps/web/index.html"
+      ],
+      "acceptanceCriteria": [
+        "pnpm typecheck passes",
+        "pnpm lint passes",
+        "pnpm build succeeds",
+        "At least 20 ad-hoc buttons converted to shared <Button> component",
+        "Cancel buttons use variant=ghost or variant=secondary consistently",
+        "Destructive buttons use variant=danger",
+        "Loading states use Button's loading prop instead of inline spinners",
+        "Icon-only buttons are NOT converted (left as-is)",
+        "manifest.json created with correct name, icons, theme_color",
+        "index.html links manifest.json and has apple-mobile-web-app meta tags"
+      ],
+      "startedAt": "2026-03-16T13:42:37.803Z",
+      "completedAt": "2026-03-16T14:00:38.964Z",
+      "reviewNotes": "Cannot review task-006 until task-005 is rebased and merged (they are on the same branch). Please rebase the entire branch onto main first: git rebase main. Resolve the TableView.tsx conflict from task-005, then resubmit both tasks.",
+      "reviewedAt": "2026-03-16T14:04:15.006Z"
+    }
+  ]
+}

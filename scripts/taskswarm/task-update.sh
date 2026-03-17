@@ -5,7 +5,7 @@ set -euo pipefail
 # Updates a task's status in tasks.json with optional timestamp/note fields.
 
 MAIN_REPO="$(cd "$(dirname "$0")/../.." && pwd)"
-TASKS_FILE="$MAIN_REPO/.ai/swarm/tasks.json"
+TASKS_FILE="$MAIN_REPO/.ai/taskswarm/tasks.json"
 
 if [ $# -lt 2 ]; then
   echo "Usage: task-update.sh <task-id> <status> [--startedAt] [--completedAt] [--reviewedAt] [--reviewNotes=\"msg\"]"

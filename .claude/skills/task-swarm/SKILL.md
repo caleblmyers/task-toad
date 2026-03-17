@@ -49,7 +49,7 @@ You are setting up a new swarm wave. Follow these steps precisely.
 
 6. **Spawn worktrees:**
    ```bash
-   bash scripts/swarm/spawn.sh 3
+   bash scripts/taskswarm/spawn.sh 3
    ```
 
 7. **Write tasks.json** with all planned tasks.
@@ -60,22 +60,22 @@ You are setting up a new swarm wave. Follow these steps precisely.
 
    ### Worker 1 (`cd ~/projects/task-toad-worker-1 && claude`)
    ```
-   Start working. Read your tasks from /home/caleb/projects/task-toad/.ai/swarm/tasks.json, find tasks assigned to you, and begin implementing them. Follow the workflow in your CLAUDE.md.
+   Start working. Read your tasks from /home/caleb/projects/task-toad/.ai/taskswarm/tasks.json, find tasks assigned to you, and begin implementing them. Follow the workflow in your CLAUDE.md.
    ```
 
    ### Worker 2 (`cd ~/projects/task-toad-worker-2 && claude`)
    ```
-   Start working. Read your tasks from /home/caleb/projects/task-toad/.ai/swarm/tasks.json, find tasks assigned to you, and begin implementing them. Follow the workflow in your CLAUDE.md.
+   Start working. Read your tasks from /home/caleb/projects/task-toad/.ai/taskswarm/tasks.json, find tasks assigned to you, and begin implementing them. Follow the workflow in your CLAUDE.md.
    ```
 
    ### Worker 3 (`cd ~/projects/task-toad-worker-3 && claude`)
    ```
-   Start working. Read your tasks from /home/caleb/projects/task-toad/.ai/swarm/tasks.json, find tasks assigned to you, and begin implementing them. Follow the workflow in your CLAUDE.md.
+   Start working. Read your tasks from /home/caleb/projects/task-toad/.ai/taskswarm/tasks.json, find tasks assigned to you, and begin implementing them. Follow the workflow in your CLAUDE.md.
    ```
 
    ### Reviewer (`cd ~/projects/task-toad-reviewer && claude`)
    ```
-   Start reviewing. Watch /home/caleb/projects/task-toad/.ai/swarm/tasks.json for completed tasks and review/merge them following your CLAUDE.md workflow. Loop until all tasks are merged.
+   Start reviewing. Watch /home/caleb/projects/task-toad/.ai/taskswarm/tasks.json for completed tasks and review/merge them following your CLAUDE.md workflow. Loop until all tasks are merged.
    ```
 
 9. **Show a summary table** of the wave plan:

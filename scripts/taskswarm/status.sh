@@ -2,7 +2,7 @@
 set -euo pipefail
 
 MAIN_REPO="$(cd "$(dirname "$0")/../.." && pwd)"
-TASKS_FILE="$MAIN_REPO/.ai/swarm/tasks.json"
+TASKS_FILE="$MAIN_REPO/.ai/taskswarm/tasks.json"
 
 if [ ! -f "$TASKS_FILE" ]; then
   echo "No active swarm (tasks.json not found)"

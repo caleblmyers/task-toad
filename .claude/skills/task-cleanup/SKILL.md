@@ -11,9 +11,9 @@ You are cleaning up after a completed swarm wave. Follow these steps precisely.
 
 ## 1. Verify Task Completion
 
-Read `.ai/swarm/tasks.json` and check all task statuses:
+Read `.ai/taskswarm/tasks.json` and check all task statuses:
 ```bash
-cat .ai/swarm/tasks.json | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); d.tasks.forEach(t => console.log(t.id, t.status.padEnd(12), t.assignee.padEnd(10), t.title.slice(0,65)))"
+cat .ai/taskswarm/tasks.json | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); d.tasks.forEach(t => console.log(t.id, t.status.padEnd(12), t.assignee.padEnd(10), t.title.slice(0,65)))"
 ```
 
 - If any tasks are NOT `merged`, report which ones and stop — the wave isn't done yet.
@@ -44,12 +44,12 @@ If ANY check fails:
 
 - Look for files that shouldn't exist (e.g., leftover `prisma/schema.prisma` alongside `prisma/schema/`)
 - Run `git status` to check for uncommitted changes from the reviewer
-- Check `.ai/swarm/issues.md` for any process issues logged by workers/reviewer — summarize them for the user
+- Check `.ai/taskswarm/issues.md` for any process issues logged by workers/reviewer — summarize them for the user
 
 ## 4. Tear Down Worktrees
 
 ```bash
-bash scripts/swarm/teardown.sh
+bash scripts/taskswarm/teardown.sh
 ```
 
 Verify cleanup:
@@ -72,7 +72,7 @@ Should only show the main worktree.
 
 Stage and commit the documentation updates:
 ```bash
-git add .claude-knowledge/todos.md .claude-knowledge/changelog.md .ai/swarm/issues.md
+git add .claude-knowledge/todos.md .claude-knowledge/changelog.md .ai/taskswarm/issues.md
 ```
 
 Use Conventional Commits format:
@@ -90,5 +90,5 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 Show the user:
 - Number of commits ahead of origin (`git log --oneline origin/main..HEAD`)
 - Summary of what was built in this wave
-- Any issues from `.ai/swarm/issues.md` that need attention
+- Any issues from `.ai/taskswarm/issues.md` that need attention
 - Confirmation: "Ready to `git push`"

@@ -4,13 +4,13 @@ set -euo pipefail
 MAIN_REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 PARENT_DIR="$(dirname "$MAIN_REPO")"
 REPO_NAME="$(basename "$MAIN_REPO")"
-TASKS_FILE="$MAIN_REPO/.ai/swarm/tasks.json"
+TASKS_FILE="$MAIN_REPO/.ai/taskswarm/tasks.json"
 
 echo "=== Tearing down swarm ==="
 
 # Archive tasks.json if it exists
 if [ -f "$TASKS_FILE" ]; then
-  ARCHIVE="$MAIN_REPO/.ai/swarm/tasks-$(date +%Y%m%d-%H%M%S).json"
+  ARCHIVE="$MAIN_REPO/.ai/taskswarm/tasks-$(date +%Y%m%d-%H%M%S).json"
   cp "$TASKS_FILE" "$ARCHIVE"
   rm "$TASKS_FILE"
   echo "Archived task queue to $ARCHIVE"

@@ -1,0 +1,197 @@
+{
+  "version": 1,
+  "created": "2026-03-16T14:46:37.517Z",
+  "swarmId": "swarm-20260316-104630",
+  "config": {
+    "mainRepo": "/home/caleb/projects/task-toad",
+    "workerCount": 3,
+    "groups": []
+  },
+  "tasks": [
+    {
+      "id": "task-001",
+      "title": "Recurring tasks — full vertical slice with recurrence scheduler",
+      "set": "W2",
+      "worker": "worker-1",
+      "status": "merged",
+      "commitType": "feat",
+      "commitScope": "api,web",
+      "description": "Add recurring task support — Prisma fields, GraphQL mutations, background scheduler, and frontend UI.\n\n**1. Prisma schema** (`apps/api/prisma/schema/task.prisma`):\nAdd to the Task model:\n```\nrecurrenceRule    String?   // cron expression e.g. \"0 9 * * 1\" (every Monday 9am)\nrecurrenceParentId String?  // FK to the original recurring task template\nrecurrenceLastCreated DateTime? // when the last instance was created\n```\nAdd relation: `recurrenceParent Task? @relation(\"RecurrenceChain\", fields: [recurrenceParentId], references: [taskId])` and `recurrenceChildren Task[] @relation(\"RecurrenceChain\")`. Add index on `[recurrenceRule]` for the scheduler query. Run `npx prisma migrate dev --name add_task_recurrence` to generate migration.\n\n**2. GraphQL schema** (`apps/api/src/graphql/typedefs/task.ts`):\nAdd `recurrenceRule: String`, `recurrenceParentId: ID` to the Task type. Add `recurrenceRule` as optional param to the `updateTask` mutation (set to empty string to clear). No separate mutation needed — recurrence is just a field on the task.\n\n**3. Resolver changes** (`apps/api/src/graphql/resolvers/task.ts`):\n- In `updateTask`, accept `recurrenceRule` param. Validate it with a simple cron regex: `/^(\\*|\\d+)(\\/(\\d+))?( (\\*|\\d+)(\\/(\\d+))?){4}$/` or use a small helper. Store it on the task. Log an activity entry when recurrence is set/cleared.\n- Add auto-review trigger: when status changes to `in_review` AND the task has linked PRs (`pullRequests` from GitHub), call `aiReviewCode` from `aiService.ts` in fire-and-forget mode. Import `reviewCode` from `../ai/aiService.js`. Get the API key from context org. Wrap in try/catch so failures don't block the status update. Store the review result on the task or log it.\n\n**4. Recurrence scheduler** (`apps/api/src/utils/recurrenceScheduler.ts`):\nCreate a new utility that runs on a 60-second `setInterval`:\n```typescript\nexport function startRecurrenceScheduler(prisma: PrismaClient): NodeJS.Timeout {\n  return setInterval(() => processRecurrence(prisma).catch(err => log.error({ err }, 'Recurrence processing failed')), 60_000);\n}\nexport function stopRecurrenceScheduler(timer: NodeJS.Timeout): void { clearInterval(timer); }\n```\n`processRecurrence` queries tasks where `recurrenceRule IS NOT NULL` and checks if the current time matches the cron expression. Use a simple cron-matching function (do NOT install an npm package — write a ~30 line helper that parses 5-field cron and checks against current time). When a match fires and `recurrenceLastCreated` is null or older than 23 hours ago (debounce), create a new task copying title, description, instructions, priority, projectId, sprintId, and set `recurrenceParentId` to the template task's ID. Update `recurrenceLastCreated` on the template.\n\n**5. Wire scheduler** (`apps/api/src/index.ts`):\nImport and call `startRecurrenceScheduler(prisma)` after the server starts (next to the existing `startRetryProcessor`). Call `stopRecurrenceScheduler` in the graceful shutdown handler.\n\n**6. Frontend** (`apps/web/src/components/TaskDetailPanel.tsx`):\nAdd a recurrence section below the due date field. Show a dropdown/select with common options: \"None\", \"Daily\", \"Weekly (Mon)\", \"Weekly (Fri)\", \"Biweekly\", \"Monthly\". Map selections to cron expressions. When changed, call `updateTask` with the new `recurrenceRule`. Show a small repeat icon (↻) badge next to the task title when `recurrenceRule` is set. Add `recurrenceRule` and `recurrenceParentId` to `TASK_FIELDS` in `apps/web/src/utils/taskHelpers.ts` and to the `Task` interface in `apps/web/src/types.ts`.",
+      "files": [
+        "apps/api/prisma/schema/task.prisma",
+        "apps/api/src/graphql/typedefs/task.ts",
+        "apps/api/src/graphql/resolvers/task.ts",
+        "apps/api/src/utils/recurrenceScheduler.ts",
+        "apps/api/src/index.ts",
+        "apps/web/src/components/TaskDetailPanel.tsx",
+        "apps/web/src/utils/taskHelpers.ts",
+        "apps/web/src/types.ts"
+      ],
+      "acceptanceCriteria": [
+        "Run npx prisma generate && pnpm typecheck passes",
+        "pnpm lint passes",
+        "Migration file included in commit",
+        "updateTask accepts recurrenceRule param and stores it",
+        "Recurrence scheduler runs on 60s interval and creates child tasks when cron matches",
+        "Scheduler is wired into index.ts startup and shutdown",
+        "TaskDetailPanel shows recurrence dropdown with common presets",
+        "TASK_FIELDS includes recurrenceRule and recurrenceParentId",
+        "Auto-review triggers on status change to in_review when task has linked PRs"
+      ],
+      "startedAt": "2026-03-16T14:50:30.212Z",
+      "completedAt": "2026-03-16T14:59:31.578Z",
+      "reviewedAt": "2026-03-16T15:01:29.764Z"
+    },
+    {
+      "id": "task-002",
+      "title": "File attachments on tasks — upload endpoint, Prisma model, UI",
+      "set": "W2",
+      "worker": "worker-1",
+      "status": "merged",
+      "commitType": "feat",
+      "commitScope": "api,web",
+      "description": "Add file attachment support for tasks — local storage with REST upload endpoint, GraphQL types, and TaskDetailPanel UI.\n\n**1. Install multer** — `pnpm --filter api add multer && pnpm --filter api add -D @types/multer`. This handles multipart/form-data file uploads.\n\n**2. Prisma model** (`apps/api/prisma/schema/task.prisma`):\nAdd a new model at the bottom of the file:\n```\nmodel Attachment {\n  attachmentId String   @id @default(uuid())\n  taskId       String\n  task         Task     @relation(fields: [taskId], references: [taskId], onDelete: Cascade)\n  fileName     String\n  fileKey      String   // path on disk or S3 key\n  mimeType     String\n  sizeBytes    Int\n  uploadedById String\n  uploadedBy   User     @relation(\"UserAttachments\", fields: [uploadedById], references: [userId])\n  createdAt    DateTime @default(now())\n  @@index([taskId])\n}\n```\nAdd reverse relation on Task: `attachments Attachment[]`. Add reverse relation on User in `apps/api/prisma/schema/auth.prisma`: `attachments Attachment[] @relation(\"UserAttachments\")`. Run `npx prisma migrate dev --name add_attachments`.\n\n**3. Upload REST endpoint** (`apps/api/src/routes/upload.ts`):\nCreate a new Express router following the export.ts pattern. Use multer with disk storage:\n```typescript\nconst uploadDir = path.resolve(process.cwd(), 'uploads');\nfs.mkdirSync(uploadDir, { recursive: true });\nconst storage = multer.diskStorage({\n  destination: uploadDir,\n  filename: (_req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),\n});\nconst upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB max\n```\n- `POST /api/uploads/:taskId` — authenticated, upload single file. After upload, create Attachment record in DB. Return the attachment JSON.\n- `DELETE /api/uploads/:attachmentId` — authenticated, verify user owns the attachment's org, delete file from disk and record from DB.\n- `GET /api/uploads/:attachmentId` — serve the file (use `res.sendFile`). Verify user has access to the task's project.\n- Add rate limiter: 10 uploads per minute per user.\n\n**4. Register route** (`apps/api/src/app.ts`):\nImport the upload router and register it: `app.use('/api/uploads', uploadRouter)`. Place it AFTER the auth rate limiter but BEFORE the GraphQL endpoint. The multer middleware must be registered before the express.json() body parser for multipart requests — OR register it only on the upload router (which is self-contained).\n\n**5. GraphQL types** (`apps/api/src/graphql/typedefs/task.ts`):\nAdd `type Attachment { attachmentId: ID!, taskId: ID!, fileName: String!, fileKey: String!, mimeType: String!, sizeBytes: Int!, uploadedById: ID!, createdAt: String! }`. Add `attachments: [Attachment!]!` to the Task type. Add `deleteAttachment(attachmentId: ID!): Boolean!` mutation. The upload itself is REST (multipart), not GraphQL.\n\n**6. Task resolver** (`apps/api/src/graphql/resolvers/task.ts`):\nAdd a field resolver for `Task.attachments` that loads from DB: `attachments: (parent) => prisma.attachment.findMany({ where: { taskId: parent.taskId } })`. Add `deleteAttachment` mutation that verifies org access and deletes the record + file.\n\n**7. Frontend** (`apps/web/src/components/TaskDetailPanel.tsx`):\nAdd an \"Attachments\" section below the description. Show a list of attached files with name, size, and a download link (`/api/uploads/${attachmentId}`). Add a file input button (\"Attach File\") that POSTs to `/api/uploads/${taskId}` with FormData. After successful upload, refresh the task data. Add a delete button (x) on each attachment. Add `attachments` to `TASK_FIELDS` in `taskHelpers.ts` and to the `Task` interface in `types.ts`.\n\nNote: This task shares TaskDetailPanel.tsx and taskHelpers.ts with task-001. Complete task-001 first, then build on those changes.",
+      "files": [
+        "apps/api/prisma/schema/task.prisma",
+        "apps/api/prisma/schema/auth.prisma",
+        "apps/api/src/routes/upload.ts",
+        "apps/api/src/app.ts",
+        "apps/api/src/graphql/typedefs/task.ts",
+        "apps/api/src/graphql/resolvers/task.ts",
+        "apps/api/package.json",
+        "apps/web/src/components/TaskDetailPanel.tsx",
+        "apps/web/src/utils/taskHelpers.ts",
+        "apps/web/src/types.ts"
+      ],
+      "acceptanceCriteria": [
+        "Run npx prisma generate && pnpm typecheck passes",
+        "Verify pnpm typecheck passes — add @types/multer or declare module in a .d.ts if needed",
+        "pnpm lint passes",
+        "Migration file included in commit",
+        "POST /api/uploads/:taskId accepts multipart file upload and creates Attachment record",
+        "GET /api/uploads/:attachmentId serves the file",
+        "DELETE /api/uploads/:attachmentId removes file and record",
+        "Upload limited to 10MB per file",
+        "TaskDetailPanel shows attachments list with upload button and delete",
+        "TASK_FIELDS includes attachments with all fields"
+      ],
+      "startedAt": "2026-03-16T15:05:07.979Z",
+      "completedAt": "2026-03-16T15:11:11.286Z",
+      "reviewedAt": "2026-03-16T15:14:45.831Z"
+    },
+    {
+      "id": "task-003",
+      "title": "Subtask-level code generation — iterate subtasks in CodePreviewModal",
+      "set": "W6",
+      "worker": "worker-2",
+      "status": "merged",
+      "commitType": "feat",
+      "commitScope": "api,web",
+      "description": "When a task has subtasks, generate code per-subtask instead of for the entire parent task. This keeps AI output within token limits and produces better-scoped code.\n\n**1. New GraphQL mutation** (`apps/api/src/graphql/typedefs/ai.ts`):\nAdd `generateCodeFromSubtask(taskId: ID!, subtaskId: ID!, styleGuide: String): CodeGeneration!`. This generates code for a single subtask, using the parent task's context (project, instructions) plus the subtask's specific title/description.\n\n**2. Resolver** (`apps/api/src/graphql/resolvers/ai.ts`):\nAdd a new resolver `generateCodeFromSubtask`. Implementation:\n- Load the subtask by `subtaskId`, verify it belongs to the parent `taskId`\n- Load the parent task for context (instructions, project)\n- Call `aiGenerateCode` with the subtask's title+description but the parent's instructions as additional context\n- Prompt modification: in the userPrompt, include \"This is a subtask of '{parentTitle}'. Parent instructions: {parentInstructions}. Generate code ONLY for this specific subtask: {subtaskTitle} — {subtaskDescription}\"\n\nAlternatively, reuse the existing `generateCodeFromTask` resolver but have it check for subtasks and call per-subtask. The cleaner approach is the new mutation since it gives the frontend explicit control.\n\n**3. Frontend — CodePreviewModal changes** (`apps/web/src/components/CodePreviewModal.tsx`):\nCurrently the modal receives pre-generated files. Modify the flow:\n- Add a new prop `subtasks?: Task[]` to CodePreviewModal\n- If subtasks are provided and non-empty, show a \"Generate by subtask\" mode:\n  - List each subtask with a \"Generate\" button next to it\n  - When clicked, call the new `generateCodeFromSubtask` mutation for that subtask\n  - Accumulate generated files across subtasks in local state\n  - Show all generated files together with a label indicating which subtask produced them\n  - \"Create PR\" sends all accumulated files at once\n- If no subtasks, fall back to current behavior (single-task generation)\n\n**4. Frontend — useAIGeneration hook** (`apps/web/src/hooks/useAIGeneration.ts`):\nAdd a new function `handleGenerateCodeFromSubtask(taskId: string, subtaskId: string)` that calls the new mutation. Add the GraphQL mutation string to `apps/web/src/api/queries.ts`:\n```graphql\nmutation GenerateCodeFromSubtask($taskId: ID!, $subtaskId: ID!, $styleGuide: String) {\n  generateCodeFromSubtask(taskId: $taskId, subtaskId: $subtaskId, styleGuide: $styleGuide) {\n    files { path content language description }\n    summary\n    estimatedTokensUsed\n    delegationHint\n  }\n}\n```\n\n**5. Wire subtasks into CodePreviewModal** (`apps/web/src/pages/ProjectDetail.tsx`):\nWhen opening CodePreviewModal, pass the selected task's subtasks (from `d.subtasks[task.taskId]`). The subtasks are already loaded when a task is selected via `selectTask()` in useTaskCRUD.",
+      "files": [
+        "apps/api/src/graphql/typedefs/ai.ts",
+        "apps/api/src/graphql/resolvers/ai.ts",
+        "apps/web/src/components/CodePreviewModal.tsx",
+        "apps/web/src/hooks/useAIGeneration.ts",
+        "apps/web/src/api/queries.ts",
+        "apps/web/src/pages/ProjectDetail.tsx"
+      ],
+      "acceptanceCriteria": [
+        "pnpm typecheck passes",
+        "pnpm lint passes",
+        "generateCodeFromSubtask mutation exists and generates code scoped to a single subtask",
+        "CodePreviewModal shows per-subtask generation UI when subtasks are available",
+        "Generated files from multiple subtasks accumulate and can be submitted as one PR",
+        "Falls back to single-task generation when no subtasks exist",
+        "New mutation query added to queries.ts"
+      ],
+      "startedAt": "2026-03-16T14:50:28.537Z",
+      "completedAt": "2026-03-16T14:56:00.771Z",
+      "reviewedAt": "2026-03-16T14:57:43.988Z"
+    },
+    {
+      "id": "task-004",
+      "title": "API docs operation descriptions from SDL comments",
+      "set": "W6",
+      "worker": "worker-2",
+      "status": "merged",
+      "commitType": "feat",
+      "commitScope": "api",
+      "description": "The API docs page at `/api/docs` lists all GraphQL operations but only shows their signature — no description of what each operation does. Extract descriptions from SDL comments and display them.\n\n**1. Add SDL descriptions** (`apps/api/src/graphql/typedefs/`):\nGraphQL supports `\"\"\"description\"\"\"` strings above field definitions. Add descriptions to key operations across the typedefs files. You don't need to add them to ALL operations — focus on the most important ones (15-20 operations). Examples:\n\nIn `typedefs/task.ts`:\n```graphql\n\"\"\"List tasks for a project. Returns paginated results with hasMore flag.\"\"\"\ntasks(projectId: ID!, parentTaskId: ID, limit: Int, offset: Int): TaskConnection!\n\n\"\"\"Create a new task in a project. Defaults to 'todo' status.\"\"\"\ncreateTask(projectId: ID!, title: String!, status: String, taskType: String): Task!\n```\n\nIn `typedefs/ai.ts`:\n```graphql\n\"\"\"Generate a task breakdown plan for a project using AI. Returns preview tasks for approval.\"\"\"\npreviewTaskPlan(projectId: ID!, context: String): [TaskPlanPreview!]!\n\n\"\"\"Generate implementation code for a task using AI. Requires task to have instructions.\"\"\"\ngenerateCodeFromTask(taskId: ID!, styleGuide: String): CodeGeneration!\n```\n\nAdd descriptions to: tasks, createTask, updateTask, bulkUpdateTasks, createProject, sprints, createSprint, comments, createComment, notifications, previewTaskPlan, commitTaskPlan, generateCodeFromTask, generateTaskInstructions, reviewPullRequest, signup, login, me, projects.\n\n**2. Parse descriptions in docs route** (`apps/api/src/routes/docs.ts`):\nThe `parseOperations` function (around line 31-38) currently extracts just operation names from the SDL text. Modify it to also capture the `\"\"\"description\"\"\"` triple-quote strings that precede each operation.\n\nUpdate the regex or parser to:\n- Look for `\"\"\"...\"\"\"` immediately before a field name in Query/Mutation blocks\n- Store description alongside the operation name\n- Return `Array<{ name: string; description?: string }>`\n\n**3. Render descriptions in HTML** (`apps/api/src/routes/docs.ts`):\nIn the HTML template where operations are listed, render the description below each operation name in a `<p class=\"text-gray-600 text-sm\">` tag. If no description exists, show nothing (backwards compatible).\n\n**4. Add descriptions to schema endpoints** (`apps/api/src/routes/docs.ts`):\nThe `/api/docs/schema.json` endpoint should include descriptions in its output. If the schema is built with graphql-yoga's `createSchema`, descriptions from SDL are automatically included in the introspection result — verify this works.",
+      "files": [
+        "apps/api/src/graphql/typedefs/task.ts",
+        "apps/api/src/graphql/typedefs/ai.ts",
+        "apps/api/src/graphql/typedefs/auth.ts",
+        "apps/api/src/graphql/typedefs/sprint.ts",
+        "apps/api/src/graphql/typedefs/comment.ts",
+        "apps/api/src/graphql/typedefs/notification.ts",
+        "apps/api/src/graphql/typedefs/project.ts",
+        "apps/api/src/routes/docs.ts"
+      ],
+      "acceptanceCriteria": [
+        "pnpm typecheck passes",
+        "pnpm lint passes",
+        "At least 15 operations have triple-quote SDL descriptions",
+        "GET /api/docs shows descriptions below operation signatures",
+        "Operations without descriptions render cleanly (no empty elements)",
+        "GraphiQL introspection shows the descriptions in its docs panel"
+      ],
+      "startedAt": "2026-03-16T14:56:10.323Z",
+      "completedAt": "2026-03-16T15:06:56.184Z",
+      "reviewNotes": "Merge conflicts in apps/api/src/graphql/typedefs/ai.ts and apps/api/src/graphql/typedefs/task.ts. Your branch still contains task-003 commits that have already been merged to main from a different squash. Please rebase onto main (git fetch origin && git rebase main) to resolve the conflicts, then mark as completed again.",
+      "reviewedAt": "2026-03-16T15:08:42.295Z"
+    },
+    {
+      "id": "task-005",
+      "title": "Project and notification integration tests",
+      "set": "Q1",
+      "worker": "worker-3",
+      "status": "merged",
+      "commitType": "test",
+      "commitScope": "api",
+      "description": "Extend integration test coverage to project and notification resolvers, following the existing patterns in `auth.integration.test.ts` and `task.integration.test.ts`.\n\n**1. Project integration tests** (`apps/api/src/__tests__/project.integration.test.ts`):\nFollow the existing test pattern — import from `setup.integration.ts`, use `setupTestDatabase()`/`cleanDatabase()`/`teardownTestDatabase()`.\n\n- **Setup:** Create a user + org in `beforeAll`. Build a context object using `makeContext()` pattern from task.integration.test.ts.\n- **createProject:** Import `projectMutations` from `apps/api/src/graphql/resolvers/project.ts`. Call `projectMutations.createProject({}, { name: 'Test Project' }, ctx)`. Verify project is created in DB with correct name, orgId. Test that non-admin users get AuthorizationError.\n- **updateProject:** Create a project, update its name and description. Verify DB reflects changes. Test updating `statuses` with valid JSON array. Test that invalid statuses JSON throws ValidationError.\n- **archiveProject:** Call `projectMutations.archiveProject({}, { projectId }, ctx)`. Verify `archived` flag is set. Test that archived projects still appear in queries when `includeArchived: true`.\n- **project query:** Call `projectQueries.project({}, { projectId }, ctx)`. Verify it returns the correct project. Test that querying another org's project throws NotFoundError.\n\nAt least 8 test cases.\n\n**2. Notification integration tests** (`apps/api/src/__tests__/notification.integration.test.ts`):\n- **Setup:** Create user + org + project + task in `beforeAll`. Create some test notifications using `prisma.notification.create()`.\n- **notifications query:** Verify returns notifications for the authenticated user. Test `unreadOnly: true` filter. Test `limit` parameter.\n- **unreadNotificationCount:** Create 3 unread + 2 read notifications. Verify count is 3.\n- **markNotificationRead:** Mark one notification as read. Verify `isRead` is true. Test marking another user's notification throws NotFoundError.\n- **markAllNotificationsRead:** Create 5 unread notifications. Call mutation. Verify all are now read. Verify return value is 5 (count).\n- **notificationPreferences:** Query default preferences. Verify 6 default notification types are returned. Update a preference (inApp: false). Verify it persists.\n\nAt least 7 test cases.\n\nImport resolvers from their respective files:\n```typescript\nimport { projectQueries, projectMutations } from '../graphql/resolvers/project.js';\nimport { notificationQueries, notificationMutations } from '../graphql/resolvers/notification.js';\n```\n\nUse `buildLoaders` from `apps/api/src/graphql/loaders.ts` to construct the context's `loaders` field.",
+      "files": [
+        "apps/api/src/__tests__/project.integration.test.ts",
+        "apps/api/src/__tests__/notification.integration.test.ts"
+      ],
+      "acceptanceCriteria": [
+        "pnpm typecheck passes",
+        "pnpm --filter api test passes (unit tests)",
+        "project.integration.test.ts has at least 8 test cases covering CRUD + auth + validation",
+        "notification.integration.test.ts has at least 7 test cases covering queries, mutations, preferences",
+        "Integration tests use existing setup.integration.ts helpers",
+        "Tests follow the makeContext() pattern from existing integration tests"
+      ],
+      "startedAt": "2026-03-16T14:50:28.655Z",
+      "completedAt": "2026-03-16T14:55:35.052Z",
+      "reviewedAt": "2026-03-16T14:56:39.375Z"
+    },
+    {
+      "id": "task-006",
+      "title": "AI service unit tests with mocked callAI + TypeScript strictness audit",
+      "set": "Q1",
+      "worker": "worker-3",
+      "status": "merged",
+      "commitType": "test",
+      "commitScope": "api,web",
+      "description": "Add unit tests for the AI service layer by mocking the callAI function, and audit remaining TypeScript strictness issues.\n\n**1. AI service unit tests** (`apps/api/src/ai/__tests__/aiService.test.ts`):\nThe AI service functions (generateTaskPlan, generateProjectOptions, expandTask, etc.) all go through `callAndParse` which calls `callAI`. Mock `callAI` to return predetermined responses.\n\nUse `vi.mock` to mock the `aiClient.js` module:\n```typescript\nvi.mock('../aiClient.js', () => ({\n  callAI: vi.fn(),\n}));\nimport { callAI } from '../aiClient.js';\nconst mockCallAI = vi.mocked(callAI);\n```\n\nAlso mock Sentry to prevent errors:\n```typescript\nvi.mock('@sentry/node', () => ({ captureException: vi.fn() }));\n```\n\nTest cases:\n- **generateProjectOptions:** Mock callAI to return `{ raw: '[{\"title\":\"Option 1\",\"description\":\"Desc 1\"},{\"title\":\"Option 2\",\"description\":\"Desc 2\"},{\"title\":\"Option 3\",\"description\":\"Desc 3\"}]', usage: { inputTokens: 100, outputTokens: 200, stopReason: 'end_turn' }, cached: false }`. Verify it returns 3 options. Verify it throws when callAI returns empty array.\n- **generateTaskPlan:** Mock callAI to return a valid JSON array of 3 tasks matching TaskPlanSchema (title, description, instructions, suggestedTools, estimatedHours, priority, dependsOn, subtasks, acceptanceCriteria). Verify the parsed result matches. Verify it throws on empty array.\n- **expandTask:** Similar to generateTaskPlan — mock a valid subtask array response.\n- **summarizeProject:** This calls callAI directly (not callAndParse). Mock callAI to return `{ raw: 'Project summary text', ... }`. Verify it returns the raw string.\n- **isArraySchema helper:** Test directly — `z.array(z.string())` returns true, `z.object({})` returns false, `z.array(z.string()).transform(x => x)` returns true (ZodPipe unwrapping).\n- **Validation failure + retry:** Mock callAI to return invalid JSON first call, valid JSON second call. Set `retryOnValidationFailure: true` in config. Verify the function succeeds on retry.\n\nAt least 10 test cases.\n\n**2. TypeScript strictness** (`apps/web/src/utils/taskHelpers.ts`):\nThe `suggestedTools` field is stored as a JSON string in the DB. Add Zod validation when parsing it in the frontend. In `taskHelpers.ts`, add:\n```typescript\nimport { z } from 'zod';\n\nconst SuggestedToolSchema = z.array(z.object({\n  name: z.string(),\n  category: z.string(),\n  reason: z.string(),\n}));\n\nexport function parseSuggestedTools(raw: string | null | undefined): Array<{ name: string; category: string; reason: string }> {\n  if (!raw) return [];\n  try {\n    const result = SuggestedToolSchema.safeParse(JSON.parse(raw));\n    return result.success ? result.data : [];\n  } catch {\n    return [];\n  }\n}\n```\nNote: zod is already a dependency of the API package but may not be installed in the web package. Check `apps/web/package.json` — if zod is not there, install it: `pnpm --filter web add zod`. Alternatively, just use a simple runtime type check without Zod to avoid adding the dependency to the frontend.\n\nAlso add a `parseDependsOnTyped` function that returns typed string[] with validation (the existing `parseDependsOn` already does this but without explicit Zod — just verify the existing implementation is safe).",
+      "files": [
+        "apps/api/src/ai/__tests__/aiService.test.ts",
+        "apps/web/src/utils/taskHelpers.ts"
+      ],
+      "acceptanceCriteria": [
+        "pnpm typecheck passes",
+        "pnpm --filter api test passes with all new AI service tests green",
+        "At least 10 test cases in aiService.test.ts",
+        "callAI is properly mocked — no real API calls",
+        "isArraySchema helper is tested for array, object, and transformed schemas",
+        "Retry-on-validation-failure path is tested",
+        "parseSuggestedTools function added to taskHelpers.ts with runtime validation",
+        "No new npm packages added to the web app (use runtime checks, not Zod in frontend)"
+      ],
+      "startedAt": "2026-03-16T14:55:41.044Z",
+      "completedAt": "2026-03-16T14:57:53.565Z",
+      "reviewedAt": "2026-03-16T15:00:02.224Z"
+    }
+  ]
+}

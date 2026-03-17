@@ -17,13 +17,13 @@ The user should specify which worker (e.g., `/task-assign worker-2` or just ment
 
 ### 1. Check Current State
 
-Read `.ai/swarm/tasks.json` to understand:
+Read `.ai/taskswarm/tasks.json` to understand:
 - Which worker is free (all their tasks are `merged`)
 - Which workers are still active (`in_progress` or `completed` tasks)
 - What files are currently being touched by active workers
 
 ```bash
-cat .ai/swarm/tasks.json | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); d.tasks.forEach(t => console.log(t.id, t.status.padEnd(12), t.assignee.padEnd(10), t.title.slice(0,65)))"
+cat .ai/taskswarm/tasks.json | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); d.tasks.forEach(t => console.log(t.id, t.status.padEnd(12), t.assignee.padEnd(10), t.title.slice(0,65)))"
 ```
 
 ### 2. Identify File Conflicts
@@ -59,7 +59,7 @@ Use node to append tasks to the existing tasks.json WITHOUT modifying existing t
 ```bash
 node -e "
 const fs = require('fs');
-const f = '.ai/swarm/tasks.json';
+const f = '.ai/taskswarm/tasks.json';
 const d = JSON.parse(fs.readFileSync(f, 'utf8'));
 // Add new group if not present
 if (!d.config.groups.includes('NEW_GROUP')) d.config.groups.push('NEW_GROUP');

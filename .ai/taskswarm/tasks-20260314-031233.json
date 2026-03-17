@@ -1,0 +1,238 @@
+{
+  "version": 1,
+  "created": "2026-03-14T06:42:42.189Z",
+  "swarmId": "swarm-20260314-024235",
+  "config": {
+    "mainRepo": "/home/caleb/projects/task-toad",
+    "workerCount": 3,
+    "groups": [
+      "S2",
+      "I2",
+      "I4"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "task-001",
+      "group": "S2",
+      "title": "Add AI usage tracking model and persistence",
+      "description": "Create a database model to persist AI usage data and add budget fields to the Org model.\n\n**1. Prisma schema (`apps/api/prisma/schema.prisma`):**\n\nAdd new `AIUsageLog` model:\n```prisma\nmodel AIUsageLog {\n  id             String   @id @default(uuid())\n  orgId          String   @map(\"org_id\")\n  userId         String   @map(\"user_id\")\n  feature        String\n  model          String\n  inputTokens    Int      @map(\"input_tokens\")\n  outputTokens   Int      @map(\"output_tokens\")\n  costUSD        Float    @map(\"cost_usd\")\n  latencyMs      Int      @map(\"latency_ms\")\n  cached         Boolean  @default(false)\n  createdAt      DateTime @default(now()) @map(\"created_at\")\n\n  org  Org  @relation(fields: [orgId], references: [orgId])\n  user User @relation(fields: [userId], references: [userId])\n\n  @@index([orgId, createdAt])\n  @@index([userId, createdAt])\n  @@map(\"ai_usage_logs\")\n}\n```\n\nAdd budget fields to `Org` model:\n```prisma\n  monthlyBudgetCentsUSD  Int?     @map(\"monthly_budget_cents_usd\")\n  budgetAlertThreshold   Int      @default(80) @map(\"budget_alert_threshold\")\n```\n\nAdd relations:\n- `Org`: `aiUsageLogs AIUsageLog[]`\n- `User`: `aiUsageLogs AIUsageLog[]`\n\n**2. Migration:**\nCreate migration SQL:\n```sql\nCREATE TABLE \"ai_usage_logs\" (\n  \"id\" TEXT NOT NULL,\n  \"org_id\" TEXT NOT NULL,\n  \"user_id\" TEXT NOT NULL,\n  \"feature\" TEXT NOT NULL,\n  \"model\" TEXT NOT NULL,\n  \"input_tokens\" INTEGER NOT NULL,\n  \"output_tokens\" INTEGER NOT NULL,\n  \"cost_usd\" DOUBLE PRECISION NOT NULL,\n  \"latency_ms\" INTEGER NOT NULL,\n  \"cached\" BOOLEAN NOT NULL DEFAULT false,\n  \"created_at\" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  CONSTRAINT \"ai_usage_logs_pkey\" PRIMARY KEY (\"id\"),\n  CONSTRAINT \"ai_usage_logs_org_id_fkey\" FOREIGN KEY (\"org_id\") REFERENCES \"orgs\"(\"org_id\") ON DELETE CASCADE,\n  CONSTRAINT \"ai_usage_logs_user_id_fkey\" FOREIGN KEY (\"user_id\") REFERENCES \"users\"(\"user_id\") ON DELETE CASCADE\n);\nCREATE INDEX \"ai_usage_logs_org_id_created_at_idx\" ON \"ai_usage_logs\"(\"org_id\", \"created_at\");\nCREATE INDEX \"ai_usage_logs_user_id_created_at_idx\" ON \"ai_usage_logs\"(\"user_id\", \"created_at\");\nALTER TABLE \"orgs\" ADD COLUMN \"monthly_budget_cents_usd\" INTEGER;\nALTER TABLE \"orgs\" ADD COLUMN \"budget_alert_threshold\" INTEGER NOT NULL DEFAULT 80;\n```\n\n**3. GraphQL typeDefs (`apps/api/src/graphql/schema.ts`):**\n\nAdd types:\n```graphql\ntype AIUsageLog {\n  id: ID!\n  feature: String!\n  model: String!\n  inputTokens: Int!\n  outputTokens: Int!\n  costUSD: Float!\n  latencyMs: Int!\n  cached: Boolean!\n  createdAt: String!\n}\n\ntype AIUsageSummary {\n  totalCostUSD: Float!\n  totalInputTokens: Int!\n  totalOutputTokens: Int!\n  totalCalls: Int!\n  byFeature: [AIFeatureUsage!]!\n  budgetUsedPercent: Float\n  budgetLimitCentsUSD: Int\n}\n\ntype AIFeatureUsage {\n  feature: String!\n  calls: Int!\n  costUSD: Float!\n  avgLatencyMs: Int!\n}\n```\n\nAdd queries:\n```graphql\naiUsage(days: Int): AIUsageSummary!\n```\n\nAdd mutations:\n```graphql\nsetAIBudget(monthlyBudgetCentsUSD: Int, alertThreshold: Int): Org!\n```\n\nAdd `monthlyBudgetCentsUSD: Int` and `budgetAlertThreshold: Int!` to Org type.\n\n**4. AI resolver (`apps/api/src/graphql/resolvers/ai.ts`):**\n\nAdd `aiUsage` query:\n- Accept `days` arg (default 30)\n- Query `AIUsageLog` for the org within date range\n- Aggregate: total cost, tokens, calls, group by feature\n- Get org budget, calculate budgetUsedPercent\n\nAdd `setAIBudget` mutation:\n- Accept `monthlyBudgetCentsUSD` (null to remove), `alertThreshold` (1-100)\n- Update Org record\n- Return updated Org\n\n**5. Update AI client (`apps/api/src/ai/aiClient.ts`):**\n\nThe `callAI` function needs to persist usage after each call. Add a `persistUsage` option:\n- Add optional `orgId` and `userId` to `CallAIParams`\n- After successful AI call, create `AIUsageLog` record\n- Before calling AI, check budget: query current month's total cost, compare to budget. If over budget, throw `RateLimitError('AI budget exceeded')`\n- Import PrismaClient for the persistence (or pass prisma instance via params)\n\nActually, to keep `callAI` clean, create a wrapper in a new file `apps/api/src/ai/aiUsageTracker.ts`:\n```typescript\nexport async function trackAndCheckBudget(\n  prisma: PrismaClient,\n  orgId: string,\n  userId: string,\n  feature: AIFeature,\n  callFn: () => Promise<CallAIResult>\n): Promise<CallAIResult> {\n  // Check budget before calling\n  // Call the AI function\n  // Persist usage log after\n  // Return result\n}\n```\n\nThen update each resolver to wrap their `callAndParse` / `callAI` calls with this tracker. However, since this is complex, for this task just:\n1. Create the model and migration\n2. Add the GraphQL types and resolvers for querying/setting budget\n3. Add a simple `logUsageToDB` function that resolvers can call after AI operations\n4. Add budget checking in the `requireApiKey` helper or as a separate `checkBudget` call\n\n**Verification:** `pnpm --filter api typecheck` passes.",
+      "files": [
+        "apps/api/prisma/schema.prisma",
+        "apps/api/src/graphql/schema.ts",
+        "apps/api/src/graphql/resolvers/ai.ts",
+        "apps/api/src/ai/aiUsageTracker.ts",
+        "apps/api/src/ai/index.ts"
+      ],
+      "acceptanceCriteria": [
+        "AIUsageLog model created in Prisma schema with indexes",
+        "Org model has monthlyBudgetCentsUSD and budgetAlertThreshold fields",
+        "Migration SQL created and valid",
+        "aiUsage query returns usage summary with per-feature breakdown",
+        "setAIBudget mutation updates org budget settings",
+        "aiUsageTracker.ts exports logUsageToDB and checkBudget functions",
+        "pnpm --filter api typecheck passes"
+      ],
+      "dependsOn": [],
+      "assignee": "worker-1",
+      "status": "merged",
+      "startedAt": "2026-03-14T06:48:25.491Z",
+      "completedAt": "2026-03-14T06:53:15.574Z",
+      "reviewedAt": "2026-03-14T07:02:30.989Z"
+    },
+    {
+      "id": "task-002",
+      "group": "S2",
+      "title": "Add persisted reports model and save/query endpoints",
+      "description": "Create a model to persist AI-generated reports (standup, sprint, health) for historical analysis.\n\n**1. Prisma schema (`apps/api/prisma/schema.prisma`):**\n\nAdd `Report` model:\n```prisma\nmodel Report {\n  id         String   @id @default(uuid())\n  orgId      String   @map(\"org_id\")\n  projectId  String   @map(\"project_id\")\n  sprintId   String?  @map(\"sprint_id\")\n  type       String\n  title      String\n  data       String\n  createdBy  String   @map(\"created_by\")\n  createdAt  DateTime @default(now()) @map(\"created_at\")\n\n  org     Org     @relation(fields: [orgId], references: [orgId])\n  project Project @relation(fields: [projectId], references: [projectId])\n  user    User    @relation(fields: [createdBy], references: [userId])\n\n  @@index([projectId, type, createdAt])\n  @@index([orgId, createdAt])\n  @@map(\"reports\")\n}\n```\n- `type`: 'standup', 'sprint', 'health'\n- `data`: JSON string containing the report payload (matches existing StandupReport/SprintReport/HealthAnalysis schemas)\n\nAdd relations: Org.reports, Project.reports, User.reports\n\n**2. Migration SQL.**\n\n**3. GraphQL typeDefs (`apps/api/src/graphql/schema.ts`):**\n```graphql\ntype Report {\n  id: ID!\n  type: String!\n  title: String!\n  data: String!\n  projectId: ID!\n  sprintId: ID\n  createdBy: ID!\n  createdAt: String!\n}\n\nreports(projectId: ID!, type: String, limit: Int): [Report!]!\nsaveReport(projectId: ID!, type: String!, title: String!, data: String!, sprintId: ID): Report!\ndeleteReport(reportId: ID!): Boolean!\n```\n\n**4. AI resolver (`apps/api/src/graphql/resolvers/ai.ts`):**\n\nAdd `reports` query: filter by projectId, optional type, default limit 20, ordered by createdAt desc.\n\nAdd `saveReport` mutation: creates Report record. Validate project belongs to user's org.\n\nAdd `deleteReport` mutation: validates report belongs to user's org.\n\n**5. Update existing report generators** (standup, sprint, health resolvers):\n- After generating a report, auto-save it by calling `saveReport` internally\n- Add `{ saved: true, reportId }` to the response or just auto-save silently\n- For this task, just add the model and endpoints. Auto-save can be wired later.\n\n**Verification:** `pnpm --filter api typecheck` passes.",
+      "files": [
+        "apps/api/prisma/schema.prisma",
+        "apps/api/src/graphql/schema.ts",
+        "apps/api/src/graphql/resolvers/ai.ts"
+      ],
+      "acceptanceCriteria": [
+        "Report model created with type, data (JSON string), project/sprint/org relations",
+        "Migration SQL created",
+        "reports query returns filtered, paginated reports",
+        "saveReport mutation persists report data",
+        "deleteReport mutation removes report",
+        "pnpm --filter api typecheck passes"
+      ],
+      "dependsOn": [],
+      "assignee": "worker-1",
+      "status": "merged",
+      "startedAt": "2026-03-14T06:53:19.458Z",
+      "completedAt": "2026-03-14T06:54:35.753Z",
+      "reviewedAt": "2026-03-14T07:02:31.004Z"
+    },
+    {
+      "id": "task-003",
+      "group": "S2",
+      "title": "Add AI usage dashboard frontend",
+      "description": "Create a frontend dashboard showing AI usage metrics and budget controls.\n\n**1. Create `apps/web/src/components/AIUsageDashboard.tsx`:**\n\n- Fetch data via `aiUsage(days: 30)` query\n- Show summary cards at top:\n  - Total cost this month (large number, colored by budget usage)\n  - Total API calls\n  - Total tokens (input + output)\n  - Budget remaining (if budget set)\n- Budget usage bar: colored progress bar (green < 50%, amber < 80%, red >= 80%)\n- Per-feature breakdown table:\n  - Columns: Feature, Calls, Cost, Avg Latency\n  - Rows from `byFeature` data\n  - Sort by cost descending\n- Time range selector: 7d, 30d, 90d (changes `days` query param)\n\n**2. Create budget settings section (in same component or separate):**\n- Monthly budget input (in USD, converted to cents for API)\n- Alert threshold slider (default 80%)\n- Save button calls `setAIBudget` mutation\n- Show current settings from org data\n\n**3. Wire into OrgSettings (`apps/web/src/pages/OrgSettings.tsx`):**\n- Add 'AI Usage' section below the API key section\n- Import and render AIUsageDashboard\n- Pass org data for budget display\n\n**4. Types (`apps/web/src/types.ts`):**\n- Add `AIUsageSummary`, `AIFeatureUsage` types matching GraphQL schema\n- Add `monthlyBudgetCentsUSD` and `budgetAlertThreshold` to Org type\n\n**Verification:** `pnpm --filter web typecheck` passes.",
+      "files": [
+        "apps/web/src/components/AIUsageDashboard.tsx",
+        "apps/web/src/pages/OrgSettings.tsx",
+        "apps/web/src/types.ts"
+      ],
+      "acceptanceCriteria": [
+        "Dashboard shows total cost, calls, tokens, budget usage",
+        "Per-feature breakdown table with cost and latency",
+        "Budget progress bar colored by usage level",
+        "Budget settings with save functionality",
+        "Time range selector (7d, 30d, 90d)",
+        "Integrated into OrgSettings page",
+        "pnpm --filter web typecheck passes"
+      ],
+      "dependsOn": [
+        "task-001",
+        "task-002"
+      ],
+      "assignee": "worker-1",
+      "status": "merged",
+      "startedAt": "2026-03-14T07:06:16.335Z",
+      "completedAt": "2026-03-14T07:07:34.794Z",
+      "reviewedAt": "2026-03-14T07:09:15.677Z"
+    },
+    {
+      "id": "task-004",
+      "group": "I2",
+      "title": "Add regenerate single file in code preview modal",
+      "description": "Allow users to regenerate individual files in the code preview instead of regenerating the entire set.\n\n**1. Update `apps/api/src/graphql/resolvers/ai.ts`:**\n\nAdd a new mutation `regenerateCodeFile` to `aiMutations`:\n```typescript\nregenerateCodeFile: async (_parent, args: { taskId: string; filePath: string; feedback?: string }, context) => {\n  // Validate task exists, has instructions, belongs to user's org\n  // Build a focused prompt: regenerate ONLY the file at filePath\n  // Include the original task context + optional feedback\n  // Call AI with lower maxTokens (4096 instead of 8192 — single file)\n  // Return single GeneratedFile (not full CodeGeneration)\n}\n```\n\n**2. Update `apps/api/src/graphql/schema.ts`:**\nAdd mutation:\n```graphql\nregenerateCodeFile(taskId: ID!, filePath: String!, feedback: String): GeneratedFile!\n```\n\n**3. Update prompt builder (`apps/api/src/ai/promptBuilder.ts`):**\nAdd `buildRegenerateFilePrompt(data)` function:\n- Input: `{ taskTitle, taskDescription, taskInstructions, filePath, originalContent, feedback?, projectName }`\n- Prompt: 'Regenerate ONLY the file at {filePath} for this task. Original content provided for reference. {feedback if provided}. Return JSON: { path, content, language, description }'\n- Use `SYSTEM_JSON`, `userInput()` tags\n- Truncate originalContent to 2000 chars to save tokens\n\n**4. Update AI service (`apps/api/src/ai/aiService.ts`):**\nAdd `regenerateFile` function that calls `callAndParse` with `GeneratedFileSchema`.\nAdd `'regenerateFile'` to AIFeature union in `aiTypes.ts`.\nAdd feature config: `{ maxTokens: 4096, cacheTTLMs: 0, retryOnValidationFailure: true }`.\nExport from `ai/index.ts`.\n\n**5. Update `apps/web/src/components/CodePreviewModal.tsx`:**\n- Add a small 'Regenerate' button on each file's header bar (next to the expand/collapse chevron)\n- Optional: show a small text input for feedback when regenerate is clicked ('What should change?')\n- On click: call `regenerateCodeFile` mutation with taskId, filePath, optional feedback\n- Replace the file in the `files` array with the new result\n- Show loading spinner on just that file while regenerating\n\n**6. Update `apps/web/src/hooks/useProjectData.ts`:**\nAdd `handleRegenerateFile(taskId, filePath, feedback?)` function:\n- Calls the `regenerateCodeFile` mutation\n- Updates `generatedCode.files` array, replacing the matching file\n- Export from hook\n\n**Verification:** `pnpm typecheck` passes for both packages.",
+      "files": [
+        "apps/api/src/graphql/schema.ts",
+        "apps/api/src/graphql/resolvers/ai.ts",
+        "apps/api/src/ai/promptBuilder.ts",
+        "apps/api/src/ai/aiService.ts",
+        "apps/api/src/ai/aiTypes.ts",
+        "apps/api/src/ai/aiConfig.ts",
+        "apps/api/src/ai/index.ts",
+        "apps/web/src/components/CodePreviewModal.tsx",
+        "apps/web/src/hooks/useProjectData.ts"
+      ],
+      "acceptanceCriteria": [
+        "regenerateCodeFile mutation exists in GraphQL schema",
+        "Prompt builder focuses on single file with optional feedback",
+        "Uses 4096 maxTokens (half of full code gen)",
+        "CodePreviewModal shows regenerate button per file",
+        "Regenerating one file doesn't affect others in the list",
+        "Loading state shown only on the file being regenerated",
+        "pnpm typecheck passes for both packages"
+      ],
+      "dependsOn": [],
+      "assignee": "worker-2",
+      "status": "merged",
+      "startedAt": "2026-03-14T06:48:37.223Z",
+      "completedAt": "2026-03-14T06:52:36.233Z",
+      "reviewedAt": "2026-03-14T06:59:38.779Z"
+    },
+    {
+      "id": "task-005",
+      "group": "I2",
+      "title": "Add code gen templates / style guide injection",
+      "description": "Allow per-project style guides to be injected into code generation prompts for consistent output.\n\n**1. Update prompt builder (`apps/api/src/ai/promptBuilder.ts`):**\n- Add optional `styleGuide?: string` parameter to `buildGenerateCodePrompt`\n- If provided, add a section to the prompt: 'Follow these project coding conventions:\\n<user_input label=\"style_guide\">{styleGuide}</user_input>'\n- Place before the output format instructions\n- Truncate to 1000 chars\n- Also add `styleGuide` parameter to `buildRegenerateFilePrompt` (from task-004 if merged, otherwise the existing prompt)\n\n**2. Update AI service (`apps/api/src/ai/aiService.ts`):**\n- Add `styleGuide?: string` parameter to `generateCode` function\n- Pass through to prompt builder\n\n**3. Frontend — project-level style guide storage:**\nSince we don't want schema changes (this is an independent set), store the style guide in `localStorage` keyed by projectId:\n- Key: `tasktoad-style-guide-{projectId}`\n- Value: plain text string\n\n**4. Update `apps/web/src/components/CodePreviewModal.tsx`:**\n- Add a collapsible 'Style Guide' section at the bottom of the modal (or as a settings icon)\n- Textarea where user can type/paste coding conventions\n- Auto-save to localStorage on blur\n- Load from localStorage on modal open\n- Display a small indicator if a style guide is active ('Style guide active' badge)\n\n**5. Update `apps/web/src/hooks/useProjectData.ts`:**\n- In `handleGenerateCode`, read the style guide from localStorage\n- Pass it as a variable to the `generateCodeFromTask` mutation... but wait, the mutation doesn't accept styleGuide yet.\n\nActually, the cleanest approach without schema changes: read the style guide in the AI resolver from the project's description or a convention. But that requires schema changes.\n\n**Alternative approach (no schema changes):** Pass the style guide as part of the task's instructions field. When the user sets a style guide in the modal, prepend it to the instructions before calling generateCodeFromTask. This way the resolver doesn't need changes.\n\nImplement this way:\n- In `handleGenerateCode`, if localStorage has a style guide for this project:\n  - Include it in the mutation by modifying the task instructions client-side? No, that would update the task.\n  - Better: add `styleGuide` as an optional parameter to the `generateCodeFromTask` mutation and resolver. This touches `schema.ts` which is a schema file...\n\nSince this is I2 (independent), and adding a parameter to an existing mutation is a minor schema.ts change that's unlikely to conflict: add `styleGuide: String` optional parameter to `generateCodeFromTask` mutation in schema.ts. Pass it through the resolver to the AI service to the prompt builder.\n\n**6. Update `apps/api/src/graphql/schema.ts`:**\nChange: `generateCodeFromTask(taskId: ID!): CodeGeneration!`\nTo: `generateCodeFromTask(taskId: ID!, styleGuide: String): CodeGeneration!`\n\n**7. Update `apps/api/src/graphql/resolvers/ai.ts`:**\nAccept `args.styleGuide`, pass to `aiGenerateCode()`.\n\n**Verification:** `pnpm typecheck` passes for both packages.",
+      "files": [
+        "apps/api/src/ai/promptBuilder.ts",
+        "apps/api/src/ai/aiService.ts",
+        "apps/api/src/graphql/schema.ts",
+        "apps/api/src/graphql/resolvers/ai.ts",
+        "apps/web/src/components/CodePreviewModal.tsx",
+        "apps/web/src/hooks/useProjectData.ts"
+      ],
+      "acceptanceCriteria": [
+        "generateCodeFromTask accepts optional styleGuide parameter",
+        "Style guide injected into code gen prompt with userInput() tags",
+        "CodePreviewModal has style guide textarea with localStorage persistence",
+        "Style guide indicator shown when active",
+        "Style guide passed through from frontend to AI prompt",
+        "pnpm typecheck passes for both packages"
+      ],
+      "dependsOn": [
+        "task-004"
+      ],
+      "assignee": "worker-2",
+      "status": "merged",
+      "startedAt": "2026-03-14T07:01:49.923Z",
+      "completedAt": "2026-03-14T07:06:27.274Z",
+      "reviewedAt": "2026-03-14T07:10:24.872Z"
+    },
+    {
+      "id": "task-006",
+      "group": "I4",
+      "title": "Add burndown/burnup chart component",
+      "description": "Create a visual burndown/burnup chart for sprints using the existing `sprintBurndown` query.\n\nThe query returns `SprintBurndownData` with:\n- `days: [{ date, remaining, completed, added }]`\n- `totalScope`, `sprintName`, `startDate`, `endDate`\n\n**1. Create `apps/web/src/components/BurndownChart.tsx`:**\n\nProps:\n```typescript\ninterface BurndownChartProps {\n  sprintId: string;\n}\n```\n\n- On mount, fetch: `query($sprintId: ID!) { sprintBurndown(sprintId: $sprintId) { days { date remaining completed added } totalScope sprintName startDate endDate } }`\n- Render SVG chart (no external library):\n  - Dimensions: 100% width, ~250px height, with padding for axes\n  - X axis: dates from startDate to endDate, labeled every few days\n  - Y axis: 0 to totalScope\n  - **Ideal line:** straight diagonal from (startDate, totalScope) to (endDate, 0), dashed slate-300\n  - **Actual line:** polyline connecting (date, remaining) points, solid blue-500, 2px stroke\n  - Dots on actual line data points\n- Toggle button: 'Burndown' / 'Burnup'\n  - Burndown: shows remaining (going down)\n  - Burnup: shows completed (going up), ideal line goes from 0 to totalScope\n- Hover: show tooltip with date + value on data points\n- Loading: skeleton rectangle\n- Error: 'Unable to load chart' with retry button\n- No data: 'No burndown data available' (sprint has no dates)\n\n**2. Wire into BacklogView (`apps/web/src/components/BacklogView.tsx`):**\n- Add a small chart icon button in each sprint header (next to sprint name/actions)\n- Only show for sprints with `startDate` and `endDate`\n- On click, toggle a collapsible section below the sprint header showing BurndownChart\n- State: `expandedBurndown: string | null` (sprintId or null)\n\n**Verification:** `pnpm --filter web typecheck` passes.",
+      "files": [
+        "apps/web/src/components/BurndownChart.tsx",
+        "apps/web/src/components/BacklogView.tsx"
+      ],
+      "acceptanceCriteria": [
+        "BurndownChart fetches data from existing sprintBurndown query",
+        "SVG chart renders ideal vs actual lines",
+        "Burndown/burnup toggle works",
+        "Accessible from sprint header in BacklogView",
+        "Only shown for sprints with dates",
+        "Loading, error, and empty states handled",
+        "pnpm --filter web typecheck passes"
+      ],
+      "dependsOn": [],
+      "assignee": "worker-3",
+      "status": "merged",
+      "startedAt": "2026-03-14T06:48:23.858Z",
+      "completedAt": "2026-03-14T06:52:42.078Z",
+      "reviewedAt": "2026-03-14T07:03:25.763Z"
+    },
+    {
+      "id": "task-007",
+      "group": "I4",
+      "title": "Add task dependency visualization badges",
+      "description": "Show visual dependency indicators using the existing `Task.dependsOn` field (JSON string of task IDs).\n\n**1. Create `apps/web/src/components/shared/DependencyBadge.tsx`:**\n\n```typescript\ninterface DependencyBadgeProps {\n  task: Task;\n  allTasks: Task[];\n  onTaskClick?: (taskId: string) => void;\n}\n```\n\n- Parse `task.dependsOn` — it's a JSON string containing an array of task IDs, or null\n- Look up each dep ID in `allTasks` array\n- If any dep has status !== 'done': show amber badge 'Blocked ({count})' with amber bg\n- If all deps done: show nothing (or subtle green checkmark if desired)\n- If no deps: render nothing\n- On hover: show a tooltip/popover listing each dependency:\n  - Task title (truncated to 40 chars)\n  - Status badge (colored dot: green=done, blue=in_progress, amber=in_review, slate=todo)\n  - Click on a dep title calls `onTaskClick(depTaskId)` to navigate to that task\n- Use a simple CSS tooltip (no library) — position absolute, z-50\n\n**2. Integrate into BacklogView (`apps/web/src/components/BacklogView.tsx`):**\n- Import DependencyBadge\n- In task rows, find where the existing dependency count is shown and replace with DependencyBadge\n- Pass `allTasks` from the loaded tasks array, pass `onTaskClick` to select the dep task\n\n**3. Integrate into KanbanBoard (`apps/web/src/components/KanbanBoard.tsx`):**\n- Import DependencyBadge\n- Show on task cards below the title/description area\n- If task is blocked, add `opacity-75` to the card to visually indicate it\n- Pass `allTasks` (the full task list) — this is available as the `tasks` prop\n\n**4. Integrate into TaskDetailPanel (`apps/web/src/components/TaskDetailPanel.tsx`):**\n- In the existing dependencies section, enhance to show each dependency as a row:\n  - Colored status dot + task title (clickable → selects that task)\n  - If dep not found in allTasks, show the ID in monospace with '(unknown)'\n\n**Verification:** `pnpm --filter web typecheck` passes.",
+      "files": [
+        "apps/web/src/components/shared/DependencyBadge.tsx",
+        "apps/web/src/components/BacklogView.tsx",
+        "apps/web/src/components/KanbanBoard.tsx",
+        "apps/web/src/components/TaskDetailPanel.tsx"
+      ],
+      "acceptanceCriteria": [
+        "DependencyBadge parses dependsOn JSON and shows blocked/clear status",
+        "Hover tooltip lists dependency tasks with status indicators",
+        "Clicking a dependency navigates to that task",
+        "BacklogView uses DependencyBadge instead of plain count",
+        "KanbanBoard shows badge and dims blocked cards",
+        "TaskDetailPanel shows enhanced dependency list",
+        "pnpm --filter web typecheck passes"
+      ],
+      "dependsOn": [],
+      "assignee": "worker-3",
+      "status": "merged",
+      "startedAt": "2026-03-14T06:52:45.042Z",
+      "completedAt": "2026-03-14T06:55:09.078Z",
+      "reviewedAt": "2026-03-14T07:03:25.777Z"
+    },
+    {
+      "id": "task-008",
+      "group": "I4",
+      "title": "Add cross-project search page",
+      "description": "Create a dedicated search page using the existing `globalSearch` resolver.\n\nThe resolver returns `GlobalSearchResult { tasks: [TaskSearchHit { task, projectName }], projects: [Project] }`. It searches by query string across project names and task titles/descriptions, limited to the user's org.\n\nNote: AppLayout already has a `GlobalSearchModal` triggered by Cmd+K. This task adds a full-page search as an alternative. Check if GlobalSearchModal already covers this — if so, enhance it instead of creating a new page. If the modal is minimal, create the full page.\n\n**1. Create `apps/web/src/pages/Search.tsx`:**\n\n- Large search input at top with autofocus\n- Debounce input by 300ms before querying\n- Query: `query($query: String!, $limit: Int) { globalSearch(query: $query, limit: $limit) { tasks { task { taskId title status assigneeId projectId } projectName } projects { projectId name description } } }`\n- Results layout:\n  - **Projects section** (if any): cards showing project name, description preview (truncated), click → navigate to `/app/projects/{projectId}`\n  - **Tasks section** (if any): rows showing task title, project name (small text), status badge, click → navigate to `/app/projects/{projectId}?task={taskId}`\n- Empty state (no query): 'Search across all your projects' with search icon\n- No results: 'No results for \"{query}\"'\n- Loading: skeleton list items\n- Limit to 20 results\n\n**2. Add route in `apps/web/src/App.tsx`:**\n- Add `/app/search` route rendering `<Search />`\n- Import lazily if other pages use lazy loading, otherwise direct import\n\n**3. Update `apps/web/src/pages/AppLayout.tsx`:**\n- Add a 'Search' link in the sidebar navigation (search icon + 'Search' text)\n- Place it above or below the existing nav items\n- Active state when on `/app/search`\n\n**Verification:** `pnpm --filter web typecheck` passes.",
+      "files": [
+        "apps/web/src/pages/Search.tsx",
+        "apps/web/src/App.tsx",
+        "apps/web/src/pages/AppLayout.tsx"
+      ],
+      "acceptanceCriteria": [
+        "Search page with debounced input queries globalSearch",
+        "Results show projects and tasks in separate sections",
+        "Clicking results navigates to correct pages",
+        "Route /app/search registered",
+        "Search link added to sidebar navigation",
+        "Loading, empty, and no-results states handled",
+        "pnpm --filter web typecheck passes"
+      ],
+      "dependsOn": [],
+      "assignee": "worker-3",
+      "status": "merged",
+      "startedAt": "2026-03-14T06:55:13.154Z",
+      "completedAt": "2026-03-14T06:56:22.897Z",
+      "reviewedAt": "2026-03-14T07:03:25.791Z"
+    }
+  ]
+}

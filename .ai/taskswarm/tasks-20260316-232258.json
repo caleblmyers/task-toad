@@ -1,0 +1,134 @@
+{
+  "version": 1,
+  "created": "2026-03-17T02:58:24.401Z",
+  "swarmId": "swarm-20260316-225812",
+  "config": {
+    "mainRepo": "/home/caleb/projects/task-toad",
+    "workerCount": 3,
+    "groups": [
+      "A11+F1",
+      "D1",
+      "Follow-ups+S1"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "task-001",
+      "group": "A11+F1",
+      "title": "WCAG AA color contrast audit and fix across all components",
+      "description": "Audit all Tailwind color pairings for WCAG AA compliance (4.5:1 ratio for normal text, 3:1 for large text) and fix violations. Focus on light mode first (dark mode is generally good).\n\n**Known violations to fix:**\n1. `text-slate-400` (#94a3b8) on white/light backgrounds — ratio ~3.5:1, fails AA. Found in:\n   - `apps/web/src/components/shared/FilterBar.tsx` — inactive pill text\n   - `apps/web/src/components/ActivityFeed.tsx` — timestamp text\n   - `apps/web/src/components/CommentSection.tsx` — timestamp text\n   - `apps/web/src/components/shared/SearchInput.tsx` — search icon\n   Fix: Replace `text-slate-400` with `text-slate-500` (ratio ~4.6:1) for text content, keeping `text-slate-400` only for decorative borders/dividers where contrast isn't required.\n\n2. `text-slate-500` (#64748b) on `bg-slate-100` (#f1f5f9) — ratio ~4.8:1, borderline. Found in:\n   - `apps/web/src/components/KanbanBoard.tsx` line 8 — slate column pill\n   - `apps/web/src/components/SprintSection.tsx` line 15 — low priority badge\n   - `apps/web/src/components/SprintSection.tsx` line 30 — normal due date\n   Fix: Replace with `text-slate-700` (#334155) on `bg-slate-100` for solid 7:1+ ratio.\n\n3. Audit all status/priority color badges — `bg-*-100 text-*-700` pairings in KanbanBoard.tsx (column accents), TaskDetailPanel.tsx (tool categories), SprintSection.tsx (priority + due date badges). These are likely fine but verify.\n\n4. Check `tailwind.config.js` status/priority colors: `status.todo` (slate-400), `priority.low` (slate-400) — if these are used as text colors on white, they fail. Search for where these semantic colors are applied.\n\n5. Dark mode: Verify `text-slate-400` on `dark:bg-slate-800/900` — should be ~6:1 (passes). Spot-check 3-4 components.\n\nAcceptance criteria: No `text-slate-400` used for readable text content (timestamps, labels, descriptions) — only for decorative elements. All text-on-background pairings meet 4.5:1. `pnpm typecheck && pnpm lint && pnpm build` pass.",
+      "assignee": "worker-1",
+      "status": "merged",
+      "dependsOn": [],
+      "files": [
+        "apps/web/src/components/shared/FilterBar.tsx",
+        "apps/web/src/components/shared/SearchInput.tsx",
+        "apps/web/src/components/ActivityFeed.tsx",
+        "apps/web/src/components/CommentSection.tsx",
+        "apps/web/src/components/KanbanBoard.tsx",
+        "apps/web/src/components/SprintSection.tsx",
+        "apps/web/src/components/TaskDetailPanel.tsx",
+        "apps/web/src/components/BacklogView.tsx",
+        "apps/web/tailwind.config.js"
+      ],
+      "startedAt": "2026-03-17T03:02:58.287Z",
+      "completedAt": "2026-03-17T03:05:50.908Z",
+      "reviewedAt": "2026-03-17T03:10:49.574Z"
+    },
+    {
+      "id": "task-002",
+      "group": "A11+F1",
+      "title": "Spacing/typography normalization across key pages and components",
+      "description": "Audit and normalize spacing and typography scale across the app's key pages and components. The goal is consistent use of Tailwind spacing utilities — not a redesign, just fixing obvious inconsistencies.\n\n**Established patterns (from Modal.tsx, shared components):**\n- Section padding: `px-4 py-3` or `px-5 py-4` for containers\n- Item padding: `px-2 py-1.5` or `px-3 py-2` for list items/rows\n- Gaps: `gap-1` tight, `gap-2` standard, `gap-4` section-level\n- Font sizes: `text-xs` labels, `text-sm` body, `text-base` or `text-lg` headings\n\n**Pages to audit:**\n1. `apps/web/src/pages/Home.tsx` — landing page. Check heading hierarchy (h1/h2/h3 sizes), spacing between sections, CTA button sizing.\n2. `apps/web/src/pages/Projects.tsx` — project list cards. Normalize card padding, gap between cards, text sizes for project name vs description.\n3. `apps/web/src/components/TaskDetailPanel.tsx` — task detail sidebar. This is a dense panel — check that section headers use consistent size, field labels use consistent style, spacing between sections is uniform.\n4. `apps/web/src/components/BacklogView.tsx` — backlog task rows. Check row padding consistency, sprint section headers vs task rows.\n\n**What to fix:**\n- Mixed padding scales at the same semantic level (e.g., some cards use `p-3`, siblings use `p-4`)\n- Inconsistent heading sizes (e.g., section headers alternating between `text-sm font-semibold` and `text-base font-medium`)\n- Irregular gaps in flex/grid containers\n- Don't change functional layout — just normalize the scale\n\nAcceptance criteria: Consistent spacing scale across audited pages. No visual regressions (layout looks the same, just more uniform). `pnpm build` passes.",
+      "assignee": "worker-1",
+      "status": "merged",
+      "dependsOn": [],
+      "files": [
+        "apps/web/src/pages/Home.tsx",
+        "apps/web/src/pages/Projects.tsx",
+        "apps/web/src/components/TaskDetailPanel.tsx",
+        "apps/web/src/components/BacklogView.tsx"
+      ],
+      "startedAt": "2026-03-17T03:05:55.551Z",
+      "completedAt": "2026-03-17T03:07:58.997Z",
+      "reviewedAt": "2026-03-17T03:10:49.589Z"
+    },
+    {
+      "id": "task-003",
+      "group": "D1",
+      "title": "Migrate file attachments from local disk to S3-compatible object storage",
+      "description": "Replace the current multer local disk storage with S3-compatible object storage (works with AWS S3, Cloudflare R2, or MinIO). This is critical because Railway has ephemeral filesystem — uploads are lost on deploy/restart.\n\n**1. Install S3 SDK:**\n`cd apps/api && pnpm add @aws-sdk/client-s3 @aws-sdk/s3-request-presigner`\n\n**2. Create S3 utility** `apps/api/src/utils/s3.ts`:\n- Initialize `S3Client` from env vars: `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`\n- Export helpers: `uploadToS3(key, body, contentType)`, `getSignedDownloadUrl(key, expiresIn)`, `deleteFromS3(key)`\n- Use `PutObjectCommand`, `GetObjectCommand` (for presigned URLs via `@aws-sdk/s3-request-presigner`), `DeleteObjectCommand`\n- Key format: `attachments/${orgId}/${taskId}/${timestamp}-${sanitizedFilename}`\n\n**3. Modify upload route** `apps/api/src/routes/upload.ts`:\n- Change multer to use `memoryStorage()` instead of `diskStorage()` — file available as `req.file.buffer`\n- On POST: upload buffer to S3 via `uploadToS3()`, store S3 key in `fileKey` DB column\n- On GET: generate presigned URL via `getSignedDownloadUrl()` and redirect (302) — no file streaming from disk\n- On DELETE: call `deleteFromS3()` alongside DB record deletion\n- Remove local `uploads/` directory creation logic\n- Keep all existing security (MIME whitelist, file size limit, rate limiting, auth, sanitization)\n\n**4. Update env config:**\n- Add S3 vars to `apps/api/.env.example`: `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`\n- Add fallback: if `S3_BUCKET` is not set, log a warning and fall back to local disk storage (for local dev without S3)\n\n**5. No Prisma schema changes needed** — `fileKey` column already stores the key, just changes from local filename to S3 path.\n\n**6. No frontend changes needed** — web UI uses REST endpoints which stay the same.\n\nAcceptance criteria: Upload/download/delete work with S3 env vars set. Local disk fallback works when S3 vars are missing. `pnpm typecheck && pnpm lint && pnpm build` pass. Verify `pnpm typecheck` passes — add `@types/*` or declare module in a `.d.ts` if needed for the AWS SDK.",
+      "assignee": "worker-2",
+      "status": "merged",
+      "dependsOn": [],
+      "files": [
+        "apps/api/src/utils/s3.ts",
+        "apps/api/src/routes/upload.ts",
+        "apps/api/.env.example",
+        "apps/api/package.json"
+      ],
+      "startedAt": "2026-03-17T03:03:00.527Z",
+      "completedAt": "2026-03-17T03:14:02.454Z",
+      "reviewNotes": "CLAUDE.md includes the full swarm worker role instructions (everything from the swarm-role HTML comment to the end). Only the S3 env var update line is legitimate. Remove the worker role section from CLAUDE.md, keep only the env var change. Re-commit and mark completed. All other code looks great.",
+      "reviewedAt": "2026-03-17T03:18:49.670Z"
+    },
+    {
+      "id": "task-004",
+      "group": "D1",
+      "title": "Health check S3 connectivity and document backup/monitoring strategy",
+      "description": "Wire S3 connectivity into the existing health check and document the deployment monitoring strategy.\n\n**1. Health check update** `apps/api/src/routes/health.ts` (or wherever GET /api/health is defined — check `apps/api/src/app.ts`):\n- Add S3 connectivity check: attempt `HeadBucketCommand` on the configured bucket\n- Report in health response: `{ db: 'ok', s3: 'ok'|'not configured'|'error: ...' }`\n- Don't fail the entire health check if S3 is not configured (local dev)\n\n**2. Add S3 env vars to deployment docs:**\n- Update `CLAUDE.md` env files section to mention S3 vars\n- Update `apps/api/.env.example` if not already done by task-003\n\n**3. Document deployment strategy** in `.claude-knowledge/decisions.md`:\n- Why S3/R2 over local disk (Railway ephemeral FS)\n- Recommended providers: Cloudflare R2 (S3-compatible, free egress), AWS S3 (standard), MinIO (self-hosted)\n- DB backup: Railway provides automated daily backups with point-in-time recovery — document how to access/restore\n- Monitoring: recommend Uptime Robot free tier for `/api/health` endpoint polling\n- Railway alerting: document available built-in alerting for restart loops, memory, CPU\n\nAcceptance criteria: Health endpoint reports S3 status. Decisions doc updated with deployment strategy. `pnpm typecheck && pnpm build` pass.",
+      "assignee": "worker-2",
+      "status": "merged",
+      "dependsOn": [
+        "task-003"
+      ],
+      "files": [
+        "apps/api/src/app.ts",
+        "CLAUDE.md",
+        ".claude-knowledge/decisions.md"
+      ],
+      "startedAt": "2026-03-17T03:05:15.919Z",
+      "completedAt": "2026-03-17T03:14:02.468Z",
+      "reviewNotes": "Blocked on task-003 CLAUDE.md fix. Once task-003 is re-submitted cleanly, task-004 changes (health check + decisions.md) look good and can be merged together.",
+      "reviewedAt": "2026-03-17T03:18:49.687Z"
+    },
+    {
+      "id": "task-005",
+      "group": "Follow-ups+S1",
+      "title": "PWA service worker with vite-plugin-pwa for offline caching",
+      "description": "Add a production-ready PWA service worker using vite-plugin-pwa for offline caching and install prompts.\n\n**1. Install plugin:**\n`cd apps/web && pnpm add -D vite-plugin-pwa`\n\n**2. Configure in Vite** `apps/web/vite.config.ts`:\n```typescript\nimport { VitePWA } from 'vite-plugin-pwa'\n\nplugins: [\n  react(),\n  VitePWA({\n    registerType: 'autoUpdate',\n    workbox: {\n      globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],\n      runtimeCaching: [\n        {\n          urlPattern: /^\\/api\\//,\n          handler: 'NetworkFirst',\n          options: {\n            cacheName: 'api-cache',\n            expiration: { maxEntries: 50, maxAgeSeconds: 300 },\n          },\n        },\n      ],\n    },\n    manifest: false, // Use existing manifest.json\n  }),\n]\n```\n- Use `NetworkFirst` for API calls (fresh data preferred, cached fallback)\n- Cache static assets with `CacheFirst` (default workbox behavior for precache)\n- Set `manifest: false` since `public/manifest.json` already exists\n\n**3. Update manifest.json** `apps/web/public/manifest.json`:\n- Add `start_url: \"/\"`, `scope: \"/\"`\n- Verify icon sizes (192x192 and 512x512 already present)\n- Add `categories: [\"productivity\", \"project-management\"]`\n\n**4. Add offline fallback page** (optional but nice):\n- vite-plugin-pwa can generate an offline fallback automatically\n- Or create a minimal `apps/web/public/offline.html` with \"You are offline\" message\n\nAcceptance criteria: `pnpm build` generates a service worker in dist/. Manifest is valid. `pnpm typecheck` passes. Verify `pnpm typecheck` passes — add `@types/*` or declare module in a `.d.ts` if needed for vite-plugin-pwa.",
+      "assignee": "worker-3",
+      "status": "merged",
+      "dependsOn": [],
+      "files": [
+        "apps/web/vite.config.ts",
+        "apps/web/public/manifest.json",
+        "apps/web/package.json"
+      ],
+      "startedAt": "2026-03-17T03:02:56.544Z",
+      "completedAt": "2026-03-17T03:04:05.275Z",
+      "reviewedAt": "2026-03-17T03:08:58.539Z"
+    },
+    {
+      "id": "task-006",
+      "group": "Follow-ups",
+      "title": "E2E supertest export tests + API shared-types import + composite og:image",
+      "description": "Three Wave 19 follow-up items bundled together:\n\n**1. E2E supertest export tests** — Add HTTP-level tests for the export REST endpoints that are currently only verified via DB queries.\n\nInstall supertest: `cd apps/api && pnpm add -D supertest @types/supertest`\n\nCreate `apps/api/src/__tests__/export.integration.test.ts`:\n- Import `app` from `../app.ts` (the Express app, not the server listener)\n- Use supertest to make HTTP requests: `request(app).get('/api/export/project/:id/json').set('Authorization', 'Bearer <token>')`\n- Test cases:\n  1. GET `/api/export/project/:projectId/json` — verify 200, JSON body contains project name + tasks array\n  2. GET `/api/export/project/:projectId/csv` — verify 200, Content-Type is text/csv, body contains CSV headers\n  3. GET `/api/export/project/:projectId/activity/json` — verify 200, JSON array of activities\n  4. GET without auth — verify 401\n  5. GET with wrong org's project — verify 404 or 403 (tenant isolation)\n- Setup: create user + org + project + task in beforeEach (same pattern as other integration tests)\n- Generate a valid JWT for the test user using `jose` (import `SignJWT` from 'jose', sign with `JWT_SECRET`)\n\n**2. API shared-types import** — Add `@tasktoad/shared-types` as a dependency to `apps/api/package.json`:\n- `pnpm --filter api add @tasktoad/shared-types@workspace:*`\n- In a few key resolver files (e.g., `resolvers/task.ts`, `resolvers/project.ts`), add type imports from shared-types where they improve clarity. Don't refactor all resolvers — just demonstrate the pattern in 2-3 places with a comment noting the shared type.\n\n**3. Composite og:image** — Create a proper 1200x630 social preview image:\n- Create `apps/web/public/og-image.svg` at 1200x630 with brand dark background (#1B2631), a centered frog/toad icon in brand green (#4CAF50), and \"TaskToad\" text + tagline below. Use SVG text elements for the text.\n- Update `apps/web/index.html` og:image meta tag to point to `/og-image.svg`\n\nAcceptance criteria: Supertest export tests pass (`pnpm --filter api test`). API imports shared-types. og:image meta tag points to new 1200x630 image. `pnpm typecheck && pnpm build` pass. Verify `pnpm typecheck` passes — add `@types/*` or declare module in a `.d.ts` if needed for supertest.",
+      "assignee": "worker-3",
+      "status": "merged",
+      "dependsOn": [],
+      "files": [
+        "apps/api/src/__tests__/export.integration.test.ts",
+        "apps/api/package.json",
+        "apps/api/src/graphql/resolvers/task.ts",
+        "apps/api/src/graphql/resolvers/project.ts",
+        "apps/web/public/og-image.svg",
+        "apps/web/index.html"
+      ],
+      "startedAt": "2026-03-17T03:04:07.629Z",
+      "completedAt": "2026-03-17T03:17:20.145Z",
+      "reviewNotes": "pnpm-lock.yaml has a merge conflict with main (task-005 lockfile was already merged). Run: git fetch /home/caleb/projects/task-toad main && git rebase FETCH_HEAD, resolve the lockfile conflict with pnpm install, then re-commit and mark completed.",
+      "reviewedAt": "2026-03-17T03:19:53.404Z"
+    }
+  ]
+}

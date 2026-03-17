@@ -11,9 +11,9 @@ Show a quick, comprehensive view of the current swarm state.
 
 ## Gather Data
 
-1. **Task statuses** from `.ai/swarm/tasks.json`:
+1. **Task statuses** from `.ai/taskswarm/tasks.json`:
 ```bash
-cat .ai/swarm/tasks.json | node -e "
+cat .ai/taskswarm/tasks.json | node -e "
 const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
 console.log('Swarm:', d.swarmId, '| Groups:', d.config.groups.join(', '));
 console.log('');
@@ -44,7 +44,7 @@ git worktree list
 
 3. **Process issues** (if any logged):
 ```bash
-cat .ai/swarm/issues.md 2>/dev/null | tail -30
+cat .ai/taskswarm/issues.md 2>/dev/null | tail -30
 ```
 
 4. **Recent commits on main** (from reviewer merges):
