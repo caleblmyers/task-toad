@@ -35,7 +35,7 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 - [x] ~~Recurrence scheduler tests~~ — done in Wave 17
 - [x] ~~Attachment DataLoader~~ — done in Wave 17
 - [x] ~~Authorization regression tests~~ — done in Wave 17 (7 boundary tests)
-- [ ] **End-to-end test suite** — basic happy-path flows (signup → create org → create project → create/update task → assign → comment → export)
+- [x] ~~End-to-end test suite~~ — done in Wave 19 (happy-path + task lifecycle + tenant isolation)
 - [x] ~~Fix integration test DB~~ — done in Wave 18 (fixed table names + password validation)
 - [x] ~~Password policy alignment~~ — done in Wave 17 (shared validatePassword, client-side validation)
 
@@ -45,7 +45,7 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 
 ### W2: Advanced Tasks & Filters
 **Touches:** `prisma/schema/task.prisma`, `typedefs/task.ts`, `resolvers/task.ts`, frontend
-- [ ] Shared types between API and web — evaluate graphql-codegen or shared package
+- [x] ~~Shared types between API and web~~ — done in Wave 19 (@tasktoad/shared-types workspace package)
 
 ### W6: AI Extras
 **Touches:** `resolvers/ai.ts`, `apps/web/src/components/`
@@ -78,19 +78,19 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 ### S1: Styling & Branding
 **Touches:** `apps/web/src/components/shared/`, `apps/web/tailwind.config.js`
 - [ ] Consistent spacing/typography scale — audit and normalize across components
-- [ ] SVG favicon — proper SVG from T-Frog silhouette
-- [ ] Social preview image — og:image composite
+- [x] ~~SVG favicon~~ — done in Wave 19 (frog silhouette SVG + PNG fallback)
+- [x] ~~Social preview meta tags~~ — done in Wave 19 (og:image, og:title, twitter:card)
 - [ ] PWA service worker — offline caching via workbox or custom SW
-- [ ] Dark mode for remaining modals — BatchCodeGenModal, DriftAnalysisModal, etc.
+- [x] ~~Dark mode for remaining modals~~ — done in Wave 19 (all 12 modals)
 
 ### Misc Follow-ups
 - [x] ~~Review `schema.ts` change — `'tasks'` added to `SINGLE_OBJECT_FIELDS`~~ — committed as fix(api) in e3006a3, was causing query cost 430K > 100K limit
 
 ### SW1: Swarm Workflow Optimization
 **Touches:** `.claude/skills/`, `scripts/swarm/`
-- [ ] Auto-prisma-generate in merge script — detect schema changes and run `npx prisma generate` before typecheck
-- [ ] Task file array validation — pre-flight cross-reference of description file paths vs files array
-- [ ] Auto-strip worker role from CLAUDE.md commits — .gitignore or pre-commit hook
+- [x] ~~Auto-prisma-generate in spawn.sh~~ — done in Wave 19 (runs per worktree)
+- [x] ~~Task file array validation~~ — done in Wave 19 (validate-tasks.sh)
+- [x] ~~Auto-strip worker role from CLAUDE.md~~ — done in Wave 19 (delimiter + sed strip in merge-worker.sh)
 
 ---
 
@@ -103,3 +103,14 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 
 **Conflicts:**
 - A11 + S1 (both touch component styling)
+
+---
+
+## Follow-ups from Wave 19
+
+- [ ] Have API also import from `@tasktoad/shared-types` for resolver return type annotations (task-006 only wired up web)
+- [ ] E2E tests: add export route handler test via supertest (task-001 verified export data via direct DB query, not the actual REST endpoint)
+- [ ] E2E tests: add notification/SSE flow test coverage
+- [ ] Dark mode: verify dark mode contrast meets WCAG AA (already in F1 todos but reinforced by the 12-modal batch)
+- [ ] Social preview: create a proper composite og:image (current uses logo.png which may be too small for social cards)
+- [ ] Task descriptions creating new workspace packages should note: point `types` to source (`src/index.ts`) not dist (learned from task-006 rejection)

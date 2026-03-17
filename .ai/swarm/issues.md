@@ -191,3 +191,16 @@ Format:
 ### Reviewer — Positive (Wave 16)
 **Observation:** merge-worker.sh handled pnpm install (multer) and prisma generate automatically this wave. Zero manual workarounds needed for either new dependencies or schema changes.
 **Why it worked:** Script improvements from Wave 14/15 working as intended.
+
+### Reviewer — task-006 (Wave 19)
+**Issue:** Worker-3's shared-types package had `"types": "dist/index.d.ts"` in package.json, requiring the package to be built before web typecheck could resolve imports. Since `dist/` doesn't exist in a fresh checkout, typecheck failed with "Cannot find module '@tasktoad/shared-types'" plus 34 cascading `any` type errors.
+**Impact:** One review rejection. Worker fixed by pointing `types` to `src/index.ts` instead.
+**Suggestion:** Task descriptions creating new workspace packages should note: "Point `types` field to source (`src/index.ts`) not dist, so typecheck works without a build step."
+
+### Reviewer — Positive (Wave 19)
+**Observation:** 5 of 6 tasks passed review on first attempt. Workers 1 and 2 delivered clean results with no rejections. merge-worker.sh handled pnpm install for the new workspace package automatically.
+**Why it worked:** Non-overlapping file arrays, clear acceptance criteria, and improved merge tooling.
+
+### Reviewer — Positive (Wave 19)
+**Observation:** Task-005 swarm workflow improvements (auto-prisma, validate-tasks.sh, role stripping) directly addressed issues logged in previous waves. Good example of using issues.md feedback to improve tooling.
+**Why it worked:** The task was directly derived from reviewer pain points documented in earlier waves.

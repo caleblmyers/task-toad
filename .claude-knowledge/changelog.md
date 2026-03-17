@@ -4,6 +4,42 @@ Summaries of work completed each session. Most recent first.
 
 ---
 
+## 2026-03-16 (cont.)
+
+### Pre-wave fix: Query cost limit rejects tasks query
+- Added `'tasks'` to `SINGLE_OBJECT_FIELDS` in `schema.ts` — the `tasks` query returns `TaskConnection` (single wrapper object), not a list, but was treated as a list with 50x multiplier, causing compounding 50×50 = 2500x cost (430K > 100K limit). Fix drops cost to ~2-3K.
+
+### Wave 19: Q1 + S1 + SW1 + W2 (3 workers, 6 tasks)
+
+**Q1 — E2E Test Suite (Worker 1):**
+- E2E happy-path integration test: signup → login → create org → create project → create task → update task → add comment → create sprint → assign to sprint → tenant isolation verification
+- E2E task lifecycle test: labels CRUD, multi-assignee flow, custom fields, bulk updates, subtasks, activity audit log
+
+**S1 — Styling & Branding (Worker 2):**
+- Dark mode for all 12 remaining modals (BatchCodeGen, DriftAnalysis, SprintCreate, ProjectSettings, GlobalSearch, GitHubRepo, BugReport, SprintTransition, CSVImport, PRDBreakdown, SprintPlan, KnowledgeBase)
+- SVG favicon (frog silhouette in brand green) with PNG fallback
+- Social preview meta tags (og:image, og:title, og:description, twitter:card)
+- Spacing/typography audit on Projects, Home, TaskDetailPanel pages
+
+**SW1 — Swarm Workflow (Worker 3):**
+- Auto `prisma generate` in spawn.sh for each worktree
+- `validate-tasks.sh` — cross-references task file arrays against repo, detects conflicts between workers
+- Auto-strip worker role from CLAUDE.md during merge (delimiter-based sed strip in merge-worker.sh)
+
+**W2 — Shared Types (Worker 3):**
+- Created `@tasktoad/shared-types` workspace package with core interfaces (Task, Project, Sprint, Label, Comment, etc.)
+- Web app now imports from shared package instead of manually duplicating types
+- Initial submission pointed `types` to `dist/` (rejected — typecheck fails without build step); fixed to point to `src/index.ts`
+
+**Open follow-ups:**
+- Have API also import from `@tasktoad/shared-types` for resolver return type annotations
+- E2E tests: add export route handler test via supertest (current tests verify DB state, not REST endpoint)
+- E2E tests: add notification/SSE flow coverage
+- Social preview: create proper composite og:image (current logo.png may be too small)
+- Dark mode contrast audit needed (WCAG AA verification after 12-modal batch)
+
+---
+
 ## 2026-03-16
 
 ### Wave 18: Q1 + F1 + I1 + W6 (3 workers, 6 tasks)
