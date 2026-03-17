@@ -14,14 +14,15 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 
 ## Priority Order
 
-1. **Q1** — Code quality & testing (authz regression tests, e2e suite)
-2. **A11** — Accessibility
-3. **W2** — Advanced tasks & filters
-4. **I1 + D1** — Integration completeness & observability
-5. **F1** — Frontend performance
-6. **S1** — Styling & branding
-7. **W6** — AI extras
-8. **SW1** — Swarm workflow optimization
+1. **Q1** — Code quality & testing (authz regression tests, e2e suite, password policy alignment)
+2. **D1** — Deployment & observability (object storage for attachments, metrics wiring)
+3. **F1** — Frontend performance & architecture (ProjectDetail decomposition)
+4. **A11** — Accessibility
+5. **W2** — Advanced tasks & filters
+6. **I1** — Integration completeness
+7. **S1** — Styling & branding
+8. **W6** — AI extras
+9. **SW1** — Swarm workflow optimization
 
 ---
 
@@ -35,6 +36,7 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 - [ ] Attachment DataLoader — Task.attachments does individual DB query per task; add to loaders.ts
 - [ ] **Authorization regression tests** — test all multi-tenant boundary checks added in production hardening (cross-org assignment, cross-project custom fields, cross-tenant comment deletion, automation assign_to org validation)
 - [ ] **End-to-end test suite** — basic happy-path flows (signup → create org → create project → create/update task → assign → comment → export)
+- [ ] Password policy alignment — backend must enforce same rules frontend claims (min length, complexity) in auth resolver
 
 ### A11: Accessibility
 **Touches:** `apps/web/src/components/`
@@ -56,18 +58,20 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 - [ ] Railway alerting — restart loops, memory spikes, high CPU
 - [ ] Staging environment — Railway preview deployments from PRs
 - [ ] Database backup strategy — verify Railway automated backups, document restore
-- [ ] Wire Prometheus resolver duration metrics — some paths don't emit `graphql_resolver_duration`
+- [ ] Wire Prometheus resolver duration metrics — some paths don't emit `graphql_resolver_duration`; remove dead metrics or wire them properly
 - [ ] Enable Railway deploy webhook in GitHub Actions (uncomment in deploy.yml)
+- [ ] Object storage for attachments — migrate from local disk to S3/R2; current hardening (Content-Disposition, type validation) is interim only
 
 ### I1: Integration Completeness
 **Touches:** `apps/api/src/utils/webhookDispatcher.ts`, `apps/api/src/slack/`, `apps/api/src/github/`
 - [ ] Slack user mapping discovery — `/tasktoad link` self-service command
 - [ ] GitHub webhook retry — dead letter queue for failed webhook processing
 
-### F1: Frontend Performance
-**Touches:** `apps/web/src/components/`
+### F1: Frontend Performance & Architecture
+**Touches:** `apps/web/src/components/`, `apps/web/src/pages/`, `apps/web/src/hooks/`
 - [ ] Virtualize activity feeds — react-window for activity/comment feeds when > 100 items
 - [ ] Dark mode contrast audit — verify dark: color pairings meet WCAG AA 4.5:1
+- [ ] Decompose ProjectDetail + useProjectData — split into route-level feature modules or page controller + feature slices; introduce client-side query/cache layer (GPT audit finding #5)
 
 ### S1: Styling & Branding
 **Touches:** `apps/web/src/components/shared/`, `apps/web/tailwind.config.js`
