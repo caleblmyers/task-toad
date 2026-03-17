@@ -120,7 +120,7 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 - [x] ~~S3 upload tests — unit tests for S3 upload/download/delete with AWS SDK mocking~~ — done in Wave 21
 - [x] ~~S3 presigned URL expiry configuration — make the 15-min default configurable via env var~~ — done in Wave 21 (ATTACHMENT_URL_EXPIRY_SECONDS)
 - [x] ~~PWA offline fallback page — create `offline.html` with "You are offline" message for uncached routes~~ — done in Wave 21
-- [ ] PWA cache invalidation strategy — document how to force SW update on breaking API changes
+- [x] ~~PWA cache invalidation strategy — document how to force SW update on breaking API changes~~ — done in Wave 25 (task-005, decisions.md)
 - [x] ~~og:image PNG fallback — some social platforms don't render SVG og:images~~ — done in Wave 21
 - [x] ~~Export test rate limit handling — tenant isolation test hitting 429~~ — done in Wave 21 (rate limit relaxed in test env)
 - [x] ~~Extend shared-types usage — expand to more resolvers and web client types~~ — done in Wave 21 (ProjectStats, TaskConnection, CloseSprintResult, SprintPlanItem moved; sprint resolver re-exports)
@@ -128,7 +128,7 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 
 ## Follow-ups from Wave 22-23 (UX Audit)
 
-- [ ] **Responsive workspace (Audit Item 9):** Collapsible sidebar, stacked toolbar, drawer task panel — desktop-first is fine for launch, defer to Wave 24+
+- [x] ~~**Responsive workspace (Audit Item 9):** Collapsible sidebar with mobile drawer~~ — done in Wave 25 (task-001); stacked toolbar and drawer task panel still deferred
 - [ ] **Task detail re-architecture (Audit Item 10):** Collapsible sections, prioritized field order, tabbed comments/activity — functional as-is, defer to Wave 24+
 - [x] ~~ProjectToolbar template/export overlays — fix positioning to use relative anchoring~~ — done in Wave 24 (task-004)
 - [ ] Migrate remaining inline `bg-white dark:bg-slate-900 rounded-lg border...` patterns to use `<Card>` component (ProfilePage done in Wave 24, others remain)
@@ -139,7 +139,7 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 
 - [x] ~~Dark mode contrast audit — remaining components (BacklogView, KanbanBoard, CalendarView, CSVImportModal, CloseSprintModal, SprintTransitionModal, ProjectSettingsModal, ProjectDashboard)~~ — done in Wave 24 (task-001)
 - [x] ~~Shared-types re-export in notification resolver~~ — done in Wave 24 (task-006); comment/report types not in shared-types yet
-- [ ] PWA navigateFallback behavior — verify offline.html is only served for navigation requests (not API/asset requests) in production; current denylist only covers `/api/`
+- [x] ~~PWA navigateFallback behavior — verify offline.html is only served for navigation requests; denylist extended with /assets/, /sw.js, /workbox-~~ — done in Wave 25 (task-005)
 - [x] ~~Pre-existing lint warnings — 9 warnings across BurndownChart, GanttChart, ProjectSettingsModal, DropdownMenu, TaskPlanApprovalDialog, Home, Projects~~ — done in Wave 24 (task-002, 0 warnings)
 - [x] ~~S3 unit tests — error handling for uploadToS3/deleteFromS3 failures, custom endpoint, URL expiry config, key sanitization~~ — done in Wave 24 (task-006)
 
@@ -147,6 +147,17 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 
 - [ ] Shared-types expansion — add Comment and Report types to `@tasktoad/shared-types` so comment.ts and report.ts resolvers can re-export them
 - [ ] Card component adoption — remaining files with inline card div patterns (beyond ProfilePage) should migrate to `<Card>`
-- [ ] Badge component adoption — audit remaining files beyond the 5 migrated in task-003 for inline pill patterns
-- [ ] ProjectToolbar menu accessibility — ensure ARIA attributes (role="menu", aria-expanded) are on the template/export dropdowns
+- [ ] Badge component adoption — audit remaining files beyond the 11 migrated in Wave 24-25 for inline pill patterns
+- [x] ~~ProjectToolbar menu accessibility — ARIA attributes (role="dialog"/role="menu", aria-label, keyboard nav, focus management) on template/export overlays~~ — done in Wave 25 (task-004)
 - [ ] BurndownChart/Projects data fetching — currently using inline fetch in useEffect with cancellation flags; consider extracting to a shared useAsyncData hook if the pattern recurs
+
+## Follow-ups from Wave 25
+
+- [ ] Focus trap for ProjectToolbar overlays — template dialog and export menu don't trap focus (Tab can escape to background elements); consider a reusable `useFocusTrap` hook
+- [ ] ARIA accessibility audit for remaining overlays — NotificationCenter, NotificationSettings, QuickSearch, and all modals should have consistent ARIA patterns matching ProjectToolbar's approach
+- [ ] Badge `design-tool` category maps to `purple` same as `ai-model` in TaskDetailPanel — consider adding a `pink` Badge variant to differentiate
+- [ ] Export menu keyboard nav — Enter key should activate focused menuitem (currently relies on click handler; keyboard-only users need Enter support on the focused button)
+- [ ] Responsive ProjectToolbar — toolbar buttons overflow on narrow screens; needs responsive stacking or overflow menu
+- [ ] Responsive task detail panel — currently full-width; on mobile should be a drawer or sheet overlay
+- [ ] Sidebar collapse: notification preferences overlay doesn't show in collapsed mode (settings button hidden when collapsed)
+- [ ] Mobile drawer focus trap — Tab can escape the drawer to background elements; needs focus containment

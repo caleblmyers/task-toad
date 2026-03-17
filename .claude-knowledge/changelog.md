@@ -4,6 +4,32 @@ Summaries of work completed each session. Most recent first.
 
 ---
 
+## 2026-03-17 (cont.)
+
+### Wave 25: Responsive + Badge Consolidation + Accessibility (3 workers, 5 tasks)
+
+**Worker 1 — Responsive Sidebar:**
+- Collapsible desktop sidebar: toggle between w-56 (full) and w-14 (icon rail) with smooth transition, localStorage persistence
+- Mobile drawer: hamburger top bar (md:hidden), slide-in overlay with backdrop, body scroll lock, Escape to close, nav links auto-close drawer
+- Notification overlays repositioned for collapsed/mobile states
+- DRY refactor: nav items extracted to `NAV_ITEMS[]` array, shared `sidebarContent()` renderer for desktop/mobile
+- Card component adoption in Skeleton.tsx (KanbanColumnSkeleton)
+
+**Worker 2 — Badge Adoption Round 2 (11 files):**
+- Badge.tsx: added `purple` and `accent` variants (7 total now)
+- Taskdetail components: TaskAIReviewSection, TaskAIHistory, TaskTitleEditor, TaskGitHubSection, TaskDetailPanel — all migrated to Badge
+- Modal/panel components: CodePreviewModal, MeetingNotesDialog, ProjectHealthPanel, TaskPlanApprovalDialog, WebhookSettings — all migrated to Badge
+- Eliminated ~30 inline `bg-*-100 text-*-700` pill patterns across the codebase
+
+**Worker 3 — Toolbar ARIA + PWA Docs:**
+- ProjectToolbar: template overlay → `role="dialog"` + aria-label + auto-focus + focus return; export overlay → `role="menu"` + `role="menuitem"` + ArrowDown/ArrowUp keyboard nav + auto-focus + focus return
+- PWA cache invalidation strategy documented in decisions.md (autoUpdate lifecycle, NetworkFirst API cache, emergency SW unregister)
+- navigateFallback denylist verified and extended with `/assets/`, `/sw.js`, `/workbox-*`
+
+**Process:** Zero review rejections this wave. One minor file path issue (TaskDetailPanel.tsx path in task description).
+
+---
+
 ## 2026-03-17
 
 ### Wave 24: Polish + Code Quality (3 workers, 6 tasks)
