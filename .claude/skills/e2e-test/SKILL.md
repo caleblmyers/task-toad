@@ -243,6 +243,42 @@ Write a detailed markdown report to `.ai/e2e-test-results-{TS}.md` containing:
 - GitHub installation → skip Phase 7
 - Any individual AI call → record FAIL but attempt remaining AI steps
 
+## Phase 9: Document Findings
+
+After the test run, review all failures, unexpected behaviors, and workarounds encountered. Update project knowledge files:
+
+### Errors → `.claude-knowledge/errors.md`
+
+For each **new failure or unexpected error** encountered during this test run, append an entry to `.claude-knowledge/errors.md` using the existing format:
+
+```
+### [Date] — Short description
+**Context:** What was being done (e.g., "E2E test Phase 6 — generateCodeFromTask")
+**Error:** The exact error message or symptom
+**Cause:** Root cause (investigate if not obvious — check API logs, resolver code, typedef mismatches)
+**Fix:** What resolved it (or "Unresolved — needs investigation" if you couldn't fix it)
+```
+
+**What to document:**
+- GraphQL errors (missing fields, wrong types, schema mismatches like the `planCodeGeneration` incident)
+- Auth/permission failures (token issues, org role problems)
+- AI service errors (rate limits, API key issues, timeouts)
+- Infrastructure issues (DB not running, port conflicts, missing env vars)
+- Workarounds you applied to get past a failure (e.g., modified a query, used a different endpoint)
+
+**What NOT to document:**
+- Expected skips (e.g., GitHub not linked — that's by design)
+- Transient network blips that self-resolve on retry
+- Issues already documented in errors.md (check first to avoid duplicates)
+
+### Patterns → `.claude-knowledge/skills.md`
+
+If you discover a **reusable pattern or technique** during the test (e.g., a specific way to handle AI timeouts, a curl/jq trick for complex GraphQL responses), add it to `.claude-knowledge/skills.md`.
+
+### Schema Gaps → report to user
+
+If you find a **frontend mutation/query that doesn't exist on the API** (like the `planCodeGeneration` issue), flag it prominently in both the test report AND errors.md. These are critical bugs that break user-facing features.
+
 ## Notes
 
 - All curl calls use `--max-time 120` (AI calls can be slow)
@@ -251,3 +287,5 @@ Write a detailed markdown report to `.ai/e2e-test-results-{TS}.md` containing:
 - The `generateProjectOptions` prompt is intentionally short to minimize token usage
 - Only 3 tasks committed (not full plan) to save tokens
 - Only 1 task gets instructions + code generated
+- Always read `.claude-knowledge/errors.md` BEFORE the test run to avoid re-investigating known issues
+- After documenting new findings, commit the updated knowledge files with `chore(docs): update error log from e2e test`
