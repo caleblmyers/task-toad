@@ -107,13 +107,13 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
     <Modal isOpen={true} onClose={onClose} title={isEdit ? 'Edit Sprint' : 'Create Sprint'} size="sm">
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-slate-800">{isEdit ? 'Edit Sprint' : 'Create Sprint'}</h2>
-          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">✕</button>
+          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">{isEdit ? 'Edit Sprint' : 'Create Sprint'}</h2>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-lg" aria-label="Close">✕</button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="sprint-name" className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Name *</label>
+            <label htmlFor="sprint-name" className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Name *</label>
             <input
               id="sprint-name"
               type="text"
@@ -122,47 +122,47 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
               placeholder="Sprint 1"
               required
               autoFocus
-              className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green"
+              className="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green"
             />
           </div>
 
           <div>
-            <label htmlFor="sprint-goal" className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Sprint Goal (optional)</label>
+            <label htmlFor="sprint-goal" className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Sprint Goal (optional)</label>
             <textarea
               id="sprint-goal"
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
               placeholder="What is this sprint's objective?"
               rows={2}
-              className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green resize-none"
+              className="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green resize-none"
             />
           </div>
 
           <div className="flex gap-3">
             <div className="flex-1">
-              <label htmlFor="sprint-start-date" className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Start Date</label>
+              <label htmlFor="sprint-start-date" className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Start Date</label>
               <input
                 id="sprint-start-date"
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green"
+                className="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green"
               />
             </div>
             <div className="flex-1">
-              <label htmlFor="sprint-end-date" className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">End Date</label>
+              <label htmlFor="sprint-end-date" className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">End Date</label>
               <input
                 id="sprint-end-date"
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green"
+                className="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Columns</label>
+            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Columns</label>
             <div className="flex flex-wrap gap-2 mb-2">
               {columns.map((col, idx) => (
                 editingIdx === idx ? (
@@ -174,12 +174,12 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
                     onBlur={saveEditCol}
                     onKeyDown={(e) => { if (e.key === 'Enter') saveEditCol(); if (e.key === 'Escape') setEditingIdx(null); }}
                     autoFocus
-                    className="border border-blue-400 rounded px-2 py-0.5 text-sm w-28 focus:outline-none"
+                    className="border border-blue-400 dark:border-blue-500 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-0.5 text-sm w-28 focus:outline-none"
                   />
                 ) : (
                   <span
                     key={idx}
-                    className="flex items-center gap-1 bg-slate-100 text-slate-700 text-xs px-2 py-1 rounded-full"
+                    className="flex items-center gap-1 bg-slate-100 dark:bg-slate-600 text-slate-700 dark:text-slate-300 text-xs px-2 py-1 rounded-full"
                   >
                     <button type="button" onClick={() => startEditCol(idx)} className="hover:underline">{col}</button>
                     {columns.length > 1 && (
@@ -198,12 +198,12 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addColumn(); }}}
                 placeholder="Add column…"
                 aria-label="Add column"
-                className="flex-1 border border-slate-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green"
+                className="flex-1 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green"
               />
               <button
                 type="button"
                 onClick={addColumn}
-                className="px-3 py-1 text-sm border border-slate-300 rounded hover:bg-slate-50"
+                className="px-3 py-1 text-sm border border-slate-300 dark:border-slate-600 dark:text-slate-300 rounded hover:bg-slate-50 dark:hover:bg-slate-700"
                 aria-label="Add column"
               >
                 +

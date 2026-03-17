@@ -91,16 +91,16 @@ export default function GitHubRepoModal({
   return (
     <Modal isOpen={true} onClose={onClose} title="GitHub Repository" size="sm">
       <div className="p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-slate-800">GitHub Repository</h2>
+        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">GitHub Repository</h2>
 
         {currentRepo ? (
           <div className="space-y-4">
-            <div className="bg-slate-50 rounded-lg p-4 space-y-2">
-              <p className="text-sm font-medium text-slate-500 uppercase tracking-wide">Connected</p>
-              <p className="text-slate-800 font-mono text-sm">
+            <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4 space-y-2">
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Connected</p>
+              <p className="text-slate-800 dark:text-slate-200 font-mono text-sm">
                 {currentRepo.repositoryOwner}/{currentRepo.repositoryName}
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Default branch: <span className="font-mono">{currentRepo.defaultBranch}</span>
               </p>
             </div>
@@ -109,13 +109,13 @@ export default function GitHubRepoModal({
               <button
                 onClick={handleDisconnect}
                 disabled={disconnecting}
-                className="px-3 py-1.5 text-sm text-red-600 border border-red-200 rounded hover:bg-red-50 disabled:opacity-50"
+                className="px-3 py-1.5 text-sm text-red-600 dark:text-red-400 border border-red-200 dark:border-red-700 rounded hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-50"
               >
                 {disconnecting ? 'Disconnecting…' : 'Disconnect'}
               </button>
               <button
                 onClick={onClose}
-                className="px-3 py-1.5 text-sm text-slate-600 border border-slate-200 rounded hover:bg-slate-50"
+                className="px-3 py-1.5 text-sm text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-700"
               >
                 Close
               </button>
@@ -124,17 +124,17 @@ export default function GitHubRepoModal({
         ) : (
           <div className="space-y-4">
             {installations.length === 0 ? (
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 No GitHub App installations found. Install the GitHub App from your organization settings first.
               </p>
             ) : (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Installation</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Installation</label>
                   <select
                     value={selectedInstallation}
                     onChange={(e) => setSelectedInstallation(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded text-sm"
                   >
                     <option value="">Select installation…</option>
                     {installations.map((inst) => (
@@ -147,9 +147,9 @@ export default function GitHubRepoModal({
 
                 {selectedInstallation && (
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Repository</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Repository</label>
                     {loadingRepos ? (
-                      <p className="text-sm text-slate-500">Loading repositories…</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Loading repositories…</p>
                     ) : (
                       <>
                         {repos.length > 5 && (
@@ -158,13 +158,13 @@ export default function GitHubRepoModal({
                             placeholder="Filter repos…"
                             value={repoFilter}
                             onChange={(e) => setRepoFilter(e.target.value)}
-                            className="w-full px-3 py-1.5 border border-slate-300 rounded text-sm mb-2"
+                            className="w-full px-3 py-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded text-sm mb-2"
                           />
                         )}
                         <select
                           value={selectedRepo}
                           onChange={(e) => setSelectedRepo(e.target.value)}
-                          className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
+                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded text-sm"
                           size={Math.min(filteredRepos.length + 1, 8)}
                         >
                           <option value="">Select repository…</option>
@@ -186,7 +186,7 @@ export default function GitHubRepoModal({
             <div className="flex justify-end gap-2">
               <button
                 onClick={onClose}
-                className="px-3 py-1.5 text-sm text-slate-600 border border-slate-200 rounded hover:bg-slate-50"
+                className="px-3 py-1.5 text-sm text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-700"
               >
                 Cancel
               </button>

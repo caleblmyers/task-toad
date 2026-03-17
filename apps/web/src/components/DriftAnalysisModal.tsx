@@ -54,9 +54,9 @@ export default function DriftAnalysisModal({ projectId, onMarkDone, onCreateTask
 
   return (
     <Modal isOpen={true} onClose={onClose} title="Repo Drift Analysis" size="md">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 flex-shrink-0">
-        <h2 className="text-base font-semibold text-slate-800">Repo Drift Analysis</h2>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label="Close">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-600 flex-shrink-0">
+        <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">Repo Drift Analysis</h2>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" aria-label="Close">
           <IconClose className="w-4 h-4" />
         </button>
       </div>
@@ -64,30 +64,30 @@ export default function DriftAnalysisModal({ projectId, onMarkDone, onCreateTask
       <div className="flex-1 overflow-y-auto p-5 space-y-5">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <p className="text-sm text-slate-500">Analyzing repo activity vs task board...</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Analyzing repo activity vs task board...</p>
           </div>
         ) : error ? (
           <p className="text-sm text-red-600">{error}</p>
         ) : analysis ? (
           <>
-            <div className="bg-slate-50 rounded-lg p-3">
-              <p className="text-sm text-slate-700">{analysis.summary}</p>
+            <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3">
+              <p className="text-sm text-slate-700 dark:text-slate-300">{analysis.summary}</p>
             </div>
 
             {analysis.completedButOpen.length > 0 && (
               <div>
-                <h3 className="text-sm font-medium text-green-700 mb-2">Completed But Still Open ({analysis.completedButOpen.length})</h3>
+                <h3 className="text-sm font-medium text-green-700 dark:text-green-400 mb-2">Completed But Still Open ({analysis.completedButOpen.length})</h3>
                 <div className="space-y-2">
                   {analysis.completedButOpen.map((t) => (
-                    <div key={t.taskId} className="flex items-start justify-between gap-2 p-2 bg-green-50 rounded">
+                    <div key={t.taskId} className="flex items-start justify-between gap-2 p-2 bg-green-50 dark:bg-green-900/30 rounded">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-700">{t.title}</p>
-                        <p className="text-xs text-slate-500">{t.evidence}</p>
+                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{t.title}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{t.evidence}</p>
                       </div>
                       {onMarkDone && (
                         <button
                           onClick={() => onMarkDone(t.taskId)}
-                          className="text-xs text-green-600 hover:text-green-800 flex-shrink-0 px-2 py-1 border border-green-200 rounded"
+                          className="text-xs text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 flex-shrink-0 px-2 py-1 border border-green-200 dark:border-green-700 rounded"
                         >
                           Mark Done
                         </button>
@@ -100,18 +100,18 @@ export default function DriftAnalysisModal({ projectId, onMarkDone, onCreateTask
 
             {analysis.untrackedWork.length > 0 && (
               <div>
-                <h3 className="text-sm font-medium text-amber-700 mb-2">Untracked Work ({analysis.untrackedWork.length})</h3>
+                <h3 className="text-sm font-medium text-amber-700 dark:text-amber-400 mb-2">Untracked Work ({analysis.untrackedWork.length})</h3>
                 <div className="space-y-2">
                   {analysis.untrackedWork.map((w, i) => (
-                    <div key={i} className="flex items-start justify-between gap-2 p-2 bg-amber-50 rounded">
+                    <div key={i} className="flex items-start justify-between gap-2 p-2 bg-amber-50 dark:bg-amber-900/30 rounded">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-700">{w.suggestedTaskTitle}</p>
-                        <p className="text-xs text-slate-500">{w.description}</p>
+                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{w.suggestedTaskTitle}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{w.description}</p>
                       </div>
                       {onCreateTask && (
                         <button
                           onClick={() => onCreateTask(w.suggestedTaskTitle)}
-                          className="text-xs text-amber-600 hover:text-amber-800 flex-shrink-0 px-2 py-1 border border-amber-200 rounded"
+                          className="text-xs text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300 flex-shrink-0 px-2 py-1 border border-amber-200 dark:border-amber-700 rounded"
                         >
                           Create Task
                         </button>
@@ -124,12 +124,12 @@ export default function DriftAnalysisModal({ projectId, onMarkDone, onCreateTask
 
             {analysis.outdatedTasks.length > 0 && (
               <div>
-                <h3 className="text-sm font-medium text-slate-700 mb-2">Outdated Tasks ({analysis.outdatedTasks.length})</h3>
+                <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Outdated Tasks ({analysis.outdatedTasks.length})</h3>
                 <div className="space-y-2">
                   {analysis.outdatedTasks.map((t) => (
-                    <div key={t.taskId} className="p-2 bg-slate-50 rounded">
-                      <p className="text-sm font-medium text-slate-700">{t.title}</p>
-                      <p className="text-xs text-slate-500">{t.reason}</p>
+                    <div key={t.taskId} className="p-2 bg-slate-50 dark:bg-slate-700/50 rounded">
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{t.title}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{t.reason}</p>
                     </div>
                   ))}
                 </div>
@@ -137,14 +137,14 @@ export default function DriftAnalysisModal({ projectId, onMarkDone, onCreateTask
             )}
 
             {analysis.outdatedTasks.length === 0 && analysis.untrackedWork.length === 0 && analysis.completedButOpen.length === 0 && (
-              <p className="text-sm text-slate-500 text-center py-4">No drift detected — your task board is in sync with the repo.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">No drift detected — your task board is in sync with the repo.</p>
             )}
           </>
         ) : null}
       </div>
 
-      <div className="flex items-center justify-end px-5 py-3 border-t border-slate-100 flex-shrink-0">
-        <button onClick={onClose} className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800">
+      <div className="flex items-center justify-end px-5 py-3 border-t border-slate-100 dark:border-slate-700 flex-shrink-0">
+        <button onClick={onClose} className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-300">
           Close
         </button>
       </div>

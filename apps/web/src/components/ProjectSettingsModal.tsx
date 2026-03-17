@@ -414,33 +414,33 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
 
   return (
     <Modal isOpen={true} onClose={onClose} title="Project Settings" size="md">
-      <div className="flex items-center justify-between p-4 border-b border-slate-200">
-        <h2 className="text-lg font-semibold text-slate-800">Project Settings</h2>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl leading-none" aria-label="Close">&times;</button>
+      <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-600">
+        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Project Settings</h2>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-xl leading-none" aria-label="Close">&times;</button>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-200 px-4">
+      <div className="flex border-b border-slate-200 dark:border-slate-600 px-4">
         <button
-          className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === 'members' ? 'border-slate-800 text-slate-800' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+          className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === 'members' ? 'border-slate-800 text-slate-800 dark:border-slate-200 dark:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'}`}
           onClick={() => setTab('members')}
         >
           Members
         </button>
         <button
-          className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === 'automation' ? 'border-slate-800 text-slate-800' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+          className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === 'automation' ? 'border-slate-800 text-slate-800 dark:border-slate-200 dark:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'}`}
           onClick={() => setTab('automation')}
         >
           Automation
         </button>
         <button
-          className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === 'fields' ? 'border-slate-800 text-slate-800' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+          className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === 'fields' ? 'border-slate-800 text-slate-800 dark:border-slate-200 dark:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'}`}
           onClick={() => setTab('fields')}
         >
           Custom Fields
         </button>
         <button
-          className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === 'templates' ? 'border-slate-800 text-slate-800' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+          className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === 'templates' ? 'border-slate-800 text-slate-800 dark:border-slate-200 dark:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'}`}
           onClick={() => setTab('templates')}
         >
           Templates
@@ -451,53 +451,53 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {loading ? (
-          <p className="text-sm text-slate-500">Loading...</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Loading...</p>
         ) : tab === 'templates' ? (
           editingTemplate ? (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-slate-500 uppercase tracking-wide">Edit Template</p>
-                <button onClick={() => setEditingTemplate(null)} className="text-xs text-slate-500 hover:text-slate-700">Cancel</button>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Edit Template</p>
+                <button onClick={() => setEditingTemplate(null)} className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700">Cancel</button>
               </div>
               <input
                 type="text"
                 value={editingTemplate.name}
                 onChange={(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
                 placeholder="Template name"
-                className="w-full text-sm border border-slate-300 rounded px-2 py-1.5"
+                className="w-full text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1.5"
               />
               <textarea
                 value={editingTemplate.description ?? ''}
                 onChange={(e) => setEditingTemplate({ ...editingTemplate, description: e.target.value || null })}
                 placeholder="Description"
-                className="w-full text-sm border border-slate-300 rounded px-2 py-1.5 h-20 resize-none"
+                className="w-full text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1.5 h-20 resize-none"
               />
               <div>
-                <label className="text-xs text-slate-500">Instructions</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">Instructions</label>
                 <textarea
                   value={editingTemplate.instructions ?? ''}
                   onChange={(e) => setEditingTemplate({ ...editingTemplate, instructions: e.target.value || null })}
                   placeholder="Implementation details..."
                   rows={4}
-                  className="w-full text-sm border border-slate-300 rounded px-2 py-1.5 resize-none"
+                  className="w-full text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1.5 resize-none"
                 />
               </div>
               <div>
-                <label className="text-xs text-slate-500">Acceptance Criteria</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">Acceptance Criteria</label>
                 <textarea
                   value={editingTemplate.acceptanceCriteria ?? ''}
                   onChange={(e) => setEditingTemplate({ ...editingTemplate, acceptanceCriteria: e.target.value || null })}
                   placeholder="How to verify this task is done..."
                   rows={3}
-                  className="w-full text-sm border border-slate-300 rounded px-2 py-1.5 resize-none"
+                  className="w-full text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1.5 resize-none"
                 />
               </div>
               <div className="flex items-center gap-2">
-                <label className="text-xs text-slate-500">Priority:</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">Priority:</label>
                 <select
                   value={editingTemplate.priority}
                   onChange={(e) => setEditingTemplate({ ...editingTemplate, priority: e.target.value })}
-                  className="flex-1 text-sm border border-slate-300 rounded px-2 py-1"
+                  className="flex-1 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1"
                 >
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
@@ -506,11 +506,11 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
                 </select>
               </div>
               <div className="flex items-center gap-2">
-                <label className="text-xs text-slate-500">Type:</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">Type:</label>
                 <select
                   value={editingTemplate.taskType}
                   onChange={(e) => setEditingTemplate({ ...editingTemplate, taskType: e.target.value })}
-                  className="flex-1 text-sm border border-slate-300 rounded px-2 py-1"
+                  className="flex-1 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1"
                 >
                   <option value="task">Task</option>
                   <option value="bug">Bug</option>
@@ -520,25 +520,25 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
               </div>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <label className="text-xs text-slate-500">Est. Hours:</label>
+                  <label className="text-xs text-slate-500 dark:text-slate-400">Est. Hours:</label>
                   <input
                     type="number"
                     value={editingTemplate.estimatedHours ?? ''}
                     onChange={(e) => setEditingTemplate({ ...editingTemplate, estimatedHours: e.target.value ? parseFloat(e.target.value) : null })}
                     min={0}
                     step={0.5}
-                    className="w-20 text-sm border border-slate-300 rounded px-2 py-1"
+                    className="w-20 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1"
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <label className="text-xs text-slate-500">Story Pts:</label>
+                  <label className="text-xs text-slate-500 dark:text-slate-400">Story Pts:</label>
                   <input
                     type="number"
                     value={editingTemplate.storyPoints ?? ''}
                     onChange={(e) => setEditingTemplate({ ...editingTemplate, storyPoints: e.target.value ? parseInt(e.target.value, 10) : null })}
                     min={0}
                     step={1}
-                    className="w-20 text-sm border border-slate-300 rounded px-2 py-1"
+                    className="w-20 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1"
                   />
                 </div>
               </div>
@@ -548,76 +548,76 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
             </div>
           ) : (
             <>
-              <ul className="divide-y divide-slate-100">
+              <ul className="divide-y divide-slate-100 dark:divide-slate-700">
                 {templates.map((t) => (
                   <li key={t.taskTemplateId} className="py-2 flex items-center justify-between">
                     <div>
-                      <span className="text-sm font-medium text-slate-800">{t.name}</span>
+                      <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{t.name}</span>
                       <span className="ml-2 text-xs text-slate-400">{t.priority} / {t.taskType}</span>
                       {!t.projectId && <span className="ml-1 text-xs text-blue-400">org-wide</span>}
                       {t.description && <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{t.description}</p>}
                     </div>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => setEditingTemplate(t)} className="text-slate-500 hover:text-slate-700 text-xs">Edit</button>
+                      <button onClick={() => setEditingTemplate(t)} className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 text-xs">Edit</button>
                       <button onClick={() => handleDeleteTemplate(t.taskTemplateId)} className="text-red-500 hover:text-red-700 text-xs">Delete</button>
                     </div>
                   </li>
                 ))}
-                {templates.length === 0 && <li className="py-2 text-sm text-slate-500">No templates yet.</li>}
+                {templates.length === 0 && <li className="py-2 text-sm text-slate-500 dark:text-slate-400">No templates yet.</li>}
               </ul>
 
-              <div className="space-y-2 pt-2 border-t border-slate-100">
-                <p className="text-sm font-medium text-slate-500 uppercase tracking-wide">Create template</p>
+              <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Create template</p>
                 <input
                   type="text"
                   value={tplName}
                   onChange={(e) => setTplName(e.target.value)}
                   placeholder="Template name"
-                  className="w-full text-sm border border-slate-300 rounded px-2 py-1.5"
+                  className="w-full text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1.5"
                 />
                 <textarea
                   value={tplDescription}
                   onChange={(e) => setTplDescription(e.target.value)}
                   placeholder="Description (optional)"
-                  className="w-full text-sm border border-slate-300 rounded px-2 py-1.5 h-16 resize-none"
+                  className="w-full text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1.5 h-16 resize-none"
                 />
                 <div>
-                  <label className="text-xs text-slate-500">Instructions</label>
+                  <label className="text-xs text-slate-500 dark:text-slate-400">Instructions</label>
                   <textarea
                     value={tplInstructions}
                     onChange={(e) => setTplInstructions(e.target.value)}
                     placeholder="Implementation details..."
                     rows={4}
-                    className="w-full text-sm border border-slate-300 rounded px-2 py-1.5 resize-none"
+                    className="w-full text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1.5 resize-none"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-500">Acceptance Criteria</label>
+                  <label className="text-xs text-slate-500 dark:text-slate-400">Acceptance Criteria</label>
                   <textarea
                     value={tplAcceptanceCriteria}
                     onChange={(e) => setTplAcceptanceCriteria(e.target.value)}
                     placeholder="How to verify this task is done..."
                     rows={3}
-                    className="w-full text-sm border border-slate-300 rounded px-2 py-1.5 resize-none"
+                    className="w-full text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1.5 resize-none"
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <label className="text-xs text-slate-500">Priority:</label>
+                  <label className="text-xs text-slate-500 dark:text-slate-400">Priority:</label>
                   <select
                     value={tplPriority}
                     onChange={(e) => setTplPriority(e.target.value)}
-                    className="flex-1 text-sm border border-slate-300 rounded px-2 py-1"
+                    className="flex-1 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1"
                   >
                     <option value="low">Low</option>
                     <option value="medium">Medium</option>
                     <option value="high">High</option>
                     <option value="critical">Critical</option>
                   </select>
-                  <label className="text-xs text-slate-500">Type:</label>
+                  <label className="text-xs text-slate-500 dark:text-slate-400">Type:</label>
                   <select
                     value={tplTaskType}
                     onChange={(e) => setTplTaskType(e.target.value)}
-                    className="flex-1 text-sm border border-slate-300 rounded px-2 py-1"
+                    className="flex-1 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1"
                   >
                     <option value="task">Task</option>
                     <option value="bug">Bug</option>
@@ -627,25 +627,25 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2">
-                    <label className="text-xs text-slate-500">Est. Hours:</label>
+                    <label className="text-xs text-slate-500 dark:text-slate-400">Est. Hours:</label>
                     <input
                       type="number"
                       value={tplEstimatedHours}
                       onChange={(e) => setTplEstimatedHours(e.target.value)}
                       min={0}
                       step={0.5}
-                      className="w-20 text-sm border border-slate-300 rounded px-2 py-1"
+                      className="w-20 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1"
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <label className="text-xs text-slate-500">Story Pts:</label>
+                    <label className="text-xs text-slate-500 dark:text-slate-400">Story Pts:</label>
                     <input
                       type="number"
                       value={tplStoryPoints}
                       onChange={(e) => setTplStoryPoints(e.target.value)}
                       min={0}
                       step={1}
-                      className="w-20 text-sm border border-slate-300 rounded px-2 py-1"
+                      className="w-20 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1"
                     />
                   </div>
                 </div>
@@ -657,7 +657,7 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
           )
         ) : tab === 'fields' ? (
           <>
-            <ul className="divide-y divide-slate-100">
+            <ul className="divide-y divide-slate-100 dark:divide-slate-700">
               {[...customFields].sort((a, b) => a.position - b.position).map((f, idx) => (
                 <li key={f.customFieldId} className="py-2 flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -680,7 +680,7 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
                       </button>
                     </div>
                     <div>
-                      <span className="text-sm font-medium text-slate-800">{f.name}</span>
+                      <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{f.name}</span>
                       <span className="ml-2 text-xs text-slate-400">{f.fieldType}</span>
                       {f.required && <span className="ml-1 text-xs text-red-400">required</span>}
                       {f.options && (
@@ -693,24 +693,24 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
                   <button onClick={() => handleDeleteCustomField(f.customFieldId)} className="text-red-500 hover:text-red-700 text-xs">Delete</button>
                 </li>
               ))}
-              {customFields.length === 0 && <li className="py-2 text-sm text-slate-500">No custom fields yet.</li>}
+              {customFields.length === 0 && <li className="py-2 text-sm text-slate-500 dark:text-slate-400">No custom fields yet.</li>}
             </ul>
 
-            <div className="space-y-2 pt-2 border-t border-slate-100">
-              <p className="text-sm font-medium text-slate-500 uppercase tracking-wide">Add custom field</p>
+            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Add custom field</p>
               <input
                 type="text"
                 value={cfName}
                 onChange={(e) => setCfName(e.target.value)}
                 placeholder="Field name"
-                className="w-full text-sm border border-slate-300 rounded px-2 py-1.5"
+                className="w-full text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1.5"
               />
               <div className="flex items-center gap-2">
-                <label className="text-xs text-slate-500">Type:</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">Type:</label>
                 <select
                   value={cfType}
                   onChange={(e) => setCfType(e.target.value)}
-                  className="flex-1 text-sm border border-slate-300 rounded px-2 py-1"
+                  className="flex-1 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1"
                 >
                   <option value="TEXT">Text</option>
                   <option value="NUMBER">Number</option>
@@ -724,10 +724,10 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
                   value={cfOptions}
                   onChange={(e) => setCfOptions(e.target.value)}
                   placeholder="Options (comma-separated)"
-                  className="w-full text-sm border border-slate-300 rounded px-2 py-1.5"
+                  className="w-full text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1.5"
                 />
               )}
-              <label className="flex items-center gap-2 text-xs text-slate-600">
+              <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
                 <input
                   type="checkbox"
                   checked={cfRequired}
@@ -743,7 +743,7 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
           </>
         ) : tab === 'members' ? (
           <>
-            <ul className="divide-y divide-slate-100">
+            <ul className="divide-y divide-slate-100 dark:divide-slate-700">
               {members.map((m) => (
                 <li key={m.id} className="py-2 flex items-center justify-between text-sm">
                   <span className="text-slate-800">{m.email}</span>
@@ -751,7 +751,7 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
                     <select
                       value={m.role}
                       onChange={(e) => handleUpdateRole(m.userId, e.target.value)}
-                      className="text-xs border border-slate-300 rounded px-1.5 py-0.5"
+                      className="text-xs border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-1.5 py-0.5"
                     >
                       <option value="viewer">Viewer</option>
                       <option value="editor">Editor</option>
@@ -761,16 +761,16 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
                   </div>
                 </li>
               ))}
-              {members.length === 0 && <li className="py-2 text-sm text-slate-500">No project members yet.</li>}
+              {members.length === 0 && <li className="py-2 text-sm text-slate-500 dark:text-slate-400">No project members yet.</li>}
             </ul>
 
-            <div className="space-y-2 pt-2 border-t border-slate-100">
-              <p className="text-sm font-medium text-slate-500 uppercase tracking-wide">Add member</p>
+            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Add member</p>
               <div className="flex items-center gap-2">
                 <select
                   value={addUserId}
                   onChange={(e) => setAddUserId(e.target.value)}
-                  className="flex-1 text-sm border border-slate-300 rounded px-2 py-1.5"
+                  className="flex-1 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1.5"
                 >
                   <option value="">Select user...</option>
                   {availableUsers.map((u) => (
@@ -794,13 +794,13 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
           </>
         ) : (
           <>
-            <ul className="divide-y divide-slate-100">
+            <ul className="divide-y divide-slate-100 dark:divide-slate-700">
               {rules.map((r) => (
                 <li key={r.id} className="py-2 space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-slate-800">{r.name}</span>
+                    <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{r.name}</span>
                     <div className="flex items-center gap-2">
-                      <label className="flex items-center gap-1 text-xs text-slate-500">
+                      <label className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
                         <input
                           type="checkbox"
                           checked={r.enabled}
@@ -812,29 +812,29 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
                       <button onClick={() => handleDeleteRule(r.id)} className="text-red-500 hover:text-red-700 text-xs">Delete</button>
                     </div>
                   </div>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     When: {describeTrigger(r.trigger)} → Then: {describeAction(r.action)}
                   </p>
                 </li>
               ))}
-              {rules.length === 0 && <li className="py-2 text-sm text-slate-500">No automation rules yet.</li>}
+              {rules.length === 0 && <li className="py-2 text-sm text-slate-500 dark:text-slate-400">No automation rules yet.</li>}
             </ul>
 
-            <div className="space-y-2 pt-2 border-t border-slate-100">
-              <p className="text-sm font-medium text-slate-500 uppercase tracking-wide">Add rule</p>
+            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Add rule</p>
               <input
                 type="text"
                 value={ruleName}
                 onChange={(e) => setRuleName(e.target.value)}
                 placeholder="Rule name"
-                className="w-full text-sm border border-slate-300 rounded px-2 py-1.5"
+                className="w-full text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1.5"
               />
               <div className="flex items-center gap-2">
-                <label className="text-xs text-slate-500">When:</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">When:</label>
                 <select
                   value={triggerEvent}
                   onChange={(e) => setTriggerEvent(e.target.value)}
-                  className="flex-1 text-sm border border-slate-300 rounded px-2 py-1"
+                  className="flex-1 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1"
                 >
                   {TRIGGER_EVENTS.map((e) => (
                     <option key={e.value} value={e.value}>{e.label}</option>
@@ -842,13 +842,13 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
                 </select>
               </div>
               <div className="flex items-center gap-2">
-                <label className="text-xs text-slate-500">Condition:</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">Condition:</label>
                 <input
                   type="text"
                   value={triggerConditionKey}
                   onChange={(e) => setTriggerConditionKey(e.target.value)}
                   placeholder="key"
-                  className="w-24 text-sm border border-slate-300 rounded px-2 py-1"
+                  className="w-24 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1"
                 />
                 <span className="text-xs text-slate-400">=</span>
                 <input
@@ -856,15 +856,15 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
                   value={triggerConditionValue}
                   onChange={(e) => setTriggerConditionValue(e.target.value)}
                   placeholder="value (optional)"
-                  className="flex-1 text-sm border border-slate-300 rounded px-2 py-1"
+                  className="flex-1 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1"
                 />
               </div>
               <div className="flex items-center gap-2">
-                <label className="text-xs text-slate-500">Then:</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">Then:</label>
                 <select
                   value={actionType}
                   onChange={(e) => setActionType(e.target.value)}
-                  className="flex-1 text-sm border border-slate-300 rounded px-2 py-1"
+                  className="flex-1 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1"
                 >
                   {ACTION_TYPES.map((a) => (
                     <option key={a.value} value={a.value}>{a.label}</option>
@@ -873,14 +873,14 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
               </div>
               {actionType !== 'notify_assignee' && (
                 <div className="flex items-center gap-2">
-                  <label className="text-xs text-slate-500">
+                  <label className="text-xs text-slate-500 dark:text-slate-400">
                     {actionType === 'move_to_column' ? 'Column:' : actionType === 'set_status' ? 'Status:' : 'User:'}
                   </label>
                   {actionType === 'assign_to' ? (
                     <select
                       value={actionParam}
                       onChange={(e) => setActionParam(e.target.value)}
-                      className="flex-1 text-sm border border-slate-300 rounded px-2 py-1"
+                      className="flex-1 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1"
                     >
                       <option value="">Select user...</option>
                       {orgUsers.map((u) => (
@@ -893,7 +893,7 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
                       value={actionParam}
                       onChange={(e) => setActionParam(e.target.value)}
                       placeholder={actionType === 'move_to_column' ? 'Column name' : 'Status slug'}
-                      className="flex-1 text-sm border border-slate-300 rounded px-2 py-1"
+                      className="flex-1 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1"
                     />
                   )}
                 </div>

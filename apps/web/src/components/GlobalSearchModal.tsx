@@ -73,8 +73,8 @@ export default function GlobalSearchModal({ onClose }: GlobalSearchModalProps) {
   return (
     <Modal isOpen={true} onClose={onClose} title="Global Search" size="md" variant="top-aligned">
       {/* Search input */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200">
-        <svg className="w-4 h-4 text-slate-400 flex-shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 dark:border-slate-600">
+        <svg className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
           <circle cx="7" cy="7" r="4.5" />
           <path d="M10.5 10.5L14 14" strokeLinecap="round" />
         </svg>
@@ -86,9 +86,9 @@ export default function GlobalSearchModal({ onClose }: GlobalSearchModalProps) {
           value={query}
           onChange={(e) => handleInputChange(e.target.value)}
           placeholder="Search across all projects…"
-          className="flex-1 text-sm text-slate-800 outline-none bg-transparent placeholder:text-slate-400"
+          className="flex-1 text-sm text-slate-800 dark:text-slate-200 outline-none bg-transparent placeholder:text-slate-400 dark:placeholder:text-slate-500"
         />
-        <kbd className="text-[10px] text-slate-400 border border-slate-200 rounded px-1.5 py-0.5">ESC</kbd>
+        <kbd className="text-[10px] text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-600 rounded px-1.5 py-0.5">ESC</kbd>
       </div>
 
       {error && (
@@ -118,9 +118,9 @@ export default function GlobalSearchModal({ onClose }: GlobalSearchModalProps) {
                   <button
                     key={p.projectId}
                     onClick={() => handleProjectClick(p.projectId)}
-                    className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2"
+                    className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
                   >
-                    <span className="text-sm text-slate-700">{p.name}</span>
+                    <span className="text-sm text-slate-700 dark:text-slate-300">{p.name}</span>
                   </button>
                 ))}
               </div>
@@ -132,13 +132,13 @@ export default function GlobalSearchModal({ onClose }: GlobalSearchModalProps) {
                   <button
                     key={hit.task.taskId}
                     onClick={() => handleTaskClick(hit.task.projectId)}
-                    className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2"
+                    className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-slate-700 truncate">{hit.task.title}</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300 truncate">{hit.task.title}</p>
                       <p className="text-xs text-slate-400">{hit.projectName}</p>
                     </div>
-                    <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded flex-shrink-0">
+                    <span className="text-xs bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded flex-shrink-0">
                       {statusLabel(hit.task.status)}
                     </span>
                   </button>

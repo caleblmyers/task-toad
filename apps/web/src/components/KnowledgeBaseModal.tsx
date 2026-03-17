@@ -14,8 +14,8 @@ export default function KnowledgeBaseModal({ isOpen, onClose, knowledgeBase, onS
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Project Knowledge Base" size="md">
       <div className="p-6">
-        <h2 className="text-lg font-semibold text-slate-800 mb-1">Project Knowledge Base</h2>
-        <p className="text-xs text-slate-500 mb-4">
+        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-1">Project Knowledge Base</h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
           This context is injected into all AI prompts for this project.
         </p>
 
@@ -23,7 +23,7 @@ export default function KnowledgeBaseModal({ isOpen, onClose, knowledgeBase, onS
           value={value}
           onChange={(e) => setValue(e.target.value)}
           rows={8}
-          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-green resize-y"
+          className="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-700 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-green resize-y"
           placeholder="Describe tech stack, coding conventions, architecture, etc. This is injected into all AI prompts for this project."
         />
 
@@ -36,13 +36,13 @@ export default function KnowledgeBaseModal({ isOpen, onClose, knowledgeBase, onS
         <div className="flex justify-end gap-2 mt-4">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50"
+            className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700"
           >
             Cancel
           </button>
           <button
             onClick={() => { onSave(value); onClose(); }}
-            className="px-4 py-2 text-sm text-white bg-slate-700 rounded-lg hover:bg-slate-600"
+            className="px-4 py-2 text-sm text-white bg-slate-700 dark:bg-slate-600 rounded-lg hover:bg-slate-600 dark:hover:bg-slate-500"
           >
             Save
           </button>

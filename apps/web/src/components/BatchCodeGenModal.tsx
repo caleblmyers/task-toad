@@ -62,9 +62,9 @@ export default function BatchCodeGenModal({ projectId, tasks, onClose }: BatchCo
 
   return (
     <Modal isOpen={true} onClose={onClose} title="Batch Code Generation" size="md">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 flex-shrink-0">
-        <h2 className="text-base font-semibold text-slate-800">Batch Code Generation</h2>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label="Close">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-600 flex-shrink-0">
+        <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">Batch Code Generation</h2>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" aria-label="Close">
           <IconClose className="w-4 h-4" />
         </button>
       </div>
@@ -72,17 +72,17 @@ export default function BatchCodeGenModal({ projectId, tasks, onClose }: BatchCo
       <div className="flex-1 overflow-y-auto p-5 space-y-4">
         {!result ? (
           <>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               Select up to 5 tasks with instructions to generate code for all at once.
             </p>
             {tasksWithInstructions.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-8">
+              <p className="text-sm text-slate-400 dark:text-slate-500 text-center py-8">
                 No tasks have instructions yet. Generate instructions for tasks first.
               </p>
             ) : (
               <div className="space-y-1.5">
                 {tasksWithInstructions.map((task) => (
-                  <label key={task.taskId} className="flex items-start gap-2 p-2 rounded hover:bg-slate-50 cursor-pointer">
+                  <label key={task.taskId} className="flex items-start gap-2 p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={selectedIds.has(task.taskId)}
@@ -91,8 +91,8 @@ export default function BatchCodeGenModal({ projectId, tasks, onClose }: BatchCo
                       disabled={generating}
                     />
                     <div className="min-w-0">
-                      <p className="text-sm text-slate-700">{task.title}</p>
-                      <p className="text-xs text-slate-400 truncate">{task.description}</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300">{task.title}</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500 truncate">{task.description}</p>
                     </div>
                   </label>
                 ))}
@@ -102,25 +102,25 @@ export default function BatchCodeGenModal({ projectId, tasks, onClose }: BatchCo
           </>
         ) : (
           <div className="space-y-3">
-            <div className="bg-slate-50 rounded-lg p-3">
-              <p className="text-sm text-slate-700">{result.summary}</p>
+            <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3">
+              <p className="text-sm text-slate-700 dark:text-slate-300">{result.summary}</p>
             </div>
-            <p className="text-xs text-slate-400">{result.files.length} files generated</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">{result.files.length} files generated</p>
             {result.files.map((file, i) => (
-              <div key={i} className="border border-slate-200 rounded-lg">
+              <div key={i} className="border border-slate-200 dark:border-slate-600 rounded-lg">
                 <button
                   onClick={() => setExpandedFile(expandedFile === i ? null : i)}
-                  className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-slate-50"
+                  className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-700"
                 >
                   <div>
-                    <span className="text-sm font-mono text-slate-700">{file.path}</span>
-                    <span className="ml-2 text-xs text-slate-400">{file.language}</span>
+                    <span className="text-sm font-mono text-slate-700 dark:text-slate-300">{file.path}</span>
+                    <span className="ml-2 text-xs text-slate-400 dark:text-slate-500">{file.language}</span>
                   </div>
                   <span className="text-slate-400 text-xs">{expandedFile === i ? '▼' : '▶'}</span>
                 </button>
                 {expandedFile === i && (
-                  <div className="border-t border-slate-100 px-3 py-2">
-                    <p className="text-xs text-slate-500 mb-2">{file.description}</p>
+                  <div className="border-t border-slate-100 dark:border-slate-700 px-3 py-2">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">{file.description}</p>
                     <pre className="text-xs bg-slate-900 text-slate-100 rounded p-3 overflow-x-auto max-h-64">
                       {file.content}
                     </pre>
@@ -132,12 +132,12 @@ export default function BatchCodeGenModal({ projectId, tasks, onClose }: BatchCo
         )}
       </div>
 
-      <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 flex-shrink-0">
+      <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 dark:border-slate-700 flex-shrink-0">
         <div>
           {result && (
             <button
               onClick={() => { setResult(null); setError(null); }}
-              className="text-sm text-slate-500 hover:text-slate-700"
+              className="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
             >
               Back to selection
             </button>

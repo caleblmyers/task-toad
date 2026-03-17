@@ -28,9 +28,9 @@ export default function BugReportModal({ onSubmit, onClose }: BugReportModalProp
 
   return (
     <Modal isOpen={true} onClose={onClose} title="Parse Bug Report" size="md">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
-        <h2 className="text-base font-semibold text-slate-800">Parse Bug Report</h2>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label="Close">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-600">
+        <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">Parse Bug Report</h2>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" aria-label="Close">
           <IconClose className="w-4 h-4" />
         </button>
       </div>
@@ -41,7 +41,7 @@ export default function BugReportModal({ onSubmit, onClose }: BugReportModalProp
           onChange={(e) => setBugReport(e.target.value)}
           placeholder="Paste bug report, error log, or user feedback..."
           rows={10}
-          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg resize-y focus:outline-none focus:ring-1 focus:ring-brand-green"
+          className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded-lg resize-y focus:outline-none focus:ring-1 focus:ring-brand-green"
           disabled={loading}
           autoFocus
         />
@@ -51,10 +51,10 @@ export default function BugReportModal({ onSubmit, onClose }: BugReportModalProp
         )}
       </div>
 
-      <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-100">
+      <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-100 dark:border-slate-700">
         <button
           onClick={onClose}
-          className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800"
+          className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-300"
           disabled={loading}
         >
           Cancel

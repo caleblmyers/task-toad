@@ -82,9 +82,9 @@ export default function PRDBreakdownModal({ onPreview, onCommit, onClose }: PRDB
 
   return (
     <Modal isOpen={true} onClose={onClose} title="PRD Breakdown" size="md">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 flex-shrink-0">
-        <h2 className="text-base font-semibold text-slate-800">PRD Breakdown</h2>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label="Close">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-600 flex-shrink-0">
+        <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">PRD Breakdown</h2>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" aria-label="Close">
           <IconClose className="w-4 h-4" />
         </button>
       </div>
@@ -97,40 +97,40 @@ export default function PRDBreakdownModal({ onPreview, onCommit, onClose }: PRDB
               onChange={(e) => setPrd(e.target.value)}
               placeholder="Paste your Product Requirements Document here..."
               rows={12}
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg resize-y focus:outline-none focus:ring-1 focus:ring-brand-green"
+              className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded-lg resize-y focus:outline-none focus:ring-1 focus:ring-brand-green"
               disabled={loading}
               autoFocus
             />
           </>
         ) : (
           <div className="space-y-3">
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               {preview.epics.length} epic{preview.epics.length !== 1 ? 's' : ''} with{' '}
               {preview.epics.reduce((sum, e) => sum + e.tasks.length, 0)} tasks total
             </p>
             {preview.epics.map((epic, i) => (
-              <div key={i} className="border border-slate-200 rounded-lg">
+              <div key={i} className="border border-slate-200 dark:border-slate-600 rounded-lg">
                 <button
                   onClick={() => toggleEpic(i)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50"
+                  className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700"
                 >
                   <div>
-                    <span className="text-sm font-medium text-slate-800">{epic.title}</span>
-                    <span className="ml-2 text-xs text-slate-400">{epic.tasks.length} tasks</span>
+                    <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{epic.title}</span>
+                    <span className="ml-2 text-xs text-slate-400 dark:text-slate-500">{epic.tasks.length} tasks</span>
                   </div>
                   <span className="text-slate-400 text-xs">{expandedEpics.has(i) ? '▼' : '▶'}</span>
                 </button>
                 {expandedEpics.has(i) && (
-                  <div className="border-t border-slate-100 px-4 py-2 space-y-2">
-                    <p className="text-xs text-slate-500">{epic.description}</p>
+                  <div className="border-t border-slate-100 dark:border-slate-700 px-4 py-2 space-y-2">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{epic.description}</p>
                     {epic.tasks.map((task, j) => (
-                      <div key={j} className="flex items-start gap-2 py-1.5 border-t border-slate-50 first:border-0">
+                      <div key={j} className="flex items-start gap-2 py-1.5 border-t border-slate-50 dark:border-slate-700 first:border-0">
                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${priorityColor(task.priority)}`}>
                           {task.priority}
                         </span>
                         <div className="min-w-0">
-                          <p className="text-sm text-slate-700">{task.title}</p>
-                          <p className="text-xs text-slate-400 truncate">{task.description}</p>
+                          <p className="text-sm text-slate-700 dark:text-slate-300">{task.title}</p>
+                          <p className="text-xs text-slate-400 dark:text-slate-500 truncate">{task.description}</p>
                         </div>
                         {task.estimatedHours != null && (
                           <span className="text-[10px] text-slate-400 flex-shrink-0">{task.estimatedHours}h</span>
@@ -149,12 +149,12 @@ export default function PRDBreakdownModal({ onPreview, onCommit, onClose }: PRDB
         )}
       </div>
 
-      <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 flex-shrink-0">
+      <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 dark:border-slate-700 flex-shrink-0">
         <div>
           {preview && (
             <button
               onClick={() => { setPreview(null); setError(null); }}
-              className="text-sm text-slate-500 hover:text-slate-700"
+              className="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
               disabled={loading}
             >
               Back to edit
@@ -164,7 +164,7 @@ export default function PRDBreakdownModal({ onPreview, onCommit, onClose }: PRDB
         <div className="flex items-center gap-2">
           <button
             onClick={onClose}
-            className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800"
+            className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-300"
             disabled={loading}
           >
             Cancel

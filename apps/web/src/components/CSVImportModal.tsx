@@ -148,36 +148,36 @@ export default function CSVImportModal({ onImport, onClose }: CSVImportModalProp
 
   return (
     <Modal isOpen={true} onClose={onClose} title="Import Tasks from CSV" size="md">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-        <h2 className="text-lg font-semibold text-slate-800">Import Tasks from CSV</h2>
-        <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl leading-none" aria-label="Close">&times;</button>
+      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-600">
+        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Import Tasks from CSV</h2>
+        <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-xl leading-none" aria-label="Close">&times;</button>
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
         {!parsed ? (
           <div className="space-y-3">
-            <p className="text-sm text-slate-600">Upload a CSV file with task data. The first row should contain column headers.</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Upload a CSV file with task data. The first row should contain column headers.</p>
             <input
               type="file"
               accept=".csv"
               onChange={handleFileChange}
-              className="block w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
+              className="block w-full text-sm text-slate-600 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-slate-100 dark:file:bg-slate-600 file:text-slate-700 dark:file:text-slate-200 hover:file:bg-slate-200 dark:hover:file:bg-slate-500"
             />
           </div>
         ) : (
           <>
             {/* Column mapping */}
             <div>
-              <h3 className="text-sm font-medium text-slate-700 mb-2">Map CSV columns to task fields:</h3>
+              <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Map CSV columns to task fields:</h3>
               <div className="grid grid-cols-2 gap-2">
                 {parsed.headers.map((header, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <span className="text-sm text-slate-600 truncate w-32" title={header}>{header}</span>
+                    <span className="text-sm text-slate-600 dark:text-slate-400 truncate w-32" title={header}>{header}</span>
                     <span className="text-slate-400">&rarr;</span>
                     <select
                       value={mapping[i]}
                       onChange={(e) => handleMappingChange(i, e.target.value as TaskField)}
-                      className="flex-1 text-sm border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-green"
+                      className="flex-1 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-green"
                       aria-label={`Map column "${header}" to field`}
                     >
                       {FIELD_OPTIONS.map((opt) => (
@@ -194,23 +194,23 @@ export default function CSVImportModal({ onImport, onClose }: CSVImportModalProp
 
             {/* Preview */}
             <div>
-              <h3 className="text-sm font-medium text-slate-700 mb-2">Preview (first {previewRows.length} rows):</h3>
-              <div className="overflow-x-auto border border-slate-200 rounded">
+              <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Preview (first {previewRows.length} rows):</h3>
+              <div className="overflow-x-auto border border-slate-200 dark:border-slate-600 rounded">
                 <table className="min-w-full text-xs">
-                  <thead className="bg-slate-50">
+                  <thead className="bg-slate-50 dark:bg-slate-700/50">
                     <tr>
                       {parsed.headers.map((h, i) => (
-                        <th key={i} className="px-3 py-1.5 text-left font-medium text-slate-500">
-                          {mapping[i] !== 'skip' ? mapping[i] : <span className="text-slate-500">{h}</span>}
+                        <th key={i} className="px-3 py-1.5 text-left font-medium text-slate-500 dark:text-slate-400">
+                          {mapping[i] !== 'skip' ? mapping[i] : <span className="text-slate-500 dark:text-slate-400">{h}</span>}
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {previewRows.map((row, ri) => (
-                      <tr key={ri} className="border-t border-slate-100">
+                      <tr key={ri} className="border-t border-slate-100 dark:border-slate-700">
                         {row.map((cell, ci) => (
-                          <td key={ci} className={`px-3 py-1 ${mapping[ci] === 'skip' ? 'text-slate-500' : 'text-slate-700'} max-w-[200px] truncate`}>
+                          <td key={ci} className={`px-3 py-1 ${mapping[ci] === 'skip' ? 'text-slate-500 dark:text-slate-400' : 'text-slate-700 dark:text-slate-300'} max-w-[200px] truncate`}>
                             {cell}
                           </td>
                         ))}
@@ -219,17 +219,17 @@ export default function CSVImportModal({ onImport, onClose }: CSVImportModalProp
                   </tbody>
                 </table>
               </div>
-              <p className="text-xs text-slate-500 mt-1">{parsed.rows.length} total rows</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{parsed.rows.length} total rows</p>
             </div>
           </>
         )}
 
         {importing && (
           <div className="space-y-1">
-            <p className="text-sm text-slate-600">Importing {progress.current}/{progress.total}...</p>
-            <div className="w-full bg-slate-200 rounded-full h-2">
+            <p className="text-sm text-slate-600 dark:text-slate-400">Importing {progress.current}/{progress.total}...</p>
+            <div className="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2">
               <div
-                className="bg-slate-600 h-2 rounded-full transition-all"
+                className="bg-slate-600 dark:bg-slate-300 h-2 rounded-full transition-all"
                 style={{ width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%` }}
               />
             </div>
@@ -239,11 +239,11 @@ export default function CSVImportModal({ onImport, onClose }: CSVImportModalProp
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
 
-      <div className="flex items-center justify-end gap-2 px-6 py-3 border-t border-slate-200">
+      <div className="flex items-center justify-end gap-2 px-6 py-3 border-t border-slate-200 dark:border-slate-600">
         <button
           type="button"
           onClick={onClose}
-          className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800"
+          className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-300"
           disabled={importing}
         >
           Cancel

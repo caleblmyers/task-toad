@@ -87,9 +87,9 @@ export default function SprintTransitionModal({ sprintId, sprintName, onApply, o
 
   return (
     <Modal isOpen={true} onClose={onClose} title={`Sprint Transition: ${sprintName}`} size="md">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 flex-shrink-0">
-        <h2 className="text-base font-semibold text-slate-800">Sprint Transition: {sprintName}</h2>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label="Close">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-600 flex-shrink-0">
+        <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">Sprint Transition: {sprintName}</h2>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" aria-label="Close">
           <IconClose className="w-4 h-4" />
         </button>
       </div>
@@ -97,22 +97,22 @@ export default function SprintTransitionModal({ sprintId, sprintName, onApply, o
       <div className="flex-1 overflow-y-auto p-5 space-y-5">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="text-sm text-slate-500">Analyzing sprint...</div>
+            <div className="text-sm text-slate-500 dark:text-slate-400">Analyzing sprint...</div>
           </div>
         ) : error ? (
           <div className="text-sm text-red-600">{error}</div>
         ) : analysis ? (
           <>
-            <div className="bg-slate-50 rounded-lg p-3">
-              <p className="text-sm text-slate-700">{analysis.summary}</p>
+            <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3">
+              <p className="text-sm text-slate-700 dark:text-slate-300">{analysis.summary}</p>
             </div>
 
             {analysis.carryOver.length > 0 && (
               <div>
-                <h3 className="text-sm font-medium text-slate-700 mb-2">Carry Over to Next Sprint</h3>
+                <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Carry Over to Next Sprint</h3>
                 <div className="space-y-1.5">
                   {analysis.carryOver.map((t) => (
-                    <label key={t.taskId} className="flex items-start gap-2 p-2 rounded hover:bg-slate-50 cursor-pointer">
+                    <label key={t.taskId} className="flex items-start gap-2 p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={selectedCarryOver.has(t.taskId)}
@@ -120,8 +120,8 @@ export default function SprintTransitionModal({ sprintId, sprintName, onApply, o
                         className="mt-0.5"
                       />
                       <div className="min-w-0">
-                        <p className="text-sm text-slate-700 font-medium">{t.taskId}</p>
-                        <p className="text-xs text-slate-500">{t.reason}</p>
+                        <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">{t.taskId}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{t.reason}</p>
                       </div>
                     </label>
                   ))}
@@ -131,10 +131,10 @@ export default function SprintTransitionModal({ sprintId, sprintName, onApply, o
 
             {analysis.deprioritize.length > 0 && (
               <div>
-                <h3 className="text-sm font-medium text-slate-700 mb-2">Deprioritize to Backlog</h3>
+                <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Deprioritize to Backlog</h3>
                 <div className="space-y-1.5">
                   {analysis.deprioritize.map((t) => (
-                    <label key={t.taskId} className="flex items-start gap-2 p-2 rounded hover:bg-slate-50 cursor-pointer">
+                    <label key={t.taskId} className="flex items-start gap-2 p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={selectedDeprioritize.has(t.taskId)}
@@ -142,8 +142,8 @@ export default function SprintTransitionModal({ sprintId, sprintName, onApply, o
                         className="mt-0.5"
                       />
                       <div className="min-w-0">
-                        <p className="text-sm text-slate-700 font-medium">{t.taskId}</p>
-                        <p className="text-xs text-slate-500">{t.reason}</p>
+                        <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">{t.taskId}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{t.reason}</p>
                       </div>
                     </label>
                   ))}
@@ -153,10 +153,10 @@ export default function SprintTransitionModal({ sprintId, sprintName, onApply, o
 
             {analysis.recommendations.length > 0 && (
               <div>
-                <h3 className="text-sm font-medium text-slate-700 mb-2">Recommendations</h3>
+                <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Recommendations</h3>
                 <ul className="list-disc list-inside space-y-1">
                   {analysis.recommendations.map((r, i) => (
-                    <li key={i} className="text-sm text-slate-600">{r}</li>
+                    <li key={i} className="text-sm text-slate-600 dark:text-slate-400">{r}</li>
                   ))}
                 </ul>
               </div>
@@ -165,10 +165,10 @@ export default function SprintTransitionModal({ sprintId, sprintName, onApply, o
         ) : null}
       </div>
 
-      <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-100 flex-shrink-0">
+      <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-100 dark:border-slate-700 flex-shrink-0">
         <button
           onClick={onClose}
-          className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800"
+          className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-300"
           disabled={applying}
         >
           Cancel
