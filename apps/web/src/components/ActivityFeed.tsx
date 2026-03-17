@@ -1,6 +1,11 @@
 import { memo } from 'react';
+import { List } from 'react-window';
 import type { Activity } from '../types';
 import { statusLabel } from '../utils/taskHelpers';
+
+const ROW_HEIGHT = 40;
+const MAX_LIST_HEIGHT = 600;
+const VIRTUALIZE_THRESHOLD = 50;
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -56,15 +61,15 @@ function describeActivity(activity: Activity): string {
   }
 }
 
-const ActivityItem = memo(function ActivityItem({ activity }: { activity: Activity }) {
+const ActivityItem = memo(function ActivityItem({ activity, style }: { activity: Activity; style?: React.CSSProperties }) {
   return (
-    <div className="flex items-start gap-2 py-1">
-      <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[10px] font-medium flex-shrink-0 mt-0.5">
+    <div className="flex items-start gap-2 py-1" style={style}>
+      <div className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 flex items-center justify-center text-[10px] font-medium flex-shrink-0 mt-0.5">
         {activity.userEmail.charAt(0).toUpperCase()}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-slate-600">{describeActivity(activity)}</p>
-        <p className="text-[10px] text-slate-400">{timeAgo(activity.createdAt)}</p>
+        <p className="text-xs text-slate-600 dark:text-slate-300">{describeActivity(activity)}</p>
+        <p className="text-[10px] text-slate-400 dark:text-slate-500">{timeAgo(activity.createdAt)}</p>
       </div>
     </div>
   );
@@ -77,14 +82,32 @@ interface ActivityFeedProps {
 
 export default function ActivityFeed({ activities, className = '' }: ActivityFeedProps) {
   if (activities.length === 0) {
-    return <p className="text-xs text-slate-400 py-1">No activity yet.</p>;
+    return <p className="text-xs text-slate-400 dark:text-slate-500 py-1">No activity yet.</p>;
   }
 
   return (
-    <div className={`space-y-2 ${className}`}>
-      {activities.map((activity) => (
-        <ActivityItem key={activity.activityId} activity={activity} />
-      ))}
+    <div className={className}>
+      {activities.length > VIRTUALIZE_THRESHOLD ? (
+        <List
+          style={{ height: Math.min(activities.length * ROW_HEIGHT, MAX_LIST_HEIGHT) }}
+          rowCount={activities.length}
+          rowHeight={ROW_HEIGHT}
+          rowComponent={({ index, style }) => (
+            <ActivityItem
+              key={activities[index].activityId}
+              activity={activities[index]}
+              style={style}
+            />
+          )}
+          rowProps={{}}
+        />
+      ) : (
+        <div className="space-y-2">
+          {activities.map((activity) => (
+            <ActivityItem key={activity.activityId} activity={activity} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

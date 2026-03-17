@@ -3,6 +3,8 @@ import type { Comment, OrgUser } from '../types';
 import MentionAutocomplete from './MentionAutocomplete';
 import MarkdownRenderer from './shared/MarkdownRenderer';
 
+const INITIAL_COMMENT_LIMIT = 30;
+
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
@@ -53,7 +55,7 @@ const CommentItem = memo(function CommentItem({
   };
 
   return (
-    <div className={`${isReply ? 'ml-8 border-l-2 border-slate-100 pl-3' : ''}`}>
+    <div className={`${isReply ? 'ml-8 border-l-2 border-slate-100 dark:border-slate-700 pl-3' : ''}`}>
       <div className="flex items-start gap-2 py-2">
         <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center text-xs font-medium flex-shrink-0">
           {comment.userEmail.charAt(0).toUpperCase()}
@@ -87,10 +89,10 @@ const CommentItem = memo(function CommentItem({
               </div>
               <div className="flex gap-2 mt-1">
                 {!isReply && (
-                  <button onClick={() => onReply(comment.commentId)} className="text-xs text-slate-400 hover:text-slate-600">Reply</button>
+                  <button onClick={() => onReply(comment.commentId)} className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">Reply</button>
                 )}
                 {isOwner && (
-                  <button onClick={() => setEditing(true)} className="text-xs text-slate-400 hover:text-slate-600">Edit</button>
+                  <button onClick={() => setEditing(true)} className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">Edit</button>
                 )}
                 {canDelete && (
                   <button onClick={() => onDelete(comment.commentId)} className="text-xs text-slate-400 hover:text-red-600">Delete</button>
@@ -119,7 +121,12 @@ export default function CommentSection({
   const [submitting, setSubmitting] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionAnchor, setMentionAnchor] = useState<{ top: number; left: number } | null>(null);
+  const [showAll, setShowAll] = useState(false);
   const newCommentRef = useRef<HTMLTextAreaElement>(null);
+
+  const visibleComments = showAll || comments.length <= INITIAL_COMMENT_LIMIT
+    ? comments
+    : comments.slice(0, INITIAL_COMMENT_LIMIT);
 
   const handleReply = useCallback((id: string) => { setReplyingTo(id); setReplyContent(''); }, []);
   const handleUpdate = useCallback((commentId: string, content: string) => onUpdateComment(commentId, content), [onUpdateComment]);
@@ -228,7 +235,7 @@ export default function CommentSection({
 
       {/* Comment list */}
       <div className="space-y-1">
-        {comments.map((comment) => (
+        {visibleComments.map((comment) => (
           <div key={comment.commentId}>
             <CommentItem
               comment={comment}
@@ -253,7 +260,7 @@ export default function CommentSection({
             ))}
             {/* Reply form */}
             {replyingTo === comment.commentId && (
-              <div className="ml-8 pl-3 border-l-2 border-slate-100 py-1">
+              <div className="ml-8 pl-3 border-l-2 border-slate-100 dark:border-slate-700 py-1">
                 <textarea
                   value={replyContent}
                   onChange={(e) => setReplyContent(e.target.value)}
@@ -265,14 +272,22 @@ export default function CommentSection({
                 />
                 <div className="flex gap-1 mt-1">
                   <button onClick={handleReplySubmit} disabled={!replyContent.trim() || submitting} className="text-xs text-blue-600 hover:text-blue-800 px-2 py-0.5 disabled:opacity-50">Reply</button>
-                  <button onClick={() => setReplyingTo(null)} className="text-xs text-slate-400 hover:text-slate-600 px-2 py-0.5">Cancel</button>
+                  <button onClick={() => setReplyingTo(null)} className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 px-2 py-0.5">Cancel</button>
                 </div>
               </div>
             )}
           </div>
         ))}
+        {!showAll && comments.length > INITIAL_COMMENT_LIMIT && (
+          <button
+            onClick={() => setShowAll(true)}
+            className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 py-2"
+          >
+            Show {comments.length - INITIAL_COMMENT_LIMIT} more comments
+          </button>
+        )}
         {comments.length === 0 && (
-          <p className="text-xs text-slate-400 py-1">No comments yet.</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 py-1">No comments yet.</p>
         )}
       </div>
     </div>
