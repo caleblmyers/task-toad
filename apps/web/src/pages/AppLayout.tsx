@@ -153,29 +153,31 @@ export default function AppLayout() {
       .catch(() => {/* non-critical */});
   }, []);
 
-  // SSE real-time events
-  // TODO: Dispatch SSE events to a global event bus or context for granular state updates
-  const handleSSEEvent = useCallback((_event: string, _data: unknown) => {
-    // For MVP: events are received but UI refresh is handled by individual pages
+  const fetchCount = useCallback(async () => {
+    try {
+      const data = await gql<{ unreadNotificationCount: number }>(
+        `query UnreadCount { unreadNotificationCount }`
+      );
+      setUnreadCount(data.unreadNotificationCount);
+    } catch {
+      // ignore
+    }
   }, []);
+
+  // SSE real-time events
+  const handleSSEEvent = useCallback((event: string, _data: unknown) => {
+    if (event === 'notification.created') {
+      void fetchCount();
+    }
+  }, [fetchCount]);
   const { connected: sseConnected } = useEventSource(handleSSEEvent);
 
-  // Poll unread count every 60s
+  // Poll unread count every 60s as SSE fallback
   useEffect(() => {
-    const fetchCount = async () => {
-      try {
-        const data = await gql<{ unreadNotificationCount: number }>(
-          `query UnreadCount { unreadNotificationCount }`
-        );
-        setUnreadCount(data.unreadNotificationCount);
-      } catch {
-        // ignore
-      }
-    };
-    fetchCount();
-    const interval = setInterval(fetchCount, 60000);
+    void fetchCount();
+    const interval = setInterval(() => void fetchCount(), 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchCount]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

@@ -54,4 +54,33 @@ export const appUptime = new promClient.Gauge({
   },
 });
 
+export const webhookDeliveryTotal = new promClient.Counter({
+  name: 'webhook_delivery_total',
+  help: 'Total webhook deliveries',
+  labelNames: ['event', 'status'] as const,
+  registers: [register],
+});
+
+export const automationRuleExecutionTotal = new promClient.Counter({
+  name: 'automation_rule_execution_total',
+  help: 'Total automation rule executions',
+  labelNames: ['status'] as const,
+  registers: [register],
+});
+
+export const aiCallTotal = new promClient.Counter({
+  name: 'ai_call_total',
+  help: 'Total AI API calls',
+  labelNames: ['feature', 'status'] as const,
+  registers: [register],
+});
+
+export const aiCallDuration = new promClient.Histogram({
+  name: 'ai_call_duration_seconds',
+  help: 'Duration of AI API calls in seconds',
+  labelNames: ['feature'] as const,
+  buckets: [0.5, 1, 2, 5, 10, 30, 60],
+  registers: [register],
+});
+
 export { register };

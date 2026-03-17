@@ -9,10 +9,29 @@ interface LocationState {
   options: ProjectOption[];
 }
 
+const SESSION_KEY = 'tasktoad-new-project';
+
 export default function NewProject() {
   const navigate = useNavigate();
   const location = useLocation();
-  const state = location.state as LocationState | null;
+  const locationState = location.state as LocationState | null;
+
+  // Persist to sessionStorage on arrival, recover on refresh
+  const state = (() => {
+    if (locationState) {
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(locationState));
+      return locationState;
+    }
+    const stored = sessionStorage.getItem(SESSION_KEY);
+    if (stored) {
+      try {
+        return JSON.parse(stored) as LocationState;
+      } catch {
+        // corrupt data
+      }
+    }
+    return null;
+  })();
 
   const [options, setOptions] = useState<ProjectOption[]>(state?.options ?? []);
   const [selected, setSelected] = useState<ProjectOption | null>(null);
@@ -39,6 +58,11 @@ export default function NewProject() {
         { prompt: combinedPrompt }
       );
       setOptions(data.generateProjectOptions);
+      // Update sessionStorage with refined options
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+        prompt: combinedPrompt,
+        options: data.generateProjectOptions,
+      }));
       setSelected(null);
       setRefineText('');
       setShowRefine(false);
@@ -62,6 +86,7 @@ export default function NewProject() {
         }`,
         { prompt: state.prompt, title: selected.title, description: selected.description }
       );
+      sessionStorage.removeItem(SESSION_KEY);
       navigate(`/app/projects/${data.createProjectFromOption.projectId}`, {
         state: { autoPreview: true },
       });

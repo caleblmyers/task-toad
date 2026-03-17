@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { createChildLogger } from './logger.js';
+import { automationRuleExecutionTotal } from './metrics.js';
 import { createNotification } from './notification.js';
 import { TriggerConditionSchema, ActionSchema, type TriggerCondition, type AutomationAction } from './zodSchemas.js';
 
@@ -56,7 +57,9 @@ async function doExecuteAutomations(prisma: PrismaClient, event: AutomationEvent
       const action: AutomationAction = actionParse.data;
       await executeAction(prisma, event, action);
       log.info({ ruleId: rule.id, ruleName: rule.name, action: action.type }, 'Automation rule fired');
+      automationRuleExecutionTotal.inc({ status: 'success' });
     } catch (err) {
+      automationRuleExecutionTotal.inc({ status: 'error' });
       log.warn({ err, ruleId: rule.id }, 'Failed to evaluate/execute automation rule');
     }
   }

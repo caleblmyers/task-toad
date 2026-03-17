@@ -379,6 +379,14 @@ Without these denylist entries, a request for e.g. `/sw.js` while offline could 
 
 ---
 
+## Beta Scope Narrowing (2026-03-17)
+
+- **Org-level read access for beta**: All org members can access all projects. Project-level RBAC deferred to post-beta.
+- **Runner/autonomous execution deferred**: AutonomousSprintPanel and sprintRunner were aspirational and never built. Beta promise focuses on AI-assisted (not autonomous) project management.
+- **Beta scope**: AI-assisted project planning, task CRUD, sprint management, code generation, GitHub integration, real-time notifications (SSE), webhooks, automations, Slack integration, Prometheus observability.
+
+---
+
 ## Stack Lock-in Notes
 
 - `graphql-yoga` requires casting as `unknown as express.RequestHandler` for TS compat in `app.ts`

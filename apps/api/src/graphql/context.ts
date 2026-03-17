@@ -8,7 +8,18 @@ const log = createChildLogger('auth');
 
 export const prisma = new PrismaClient();
 
-export const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET ?? 'dev-secret');
+function getJwtSecret(): Uint8Array {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('JWT_SECRET environment variable is required in production');
+    }
+    return new TextEncoder().encode('dev-secret');
+  }
+  return new TextEncoder().encode(secret);
+}
+
+export const JWT_SECRET = getJwtSecret();
 
 export interface Context {
   user: { userId: string; email: string; orgId: string | null; role: string | null; emailVerifiedAt: Date | null } | null;

@@ -1,12 +1,14 @@
 # TaskToad
 
-Multi-tenant SaaS project management MVP. Org-scoped projects, sprints, kanban boards, and AI-assisted task planning with RBAC (org:admin / org:member).
+Multi-tenant SaaS project management MVP with AI-assisted planning. Org-scoped projects, sprints, kanban boards, AI-powered task breakdown and code generation, GitHub integration, real-time notifications (SSE), webhooks, automations, Slack integration, and Prometheus observability. RBAC: org:admin / org:member.
+
+> **Beta note:** Project-level access control is org-level for beta — all org members can access all projects within their org. Project-level RBAC is planned for post-beta.
 
 ## Stack
 
 - **API**: Express + graphql-yoga + Prisma (PostgreSQL) + HMAC JWT + helmet/cors/rate-limit
 - **Web**: React 18 + Vite + Tailwind CSS
-- **AI**: Anthropic Claude (task plan generation, sprint planning)
+- **AI**: Anthropic Claude (AI-assisted task planning, sprint planning, code generation, PR reviews, bug report parsing)
 
 ## Prerequisites
 
@@ -129,9 +131,9 @@ All operations require `Authorization: Bearer <token>` except `signup` and `logi
 
 GraphiQL UI is available at `http://localhost:3001/graphql` in development.
 
-**Key queries:** `me`, `projects`, `project(projectId)`, `tasks(projectId)`, `sprints(projectId)`, `orgUsers`, `orgInvites`
+**Key queries:** `me`, `projects`, `project(projectId)`, `tasks(projectId)`, `sprints(projectId)`, `orgUsers`, `orgInvites`, `notifications`, `githubInstallations`, `automationRules`, `webhookEndpoints`, `slackIntegrations`
 
-**Key mutations:** `signup`, `login`, `createOrg`, `createProject`, `createTask`, `updateTask`, `createSprint`, `updateSprint`, `deleteSprint`, `verifyEmail`, `sendVerificationEmail`, `requestPasswordReset`, `resetPassword`, `inviteOrgMember`, `acceptInvite`, `revokeInvite`
+**Key mutations:** `signup`, `login`, `createOrg`, `createProject`, `createTask`, `updateTask`, `createSprint`, `updateSprint`, `deleteSprint`, `generateTaskPlan`, `generateCodeFromTask`, `createPullRequestFromTask`, `connectGitHubRepo`, `createAutomationRule`, `createWebhookEndpoint`, `connectSlack`, `inviteOrgMember`, `acceptInvite`
 
 ## Scripts
 

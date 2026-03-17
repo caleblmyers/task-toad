@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { createChildLogger } from './logger.js';
 import { sendEmail } from './email.js';
+import { sseManager } from './sseManager.js';
 
 const log = createChildLogger('notification');
 
@@ -34,6 +35,13 @@ async function doCreateNotification(prisma: PrismaClient, params: CreateNotifica
       relatedTaskId: params.relatedTaskId ?? null,
       relatedProjectId: params.relatedProjectId ?? null,
     },
+  });
+
+  // Broadcast over SSE so connected clients update immediately
+  sseManager.broadcast(params.orgId, 'notification.created', {
+    userId: params.userId,
+    type: params.type,
+    title: params.title,
   });
 
   // Check if user wants email for this notification type

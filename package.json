@@ -13,9 +13,11 @@
     "dev": "concurrently -n api,web -c cyan,magenta \"pnpm dev:api\" \"pnpm dev:web\"",
     "dev:web": "pnpm --filter web dev",
     "dev:api": "pnpm --filter api dev",
-    "deploy": "echo 'Deploy via Railway — see DEPLOY.md'"
+    "deploy": "echo 'Deploy via Railway — see DEPLOY.md'",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@typescript-eslint/eslint-plugin": "^8.57.0",
     "@typescript-eslint/parser": "^8.57.0",
     "concurrently": "^9.0.0",

@@ -6,6 +6,7 @@ import { logAICall } from './aiLogger.js';
 import { aiCache, hashPrompt } from './aiCache.js';
 import { checkPromptSize } from './tokenEstimator.js';
 import { createChildLogger } from '../utils/logger.js';
+import { aiCallTotal, aiCallDuration } from '../utils/metrics.js';
 
 const log = createChildLogger('ai');
 
@@ -145,6 +146,8 @@ export async function callAI(params: CallAIParams): Promise<CallAIResult> {
     };
 
     logAICall({ feature, model: AI_MODEL, usage, latencyMs, cached: false });
+    aiCallTotal.inc({ feature, status: 'success' });
+    aiCallDuration.observe({ feature }, latencyMs / 1000);
 
     const block = response.content[0];
     if (block.type !== 'text') throw new Error('Unexpected response type');
@@ -183,6 +186,7 @@ export async function callAI(params: CallAIParams): Promise<CallAIResult> {
 
     return { raw, usage, cached: false };
   } catch (err) {
+    aiCallTotal.inc({ feature, status: 'error' });
     return mapAnthropicError(err);
   }
 }

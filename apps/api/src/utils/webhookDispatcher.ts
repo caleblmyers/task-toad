@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import { createChildLogger } from './logger.js';
+import { webhookDeliveryTotal } from './metrics.js';
 import { StringArraySchema } from './zodSchemas.js';
 
 const log = createChildLogger('webhooks');
@@ -76,12 +77,14 @@ async function attemptDelivery(
         where: { id: endpointId },
         data: { lastFiredAt: new Date(), lastError: null },
       });
+      webhookDeliveryTotal.inc({ event, status: 'success' });
     } else {
       throw new Error(`HTTP ${res.status}: ${truncatedResponse}`);
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     log.warn({ endpointId, event, deliveryId, error: message }, 'Webhook delivery failed');
+    webhookDeliveryTotal.inc({ event, status: 'failed' });
 
     const delivery = await prisma.webhookDelivery.findUnique({ where: { id: deliveryId } });
     if (!delivery) return;

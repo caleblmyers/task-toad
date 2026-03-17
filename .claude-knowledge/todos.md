@@ -14,6 +14,16 @@ All original work sets completed through Wave 25. Waves 22-26 addressed UX audit
 
 ## Remaining Work
 
+### Beta Scope — Completed (2026-03-17)
+- [x] SSE notification broadcast (real-time notifications via fetch-based SSE)
+- [x] JWT hardening (HMAC HS256, helmet, CORS, rate limiting)
+- [x] NewProject resilience (error handling, validation)
+- [x] Prometheus metrics (`/api/metrics` with prom-client)
+
+### Beta Scope — Known Limitations
+- [ ] **Project-level access control** — org-level read access for beta (all org members can access all projects). Project-level RBAC deferred to post-beta.
+- [ ] **Runner / autonomous execution** — AutonomousSprintPanel and sprintRunner were aspirational features never built. Excluded from beta. TaskToad is AI-assisted (not autonomous) project management.
+
 ### Accessibility
 - [ ] ARIA audit for NotificationSettings — checkboxes lack aria-labels; should match ProjectToolbar's ARIA patterns
 - [ ] Export menu Enter key — keyboard-only users need Enter support on focused menuitem
