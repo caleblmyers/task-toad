@@ -7,6 +7,11 @@ import AIUsageDashboard from '../components/AIUsageDashboard';
 import UserAvatar from '../components/shared/UserAvatar';
 import WebhookSettings from '../components/WebhookSettings';
 import SlackSettings from '../components/SlackSettings';
+import Tabs from '../components/shared/Tabs';
+import Card from '../components/shared/Card';
+import SectionHeader from '../components/shared/SectionHeader';
+import Input from '../components/shared/Input';
+import Select from '../components/shared/Select';
 
 const ORG_QUERY = `query GetOrg { org { orgId name hasApiKey apiKeyHint promptLoggingEnabled } }`;
 const ORG_USERS_QUERY = `query { orgUsers { userId email role } }`;
@@ -189,240 +194,261 @@ export default function OrgSettings() {
   }
 
   return (
-    <div className="max-w-lg space-y-8">
-      <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-200">Settings</h1>
+    <div className="max-w-lg">
+      <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-6">Settings</h1>
 
-      {/* API Key */}
-      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-6 space-y-6">
-        <div>
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Organization</p>
-          <p className="text-lg text-slate-800 dark:text-slate-200 mt-1">{org.name}</p>
-        </div>
-
-        <div>
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
-            Anthropic API Key
-          </p>
-          {org.hasApiKey ? (
-            <p className="text-slate-700 dark:text-slate-300 font-mono text-sm">
-              {org.apiKeyHint} <span className="text-slate-400 font-sans">(configured)</span>
-            </p>
-          ) : (
-            <p className="text-amber-600 text-sm">Not configured — AI features are disabled.</p>
-          )}
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            {org.hasApiKey ? 'Replace API key' : 'Add API key'}
-          </label>
-          <input
-            type="password"
-            placeholder="sk-ant-..."
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded font-mono text-sm dark:bg-slate-700 dark:text-slate-200"
-          />
-          {err && <p className="text-sm text-red-600">{err}</p>}
-          {success && <p className="text-sm text-green-600">API key saved.</p>}
-          <button
-            type="submit"
-            disabled={saving || !apiKey.trim()}
-            className="px-4 py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-        </form>
-      </div>
-
-      {/* Team */}
-      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-6 space-y-6">
-        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Team</h2>
-
-        {/* Current members */}
-        <div>
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Members</p>
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-            {orgUsers.map((u) => (
-              <li key={u.userId} className="py-2 flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <UserAvatar email={u.email} size="sm" />
-                  <span className="text-slate-800 dark:text-slate-200">{u.email}</span>
+      <Tabs
+        tabs={[
+          {
+            id: 'general',
+            label: 'General',
+            content: (
+              <Card className="space-y-6">
+                <div>
+                  <SectionHeader>Organization</SectionHeader>
+                  <p className="text-lg text-slate-800 dark:text-slate-200 mt-1">{org.name}</p>
                 </div>
-                <span className="text-slate-500">{u.role ?? '—'}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
 
-        {/* Pending invites */}
-        {invites.length > 0 && (
-          <div>
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Pending Invites</p>
-            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-              {invites.map((inv) => (
-                <li key={inv.inviteId} className="py-2 flex items-center justify-between text-sm gap-2">
-                  <div>
-                    <span className="text-slate-800 dark:text-slate-200">{inv.email}</span>
-                    <span className="ml-2 text-slate-500">{inv.role}</span>
-                    <span className="ml-2 text-slate-400 text-xs">
-                      expires {new Date(inv.expiresAt).toLocaleDateString()}
-                    </span>
-                  </div>
+                <div>
+                  <SectionHeader>Anthropic API Key</SectionHeader>
+                  {org.hasApiKey ? (
+                    <p className="text-slate-700 dark:text-slate-300 font-mono text-sm">
+                      {org.apiKeyHint} <span className="text-slate-400 font-sans">(configured)</span>
+                    </p>
+                  ) : (
+                    <p className="text-amber-600 text-sm">Not configured — AI features are disabled.</p>
+                  )}
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-3">
+                  <Input
+                    label={org.hasApiKey ? 'Replace API key' : 'Add API key'}
+                    type="password"
+                    placeholder="sk-ant-..."
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    error={err ?? undefined}
+                    className="font-mono"
+                  />
+                  {success && <p className="text-sm text-green-600">API key saved.</p>}
                   <button
-                    onClick={() => handleRevoke(inv.inviteId)}
-                    className="text-red-600 hover:text-red-800 text-xs"
+                    type="submit"
+                    disabled={saving || !apiKey.trim()}
+                    className="px-4 py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Revoke
+                    {saving ? 'Saving…' : 'Save'}
                   </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+                </form>
+              </Card>
+            ),
+          },
+          {
+            id: 'team',
+            label: 'Team',
+            content: (
+              <Card className="space-y-6">
+                {/* Current members */}
+                <div>
+                  <SectionHeader>Members</SectionHeader>
+                  <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {orgUsers.map((u) => (
+                      <li key={u.userId} className="py-2 flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <UserAvatar email={u.email} size="sm" />
+                          <span className="text-slate-800 dark:text-slate-200">{u.email}</span>
+                        </div>
+                        <span className="text-slate-500">{u.role ?? '—'}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
 
-        {/* Invite form */}
-        <div>
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Invite member</p>
-          <form onSubmit={handleInvite} className="space-y-2">
-            <input
-              type="email"
-              placeholder="Email address"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded text-sm dark:bg-slate-700 dark:text-slate-200"
-              required
-            />
-            <select
-              value={inviteRole}
-              onChange={(e) => setInviteRole(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded text-sm dark:bg-slate-700 dark:text-slate-200"
-            >
-              <option value="org:member">Member</option>
-              <option value="org:admin">Admin</option>
-            </select>
-            {inviteErr && <p className="text-sm text-red-600">{inviteErr}</p>}
-            {inviteSuccess && <p className="text-sm text-green-600">Invite sent!</p>}
-            <button
-              type="submit"
-              disabled={inviting || !inviteEmail.trim()}
-              className="px-4 py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-            >
-              {inviting ? 'Sending…' : 'Send invite'}
-            </button>
-          </form>
-        </div>
-      </div>
-
-      {/* GitHub */}
-      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-6 space-y-6">
-        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">GitHub</h2>
-
-        {linkErr && <p className="text-sm text-red-600">{linkErr}</p>}
-        {linkSuccess && <p className="text-sm text-green-600">GitHub App linked successfully!</p>}
-
-        {loadingInstallations ? (
-          <p className="text-sm text-slate-500">Loading…</p>
-        ) : installations.length > 0 ? (
-          <div>
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Installations</p>
-            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-              {installations.map((inst) => (
-                <li key={inst.installationId} className="py-2 flex items-center justify-between text-sm">
+                {/* Pending invites */}
+                {invites.length > 0 && (
                   <div>
-                    <span className="text-slate-800 font-medium">{inst.accountLogin}</span>
-                    <span className="ml-2 text-slate-500">{inst.accountType}</span>
+                    <SectionHeader>Pending Invites</SectionHeader>
+                    <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {invites.map((inv) => (
+                        <li key={inv.inviteId} className="py-2 flex items-center justify-between text-sm gap-2">
+                          <div>
+                            <span className="text-slate-800 dark:text-slate-200">{inv.email}</span>
+                            <span className="ml-2 text-slate-500">{inv.role}</span>
+                            <span className="ml-2 text-slate-400 text-xs">
+                              expires {new Date(inv.expiresAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => handleRevoke(inv.inviteId)}
+                            className="text-red-600 hover:text-red-800 text-xs"
+                          >
+                            Revoke
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                    Connected
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : (
-          <p className="text-sm text-slate-500">No GitHub App installed.</p>
-        )}
+                )}
 
-        {linkingInstallation && (
-          <div className="flex items-center gap-2 text-sm text-slate-500">
-            <div className="w-4 h-4 border-2 border-slate-300 border-t-brand-green rounded-full animate-spin" />
-            Linking installation…
-          </div>
-        )}
+                {/* Invite form */}
+                <div>
+                  <SectionHeader>Invite member</SectionHeader>
+                  <form onSubmit={handleInvite} className="space-y-2">
+                    <Input
+                      label="Email address"
+                      type="email"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      required
+                    />
+                    <Select
+                      label="Role"
+                      value={inviteRole}
+                      onChange={(e) => setInviteRole(e.target.value)}
+                    >
+                      <option value="org:member">Member</option>
+                      <option value="org:admin">Admin</option>
+                    </Select>
+                    {inviteErr && <p className="text-sm text-red-600" aria-live="polite">{inviteErr}</p>}
+                    {inviteSuccess && <p className="text-sm text-green-600" aria-live="polite">Invite sent!</p>}
+                    <button
+                      type="submit"
+                      disabled={inviting || !inviteEmail.trim()}
+                      className="px-4 py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    >
+                      {inviting ? 'Sending…' : 'Send invite'}
+                    </button>
+                  </form>
+                </div>
+              </Card>
+            ),
+          },
+          {
+            id: 'integrations',
+            label: 'Integrations',
+            content: (
+              <div className="space-y-6">
+                {/* GitHub */}
+                <Card className="space-y-6">
+                  <SectionHeader>GitHub</SectionHeader>
 
-        {GITHUB_APP_SLUG && (
-          <button
-            type="button"
-            onClick={handleInstallGitHubApp}
-            disabled={linkingInstallation}
-            className="px-4 py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50 text-sm"
-          >
-            {installations.length > 0 ? 'Add another installation' : 'Install GitHub App'}
-          </button>
-        )}
-      </div>
+                  {linkErr && <p className="text-sm text-red-600">{linkErr}</p>}
+                  {linkSuccess && <p className="text-sm text-green-600">GitHub App linked successfully!</p>}
 
-      {/* Slack */}
-      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-6 space-y-6">
-        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Slack</h2>
-        <SlackSettings />
-      </div>
+                  {loadingInstallations ? (
+                    <p className="text-sm text-slate-500">Loading…</p>
+                  ) : installations.length > 0 ? (
+                    <div>
+                      <SectionHeader>Installations</SectionHeader>
+                      <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {installations.map((inst) => (
+                          <li key={inst.installationId} className="py-2 flex items-center justify-between text-sm">
+                            <div>
+                              <span className="text-slate-800 dark:text-slate-200 font-medium">{inst.accountLogin}</span>
+                              <span className="ml-2 text-slate-500">{inst.accountType}</span>
+                            </div>
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                              Connected
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500">No GitHub App installed.</p>
+                  )}
 
-      {/* Webhooks */}
-      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-6 space-y-6">
-        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Webhooks</h2>
-        <WebhookSettings />
-      </div>
+                  {linkingInstallation && (
+                    <div className="flex items-center gap-2 text-sm text-slate-500">
+                      <div className="w-4 h-4 border-2 border-slate-300 border-t-brand-green rounded-full animate-spin" />
+                      Linking installation…
+                    </div>
+                  )}
 
-      {/* AI Settings */}
-      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-6 space-y-6">
-        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">AI Settings</h2>
+                  {GITHUB_APP_SLUG && (
+                    <button
+                      type="button"
+                      onClick={handleInstallGitHubApp}
+                      disabled={linkingInstallation}
+                      className="px-4 py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50 text-sm"
+                    >
+                      {installations.length > 0 ? 'Add another installation' : 'Install GitHub App'}
+                    </button>
+                  )}
+                </Card>
 
-        {/* Prompt Logging Toggle */}
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Prompt Logging</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              When enabled, AI prompts and responses are stored for auditing and debugging.
-            </p>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={org.promptLoggingEnabled !== false}
-            onClick={async () => {
-              const newValue = org.promptLoggingEnabled === false;
-              setOrg({ ...org, promptLoggingEnabled: newValue });
-              try {
-                await gql<{ setAIBudget: Org }>(
-                  `mutation SetAIBudget($promptLoggingEnabled: Boolean) { setAIBudget(promptLoggingEnabled: $promptLoggingEnabled) { orgId name hasApiKey apiKeyHint promptLoggingEnabled } }`,
-                  { promptLoggingEnabled: newValue }
-                );
-              } catch (error) {
-                setOrg({ ...org, promptLoggingEnabled: !newValue });
-                setErr(error instanceof Error ? error.message : 'Failed to update prompt logging');
-              }
-            }}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2 ${
-              org.promptLoggingEnabled !== false ? 'bg-brand-green' : 'bg-slate-300 dark:bg-slate-600'
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                org.promptLoggingEnabled !== false ? 'translate-x-6' : 'translate-x-1'
-              }`}
-            />
-          </button>
-        </div>
-      </div>
+                {/* Slack */}
+                <Card className="space-y-6">
+                  <SectionHeader>Slack</SectionHeader>
+                  <SlackSettings />
+                </Card>
+              </div>
+            ),
+          },
+          {
+            id: 'webhooks',
+            label: 'Webhooks',
+            content: (
+              <Card className="space-y-6">
+                <WebhookSettings />
+              </Card>
+            ),
+          },
+          {
+            id: 'ai',
+            label: 'AI',
+            content: (
+              <div className="space-y-6">
+                <Card className="space-y-6">
+                  <SectionHeader>AI Settings</SectionHeader>
 
-      {/* AI Usage */}
-      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-6 space-y-6">
-        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">AI Usage</h2>
-        <AIUsageDashboard />
-      </div>
+                  {/* Prompt Logging Toggle */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Prompt Logging</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        When enabled, AI prompts and responses are stored for auditing and debugging.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={org.promptLoggingEnabled !== false}
+                      onClick={async () => {
+                        const newValue = org.promptLoggingEnabled === false;
+                        setOrg({ ...org, promptLoggingEnabled: newValue });
+                        try {
+                          await gql<{ setAIBudget: Org }>(
+                            `mutation SetAIBudget($promptLoggingEnabled: Boolean) { setAIBudget(promptLoggingEnabled: $promptLoggingEnabled) { orgId name hasApiKey apiKeyHint promptLoggingEnabled } }`,
+                            { promptLoggingEnabled: newValue }
+                          );
+                        } catch (error) {
+                          setOrg({ ...org, promptLoggingEnabled: !newValue });
+                          setErr(error instanceof Error ? error.message : 'Failed to update prompt logging');
+                        }
+                      }}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2 ${
+                        org.promptLoggingEnabled !== false ? 'bg-brand-green' : 'bg-slate-300 dark:bg-slate-600'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          org.promptLoggingEnabled !== false ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </Card>
+
+                <Card className="space-y-6">
+                  <SectionHeader>AI Usage</SectionHeader>
+                  <AIUsageDashboard />
+                </Card>
+              </div>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }

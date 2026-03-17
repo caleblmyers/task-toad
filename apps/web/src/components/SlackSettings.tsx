@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
+import { useConfirmDialog } from './shared/ConfirmDialog';
 
 interface SlackIntegration {
   id: string;
@@ -40,6 +41,7 @@ const SUPPORTED_EVENTS = [
 const SLACK_QUERY = `query { slackIntegrations { id teamId teamName channelId channelName events enabled createdAt } }`;
 
 export default function SlackSettings() {
+  const { confirm, ConfirmDialogPortal } = useConfirmDialog();
   const [integrations, setIntegrations] = useState<SlackIntegration[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -213,7 +215,7 @@ export default function SlackSettings() {
   };
 
   const handleDisconnect = async (id: string) => {
-    if (!confirm('Disconnect this Slack integration?')) return;
+    if (!await confirm({ title: 'Disconnect Slack', message: 'Disconnect this Slack integration?', confirmLabel: 'Disconnect', variant: 'danger' })) return;
     try {
       await gql<{ disconnectSlack: boolean }>(
         `mutation DisconnectSlack($id: ID!) { disconnectSlack(id: $id) }`,
@@ -504,6 +506,7 @@ export default function SlackSettings() {
           Connect Slack
         </button>
       )}
+      <ConfirmDialogPortal />
     </div>
   );
 }

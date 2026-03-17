@@ -63,8 +63,8 @@ export default function GlobalSearchModal({ onClose }: GlobalSearchModalProps) {
     onClose();
   };
 
-  const handleTaskClick = (projectId: string) => {
-    navigate(`/app/projects/${projectId}`);
+  const handleTaskClick = (projectId: string, taskId: string) => {
+    navigate(`/app/projects/${projectId}?task=${taskId}`);
     onClose();
   };
 
@@ -131,7 +131,7 @@ export default function GlobalSearchModal({ onClose }: GlobalSearchModalProps) {
                 {results!.tasks.map((hit) => (
                   <button
                     key={hit.task.taskId}
-                    onClick={() => handleTaskClick(hit.task.projectId)}
+                    onClick={() => handleTaskClick(hit.task.projectId, hit.task.taskId)}
                     className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
                   >
                     <div className="flex-1 min-w-0">

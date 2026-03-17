@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/context';
 import Button from '../components/shared/Button';
+import Input from '../components/shared/Input';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const { login, error } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -13,11 +15,14 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     try {
       await login(email, password);
       navigate('/app', { replace: true });
     } catch {
       // error set in context
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -30,24 +35,24 @@ export default function Login() {
         </div>
         {successMessage && <p className="mb-3 text-sm text-green-700">{successMessage}</p>}
         <form onSubmit={handleSubmit} className="space-y-3">
-          <input
+          <Input
+            label="Email"
             type="email"
-            placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded"
             required
+            autoComplete="email"
           />
-          <input
+          <Input
+            label="Password"
             type="password"
-            placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded"
             required
+            autoComplete="current-password"
           />
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <Button type="submit" className="w-full">
+          {error && <p className="text-sm text-red-600" aria-live="polite">{error}</p>}
+          <Button type="submit" loading={loading} className="w-full">
             Sign in
           </Button>
         </form>

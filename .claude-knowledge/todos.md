@@ -126,6 +126,15 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 - [x] ~~Extend shared-types usage — expand to more resolvers and web client types~~ — done in Wave 21 (ProjectStats, TaskConnection, CloseSprintResult, SprintPlanItem moved; sprint resolver re-exports)
 - [ ] S3 multipart upload — current 10MB limit uses single PUT; for larger files, implement multipart upload
 
+## Follow-ups from Wave 22-23 (UX Audit)
+
+- [ ] **Responsive workspace (Audit Item 9):** Collapsible sidebar, stacked toolbar, drawer task panel — desktop-first is fine for launch, defer to Wave 24+
+- [ ] **Task detail re-architecture (Audit Item 10):** Collapsible sections, prioritized field order, tabbed comments/activity — functional as-is, defer to Wave 24+
+- [ ] ProjectToolbar template/export overlays — currently positioned with absolute right-16 top-12; may need refinement when toolbar width changes
+- [ ] Migrate remaining inline `bg-white dark:bg-slate-900 rounded-lg border...` patterns to use `<Card>` component
+- [ ] Migrate remaining inline status/priority pills to use `<Badge>` component
+- [ ] Replace `window.confirm` in `useProjectData.ts` (AI generation nav block) — needs async pattern since it's inside a popstate handler
+
 ## Follow-ups from Wave 21
 
 - [ ] Dark mode contrast audit — remaining components not checked in Wave 21 (BacklogView, SprintCreateModal, KanbanBoard, etc.) may still have `dark:text-slate-400` on dark backgrounds

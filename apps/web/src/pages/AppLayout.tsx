@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Outlet, Link, useNavigate } from 'react-router-dom';
+import { Outlet, Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/context';
 import { gql } from '../api/client';
 import NotificationCenter from '../components/NotificationCenter';
@@ -109,13 +109,13 @@ export default function AppLayout() {
           )}
         </div>
         <nav className="p-2 flex-1 space-y-1" aria-label="Main navigation">
-          <Link to="/app" className="block px-3 py-2 rounded hover:bg-slate-700">
+          <NavLink to="/app" end className={({ isActive }) => `block px-3 py-2 rounded hover:bg-slate-700 ${isActive ? 'bg-slate-700 text-white' : ''}`}>
             New Project
-          </Link>
-          <Link to="/app/projects" className="block px-3 py-2 rounded hover:bg-slate-700">
+          </NavLink>
+          <NavLink to="/app/projects" className={({ isActive }) => `block px-3 py-2 rounded hover:bg-slate-700 ${isActive ? 'bg-slate-700 text-white' : ''}`}>
             Projects
-          </Link>
-          <Link to="/app/portfolio" className="flex items-center gap-2 px-3 py-2 rounded hover:bg-slate-700 text-sm">
+          </NavLink>
+          <NavLink to="/app/portfolio" className={({ isActive }) => `flex items-center gap-2 px-3 py-2 rounded hover:bg-slate-700 text-sm ${isActive ? 'bg-slate-700 text-white' : ''}`}>
             <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
               <rect x="1.5" y="3" width="5" height="4" rx="0.5" />
               <rect x="9.5" y="3" width="5" height="4" rx="0.5" />
@@ -123,25 +123,25 @@ export default function AppLayout() {
               <rect x="9.5" y="9" width="5" height="4" rx="0.5" />
             </svg>
             Portfolio
-          </Link>
-          <Link to="/app/search" className="flex items-center gap-2 px-3 py-2 rounded hover:bg-slate-700 text-sm">
+          </NavLink>
+          <NavLink to="/app/search" className={({ isActive }) => `flex items-center gap-2 px-3 py-2 rounded hover:bg-slate-700 text-sm ${isActive ? 'bg-slate-700 text-white' : ''}`}>
             <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
               <circle cx="7" cy="7" r="4.5" />
               <path d="M10.5 10.5L14 14" strokeLinecap="round" />
             </svg>
             Search
-          </Link>
-          <Link to="/app/profile" className="flex items-center gap-2 px-3 py-2 rounded hover:bg-slate-700 text-sm">
+          </NavLink>
+          <NavLink to="/app/profile" className={({ isActive }) => `flex items-center gap-2 px-3 py-2 rounded hover:bg-slate-700 text-sm ${isActive ? 'bg-slate-700 text-white' : ''}`}>
             <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
               <circle cx="8" cy="5.5" r="3" />
               <path d="M2.5 14.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5" strokeLinecap="round" />
             </svg>
             Profile
-          </Link>
+          </NavLink>
           {user?.role === 'org:admin' && (
-            <Link to="/app/settings" className="block px-3 py-2 rounded hover:bg-slate-700">
+            <NavLink to="/app/settings" className={({ isActive }) => `block px-3 py-2 rounded hover:bg-slate-700 ${isActive ? 'bg-slate-700 text-white' : ''}`}>
               Settings
-            </Link>
+            </NavLink>
           )}
           <button
             onClick={() => setShowSearch(true)}

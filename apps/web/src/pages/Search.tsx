@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { gql } from '../api/client';
 import type { Task, Project } from '../types';
 import { statusLabel } from '../utils/taskHelpers';
+import ErrorBanner from '../components/shared/ErrorBanner';
 
 interface TaskSearchHit {
   task: Task;
@@ -32,17 +33,19 @@ export default function Search() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<GlobalSearchResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   const search = useCallback(async (q: string) => {
-    if (!q.trim()) { setResults(null); return; }
+    if (!q.trim()) { setResults(null); setError(null); return; }
     setLoading(true);
+    setError(null);
     try {
       const data = await gql<{ globalSearch: GlobalSearchResult }>(QUERY, { query: q, limit: 20 });
       setResults(data.globalSearch);
-    } catch {
-      // ignore
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Search failed');
     } finally {
       setLoading(false);
     }
@@ -73,6 +76,13 @@ export default function Search() {
           autoFocus
         />
       </div>
+
+      {/* Error */}
+      {error && (
+        <div className="mb-4">
+          <ErrorBanner message={error} onRetry={() => search(query)} onDismiss={() => setError(null)} />
+        </div>
+      )}
 
       {/* Empty state */}
       {!query && !loading && (

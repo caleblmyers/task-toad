@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { gql, TOKEN_KEY } from '../api/client';
 import { useAuth } from '../auth/context';
 import Button from '../components/shared/Button';
+import Input from '../components/shared/Input';
 
 export default function AcceptInvite() {
   const [searchParams] = useSearchParams();
@@ -16,8 +17,8 @@ export default function AcceptInvite() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100">
-        <div className="w-full max-w-sm p-6 bg-white rounded-lg shadow text-center">
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900">
+        <div className="w-full max-w-sm p-6 bg-white dark:bg-slate-800 rounded-lg shadow text-center">
           <p className="text-red-600">Invalid invite link.</p>
         </div>
       </div>
@@ -46,23 +47,24 @@ export default function AcceptInvite() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100">
-      <div className="w-full max-w-sm p-6 bg-white rounded-lg shadow">
-        <h1 className="text-xl font-semibold text-slate-800 mb-2">Accept invite</h1>
-        <p className="text-sm text-slate-600 mb-4">
+    <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900">
+      <div className="w-full max-w-sm p-6 bg-white dark:bg-slate-800 rounded-lg shadow">
+        <h1 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-2">Accept invite</h1>
+        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
           Create a password to join the team, or leave it blank if you already have a TaskToad account with this email.
         </p>
         <form onSubmit={handleSubmit} className="space-y-3">
-          <input
+          <Input
+            label="Password"
             type="password"
-            placeholder="Password (min 8 characters, for new accounts)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-300 rounded"
+            error={err ?? undefined}
+            hint="For new accounts — min 8 characters"
+            autoComplete="new-password"
           />
-          {err && <p className="text-sm text-red-600">{err}</p>}
           <Button type="submit" loading={loading} className="w-full">
-            {loading ? 'Joining…' : 'Join team'}
+            Join team
           </Button>
         </form>
       </div>

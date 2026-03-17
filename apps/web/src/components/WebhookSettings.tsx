@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
 import { WEBHOOK_DELIVERIES_QUERY, REPLAY_WEBHOOK_DELIVERY_MUTATION } from '../api/queries';
+import { useConfirmDialog } from './shared/ConfirmDialog';
 
 interface WebhookEndpoint {
   id: string;
@@ -44,6 +45,7 @@ const STATUS_BADGE: Record<string, { bg: string; text: string }> = {
 };
 
 export default function WebhookSettings() {
+  const { confirm, ConfirmDialogPortal } = useConfirmDialog();
   const [endpoints, setEndpoints] = useState<WebhookEndpoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -184,7 +186,7 @@ export default function WebhookSettings() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this webhook endpoint?')) return;
+    if (!await confirm({ title: 'Delete webhook', message: 'Delete this webhook endpoint?', confirmLabel: 'Delete', variant: 'danger' })) return;
     try {
       await gql<{ deleteWebhookEndpoint: boolean }>(
         `mutation DeleteWebhook($id: ID!) { deleteWebhookEndpoint(id: $id) }`,
@@ -453,6 +455,7 @@ export default function WebhookSettings() {
           Add Webhook
         </button>
       )}
+      <ConfirmDialogPortal />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
+import { useConfirmDialog } from './shared/ConfirmDialog';
 import { Link } from 'react-router-dom';
 import { gql, TOKEN_KEY } from '../api/client';
 import type { ProjectData } from '../hooks/useProjectData';
@@ -8,7 +9,8 @@ import { statusLabel } from '../utils/taskHelpers';
 import SearchInput from './shared/SearchInput';
 import FilterBar from './shared/FilterBar';
 import Button from './shared/Button';
-import { IconList, IconBoard, IconTable, IconCalendar, IconClose, IconPlus, IconRefresh, IconSummary, IconFilter, IconKeyboard, IconGitHub } from './shared/Icons';
+import DropdownMenu, { type DropdownMenuItem } from './shared/DropdownMenu';
+import { IconList, IconBoard, IconTable, IconCalendar, IconClose, IconPlus, IconRefresh, IconSummary, IconFilter, IconKeyboard, IconGitHub, IconSparkle } from './shared/Icons';
 
 const activeClass = 'px-3 py-1 text-sm rounded-md bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-medium shadow-sm';
 const inactiveClass = 'px-3 py-1 text-sm rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200';
@@ -36,6 +38,7 @@ export default function ProjectToolbar({
   onOpenModal,
   onLoadProjectActivities,
 }: ProjectToolbarProps) {
+  const { confirm, ConfirmDialogPortal } = useConfirmDialog();
   const [editingProjectName, setEditingProjectName] = useState(false);
   const [editProjectNameValue, setEditProjectNameValue] = useState('');
   const [showStatusEditor, setShowStatusEditor] = useState(false);
@@ -221,190 +224,151 @@ export default function ProjectToolbar({
           </button>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => onOpenModal('project-settings')}
-            className="flex items-center gap-1 text-slate-400 hover:text-slate-600 px-1.5 py-1 text-sm"
-            title="Project Settings"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" /></svg>
-          </button>
-          <button
-            type="button"
-            onClick={() => onOpenModal('knowledge-base')}
-            className="flex items-center gap-1 text-slate-400 hover:text-slate-600 px-1.5 py-1 text-sm"
-            title="Project Knowledge Base"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" /></svg>
-            KB
-          </button>
-          <button
-            type="button"
-            onClick={() => onOpenModal('github')}
-            className="flex items-center gap-1 text-slate-400 hover:text-slate-600 px-1.5 py-1"
-            title={gitHubRepo ? `${gitHubRepo.repositoryOwner}/${gitHubRepo.repositoryName}` : 'Connect GitHub repo'}
-          >
-            <IconGitHub className="w-4 h-4" />
-            {gitHubRepo && (
-              <span className="text-xs text-slate-500">{gitHubRepo.repositoryOwner}/{gitHubRepo.repositoryName}</span>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => onOpenModal('shortcut-help')}
-            className="text-slate-400 hover:text-slate-600 px-1.5 py-1"
-            title="Keyboard shortcuts (?)"
-          >
-            <IconKeyboard className="w-4 h-4" />
-          </button>
           <Button variant="ghost" size="sm" onClick={() => d.setShowAddForm(!d.showAddForm)} disabled={d.isGenerating}>
             {d.showAddForm ? <><IconClose className="w-3.5 h-3.5" /> Cancel</> : <><IconPlus className="w-3.5 h-3.5" /> Add task</>}
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => d.openPreview()} disabled={d.isGenerating}>
-            <IconRefresh className="w-3.5 h-3.5" />
-            {d.previewLoading ? 'Planning…' : 'Regenerate'}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => { d.handleSummarize(); d.setShowAddForm(false); }} disabled={d.isGenerating}>
-            <IconSummary className="w-3.5 h-3.5" />
-            {d.summarizing ? 'Summarizing…' : 'Summarize'}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => onOpenModal('standup')} disabled={d.isGenerating}>
-            Standup
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => onOpenModal('health')} disabled={d.isGenerating}>
-            Health
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => onOpenModal('trends')} disabled={d.isGenerating}>
-            Trends
-          </Button>
-          {d.activeSprint && (
-            <Button variant="ghost" size="sm" onClick={() => onOpenModal(`transition:${d.activeSprint!.sprintId}:${d.activeSprint!.name}`)} disabled={d.isGenerating}>
-              Transition
-            </Button>
-          )}
-          <Button variant="ghost" size="sm" onClick={() => onOpenModal('meeting-notes')} disabled={d.isGenerating}>
-            Notes
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => onOpenModal('bug-report')} disabled={d.isGenerating}>
-            Bug
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => onOpenModal('prd-breakdown')} disabled={d.isGenerating}>
-            PRD
-          </Button>
-          {gitHubRepo && d.rootTasks.length < 5 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={async () => {
-                if (!confirm('Analyze linked repo and generate initial tasks?')) return;
-                setBootstrapping(true);
-                try {
-                  await d.handleBootstrapFromRepo();
-                  addToast('success', 'Tasks generated from repo');
-                } catch (err) {
-                  addToast('error', err instanceof Error ? err.message : 'Bootstrap failed');
-                } finally {
-                  setBootstrapping(false);
-                }
-              }}
-              disabled={d.isGenerating || bootstrapping}
-            >
-              {bootstrapping ? 'Bootstrapping...' : 'Bootstrap'}
-            </Button>
-          )}
-          <div className="relative" ref={templateMenuRef}>
-            <Button ref={templateBtnRef} variant="ghost" size="sm" onClick={() => { setShowTemplateMenu((v) => !v); if (!showTemplateMenu) loadTemplates(); }} disabled={d.isGenerating}>
-              Template
-            </Button>
-            {showTemplateMenu && (
-              <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-2 z-50 min-w-[260px] p-3 space-y-2">
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Create from template</p>
-                {templateList.length === 0 ? (
-                  <p className="text-xs text-slate-400">No templates. Create one in Project Settings.</p>
-                ) : (
-                  <>
-                    <select
-                      value={selectedTemplateId ?? ''}
-                      onChange={(e) => setSelectedTemplateId(e.target.value || null)}
-                      className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded px-2 py-1 dark:bg-slate-700 dark:text-slate-200"
-                    >
-                      <option value="">Select template...</option>
-                      {templateList.map((t) => (
-                        <option key={t.taskTemplateId} value={t.taskTemplateId}>{t.name}</option>
-                      ))}
-                    </select>
-                    {selectedTemplateId && (
-                      <>
-                        <input
-                          type="text"
-                          value={templateTitle}
-                          onChange={(e) => setTemplateTitle(e.target.value)}
-                          placeholder="Task title"
-                          className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 dark:bg-slate-700 dark:text-slate-200"
-                          autoFocus
-                        />
-                        <button
-                          onClick={handleCreateFromTemplate}
-                          disabled={!templateTitle.trim()}
-                          className="w-full px-3 py-1.5 bg-brand-green text-white text-sm rounded hover:bg-brand-green-hover disabled:opacity-50"
-                        >
-                          Create Task
-                        </button>
-                      </>
-                    )}
-                  </>
-                )}
-                <button
-                  onClick={() => setShowTemplateMenu(false)}
-                  className="text-xs text-slate-400 hover:text-slate-600"
-                >
-                  Close
-                </button>
-              </div>
-            )}
-          </div>
-          <div className="relative">
-            <Button variant="ghost" size="sm" onClick={() => setShowExportMenu((v) => !v)}>
-              Import/Export
-            </Button>
-            {showExportMenu && (
-              <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 z-50 min-w-[180px]">
-                <button
-                  className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                  onClick={() => { downloadExport(`project/${d.projectId}/csv`, `${d.project?.name ?? 'tasks'}.csv`); setShowExportMenu(false); }}
-                >
-                  Export Tasks (CSV)
-                </button>
-                <button
-                  className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                  onClick={() => { downloadExport(`project/${d.projectId}/json`, `${d.project?.name ?? 'tasks'}.json`); setShowExportMenu(false); }}
-                >
-                  Export Tasks (JSON)
-                </button>
-                <button
-                  className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                  onClick={() => { downloadExport(`project/${d.projectId}/activity/csv`, `${d.project?.name ?? 'activity'}-activity.csv`); setShowExportMenu(false); }}
-                >
-                  Export Activity (CSV)
-                </button>
-                <button
-                  className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                  onClick={() => { downloadExport(`project/${d.projectId}/activity/json`, `${d.project?.name ?? 'activity'}-activity.json`); setShowExportMenu(false); }}
-                >
-                  Export Activity (JSON)
-                </button>
-                <hr className="my-1 border-slate-100" />
-                <button
-                  className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                  onClick={() => { onOpenModal('csv-import'); setShowExportMenu(false); }}
-                >
-                  Import CSV
-                </button>
-              </div>
-            )}
-          </div>
+
+          {/* AI actions dropdown */}
+          <DropdownMenu
+            trigger={
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded transition-colors text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-200">
+                <IconSparkle className="w-3.5 h-3.5" />
+                AI
+                <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 5l3 3 3-3" /></svg>
+              </span>
+            }
+            items={[
+              { label: d.previewLoading ? 'Planning…' : 'Regenerate', icon: <IconRefresh className="w-3.5 h-3.5" />, onClick: () => d.openPreview(), disabled: d.isGenerating },
+              { label: d.summarizing ? 'Summarizing…' : 'Summarize', icon: <IconSummary className="w-3.5 h-3.5" />, onClick: () => { d.handleSummarize(); d.setShowAddForm(false); }, disabled: d.isGenerating },
+              { label: 'Standup', onClick: () => onOpenModal('standup'), disabled: d.isGenerating },
+              { label: 'Health', onClick: () => onOpenModal('health'), disabled: d.isGenerating },
+              { label: 'Trends', onClick: () => onOpenModal('trends'), disabled: d.isGenerating },
+              ...(d.activeSprint ? [{ label: 'Transition', onClick: () => onOpenModal(`transition:${d.activeSprint!.sprintId}:${d.activeSprint!.name}`), disabled: d.isGenerating }] : []),
+              { label: 'Notes', onClick: () => onOpenModal('meeting-notes'), disabled: d.isGenerating },
+              { label: 'Bug Report', onClick: () => onOpenModal('bug-report'), disabled: d.isGenerating },
+              { label: 'PRD Breakdown', onClick: () => onOpenModal('prd-breakdown'), disabled: d.isGenerating },
+              ...(gitHubRepo && d.rootTasks.length < 5 ? [{
+                label: bootstrapping ? 'Bootstrapping…' : 'Bootstrap from Repo',
+                onClick: async () => {
+                  if (!await confirm({ title: 'Bootstrap from repo', message: 'Analyze linked repo and generate initial tasks?', confirmLabel: 'Bootstrap', variant: 'warning' as const })) return;
+                  setBootstrapping(true);
+                  try {
+                    await d.handleBootstrapFromRepo();
+                    addToast('success', 'Tasks generated from repo');
+                  } catch (err) {
+                    addToast('error', err instanceof Error ? err.message : 'Bootstrap failed');
+                  } finally {
+                    setBootstrapping(false);
+                  }
+                },
+                disabled: d.isGenerating || bootstrapping,
+              }] : []),
+            ] satisfies DropdownMenuItem[]}
+          />
+
+          {/* Overflow menu */}
+          <DropdownMenu
+            trigger={
+              <span className="inline-flex items-center px-2 py-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded transition-colors" title="More actions">
+                <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="8" r="1.5" /><circle cx="8" cy="8" r="1.5" /><circle cx="13" cy="8" r="1.5" /></svg>
+              </span>
+            }
+            items={[
+              { label: 'Template', onClick: () => { setShowTemplateMenu((v) => !v); if (!showTemplateMenu) loadTemplates(); }, disabled: d.isGenerating },
+              { label: 'Import/Export', onClick: () => setShowExportMenu((v) => !v) },
+              { label: 'Project Settings', onClick: () => onOpenModal('project-settings') },
+              { label: 'Knowledge Base', onClick: () => onOpenModal('knowledge-base') },
+              { label: gitHubRepo ? `GitHub: ${gitHubRepo.repositoryOwner}/${gitHubRepo.repositoryName}` : 'Connect GitHub', icon: <IconGitHub className="w-3.5 h-3.5" />, onClick: () => onOpenModal('github') },
+              { label: 'Keyboard Shortcuts', icon: <IconKeyboard className="w-3.5 h-3.5" />, onClick: () => onOpenModal('shortcut-help') },
+            ] satisfies DropdownMenuItem[]}
+          />
         </div>
       </div>
+
+      {/* Template menu overlay */}
+      {showTemplateMenu && (
+        <div ref={templateMenuRef} className="absolute right-16 top-12 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-2 z-50 min-w-[260px] p-3 space-y-2">
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Create from template</p>
+          {templateList.length === 0 ? (
+            <p className="text-xs text-slate-400">No templates. Create one in Project Settings.</p>
+          ) : (
+            <>
+              <select
+                value={selectedTemplateId ?? ''}
+                onChange={(e) => setSelectedTemplateId(e.target.value || null)}
+                className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded px-2 py-1 dark:bg-slate-700 dark:text-slate-200"
+              >
+                <option value="">Select template...</option>
+                {templateList.map((t) => (
+                  <option key={t.taskTemplateId} value={t.taskTemplateId}>{t.name}</option>
+                ))}
+              </select>
+              {selectedTemplateId && (
+                <>
+                  <input
+                    type="text"
+                    value={templateTitle}
+                    onChange={(e) => setTemplateTitle(e.target.value)}
+                    placeholder="Task title"
+                    className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 dark:bg-slate-700 dark:text-slate-200"
+                    autoFocus
+                  />
+                  <button
+                    onClick={handleCreateFromTemplate}
+                    disabled={!templateTitle.trim()}
+                    className="w-full px-3 py-1.5 bg-brand-green text-white text-sm rounded hover:bg-brand-green-hover disabled:opacity-50"
+                  >
+                    Create Task
+                  </button>
+                </>
+              )}
+            </>
+          )}
+          <button
+            onClick={() => setShowTemplateMenu(false)}
+            className="text-xs text-slate-400 hover:text-slate-600"
+          >
+            Close
+          </button>
+        </div>
+      )}
+
+      {/* Export menu overlay */}
+      {showExportMenu && (
+        <div className="absolute right-16 top-12 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 z-50 min-w-[180px]">
+          <button
+            className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+            onClick={() => { downloadExport(`project/${d.projectId}/csv`, `${d.project?.name ?? 'tasks'}.csv`); setShowExportMenu(false); }}
+          >
+            Export Tasks (CSV)
+          </button>
+          <button
+            className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+            onClick={() => { downloadExport(`project/${d.projectId}/json`, `${d.project?.name ?? 'tasks'}.json`); setShowExportMenu(false); }}
+          >
+            Export Tasks (JSON)
+          </button>
+          <button
+            className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+            onClick={() => { downloadExport(`project/${d.projectId}/activity/csv`, `${d.project?.name ?? 'activity'}-activity.csv`); setShowExportMenu(false); }}
+          >
+            Export Activity (CSV)
+          </button>
+          <button
+            className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+            onClick={() => { downloadExport(`project/${d.projectId}/activity/json`, `${d.project?.name ?? 'activity'}-activity.json`); setShowExportMenu(false); }}
+          >
+            Export Activity (JSON)
+          </button>
+          <hr className="my-1 border-slate-100" />
+          <button
+            className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+            onClick={() => { onOpenModal('csv-import'); setShowExportMenu(false); }}
+          >
+            Import CSV
+          </button>
+        </div>
+      )}
 
       {/* Status editor */}
       {showStatusEditor && (
@@ -452,6 +416,7 @@ export default function ProjectToolbar({
           />
         </div>
       )}
+      <ConfirmDialogPortal />
     </>
   );
 }

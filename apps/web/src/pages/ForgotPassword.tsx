@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { gql } from '../api/client';
 import Button from '../components/shared/Button';
+import Input from '../components/shared/Input';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -27,33 +28,33 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100">
-      <div className="w-full max-w-sm p-6 bg-white rounded-lg shadow">
-        <h1 className="text-xl font-semibold text-slate-800 mb-4">Forgot password</h1>
+    <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900">
+      <div className="w-full max-w-sm p-6 bg-white dark:bg-slate-800 rounded-lg shadow">
+        <h1 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-4">Forgot password</h1>
 
         {submitted ? (
-          <p className="text-slate-700 text-sm">
+          <p className="text-slate-700 dark:text-slate-300 text-sm">
             If that email exists, a password reset link was sent. Check your inbox.
           </p>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-3">
-            <input
+            <Input
+              label="Email"
               type="email"
-              placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded"
+              error={err ?? undefined}
               required
+              autoComplete="email"
             />
-            {err && <p className="text-sm text-red-600">{err}</p>}
             <Button type="submit" loading={loading} className="w-full">
-              {loading ? 'Sending…' : 'Send reset link'}
+              Send reset link
             </Button>
           </form>
         )}
 
-        <p className="mt-4 text-sm text-slate-600">
-          <Link to="/login" className="text-slate-800 underline">Back to sign in</Link>
+        <p className="mt-4 text-sm text-slate-600 dark:text-slate-400">
+          <Link to="/login" className="text-slate-800 dark:text-slate-200 underline">Back to sign in</Link>
         </p>
       </div>
     </div>

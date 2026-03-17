@@ -50,6 +50,14 @@ export default function Modal({
     };
   }, [isOpen]);
 
+  // Scroll lock
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [isOpen]);
+
   // Escape to close
   useEffect(() => {
     if (!isOpen) return;

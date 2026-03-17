@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { gql } from '../api/client';
 import type { Notification } from '../types';
+import ErrorBanner from './shared/ErrorBanner';
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -28,6 +29,7 @@ interface NotificationCenterProps {
 export default function NotificationCenter({ onClose }: NotificationCenterProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const navigate = useNavigate();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -58,13 +60,14 @@ export default function NotificationCenter({ onClose }: NotificationCenterProps)
   }, [onClose]);
 
   const loadNotifications = async () => {
+    setError(null);
     try {
       const data = await gql<{ notifications: Notification[] }>(
         `query Notifications { notifications(limit: 30) { notificationId type title body linkUrl isRead createdAt } }`
       );
       setNotifications(data.notifications);
     } catch (e) {
-      console.error('Failed to load notifications:', e);
+      setError(e instanceof Error ? e.message : 'Failed to load notifications');
     } finally {
       setLoading(false);
     }
@@ -81,7 +84,7 @@ export default function NotificationCenter({ onClose }: NotificationCenterProps)
           prev.map((n) => n.notificationId === notification.notificationId ? { ...n, isRead: true } : n)
         );
       } catch (e) {
-        console.error('Failed to mark notification as read:', e);
+        setError(e instanceof Error ? e.message : 'Failed to mark as read');
       }
     }
     if (notification.linkUrl) {
@@ -97,7 +100,7 @@ export default function NotificationCenter({ onClose }: NotificationCenterProps)
       );
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     } catch (e) {
-      console.error('Failed to mark all notifications as read:', e);
+      setError(e instanceof Error ? e.message : 'Failed to mark all as read');
     }
   };
 
@@ -141,6 +144,11 @@ export default function NotificationCenter({ onClose }: NotificationCenterProps)
           </button>
         )}
       </div>
+      {error && (
+        <div className="px-3 py-2">
+          <ErrorBanner message={error} onRetry={loadNotifications} onDismiss={() => setError(null)} />
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto">
         {loading ? (
           <p className="text-xs text-slate-400 text-center py-6">Loading…</p>

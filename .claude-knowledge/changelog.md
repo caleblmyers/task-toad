@@ -6,6 +6,31 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-16 (cont.)
 
+### Wave 22-23: UX Audit Implementation (9 tasks across 2 waves)
+
+**Wave 22 — Foundations + Quick Wins:**
+- **Design system primitives:** Input, Textarea, Select (forwardRef, label, error, hint, aria-describedby, focus-visible ring), Card, Badge, SectionHeader
+- **Button fix:** Added focus-visible:ring-2 to base class for keyboard accessibility
+- **Modal fix:** Added scroll lock (body overflow hidden) on open
+- **GlobalSearchModal deep-linking fix:** Task clicks now navigate to `/app/projects/:id?task=:taskId` instead of just `/app/projects/:id`
+- **NavLink active states:** Sidebar links now use NavLink with `bg-slate-700 text-white` active styling; `/app` has `end` prop
+- **ConfirmDialog + useConfirmDialog hook:** Replaced all 4 native `confirm()` calls (SprintSection delete, ProjectToolbar bootstrap, SlackSettings disconnect, WebhookSettings delete) with branded modal dialogs
+- **ErrorBanner component:** Dismissible inline error with optional retry button, slide-in animation
+- **Projects page:** Error state + retry (was `.catch(() => {})`)
+- **Search page:** Error state + retry (was `catch { // ignore }`)
+- **NotificationCenter:** Replaced `console.error` with visible ErrorBanner
+
+**Wave 23 — Medium Restructurings:**
+- **DropdownMenu primitive:** Accessible dropdown with role="menu"/role="menuitem", arrow key navigation, Enter/Escape, click-outside
+- **Tabs primitive:** WAI-ARIA tabs pattern with role="tablist"/role="tab"/role="tabpanel", arrow key navigation, aria-selected
+- **ProjectToolbar consolidation:** Grouped 10+ AI actions into "AI" dropdown menu, moved 6 secondary actions into "..." overflow menu. Visible toolbar: [Back/Name/Gear] [ViewToggle] [Search] [Filter] [Add Task] [AI ▾] [⋯]
+- **OrgSettings tabs:** Split monolithic page into 5 client-side tabs (General, Team, Integrations, Webhooks, AI) using Card + SectionHeader + Tabs
+- **Auth form labels:** Retrofitted all 6 auth pages (Login, Signup, ForgotPassword, ResetPassword, AcceptInvite, CreateOrg) with shared Input component — visible labels, aria-live error messages, loading states, autoComplete attributes
+
+**Deferred to Wave 24+:** Responsive workspace (Item 9), Task detail re-architecture (Item 10)
+
+---
+
 ### Wave 21: Testing + Ops Docs + Polish (3 workers, 3 tasks)
 
 **Testing — S3 + Notification/SSE + Export Fix (Worker 1):**

@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { gql } from '../api/client';
 import type { Project } from '../types';
 import { useAuth } from '../auth/context';
+import ErrorBanner from '../components/shared/ErrorBanner';
 
 export default function Projects() {
   const { user } = useAuth();
@@ -10,17 +11,23 @@ export default function Projects() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showArchived, setShowArchived] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchProjects = useCallback(() => {
     setLoading(true);
+    setError(null);
     gql<{ projects: Project[] }>(
       `query ($includeArchived: Boolean) { projects(includeArchived: $includeArchived) { projectId name description createdAt archived } }`,
       { includeArchived: showArchived }
     )
       .then((data) => setProjects(data.projects))
-      .catch(() => {})
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load projects'))
       .finally(() => setLoading(false));
   }, [showArchived]);
+
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
 
   const handleArchive = async (projectId: string, archived: boolean) => {
     try {
@@ -31,15 +38,14 @@ export default function Projects() {
         { projectId, archived }
       );
       if (!showArchived) {
-        // Remove archived projects from list when not showing archived
         setProjects((prev) => prev.filter((p) => p.projectId !== projectId || !archived));
       } else {
         setProjects((prev) =>
           prev.map((p) => p.projectId === projectId ? { ...p, archived } : p)
         );
       }
-    } catch {
-      // ignore
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to archive project');
     }
   };
 
@@ -67,6 +73,12 @@ export default function Projects() {
           </Link>
         </div>
       </div>
+
+      {error && (
+        <div className="mb-4">
+          <ErrorBanner message={error} onRetry={fetchProjects} onDismiss={() => setError(null)} />
+        </div>
+      )}
 
       {loading ? (
         <p className="text-slate-600">Loading…</p>

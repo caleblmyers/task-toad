@@ -3,6 +3,7 @@ import { List } from 'react-window';
 import type { Task, Sprint, OrgUser } from '../types';
 import BurndownChart from './BurndownChart';
 import DependencyBadge from './shared/DependencyBadge';
+import { useConfirmDialog } from './shared/ConfirmDialog';
 
 const ROW_HEIGHT = 52;
 const MAX_LIST_HEIGHT = 600;
@@ -305,6 +306,7 @@ export default function SprintSection({
   onEditSprint, onDeleteSprint, onActivateSprint, onCloseSprint, onSprintReport,
   allSprints, onAssignSprint,
 }: SprintSectionProps) {
+  const { confirm, ConfirmDialogPortal } = useConfirmDialog();
   const [burndownVisible, setBurndownVisible] = useState(false);
 
   const dateRange = sprint.startDate && sprint.endDate
@@ -375,7 +377,7 @@ export default function SprintSection({
               <button type="button" onClick={() => onActivateSprint(sprint.sprintId)} className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1 border border-slate-300 rounded hover:bg-white">Set Active</button>
               <button
                 type="button"
-                onClick={() => { if (window.confirm(`Delete sprint "${sprint.name}"? Tasks will be moved to the backlog.`)) onDeleteSprint(sprint.sprintId); }}
+                onClick={async () => { if (await confirm({ title: 'Delete sprint', message: `Delete sprint "${sprint.name}"? Tasks will be moved to the backlog.`, confirmLabel: 'Delete', variant: 'danger' })) onDeleteSprint(sprint.sprintId); }}
                 className="text-xs text-slate-400 hover:text-red-600 px-2 py-1 border border-slate-200 rounded hover:border-red-300 hover:bg-red-50"
                 title="Delete sprint"
               >Delete</button>
@@ -448,6 +450,7 @@ export default function SprintSection({
           </>
         )}
       </div>
+      <ConfirmDialogPortal />
     </div>
   );
 }

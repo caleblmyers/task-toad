@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { gql } from '../api/client';
 import Button from '../components/shared/Button';
+import Input from '../components/shared/Input';
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -14,11 +15,11 @@ export default function ResetPassword() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100">
-        <div className="w-full max-w-sm p-6 bg-white rounded-lg shadow text-center">
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900">
+        <div className="w-full max-w-sm p-6 bg-white dark:bg-slate-800 rounded-lg shadow text-center">
           <p className="text-red-600">Invalid reset link.</p>
           <p className="mt-2 text-sm">
-            <Link to="/forgot-password" className="text-slate-800 underline">Request a new one</Link>
+            <Link to="/forgot-password" className="text-slate-800 dark:text-slate-200 underline">Request a new one</Link>
           </p>
         </div>
       </div>
@@ -45,22 +46,23 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100">
-      <div className="w-full max-w-sm p-6 bg-white rounded-lg shadow">
-        <h1 className="text-xl font-semibold text-slate-800 mb-4">Set new password</h1>
+    <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900">
+      <div className="w-full max-w-sm p-6 bg-white dark:bg-slate-800 rounded-lg shadow">
+        <h1 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-4">Set new password</h1>
         <form onSubmit={handleSubmit} className="space-y-3">
-          <input
+          <Input
+            label="New password"
             type="password"
-            placeholder="New password (min 8 characters)"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-300 rounded"
+            error={err ?? undefined}
+            hint="Minimum 8 characters"
             required
             minLength={8}
+            autoComplete="new-password"
           />
-          {err && <p className="text-sm text-red-600">{err}</p>}
           <Button type="submit" loading={loading} className="w-full">
-            {loading ? 'Saving…' : 'Save new password'}
+            Save new password
           </Button>
         </form>
       </div>

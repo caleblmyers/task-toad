@@ -47,7 +47,7 @@ function Spinner() {
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ variant = 'primary', size = 'md', loading = false, disabled, className = '', children, ...rest }, ref) => {
-    const base = 'inline-flex items-center justify-center gap-1.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+    const base = 'inline-flex items-center justify-center gap-1.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-brand-green focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800';
     const classes = `${base} ${VARIANT_CLASSES[variant]} ${SIZE_CLASSES[size]} ${className}`.trim();
 
     return (
