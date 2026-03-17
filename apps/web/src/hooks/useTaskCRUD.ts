@@ -103,8 +103,8 @@ export function useTaskCRUD({ projectId, userId, sprints }: UseTaskCRUDOptions) 
 
   const loadTaskActivities = useCallback(async (taskId: string) => {
     try {
-      const data = await gql<{ activities: Activity[] }>(ACTIVITIES_QUERY, { taskId });
-      setTaskActivities((prev) => ({ ...prev, [taskId]: data.activities }));
+      const data = await gql<{ activities: { activities: Activity[]; hasMore: boolean } }>(ACTIVITIES_QUERY, { taskId });
+      setTaskActivities((prev) => ({ ...prev, [taskId]: data.activities.activities }));
     } catch {
       // ignore
     }

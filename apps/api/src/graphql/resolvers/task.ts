@@ -503,13 +503,7 @@ export const taskMutations = {
     }
     await context.prisma.comment.deleteMany({ where: { parentCommentId: args.commentId } });
     await context.prisma.comment.delete({ where: { commentId: args.commentId } });
-    return {
-      ...comment,
-      userEmail: comment.user.email,
-      createdAt: comment.createdAt.toISOString(),
-      updatedAt: comment.updatedAt.toISOString(),
-      replies: [],
-    };
+    return true;
   },
 
   createCustomField: async (

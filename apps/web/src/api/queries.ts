@@ -34,7 +34,7 @@ export const COMMENTS_QUERY = `query Comments($taskId: ID!) {
 }`;
 
 export const ACTIVITIES_QUERY = `query Activities($taskId: ID!) {
-  activities(taskId: $taskId, limit: 30) { activityId projectId taskId sprintId userId userEmail action field oldValue newValue createdAt }
+  activities(taskId: $taskId, limit: 30) { activities { activityId projectId taskId sprintId userId userEmail action field oldValue newValue createdAt } hasMore }
 }`;
 
 export const PROJECT_STATS_QUERY = `query ProjectStats($projectId: ID!) {

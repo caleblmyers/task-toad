@@ -43,5 +43,5 @@ export const commentMutationFields = /* GraphQL */ `
   """Add a comment to a task. Optionally nest under a parent comment."""
   createComment(taskId: ID!, content: String!, parentCommentId: ID): Comment!
   updateComment(commentId: ID!, content: String!): Comment!
-  deleteComment(commentId: ID!): Comment!
+  deleteComment(commentId: ID!): Boolean!
 `;
