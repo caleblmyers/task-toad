@@ -24,9 +24,14 @@ export type {
   SprintPlanItem,
 } from '@tasktoad/shared-types';
 
-export interface SubtaskPreview {
+export interface ChildTaskPreview {
   title: string;
   description: string;
+  instructions?: string | null;
+  estimatedHours?: number | null;
+  priority?: string | null;
+  acceptanceCriteria?: string | null;
+  suggestedTools?: string | null;
 }
 
 export interface TaskPlanPreview {
@@ -37,7 +42,7 @@ export interface TaskPlanPreview {
   estimatedHours: number | null;
   priority: string;
   dependsOn: string[];
-  subtasks: SubtaskPreview[];
+  tasks: ChildTaskPreview[];
   acceptanceCriteria?: string | null;
 }
 
@@ -56,6 +61,9 @@ export interface AIUsageSummary {
   byFeature: AIFeatureUsage[];
   budgetUsedPercent: number | null;
   budgetLimitCentsUSD: number | null;
+  budgetEnforcement: string;
+  dailyAverageCostUSD: number | null;
+  projectedMonthlyCostUSD: number | null;
 }
 
 export interface ProjectOption {

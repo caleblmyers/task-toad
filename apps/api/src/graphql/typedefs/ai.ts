@@ -39,6 +39,11 @@ export const aiTypeDefs = /* GraphQL */ `
     createdAt: String!
   }
 
+  type BudgetWarning {
+    message: String!
+    usedPercent: Float!
+  }
+
   type AIUsageSummary {
     totalCostUSD: Float!
     totalInputTokens: Int!
@@ -47,6 +52,9 @@ export const aiTypeDefs = /* GraphQL */ `
     byFeature: [AIFeatureUsage!]!
     budgetUsedPercent: Float
     budgetLimitCentsUSD: Int
+    budgetEnforcement: String!
+    dailyAverageCostUSD: Float
+    projectedMonthlyCostUSD: Float
   }
 
   type AIFeatureUsage {

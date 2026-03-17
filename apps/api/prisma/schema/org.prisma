@@ -5,6 +5,7 @@ model Org {
   anthropicApiKeyEncrypted String?   @map("anthropic_api_key_encrypted")
   monthlyBudgetCentsUSD    Int?      @map("monthly_budget_cents_usd")
   budgetAlertThreshold     Int       @default(80) @map("budget_alert_threshold")
+  budgetEnforcement        String    @default("soft") @map("budget_enforcement")
   promptLoggingEnabled     Boolean   @default(true) @map("prompt_logging_enabled")
   users           User[]
   projects        Project[]

@@ -23,6 +23,7 @@ import {
 import type { PromptLogContext } from '../../ai/index.js';
 import { NotFoundError, ValidationError, AuthorizationError } from '../errors.js';
 import { requireOrg, requireApiKey } from './auth.js';
+import { checkBudget, type BudgetStatus } from '../../ai/aiUsageTracker.js';
 
 async function buildPromptLogContext(context: Context): Promise<PromptLogContext> {
   const user = requireOrg(context);
@@ -41,6 +42,12 @@ import { getProjectRepo, fetchProjectFileTree, fetchFileContent, getPullRequestD
 import { listRecentCommits, listOpenPullRequests } from '../../github/githubFileService.js';
 import { requireProject, sanitizeForPrompt } from '../../utils/resolverHelpers.js';
 import { EpicsInputSchema } from '../../utils/zodSchemas.js';
+
+/** Check budget before an AI call. Returns the status (for warnings). */
+async function enforceBudget(context: Context): Promise<BudgetStatus> {
+  const user = requireOrg(context);
+  return checkBudget(context.prisma, user.orgId);
+}
 
 // ── AI mutations ──
 
@@ -78,7 +85,7 @@ export const aiMutations = {
 
   setAIBudget: async (
     _parent: unknown,
-    args: { monthlyBudgetCentsUSD?: number | null; alertThreshold?: number | null; promptLoggingEnabled?: boolean | null },
+    args: { monthlyBudgetCentsUSD?: number | null; alertThreshold?: number | null; budgetEnforcement?: string | null; promptLoggingEnabled?: boolean | null },
     context: Context
   ) => {
     const user = requireOrg(context);
@@ -88,11 +95,15 @@ export const aiMutations = {
     if (args.alertThreshold != null && (args.alertThreshold < 1 || args.alertThreshold > 100)) {
       throw new ValidationError('Alert threshold must be between 1 and 100');
     }
+    if (args.budgetEnforcement != null && !['soft', 'hard'].includes(args.budgetEnforcement)) {
+      throw new ValidationError('Budget enforcement must be "soft" or "hard"');
+    }
     return context.prisma.org.update({
       where: { orgId: user.orgId },
       data: {
         ...(args.monthlyBudgetCentsUSD !== undefined && { monthlyBudgetCentsUSD: args.monthlyBudgetCentsUSD ?? null }),
         ...(args.alertThreshold != null && { budgetAlertThreshold: args.alertThreshold }),
+        ...(args.budgetEnforcement != null && { budgetEnforcement: args.budgetEnforcement }),
         ...(args.promptLoggingEnabled != null && { promptLoggingEnabled: args.promptLoggingEnabled }),
       },
     });
@@ -100,6 +111,7 @@ export const aiMutations = {
 
   generateProjectOptions: async (_parent: unknown, args: { prompt: string }, context: Context) => {
     const apiKey = requireApiKey(context);
+    await enforceBudget(context);
     const plc = await buildPromptLogContext(context);
     return aiGenerateProjectOptions(apiKey, args.prompt, plc);
   },
@@ -127,6 +139,7 @@ export const aiMutations = {
   ) => {
     const { user, project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
+    await enforceBudget(context);
     const existingTasks = await context.prisma.task.findMany({
       where: { projectId: args.projectId, archived: false },
       select: { title: true },
@@ -171,6 +184,7 @@ export const aiMutations = {
   ) => {
     const { project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
+    await enforceBudget(context);
     const existingTasks = await context.prisma.task.findMany({
       where: { projectId: args.projectId, archived: false },
       select: { title: true },
@@ -203,7 +217,15 @@ export const aiMutations = {
       estimatedHours: t.estimatedHours ?? null,
       priority: t.priority ?? 'medium',
       dependsOn: t.dependsOn ?? [],
-      subtasks: t.subtasks ?? [],
+      tasks: (t.tasks ?? []).map((ct) => ({
+        title: ct.title,
+        description: ct.description,
+        instructions: ct.instructions || null,
+        estimatedHours: ct.estimatedHours ?? null,
+        priority: ct.priority || null,
+        acceptanceCriteria: ct.acceptanceCriteria || null,
+        suggestedTools: ct.suggestedTools ? JSON.stringify(ct.suggestedTools) : null,
+      })),
       acceptanceCriteria: t.acceptanceCriteria || null,
     }));
   },
@@ -220,7 +242,7 @@ export const aiMutations = {
         estimatedHours?: number | null;
         priority?: string | null;
         dependsOn: string[];
-        subtasks: Array<{ title: string; description: string }>;
+        tasks: Array<{ title: string; description: string; instructions?: string | null; estimatedHours?: number | null; priority?: string | null; acceptanceCriteria?: string | null; suggestedTools?: string | null }>;
         acceptanceCriteria?: string | null;
       }>;
       clearExisting?: boolean | null;
@@ -250,6 +272,7 @@ export const aiMutations = {
             estimatedHours: t.estimatedHours ?? null,
             priority: t.priority ?? 'medium',
             status: 'todo',
+            taskType: 'epic',
             projectId: args.projectId,
             orgId: user.orgId,
           },
@@ -284,17 +307,22 @@ export const aiMutations = {
           );
         }
 
-        if (inputTask.subtasks.length > 0) {
+        if (inputTask.tasks.length > 0) {
           updates.push(
             context.prisma.task.createMany({
-              data: inputTask.subtasks.map((st) => ({
-                title: st.title,
-                description: st.description,
+              data: inputTask.tasks.map((ct) => ({
+                title: ct.title,
+                description: ct.description,
+                instructions: ct.instructions || null,
+                estimatedHours: ct.estimatedHours ?? null,
+                priority: ct.priority ?? 'medium',
+                acceptanceCriteria: ct.acceptanceCriteria || null,
+                suggestedTools: ct.suggestedTools || null,
                 status: 'todo',
+                taskType: 'task',
                 projectId: args.projectId,
                 parentTaskId: task.taskId,
                 orgId: user.orgId,
-                priority: 'medium',
               })),
             })
           );
@@ -317,6 +345,7 @@ export const aiMutations = {
   ) => {
     const user = requireOrg(context);
     const apiKey = requireApiKey(context);
+    await enforceBudget(context);
     const task = await context.loaders.taskById.load(args.taskId);
     if (!task || task.orgId !== user.orgId) {
       throw new NotFoundError('Task not found');
@@ -329,7 +358,7 @@ export const aiMutations = {
     });
     await context.prisma.task.deleteMany({ where: { parentTaskId: args.taskId } });
     const plc = await buildPromptLogContext(context);
-    const subtaskPlans = await aiExpandTask(
+    const childTaskPlans = await aiExpandTask(
       apiKey,
       task.title,
       task.description ?? '',
@@ -340,14 +369,18 @@ export const aiMutations = {
       plc
     );
     return Promise.all(
-      subtaskPlans.map((t) =>
+      childTaskPlans.map((t) =>
         context.prisma.task.create({
           data: {
             title: t.title,
             description: t.description,
             instructions: t.instructions,
             suggestedTools: JSON.stringify(t.suggestedTools),
+            estimatedHours: t.estimatedHours ?? null,
+            priority: t.priority ?? 'medium',
+            acceptanceCriteria: t.acceptanceCriteria || null,
             status: 'todo',
+            taskType: 'task',
             projectId: task.projectId,
             parentTaskId: task.taskId,
             orgId: user.orgId,
@@ -360,6 +393,7 @@ export const aiMutations = {
   generateTaskInstructions: async (_parent: unknown, args: { taskId: string }, context: Context) => {
     const user = requireOrg(context);
     const apiKey = requireApiKey(context);
+    await enforceBudget(context);
     const task = await context.loaders.taskById.load(args.taskId);
     if (!task || task.orgId !== user.orgId) {
       throw new NotFoundError('Task not found');
@@ -386,16 +420,21 @@ export const aiMutations = {
       .map((title) => titleToId.get(title))
       .filter((id): id is string => id !== undefined);
     await context.prisma.task.deleteMany({ where: { parentTaskId: task.taskId } });
-    if (result.subtasks.length > 0) {
+    if (result.tasks.length > 0) {
       await context.prisma.task.createMany({
-        data: result.subtasks.map((st) => ({
-          title: st.title,
-          description: st.description,
+        data: result.tasks.map((ct) => ({
+          title: ct.title,
+          description: ct.description,
+          instructions: ct.instructions || null,
+          estimatedHours: ct.estimatedHours ?? null,
+          priority: ct.priority ?? 'medium',
+          acceptanceCriteria: ct.acceptanceCriteria || null,
+          suggestedTools: ct.suggestedTools ? JSON.stringify(ct.suggestedTools) : null,
           status: 'todo',
+          taskType: 'task',
           projectId: task.projectId,
           parentTaskId: task.taskId,
           orgId: user.orgId,
-          priority: 'medium',
         })),
       });
     }
@@ -414,6 +453,7 @@ export const aiMutations = {
   generateCodeFromTask: async (_parent: unknown, args: { taskId: string; styleGuide?: string | null }, context: Context) => {
     const user = requireOrg(context);
     const apiKey = requireApiKey(context);
+    await enforceBudget(context);
     const task = await context.loaders.taskById.load(args.taskId);
     if (!task || task.orgId !== user.orgId) {
       throw new NotFoundError('Task not found');
@@ -449,6 +489,7 @@ export const aiMutations = {
   generateCodeFromSubtask: async (_parent: unknown, args: { taskId: string; subtaskId: string; styleGuide?: string | null }, context: Context) => {
     const user = requireOrg(context);
     const apiKey = requireApiKey(context);
+    await enforceBudget(context);
     const parentTask = await context.loaders.taskById.load(args.taskId);
     if (!parentTask || parentTask.orgId !== user.orgId) {
       throw new NotFoundError('Parent task not found');
@@ -497,6 +538,7 @@ export const aiMutations = {
   ) => {
     const user = requireOrg(context);
     const apiKey = requireApiKey(context);
+    await enforceBudget(context);
     const task = await context.loaders.taskById.load(args.taskId);
     if (!task || task.orgId !== user.orgId) {
       throw new NotFoundError('Task not found');
@@ -527,6 +569,7 @@ export const aiMutations = {
   ) => {
     const user = requireOrg(context);
     const apiKey = requireApiKey(context);
+    await enforceBudget(context);
     const task = await context.loaders.taskById.load(args.taskId);
     if (!task || task.orgId !== user.orgId) {
       throw new NotFoundError('Task not found');
@@ -563,6 +606,7 @@ export const aiMutations = {
   ) => {
     const { user, project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
+    await enforceBudget(context);
     if (!args.bugReport.trim()) {
       throw new ValidationError('Bug report text is required');
     }
@@ -593,6 +637,7 @@ export const aiMutations = {
   ) => {
     const { project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
+    await enforceBudget(context);
     if (!args.prd.trim()) {
       throw new ValidationError('PRD text is required');
     }
@@ -663,6 +708,7 @@ export const aiMutations = {
   ) => {
     const { project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
+    await enforceBudget(context);
     if (!args.taskIds.length || args.taskIds.length > 5) {
       throw new ValidationError('Provide 1-5 task IDs');
     }
@@ -705,6 +751,7 @@ export const aiMutations = {
   ) => {
     const { user, project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
+    await enforceBudget(context);
     const repo = await getProjectRepo(args.projectId);
     if (!repo) {
       throw new ValidationError('Project has no linked GitHub repository');
@@ -757,6 +804,7 @@ export const aiMutations = {
   summarizeProject: async (_parent: unknown, args: { projectId: string }, context: Context) => {
     const user = requireOrg(context);
     const apiKey = requireApiKey(context);
+    await enforceBudget(context);
     const project = await context.loaders.projectById.load(args.projectId);
     if (!project || project.orgId !== user.orgId) {
       throw new NotFoundError('Project not found');
@@ -784,6 +832,7 @@ export const aiQueries = {
   ) => {
     const { project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
+    await enforceBudget(context);
     if (!args.question.trim()) {
       throw new ValidationError('Question is required');
     }
@@ -848,6 +897,7 @@ export const aiQueries = {
   ) => {
     await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
+    await enforceBudget(context);
     const repo = await getProjectRepo(args.projectId);
     if (!repo) {
       throw new ValidationError('Project has no linked GitHub repository');
@@ -884,6 +934,7 @@ export const aiQueries = {
   ) => {
     const user = requireOrg(context);
     const apiKey = requireApiKey(context);
+    await enforceBudget(context);
     const sprint = await context.prisma.sprint.findFirst({
       where: { sprintId: args.sprintId },
     });
@@ -972,6 +1023,7 @@ export const aiQueries = {
   ) => {
     const { project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
+    await enforceBudget(context);
 
     const reports = await context.prisma.report.findMany({
       where: { projectId: args.projectId },
@@ -1034,21 +1086,33 @@ export const aiQueries = {
 
     const org = await context.prisma.org.findUnique({
       where: { orgId: user.orgId },
-      select: { monthlyBudgetCentsUSD: true },
+      select: { monthlyBudgetCentsUSD: true, budgetEnforcement: true },
     });
 
     let budgetUsedPercent: number | null = null;
+    let dailyAverageCostUSD: number | null = null;
+    let projectedMonthlyCostUSD: number | null = null;
+
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const monthLogs = since <= startOfMonth
+      ? logs.filter((l) => l.createdAt >= startOfMonth)
+      : logs;
+    const monthCost = monthLogs.reduce((sum, l) => sum + l.costUSD, 0);
+
     if (org?.monthlyBudgetCentsUSD) {
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
-
-      const monthLogs = since <= startOfMonth
-        ? logs.filter((l) => l.createdAt >= startOfMonth)
-        : logs;
-
-      const monthCost = monthLogs.reduce((sum, l) => sum + l.costUSD, 0);
       budgetUsedPercent = Math.round((monthCost * 100 * 100) / org.monthlyBudgetCentsUSD) / 100;
+    }
+
+    // Compute spend forecast
+    const now = new Date();
+    const dayOfMonth = now.getDate();
+    if (dayOfMonth > 1 && monthCost > 0) {
+      dailyAverageCostUSD = monthCost / dayOfMonth;
+      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      projectedMonthlyCostUSD = dailyAverageCostUSD * daysInMonth;
     }
 
     return {
@@ -1059,12 +1123,16 @@ export const aiQueries = {
       byFeature,
       budgetUsedPercent,
       budgetLimitCentsUSD: org?.monthlyBudgetCentsUSD ?? null,
+      budgetEnforcement: org?.budgetEnforcement ?? 'soft',
+      dailyAverageCostUSD,
+      projectedMonthlyCostUSD,
     };
   },
 
   generateStandupReport: async (_parent: unknown, args: { projectId: string }, context: Context) => {
     const { project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
+    await enforceBudget(context);
 
     // Find tasks completed in the last 24 hours via activity log
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -1121,6 +1189,7 @@ export const aiQueries = {
   generateSprintReport: async (_parent: unknown, args: { projectId: string; sprintId: string }, context: Context) => {
     await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
+    await enforceBudget(context);
     const sprint = await context.prisma.sprint.findFirst({
       where: { sprintId: args.sprintId, projectId: args.projectId },
     });
@@ -1155,6 +1224,7 @@ export const aiQueries = {
   analyzeProjectHealth: async (_parent: unknown, args: { projectId: string }, context: Context) => {
     const { project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
+    await enforceBudget(context);
 
     const allTasks = await context.prisma.task.findMany({
       where: { projectId: args.projectId, parentTaskId: null, archived: false },
@@ -1201,6 +1271,7 @@ export const aiQueries = {
   extractTasksFromNotes: async (_parent: unknown, args: { projectId: string; notes: string }, context: Context) => {
     const { user, project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
+    await enforceBudget(context);
 
     const orgUsers = await context.prisma.user.findMany({
       where: { orgId: user.orgId },

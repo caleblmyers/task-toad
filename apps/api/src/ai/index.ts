@@ -28,14 +28,14 @@ export {
   batchGenerateCode,
 } from './aiService.js';
 
-export { logUsageToDB, checkBudget } from './aiUsageTracker.js';
+export { logUsageToDB, checkBudget, type BudgetStatus } from './aiUsageTracker.js';
 
 export type { PromptLogContext } from './aiClient.js';
 
 export type {
   ProjectOption,
   ToolSuggestion,
-  SubtaskPlan,
+  ChildTaskPlan,
   TaskPlan,
   SprintPlan,
   TaskInstructions,
