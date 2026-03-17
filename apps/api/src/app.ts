@@ -21,6 +21,7 @@ import { jwtVerify } from 'jose';
 import { JWT_SECRET } from './graphql/context.js';
 import crypto from 'crypto';
 import { register, httpRequestDuration, httpRequestsTotal, graphqlResolverDuration } from './utils/metrics.js';
+import { checkS3Health } from './utils/s3.js';
 import { prisma as sharedPrisma } from './graphql/context.js';
 
 // Validate required environment variables at startup
@@ -71,15 +72,20 @@ app.use(
 app.get('/api/health', async (_req, res) => {
   try {
     await sharedPrisma.$queryRaw`SELECT 1`;
+    const s3Status = await checkS3Health();
     res.json({
       status: 'ok',
+      db: 'ok',
+      s3: s3Status,
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
     });
   } catch {
+    const s3Status = await checkS3Health().catch(() => 'unknown');
     res.status(503).json({
       status: 'error',
-      error: 'database unreachable',
+      db: 'unreachable',
+      s3: s3Status,
     });
   }
 });

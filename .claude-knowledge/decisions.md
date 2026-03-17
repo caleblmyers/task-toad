@@ -251,6 +251,34 @@ GraphiQL UI available in dev for interactive exploration.
 
 ---
 
+## 2026-03-16 — S3-compatible object storage for file attachments
+
+**Decision:** Migrated file attachments from local disk (multer `diskStorage`) to S3-compatible object storage with automatic local fallback.
+
+**Implementation:**
+- `apps/api/src/utils/s3.ts` — S3Client wrapper with `uploadToS3`, `getSignedDownloadUrl`, `deleteFromS3`, `checkS3Health`
+- Upload route uses `memoryStorage()` when S3 is configured, `diskStorage()` when not
+- GET endpoint redirects to presigned URL (S3) or streams from disk (local)
+- Health check at `/api/health` reports `s3: 'ok' | 'not configured' | 'error: ...'`
+- Env vars: `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`
+
+**Why S3 over local disk:** Railway (deployment target) has an ephemeral filesystem — uploads are lost on every deploy/restart. S3-compatible storage persists independently.
+
+**Recommended providers:**
+- **Cloudflare R2** — S3-compatible API, zero egress fees, generous free tier (10GB storage, 10M reads/mo). Best cost/value for small-to-mid scale.
+- **AWS S3** — Industry standard, broadest tooling support, pay-per-use egress.
+- **MinIO** — Self-hosted S3-compatible, good for local dev or dedicated infrastructure.
+
+**Database backups:** Railway provides automated daily PostgreSQL backups with point-in-time recovery. Access via Railway dashboard → Database → Backups.
+
+**Monitoring recommendations:**
+- **Health endpoint polling:** Use UptimeRobot (free tier: 50 monitors, 5-min intervals) or BetterStack to poll `GET /api/health`. Alerts on DB or S3 connectivity failures.
+- **Prometheus metrics:** `/api/metrics` exposes HTTP latency, GraphQL resolver duration, Prisma pool stats. Connect Grafana Cloud (free tier) for dashboards.
+- **Railway built-in:** Alerts for restart loops, memory/CPU spikes available in Railway dashboard settings.
+- **Sentry:** Already integrated for error tracking (`SENTRY_DSN` env var).
+
+---
+
 ## Stack Lock-in Notes
 
 - `graphql-yoga` requires casting as `unknown as express.RequestHandler` for TS compat in `app.ts`

@@ -156,7 +156,7 @@ All packages extend `tsconfig.base.json`. Strict mode + `noUnusedLocals` + `noUn
 
 ### Env Files
 
-- `apps/api/.env` — `DATABASE_URL`, `JWT_SECRET`, `ENCRYPTION_MASTER_KEY`, `CORS_ORIGINS`, `LOG_LEVEL` (optional, defaults to `info`), `SENTRY_DSN` (optional)
+- `apps/api/.env` — `DATABASE_URL`, `JWT_SECRET`, `ENCRYPTION_MASTER_KEY`, `CORS_ORIGINS`, `LOG_LEVEL` (optional, defaults to `info`), `SENTRY_DSN` (optional), `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` (optional — falls back to local disk storage if not set)
 - `apps/web/.env` — `VITE_API_URL` (set to `/api` in dev; Vite proxy handles routing)
 
 Copy from `.env.example` and fill in values.

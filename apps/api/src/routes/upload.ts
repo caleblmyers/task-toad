@@ -6,6 +6,13 @@ import rateLimit from 'express-rate-limit';
 import { jwtVerify } from 'jose';
 import { JWT_SECRET } from '../graphql/context.js';
 import { getPrisma } from './sharedPrisma.js';
+import {
+  isS3Configured,
+  buildS3Key,
+  uploadToS3,
+  getSignedDownloadUrl,
+  deleteFromS3,
+} from '../utils/s3.js';
 
 const router: ReturnType<typeof Router> = Router();
 
@@ -54,10 +61,6 @@ async function requireAuth(req: AuthRequest, res: Response, next: NextFunction):
   }
 }
 
-// File storage configuration
-const uploadDir = path.resolve(process.cwd(), 'uploads');
-fs.mkdirSync(uploadDir, { recursive: true });
-
 // Sanitize filenames: strip path traversal, null bytes, and non-alphanumeric chars (except .-_)
 function sanitizeFilename(name: string): string {
   return name
@@ -68,10 +71,22 @@ function sanitizeFilename(name: string): string {
     .slice(0, 200);                        // length limit
 }
 
-const storage = multer.diskStorage({
-  destination: uploadDir,
-  filename: (_req, file, cb) => cb(null, `${Date.now()}-${sanitizeFilename(file.originalname)}`),
-});
+// --- Storage configuration ---
+// S3 mode: use memory storage (buffer available as req.file.buffer)
+// Local mode: use disk storage (file written to uploads/ directory)
+const uploadDir = path.resolve(process.cwd(), 'uploads');
+
+if (!isS3Configured) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = isS3Configured
+  ? multer.memoryStorage()
+  : multer.diskStorage({
+      destination: uploadDir,
+      filename: (_req, file, cb) => cb(null, `${Date.now()}-${sanitizeFilename(file.originalname)}`),
+    });
+
 const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
@@ -112,11 +127,23 @@ router.post('/:taskId', requireAuth, uploadLimiter, upload.single('file'), async
       return;
     }
 
+    const sanitizedName = sanitizeFilename(req.file.originalname);
+    let fileKey: string;
+
+    if (isS3Configured) {
+      // S3 mode: upload buffer to object storage
+      fileKey = buildS3Key(user.orgId, taskId, sanitizedName);
+      await uploadToS3(fileKey, req.file.buffer, req.file.mimetype);
+    } else {
+      // Local mode: file already written to disk by multer
+      fileKey = req.file.filename;
+    }
+
     const attachment = await prisma.attachment.create({
       data: {
         taskId,
-        fileName: sanitizeFilename(req.file.originalname),
-        fileKey: req.file.filename,
+        fileName: sanitizedName,
+        fileKey,
         mimeType: req.file.mimetype,
         sizeBytes: req.file.size,
         uploadedById: user.userId,
@@ -147,21 +174,26 @@ router.get('/:attachmentId', requireAuth, async (req: AuthRequest, res: Response
       return;
     }
 
-    const filePath = path.join(uploadDir, attachment.fileKey);
-    if (!fs.existsSync(filePath)) {
-      res.status(404).json({ error: 'File not found on disk' });
-      return;
-    }
+    if (isS3Configured) {
+      // S3 mode: redirect to presigned URL
+      const url = await getSignedDownloadUrl(attachment.fileKey);
+      res.redirect(302, url);
+    } else {
+      // Local mode: stream file from disk
+      const filePath = path.join(uploadDir, attachment.fileKey);
+      if (!fs.existsSync(filePath)) {
+        res.status(404).json({ error: 'File not found on disk' });
+        return;
+      }
 
-    // Only serve safe MIME types inline; everything else forces download
-    const disposition = SAFE_INLINE_MIME_TYPES.has(attachment.mimeType) ? 'inline' : 'attachment';
-    // Use application/octet-stream for non-whitelisted MIME types to prevent browser interpretation
-    const contentType = ALLOWED_UPLOAD_MIME_TYPES.has(attachment.mimeType)
-      ? attachment.mimeType : 'application/octet-stream';
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `${disposition}; filename="${sanitizeFilename(attachment.fileName)}"`);
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.sendFile(filePath);
+      const disposition = SAFE_INLINE_MIME_TYPES.has(attachment.mimeType) ? 'inline' : 'attachment';
+      const contentType = ALLOWED_UPLOAD_MIME_TYPES.has(attachment.mimeType)
+        ? attachment.mimeType : 'application/octet-stream';
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Disposition', `${disposition}; filename="${sanitizeFilename(attachment.fileName)}"`);
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.sendFile(filePath);
+    }
   } catch {
     res.status(500).json({ error: 'Failed to serve file' });
   }
@@ -183,9 +215,14 @@ router.delete('/:attachmentId', requireAuth, async (req: AuthRequest, res: Respo
       return;
     }
 
-    // Delete file from disk
-    const filePath = path.join(uploadDir, attachment.fileKey);
-    try { fs.unlinkSync(filePath); } catch { /* file may already be gone */ }
+    if (isS3Configured) {
+      // S3 mode: delete from object storage
+      try { await deleteFromS3(attachment.fileKey); } catch { /* object may already be gone */ }
+    } else {
+      // Local mode: delete from disk
+      const filePath = path.join(uploadDir, attachment.fileKey);
+      try { fs.unlinkSync(filePath); } catch { /* file may already be gone */ }
+    }
 
     // Delete DB record
     await prisma.attachment.delete({ where: { attachmentId } });
