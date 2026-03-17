@@ -422,25 +422,25 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
       {/* Tabs */}
       <div className="flex border-b border-slate-200 dark:border-slate-600 px-4">
         <button
-          className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === 'members' ? 'border-slate-800 text-slate-800 dark:border-slate-200 dark:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'}`}
+          className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === 'members' ? 'border-slate-800 text-slate-800 dark:border-slate-200 dark:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-slate-200'}`}
           onClick={() => setTab('members')}
         >
           Members
         </button>
         <button
-          className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === 'automation' ? 'border-slate-800 text-slate-800 dark:border-slate-200 dark:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'}`}
+          className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === 'automation' ? 'border-slate-800 text-slate-800 dark:border-slate-200 dark:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-slate-200'}`}
           onClick={() => setTab('automation')}
         >
           Automation
         </button>
         <button
-          className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === 'fields' ? 'border-slate-800 text-slate-800 dark:border-slate-200 dark:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'}`}
+          className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === 'fields' ? 'border-slate-800 text-slate-800 dark:border-slate-200 dark:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-slate-200'}`}
           onClick={() => setTab('fields')}
         >
           Custom Fields
         </button>
         <button
-          className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === 'templates' ? 'border-slate-800 text-slate-800 dark:border-slate-200 dark:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'}`}
+          className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === 'templates' ? 'border-slate-800 text-slate-800 dark:border-slate-200 dark:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-slate-200'}`}
           onClick={() => setTab('templates')}
         >
           Templates

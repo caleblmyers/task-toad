@@ -221,7 +221,7 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
           >
             <div className="flex items-center justify-between px-3 py-2.5">
               <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{col}</span>
-              <span className="text-xs font-medium bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-full px-2 py-0.5 shadow-sm">
+              <span className="text-xs font-medium bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-full px-2 py-0.5 shadow-sm">
                 {colTasks.length}
               </span>
             </div>

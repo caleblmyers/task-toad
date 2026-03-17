@@ -77,19 +77,19 @@ export default function CalendarView({ tasks, selectedTask, onSelectTask }: Cale
             <div className="flex items-center gap-1">
               <button
                 onClick={prevMonth}
-                className="px-2 py-1 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-800"
+                className="px-2 py-1 text-sm text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-800"
               >
                 &#8249;
               </button>
               <button
                 onClick={goToday}
-                className="px-2 py-1 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-800"
+                className="px-2 py-1 text-sm text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-800"
               >
                 Today
               </button>
               <button
                 onClick={nextMonth}
-                className="px-2 py-1 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-800"
+                className="px-2 py-1 text-sm text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-800"
               >
                 &#8250;
               </button>
@@ -100,7 +100,7 @@ export default function CalendarView({ tasks, selectedTask, onSelectTask }: Cale
         {/* Day headers */}
         <div className="grid grid-cols-7 border-b border-slate-200 dark:border-slate-700">
           {DAY_NAMES.map((d) => (
-            <div key={d} className="px-2 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 text-center uppercase tracking-wide">
+            <div key={d} className="px-2 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-300 text-center uppercase tracking-wide">
               {d}
             </div>
           ))}

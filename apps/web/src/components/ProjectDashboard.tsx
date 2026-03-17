@@ -40,7 +40,7 @@ function BarChart({ items, colorMap }: { items: Array<{ label: string; count: nu
         return (
           <div key={item.label}>
             <div className="flex items-center justify-between text-xs mb-0.5">
-              <span className="text-slate-600 dark:text-slate-400">{statusLabel(item.label)}</span>
+              <span className="text-slate-600 dark:text-slate-300">{statusLabel(item.label)}</span>
               <span className="text-slate-400">{item.count} ({pct}%)</span>
             </div>
             <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2">

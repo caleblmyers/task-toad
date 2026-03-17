@@ -243,7 +243,7 @@ export default function CSVImportModal({ onImport, onClose }: CSVImportModalProp
         <button
           type="button"
           onClick={onClose}
-          className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-300"
+          className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-200"
           disabled={importing}
         >
           Cancel

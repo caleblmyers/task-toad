@@ -168,7 +168,7 @@ export default function SprintTransitionModal({ sprintId, sprintName, onApply, o
       <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-100 dark:border-slate-700 flex-shrink-0">
         <button
           onClick={onClose}
-          className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-300"
+          className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-200"
           disabled={applying}
         >
           Cancel
