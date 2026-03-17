@@ -355,7 +355,7 @@ export default function AppLayout() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 dark:bg-slate-900">
+    <div className="h-screen flex flex-col md:flex-row bg-slate-50 dark:bg-slate-900 overflow-hidden">
       {/* Skip to main content link */}
       <a
         href="#main-content"
@@ -488,7 +488,7 @@ export default function AppLayout() {
         </div>
       )}
 
-      <main id="main-content" className="flex-1 p-6 overflow-auto dark:text-slate-200">
+      <main id="main-content" className="flex-1 min-h-0 p-6 overflow-auto dark:text-slate-200">
         <Outlet />
       </main>
       {showSearch && <GlobalSearchModal onClose={() => setShowSearch(false)} />}
