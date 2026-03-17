@@ -155,6 +155,8 @@ const SINGLE_OBJECT_FIELDS = new Set([
   'user', 'project', 'org', 'sprint', 'task', 'field',
   'me', 'aiUsage', 'unreadNotificationCount',
   'projectStats', 'sprintVelocity', 'sprintBurndown',
+  // Connection wrappers (return {items[], hasMore, total}, not a list directly)
+  'tasks',
 ]);
 
 /** Introspection fields exempt from cost analysis */
