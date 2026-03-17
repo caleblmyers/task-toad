@@ -7,11 +7,9 @@ interface TaskSubtasksSectionProps {
   subtasks: Task[];
   statuses: string[];
   generatingInstructions: string | null;
-  generatingCode?: string | null;
   disabled?: boolean;
   onSubtaskStatusChange: (parentId: string, taskId: string, status: string) => void;
   onGenerateInstructions: (task: Task) => void;
-  onGenerateCode?: (task: Task) => void;
   onCreateSubtask?: (parentTaskId: string, title: string) => Promise<void>;
   onAutoComplete?: (task: Task) => void;
   autoCompleteLoading?: boolean;
@@ -22,11 +20,9 @@ export default function TaskSubtasksSection({
   subtasks,
   statuses,
   generatingInstructions,
-  generatingCode,
   disabled,
   onSubtaskStatusChange,
   onGenerateInstructions,
-  onGenerateCode,
   onCreateSubtask,
   onAutoComplete,
   autoCompleteLoading,
@@ -107,16 +103,6 @@ export default function TaskSubtasksSection({
           >
             {generatingInstructions === task.taskId ? 'Generating…' : '✦ Generate instructions'}
           </button>
-          {onGenerateCode && task.instructions && (
-            <button
-              type="button"
-              onClick={() => onGenerateCode(task)}
-              disabled={disabled || generatingCode === task.taskId}
-              className="px-3 py-1.5 text-sm border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50"
-            >
-              {generatingCode === task.taskId ? 'Generating code…' : '⌨ Generate code'}
-            </button>
-          )}
           {onAutoComplete && task.instructions && (
             <button
               type="button"

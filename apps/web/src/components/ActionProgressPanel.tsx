@@ -19,9 +19,88 @@ const STATUS_COLORS: Record<string, string> = {
 const ACTION_TYPE_LABELS: Record<string, string> = {
   generate_code: 'Generate Code',
   create_pr: 'Create PR',
+  review_pr: 'AI Review',
   write_docs: 'Write Docs',
   manual_step: 'Manual Step',
 };
+
+interface ReviewComment {
+  file: string;
+  line?: number;
+  severity: 'info' | 'warning' | 'error';
+  comment: string;
+}
+
+interface ReviewData {
+  review?: {
+    summary: string;
+    approved: boolean;
+    comments: ReviewComment[];
+    suggestions?: string[];
+  };
+  approved?: boolean;
+}
+
+const SEVERITY_COLORS: Record<string, string> = {
+  info: 'text-blue-600 bg-blue-50',
+  warning: 'text-amber-600 bg-amber-50',
+  error: 'text-red-600 bg-red-50',
+};
+
+function ReviewResultDisplay({ result }: { result: string }) {
+  let data: ReviewData;
+  try {
+    data = JSON.parse(result);
+  } catch {
+    return (
+      <details className="mt-1">
+        <summary className="text-xs text-slate-500 cursor-pointer">View result</summary>
+        <pre className="mt-1 text-xs text-slate-600 bg-slate-100 p-2 rounded overflow-x-auto max-h-32">{result}</pre>
+      </details>
+    );
+  }
+
+  const review = data.review;
+  if (!review) return null;
+
+  return (
+    <div className="mt-2 space-y-2">
+      <div className="flex items-center gap-2">
+        <span className={`text-xs font-medium px-2 py-0.5 rounded ${
+          review.approved ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+        }`}>
+          {review.approved ? 'Approved' : 'Changes Requested'}
+        </span>
+      </div>
+      <p className="text-xs text-slate-600">{review.summary}</p>
+      {review.comments.length > 0 && (
+        <details className="mt-1" open>
+          <summary className="text-xs text-slate-500 cursor-pointer">
+            {review.comments.length} comment{review.comments.length !== 1 ? 's' : ''}
+          </summary>
+          <div className="mt-1 space-y-1">
+            {review.comments.map((c, i) => (
+              <div key={i} className={`text-xs p-2 rounded ${SEVERITY_COLORS[c.severity] ?? 'text-slate-600 bg-slate-50'}`}>
+                <span className="font-mono font-medium">{c.file}{c.line ? `:${c.line}` : ''}</span>
+                <span className="ml-1">— {c.comment}</span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+      {review.suggestions && review.suggestions.length > 0 && (
+        <details className="mt-1">
+          <summary className="text-xs text-slate-500 cursor-pointer">
+            {review.suggestions.length} suggestion{review.suggestions.length !== 1 ? 's' : ''}
+          </summary>
+          <ul className="mt-1 text-xs text-slate-600 list-disc list-inside space-y-0.5">
+            {review.suggestions.map((s, i) => <li key={i}>{s}</li>)}
+          </ul>
+        </details>
+      )}
+    </div>
+  );
+}
 
 interface ActionProgressPanelProps {
   plan: TaskActionPlan;
@@ -63,12 +142,16 @@ function ActionItem({ action, onCompleteManual, onSkip, onRetry }: {
           <p className="text-xs text-red-600 mt-1">{action.errorMessage}</p>
         )}
         {action.result && action.status === 'completed' && (
-          <details className="mt-1">
-            <summary className="text-xs text-slate-500 cursor-pointer">View result</summary>
-            <pre className="mt-1 text-xs text-slate-600 bg-slate-100 p-2 rounded overflow-x-auto max-h-32">
-              {action.result}
-            </pre>
-          </details>
+          action.actionType === 'review_pr'
+            ? <ReviewResultDisplay result={action.result} />
+            : (
+              <details className="mt-1">
+                <summary className="text-xs text-slate-500 cursor-pointer">View result</summary>
+                <pre className="mt-1 text-xs text-slate-600 bg-slate-100 p-2 rounded overflow-x-auto max-h-32">
+                  {action.result}
+                </pre>
+              </details>
+            )
         )}
         <div className="flex gap-2 mt-2">
           {canComplete && (

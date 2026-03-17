@@ -5,6 +5,8 @@ const SSE_EVENTS = [
   'task.created',
   'task.updated',
   'tasks.bulk_updated',
+  'task.action_completed',
+  'task.action_plan_completed',
   'sprint.created',
   'sprint.updated',
   'sprint.closed',

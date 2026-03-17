@@ -56,8 +56,6 @@ export interface TaskDetailPanelProps {
   onStatusChange: (taskId: string, status: string) => void;
   onSubtaskStatusChange: (parentId: string, taskId: string, status: string) => void;
   onGenerateInstructions: (task: Task) => void;
-  onGenerateCode?: (task: Task) => void;
-  generatingCode?: string | null;
   onAssignSprint: (taskId: string, sprintId: string | null) => void;
   onAssignUser: (taskId: string, assigneeId: string | null) => void;
   onDueDateChange: (taskId: string, dueDate: string | null) => void;
@@ -92,7 +90,7 @@ function PanelContent({
   labels, onAddTaskLabel, onRemoveTaskLabel, onCreateLabel,
   disabled, projectHasRepo, onSyncToGitHub,
   onStartEditTitle, onTitleChange, onTitleSave, onTitleKeyDown,
-  onStatusChange, onSubtaskStatusChange, onGenerateInstructions, onGenerateCode, generatingCode,
+  onStatusChange, onSubtaskStatusChange, onGenerateInstructions,
   onAssignSprint, onAssignUser, onDueDateChange, onUpdateDependencies,
   onCreateComment, onUpdateComment, onDeleteComment, onUpdateTask, onArchiveTask,
   onCreateSubtask,
@@ -384,16 +382,28 @@ function PanelContent({
 
       <TaskAIReviewSection review={reviewResult ?? null} loading={reviewLoading ?? false} />
 
+      {/* Action button for leaf tasks (no subtasks, not epic/story) */}
+      {subtasks.length === 0 && task.taskType !== 'epic' && task.taskType !== 'story' && task.instructions && onAutoComplete && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => onAutoComplete(task)}
+            disabled={disabled || autoCompleteLoading}
+            className="px-3 py-1.5 text-sm border border-indigo-300 dark:border-indigo-600 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/30 disabled:opacity-50"
+          >
+            {autoCompleteLoading ? 'Planning…' : '⚡ Auto-Complete'}
+          </button>
+        </div>
+      )}
+
       <TaskSubtasksSection
         task={task}
         subtasks={subtasks}
         statuses={statuses}
         generatingInstructions={generatingInstructions}
-        generatingCode={generatingCode}
         disabled={disabled}
         onSubtaskStatusChange={onSubtaskStatusChange}
         onGenerateInstructions={onGenerateInstructions}
-        onGenerateCode={onGenerateCode}
         onCreateSubtask={onCreateSubtask}
         onAutoComplete={onAutoComplete}
         autoCompleteLoading={autoCompleteLoading}

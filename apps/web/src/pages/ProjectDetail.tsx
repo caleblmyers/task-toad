@@ -6,6 +6,7 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useToast } from '../hooks/useToast';
 import { useAuth } from '../auth/context';
 import { gql } from '../api/client';
+import { useEventSource } from '../hooks/useEventSource';
 import type { Activity, GitHubRepoLink, GitHubInstallation } from '../types';
 import KanbanBoard from '../components/KanbanBoard';
 import TaskDetailPanel from '../components/TaskDetailPanel';
@@ -23,7 +24,6 @@ const GanttChart = lazyWithRetry(() => import('../components/GanttChart'));
 const TaskPlanApprovalDialog = lazyWithRetry(() => import('../components/TaskPlanApprovalDialog'));
 const CloseSprintModal = lazyWithRetry(() => import('../components/CloseSprintModal'));
 const ProjectSettingsModal = lazyWithRetry(() => import('../components/ProjectSettingsModal'));
-const CodePreviewModal = lazyWithRetry(() => import('../components/CodePreviewModal'));
 const SprintCreateModal = lazyWithRetry(() => import('../components/SprintCreateModal'));
 const SprintPlanModal = lazyWithRetry(() => import('../components/SprintPlanModal'));
 const GitHubRepoModal = lazyWithRetry(() => import('../components/GitHubRepoModal'));
@@ -78,6 +78,23 @@ export default function ProjectDetail() {
     onFocusSearch: () => searchRef.current?.focus(),
     onShowHelp: () => setActiveModal((v) => v === 'shortcut-help' ? null : 'shortcut-help'),
     enabled: !d.isGenerating,
+  });
+
+  // SSE: refresh action plan when action events arrive for the selected task
+  // useEventSource stores the handler in a ref, so no useCallback needed
+  useEventSource((event: string, data: unknown) => {
+    if (event === 'task.action_completed' || event === 'task.action_plan_completed') {
+      const payload = data as { taskId?: string };
+      if (payload?.taskId && d.selectedTask?.taskId === payload.taskId) {
+        void d.loadActionPlan(payload.taskId);
+      }
+    }
+    if (event === 'task.updated') {
+      const payload = data as { taskId?: string };
+      if (payload?.taskId) {
+        void d.loadTasks();
+      }
+    }
   });
 
   // Handle ?task=<taskId> deep-link from search results
@@ -245,8 +262,6 @@ export default function ProjectDetail() {
     onStatusChange: handleStatusChange,
     onSubtaskStatusChange: d.handleSubtaskStatusChange,
     onGenerateInstructions: d.handleGenerateInstructions,
-    onGenerateCode: d.handleGenerateCode,
-    generatingCode: d.generatingCode,
     onAssignSprint: handleAssignSprint,
     onAssignUser: handleAssignUser,
     onDueDateChange: handleDueDateChange,
@@ -620,30 +635,6 @@ export default function ProjectDetail() {
           />
         </Suspense>
       )}
-
-      {/* Code preview modal */}
-      <Suspense fallback={lazyFallback}>
-        <CodePreviewModal
-          isOpen={d.generatedCode !== null || d.codeGenProgress !== null}
-          onClose={() => { d.setGeneratedCode(null); d.setCodeGenProgress(null); }}
-          files={d.generatedCode?.files ?? []}
-          summary={d.generatedCode?.summary ?? d.codeGenProgress?.plan?.architecture ?? ''}
-          estimatedTokensUsed={d.generatedCode?.estimatedTokensUsed ?? 0}
-          onCreatePR={d.handleCreatePR}
-          isCreatingPR={d.creatingPR}
-          delegationHint={d.generatedCode?.delegationHint}
-          subtasks={d.selectedTask ? (d.subtasks[d.selectedTask.taskId] ?? []).map((st) => ({ taskId: st.taskId, title: st.title, description: st.description })) : undefined}
-          parentTaskId={d.selectedTask?.taskId}
-          onGenerateFromSubtask={d.handleGenerateCodeFromChildTask}
-          codeGenProgress={d.codeGenProgress}
-          taskId={d.selectedTask?.taskId}
-          onStartGeneration={d.handleGeneratePlannedFiles}
-          onRetryFile={d.handleRetryPlannedFile}
-          onRegenerateFile={d.selectedTask ? (filePath: string, feedback?: string) => d.handleRegenerateFile(d.selectedTask!.taskId, filePath, feedback) : undefined}
-          onCancelSubtaskGeneration={d.cancelSubtaskGeneration}
-          projectId={d.projectId}
-        />
-      </Suspense>
 
       {/* Meeting notes dialog */}
       {activeModal === 'meeting-notes' && d.projectId && (
