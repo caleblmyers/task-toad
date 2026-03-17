@@ -217,3 +217,22 @@ Format:
 **Issue:** Worker-3 needed two review passes — first for lockfile conflict (hadn't rebased after task-005 merge), second after rebase. Not the worker's fault — they completed task-006 before task-005 was merged to main.
 **Impact:** One extra review cycle, ~2 min delay.
 **Suggestion:** When a worker has multiple tasks on the same branch, the reviewer should merge them together if possible, or ensure the worker rebases between tasks.
+
+### worker-2 — task-002
+**Issue:** File list was incomplete for the dark mode contrast audit. `dark:text-slate-400` on `dark:bg-slate-900` violations also exist in `BacklogView.tsx`, `KanbanBoard.tsx`, `ProjectToolbar.tsx`, `ActivityFeed.tsx`, and ~20 other components, but these were not in the task's `files` array.
+**Impact:** Only 4 of ~29 affected components were fixed. The remaining components still fail WCAG AA contrast in dark mode.
+**Suggestion:** For broad audit tasks like contrast fixes, either include all affected files in the `files` array, or allow workers to touch any file matching a specific pattern (e.g., "any component with `dark:text-slate-400`"). Alternatively, split into a dedicated follow-up task for the remaining files.
+
+### Reviewer — Positive (Wave 21)
+**Observation:** All 3 tasks passed review on first attempt — zero rejections. Clean diffs, correct file scoping, no secrets or debug code.
+**Why it worked:** Tasks were well-scoped bundles of related follow-ups from Wave 20. Workers ran full validation before marking complete. No file overlap between workers.
+
+### Reviewer — task-002 (Wave 21, files)
+**Issue:** Task files array listed `apps/web/src/components/ProjectDetail.tsx` but the actual path is `apps/web/src/pages/ProjectDetail.tsx`. Worker found the correct file.
+**Impact:** None — worker adapted correctly.
+**Suggestion:** Verify file paths during task planning, especially for components vs pages directories.
+
+### Reviewer — task-003 (Wave 21, partial)
+**Issue:** Task description asked for shared-types re-exports in "2-3 more API resolver files (e.g., resolvers/sprint.ts, resolvers/comment.ts)" but worker only added exports to sprint.ts, not comment.ts.
+**Impact:** Minor — sprint.ts covers 3 types (Sprint, CloseSprintResult, SprintPlanItem). Comment resolver has no shared types to export.
+**Suggestion:** When "2-3" is a suggestion, mark it as optional or specify exactly which resolvers and what types to export.

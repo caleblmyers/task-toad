@@ -6,6 +6,32 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-16 (cont.)
 
+### Wave 21: Testing + Ops Docs + Polish (3 workers, 3 tasks)
+
+**Testing — S3 + Notification/SSE + Export Fix (Worker 1):**
+- S3 upload unit tests with AWS SDK mocking
+- Notification resolver + SSE manager unit tests
+- Export rate limit fix — relaxed rate limit in test environment to prevent 429s
+
+**Ops Docs + Dark Mode Contrast (Worker 2):**
+- D1 deployment documentation (Railway, backups, monitoring, staging)
+- Dark mode WCAG AA contrast fixes: `dark:text-slate-400` → `dark:text-slate-300/200` across TaskDetailPanel, Button, GlobalSearchModal, ProjectDetail
+
+**Polish — PWA Offline + S3 Config + Shared-types + og:image (Worker 3):**
+- PWA offline fallback page (`offline.html`) for uncached routes
+- Configurable S3 presigned URL expiry via `ATTACHMENT_URL_EXPIRY_SECONDS` env var
+- Extended shared-types: ProjectStats, TaskConnection, CloseSprintResult, SprintPlanItem; sprint resolver re-exports
+- og:image PNG fallback for platforms that don't render SVG
+
+**Open follow-ups:**
+- Dark mode contrast: remaining components (BacklogView, SprintCreateModal, KanbanBoard, etc.) may still have `dark:text-slate-400` on dark backgrounds
+- Shared-types re-export in comment resolver (only sprint.ts was done)
+- PWA navigateFallback verification — ensure offline.html only served for navigation requests
+- Pre-existing lint warnings (8 warnings across 5 files)
+- S3 unit tests: missing `getFromS3` and error handling coverage
+- PWA cache invalidation strategy documentation
+- S3 multipart upload for files >10MB
+
 ### Wave 20: A11+F1 + D1 + Follow-ups+S1 (3 workers, 6 tasks)
 
 **A11+F1 — WCAG AA Contrast & Spacing (Worker 1):**
