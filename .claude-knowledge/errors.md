@@ -57,3 +57,12 @@ Running log of errors encountered and their resolutions.
 **Error:** Client showed generic "AI service error" with no useful detail
 **Cause:** `callAI()` in `ai.ts` caught all errors and rethrew a single generic `GraphQLError('AI service error')`, swallowing the real cause (invalid API key, rate limit, network failure, etc.)
 **Fix:** Added specific handling for `Anthropic.AuthenticationError`, `RateLimitError`, `APIConnectionError`, `InternalServerError` — each with a descriptive message and error code extension. Unknown errors still fall through to the generic message but are `console.error`'d for debugging.
+
+---
+
+### 2026-03-17 — planCodeGeneration / generatePlannedFile mutations don't exist (dead frontend code)
+**Context:** QA tester clicked "Plan & Generate Code" button in TaskDetailPanel
+**Error:** `Cannot query field "planCodeGeneration" on type "Mutation"`
+**Cause:** Frontend defines `PLAN_CODE_MUTATION` and `GENERATE_PLANNED_FILE_MUTATION` in `queries.ts` (lines 149-161), with handlers in `useAIGeneration.ts` (lines 196-312). But neither mutation was ever added to the API typedefs or resolvers.
+**Workaround:** The simpler `generateCodeFromTask` mutation works for single-call code generation.
+**Fix needed:** Either implement the two mutations in the API (typedefs/ai.ts + resolvers/ai.ts + new AI service functions), or remove the dead frontend code and the "Plan & Generate Code" button. Implementation requires: new AI prompts for architecture planning, file-by-file generation with export context threading, and new GraphQL types (CodePlan, CodePlanFile).

@@ -76,22 +76,26 @@ export const authQueries = {
 
 export const authMutations = {
   signup: async (_parent: unknown, args: { email: string; password: string }, context: Context) => {
+    const email = args.email.trim().toLowerCase();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new ValidationError('Invalid email format');
+    }
     const pwResult = validatePassword(args.password);
     if (!pwResult.valid) {
       throw new ValidationError(pwResult.errors.join('; '));
     }
-    const existing = await context.prisma.user.findUnique({ where: { email: args.email } });
+    const existing = await context.prisma.user.findUnique({ where: { email } });
     if (existing) throw new ConflictError('Email already in use');
     const passwordHash = await bcrypt.hash(args.password, 10);
     const rawToken = generateToken();
     const verificationToken = hashToken(rawToken);
     const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
     await context.prisma.user.create({
-      data: { email: args.email, passwordHash, verificationToken, verificationTokenExpiry },
+      data: { email, passwordHash, verificationToken, verificationTokenExpiry },
     });
     // Send the raw (unhashed) token to the user via email
     await sendEmail(
-      args.email,
+      email,
       'Verify your TaskToad account',
       verifyEmailText(rawToken),
       buildVerifyEmailHtml(rawToken)

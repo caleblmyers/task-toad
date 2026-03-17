@@ -126,6 +126,9 @@ export const sprintQueries = {
 
 export const sprintMutations = {
   createSprint: async (_parent: unknown, args: { projectId: string; name: string; goal?: string | null; columns?: string | null; startDate?: string | null; endDate?: string | null }, context: Context) => {
+    if (!args.name.trim()) {
+      throw new ValidationError('Name is required');
+    }
     const { user } = await requireProject(context, args.projectId);
     const sprint = await context.prisma.sprint.create({
       data: {
@@ -331,6 +334,7 @@ export const sprintMutations = {
 
 export const sprintFieldResolvers = {
   Sprint: {
+    createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
     closedAt: (parent: { closedAt: Date | null }) =>
       parent.closedAt ? parent.closedAt.toISOString() : null,
   },

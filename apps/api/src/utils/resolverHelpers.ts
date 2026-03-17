@@ -51,13 +51,16 @@ export async function requireTask(context: Context, taskId: string) {
 /**
  * Fetch a project by ID, validate org ownership.
  */
-export async function requireProject(context: Context, projectId: string) {
+export async function requireProject(context: Context, projectId: string, opts?: { allowArchived?: boolean }) {
   const user = requireOrg(context);
   const project = await context.prisma.project.findFirst({
     where: { projectId, orgId: user.orgId },
   });
   if (!project) {
     throw new NotFoundError('Project not found');
+  }
+  if (project.archived && !opts?.allowArchived) {
+    throw new ValidationError('Project is archived');
   }
   return { user, project };
 }

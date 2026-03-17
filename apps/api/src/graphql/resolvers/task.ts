@@ -30,8 +30,8 @@ export const taskQueries = {
     context: Context
   ) => {
     await requireProjectAccess(context, args.projectId);
-    const limit = args.limit ?? 100;
-    const offset = args.offset ?? 0;
+    const limit = Math.max(0, Math.min(args.limit ?? 100, 1000));
+    const offset = Math.max(0, args.offset ?? 0);
     const where = {
       projectId: args.projectId,
       parentTaskId: args.parentTaskId !== undefined ? args.parentTaskId : null,
@@ -503,13 +503,7 @@ export const taskMutations = {
     }
     await context.prisma.comment.deleteMany({ where: { parentCommentId: args.commentId } });
     await context.prisma.comment.delete({ where: { commentId: args.commentId } });
-    return {
-      ...comment,
-      userEmail: comment.user.email,
-      createdAt: comment.createdAt.toISOString(),
-      updatedAt: comment.updatedAt.toISOString(),
-      replies: [],
-    };
+    return true;
   },
 
   createCustomField: async (
