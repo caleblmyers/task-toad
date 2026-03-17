@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { gql } from '../api/client';
 import { parseOptions } from '../utils/jsonHelpers';
 import type { OrgUser } from '../types';
@@ -101,11 +101,7 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
   const [actionType, setActionType] = useState('notify_assignee');
   const [actionParam, setActionParam] = useState('');
 
-  useEffect(() => {
-    loadData();
-  }, [projectId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [membersData, rulesData, fieldsData, templatesData] = await Promise.all([
@@ -135,7 +131,11 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleAddMember = async () => {
     if (!addUserId) return;

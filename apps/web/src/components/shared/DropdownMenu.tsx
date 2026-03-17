@@ -36,7 +36,6 @@ export default function DropdownMenu({ trigger, items, align = 'right' }: Dropdo
   // Focus first item on open
   useEffect(() => {
     if (open) {
-      setActiveIndex(0);
       requestAnimationFrame(() => {
         const items = menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([aria-disabled="true"])');
         items?.[0]?.focus();
@@ -80,7 +79,12 @@ export default function DropdownMenu({ trigger, items, align = 'right' }: Dropdo
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          setOpen((v) => {
+            if (!v) setActiveIndex(0);
+            return !v;
+          });
+        }}
         aria-haspopup="true"
         aria-expanded={open}
       >

@@ -145,7 +145,7 @@ export default function GanttChart({ tasks, onSelectTask }: GanttChartProps) {
   const columns = useMemo(() => buildColumns(rangeStart, rangeEnd, granularity), [rangeStart, rangeEnd, granularity]);
   const colWidth = getColumnWidth(granularity);
   const timelineWidth = columns.length * colWidth;
-  const allTasks = [...datedTasks, ...noDateTasks];
+  const allTasks = useMemo(() => [...datedTasks, ...noDateTasks], [datedTasks, noDateTasks]);
   const contentHeight = allTasks.length * ROW_H;
 
   // Build task index for dependency arrows

@@ -57,8 +57,23 @@ export default function BurndownChart(props: BurndownChartProps) {
   }, [sprintId]);
 
   useEffect(() => {
-    if (sprintId) fetchData();
-  }, [sprintId, fetchData]);
+    if (!sprintId) return;
+    let cancelled = false;
+    const run = async () => {
+      setLoading(true);
+      setError(false);
+      try {
+        const d = await gql<{ sprintBurndown: BurndownData }>(QUERY, { sprintId });
+        if (!cancelled) setFetched(d.sprintBurndown);
+      } catch {
+        if (!cancelled) setError(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    run();
+    return () => { cancelled = true; };
+  }, [sprintId]);
 
   useEffect(() => {
     const el = containerRef.current;

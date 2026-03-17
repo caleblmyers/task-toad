@@ -26,8 +26,25 @@ export default function Projects() {
   }, [showArchived]);
 
   useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
+    let cancelled = false;
+    const run = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await gql<{ projects: Project[] }>(
+          `query ($includeArchived: Boolean) { projects(includeArchived: $includeArchived) { projectId name description createdAt archived } }`,
+          { includeArchived: showArchived },
+        );
+        if (!cancelled) setProjects(data.projects);
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load projects');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    run();
+    return () => { cancelled = true; };
+  }, [showArchived]);
 
   const handleArchive = async (projectId: string, archived: boolean) => {
     try {

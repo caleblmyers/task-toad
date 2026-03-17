@@ -35,10 +35,10 @@ export default function Home() {
       <div className="w-full max-w-2xl">
         <img src="/logo.png" alt="TaskToad" className="w-16 h-16 mx-auto mb-4" />
         <h1 className="text-3xl font-semibold text-slate-800 dark:text-slate-100 mb-2 text-center">
-          What's on your task list today?
+          What&apos;s on your task list today?
         </h1>
         <p className="text-slate-500 dark:text-slate-400 text-center mb-8">
-          Describe a project or task and we'll help you break it down.
+          Describe a project or task and we&apos;ll help you break it down.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">

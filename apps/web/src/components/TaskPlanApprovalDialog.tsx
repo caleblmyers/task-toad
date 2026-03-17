@@ -314,7 +314,7 @@ export default function TaskPlanApprovalDialog({
         {showContextInput ? (
           <div className="space-y-2">
             <p className="text-sm text-slate-600">
-              You've rejected multiple plans. Try providing more specific context to get better results.
+              You&apos;ve rejected multiple plans. Try providing more specific context to get better results.
             </p>
             <textarea
               value={context}
