@@ -20,8 +20,23 @@ import {
   analyzeRepoDrift as aiAnalyzeRepoDrift,
   batchGenerateCode as aiBatchGenerateCode,
 } from '../../ai/index.js';
+import type { PromptLogContext } from '../../ai/index.js';
 import { NotFoundError, ValidationError, AuthorizationError } from '../errors.js';
 import { requireOrg, requireApiKey } from './auth.js';
+
+async function buildPromptLogContext(context: Context): Promise<PromptLogContext> {
+  const user = requireOrg(context);
+  const org = await context.prisma.org.findUnique({
+    where: { orgId: user.orgId },
+    select: { promptLoggingEnabled: true },
+  });
+  return {
+    prisma: context.prisma as unknown as PromptLogContext['prisma'],
+    orgId: user.orgId,
+    userId: user.userId,
+    promptLoggingEnabled: org?.promptLoggingEnabled ?? true,
+  };
+}
 import { getProjectRepo, fetchProjectFileTree, fetchFileContent, getPullRequestDiff } from '../../github/index.js';
 import { listRecentCommits, listOpenPullRequests } from '../../github/githubFileService.js';
 import { requireProject, sanitizeForPrompt } from '../../utils/resolverHelpers.js';
@@ -85,7 +100,8 @@ export const aiMutations = {
 
   generateProjectOptions: async (_parent: unknown, args: { prompt: string }, context: Context) => {
     const apiKey = requireApiKey(context);
-    return aiGenerateProjectOptions(apiKey, args.prompt);
+    const plc = await buildPromptLogContext(context);
+    return aiGenerateProjectOptions(apiKey, args.prompt, plc);
   },
 
   createProjectFromOption: async (
@@ -119,6 +135,7 @@ export const aiMutations = {
     await context.prisma.task.deleteMany({
       where: { projectId: args.projectId, parentTaskId: null },
     });
+    const plc = await buildPromptLogContext(context);
     const taskPlans = await aiGenerateTaskPlan(
       apiKey,
       project.name,
@@ -126,7 +143,8 @@ export const aiMutations = {
       project.prompt ?? '',
       args.context,
       project.knowledgeBase,
-      existingTitles
+      existingTitles,
+      plc
     );
     return Promise.all(
       taskPlans.map((t) =>
@@ -164,6 +182,7 @@ export const aiMutations = {
       fullContext = `These tasks already exist: ${existing}. Generate ONLY additional tasks not already in this list.${args.context ? ` Additional context: ${args.context}` : ''}`;
     }
     const allExistingTitles = [...existingTitles, ...(args.appendToTitles ?? [])];
+    const plc = await buildPromptLogContext(context);
     const taskPlans = await aiGenerateTaskPlan(
       apiKey,
       project.name,
@@ -171,7 +190,8 @@ export const aiMutations = {
       project.prompt ?? '',
       fullContext,
       project.knowledgeBase,
-      allExistingTitles
+      allExistingTitles,
+      plc
     );
     const existingSet = new Set(allExistingTitles.map((t) => t.trim().toLowerCase()));
     const dedupedPlans = taskPlans.filter((t) => !existingSet.has(t.title.trim().toLowerCase()));
@@ -308,6 +328,7 @@ export const aiMutations = {
       select: { title: true },
     });
     await context.prisma.task.deleteMany({ where: { parentTaskId: args.taskId } });
+    const plc = await buildPromptLogContext(context);
     const subtaskPlans = await aiExpandTask(
       apiKey,
       task.title,
@@ -315,7 +336,8 @@ export const aiMutations = {
       project.name,
       args.context,
       project.knowledgeBase,
-      siblings.map((s: { title: string }) => s.title)
+      siblings.map((s: { title: string }) => s.title),
+      plc
     );
     return Promise.all(
       subtaskPlans.map((t) =>
@@ -349,13 +371,15 @@ export const aiMutations = {
       select: { taskId: true, title: true },
       orderBy: { createdAt: 'asc' },
     });
+    const plc = await buildPromptLogContext(context);
     const result = await aiGenerateTaskInstructions(
       apiKey,
       task.title,
       task.description ?? '',
       project.name,
       siblings.map((s: { title: string }) => s.title),
-      project.knowledgeBase
+      project.knowledgeBase,
+      plc
     );
     const titleToId = new Map(siblings.map((s: { title: string; taskId: string }) => [s.title, s.taskId]));
     const resolvedDeps = result.dependsOn
@@ -407,6 +431,7 @@ export const aiMutations = {
       projectFiles = await fetchProjectFileTree(repo).catch(() => undefined);
     }
 
+    const plc = await buildPromptLogContext(context);
     return aiGenerateCode(
       apiKey,
       task.title,
@@ -417,6 +442,7 @@ export const aiMutations = {
       projectFiles,
       args.styleGuide,
       project.knowledgeBase,
+      plc
     );
   },
 
@@ -449,6 +475,7 @@ export const aiMutations = {
       projectFiles = await fetchProjectFileTree(repo).catch(() => undefined);
     }
 
+    const plc = await buildPromptLogContext(context);
     return aiGenerateCode(
       apiKey,
       subtask.title,
@@ -459,6 +486,7 @@ export const aiMutations = {
       projectFiles,
       args.styleGuide,
       project.knowledgeBase,
+      plc
     );
   },
 
@@ -478,6 +506,7 @@ export const aiMutations = {
     }
     const project = await context.loaders.projectById.load(task.projectId);
     if (!project) throw new NotFoundError('Project not found');
+    const plc = await buildPromptLogContext(context);
     return aiRegenerateFile(
       apiKey,
       task.title,
@@ -486,7 +515,8 @@ export const aiMutations = {
       args.filePath,
       '', // original content will be passed from frontend in feedback if needed
       project.name,
-      args.feedback
+      args.feedback,
+      plc
     );
   },
 
@@ -515,6 +545,7 @@ export const aiMutations = {
       args.prNumber
     );
 
+    const plc = await buildPromptLogContext(context);
     return aiReviewCode(apiKey, {
       taskTitle: task.title,
       taskDescription: task.description ?? '',
@@ -522,7 +553,7 @@ export const aiMutations = {
       acceptanceCriteria: (task as Record<string, unknown>).acceptanceCriteria as string | undefined,
       diff,
       projectName: project.name,
-    });
+    }, plc);
   },
 
   parseBugReport: async (
@@ -535,11 +566,12 @@ export const aiMutations = {
     if (!args.bugReport.trim()) {
       throw new ValidationError('Bug report text is required');
     }
+    const plc = await buildPromptLogContext(context);
     const result = await aiParseBugReport(apiKey, {
       bugReport: args.bugReport,
       projectName: project.name,
       projectDescription: project.description,
-    });
+    }, plc);
     return context.prisma.task.create({
       data: {
         title: result.title,
@@ -564,11 +596,12 @@ export const aiMutations = {
     if (!args.prd.trim()) {
       throw new ValidationError('PRD text is required');
     }
+    const plc = await buildPromptLogContext(context);
     return aiBreakdownPRD(apiKey, {
       prd: args.prd,
       projectName: project.name,
       projectDescription: project.description,
-    });
+    }, plc);
   },
 
   commitPRDBreakdown: async (
@@ -650,6 +683,7 @@ export const aiMutations = {
       projectFiles = await fetchProjectFileTree(repo).catch(() => undefined);
     }
 
+    const plc = await buildPromptLogContext(context);
     return aiBatchGenerateCode(apiKey, {
       tasks: tasks.map((t: { title: string; description: string | null; instructions: string | null }) => ({
         title: t.title,
@@ -661,7 +695,7 @@ export const aiMutations = {
       existingFiles: projectFiles,
       styleGuide: args.styleGuide,
       knowledgeBase: project.knowledgeBase,
-    });
+    }, plc);
   },
 
   bootstrapProjectFromRepo: async (
@@ -684,6 +718,7 @@ export const aiMutations = {
       if (f.language) languageSet.add(f.language);
     }
 
+    const plc = await buildPromptLogContext(context);
     const result = await aiBootstrapFromRepo(apiKey, {
       repoName: `${repo.repositoryOwner}/${repo.repositoryName}`,
       repoDescription: project.description,
@@ -691,7 +726,7 @@ export const aiMutations = {
       packageJson,
       fileTree: fileTree.map((f) => ({ path: f.path, language: f.language, size: f.size })),
       languages: [...languageSet],
-    });
+    }, plc);
 
     if (!project.description && result.projectDescription) {
       await context.prisma.project.update({
@@ -734,7 +769,8 @@ export const aiMutations = {
     if (tasks.length === 0) {
       throw new ValidationError('No tasks to summarize. Generate a task plan first.');
     }
-    return aiSummarizeProject(apiKey, project.name, project.description ?? '', tasks);
+    const plc = await buildPromptLogContext(context);
+    return aiSummarizeProject(apiKey, project.name, project.description ?? '', tasks, plc);
   },
 };
 
@@ -777,6 +813,7 @@ export const aiQueries = {
       : [];
     const taskTitleMap = new Map(activityTasks.map((t: { taskId: string; title: string }) => [t.taskId, t.title]));
 
+    const plc = await buildPromptLogContext(context);
     return aiProjectChat(apiKey, {
       question: args.question,
       projectName: project.name,
@@ -801,7 +838,7 @@ export const aiQueries = {
         createdAt: a.createdAt.toISOString(),
       })),
       knowledgeBase: project.knowledgeBase,
-    });
+    }, plc);
   },
 
   analyzeRepoDrift: async (
@@ -826,6 +863,7 @@ export const aiQueries = {
       }),
     ]);
 
+    const plc = await buildPromptLogContext(context);
     return aiAnalyzeRepoDrift(apiKey, {
       repoName: `${repo.repositoryOwner}/${repo.repositoryName}`,
       recentCommits: commits,
@@ -836,7 +874,7 @@ export const aiQueries = {
         status: t.status,
         description: t.description,
       })),
-    });
+    }, plc);
   },
 
   analyzeSprintTransition: async (
@@ -870,6 +908,7 @@ export const aiQueries = {
 
     const incompleteTasks = sprintTasks.filter((t: { status: string }) => t.status !== 'done');
 
+    const plc = await buildPromptLogContext(context);
     return aiAnalyzeSprintTransition(apiKey, {
       sprintName: sprint.name,
       tasks: incompleteTasks.map((t: { taskId: string; title: string; status: string; priority: string; storyPoints: number | null; assignee: { email: string } | null }) => ({
@@ -881,7 +920,7 @@ export const aiQueries = {
         assignee: t.assignee?.email ?? null,
       })),
       completionRate,
-    });
+    }, plc);
   },
 
   reports: async (
@@ -948,12 +987,13 @@ export const aiQueries = {
       createdAt: r.createdAt.toISOString(),
     }));
 
+    const plc = await buildPromptLogContext(context);
     const { analyzeTrends: aiAnalyzeTrends } = await import('../../ai/aiService.js');
     return aiAnalyzeTrends(apiKey, {
       projectName: project.name,
       reports: formattedReports,
       period: args.period,
-    });
+    }, plc);
   },
 
   aiUsage: async (_parent: unknown, args: { days?: number | null }, context: Context) => {
@@ -1066,6 +1106,7 @@ export const aiQueries = {
       where: { projectId: args.projectId, isActive: true },
     });
 
+    const plc = await buildPromptLogContext(context);
     return aiGenerateStandupReport(apiKey, {
       projectName: project.name,
       sprintName: activeSprint?.name ?? null,
@@ -1074,7 +1115,7 @@ export const aiQueries = {
       completedTasks: completedTasks.map((t) => t.title),
       inProgressTasks: inProgressTasks.map((t) => t.title),
       overdueTasks: overdueTasks.map((t) => t.title),
-    });
+    }, plc);
   },
 
   generateSprintReport: async (_parent: unknown, args: { projectId: string; sprintId: string }, context: Context) => {
@@ -1095,6 +1136,7 @@ export const aiQueries = {
     const totalTasks = sprintTasks.length;
     const completedCount = sprintTasks.filter((t) => t.status === 'done').length;
 
+    const plc = await buildPromptLogContext(context);
     return aiGenerateSprintReport(apiKey, {
       sprintName: sprint.name,
       startDate: sprint.startDate,
@@ -1107,7 +1149,7 @@ export const aiQueries = {
       })),
       totalTasks,
       completedTasks: completedCount,
-    });
+    }, plc);
   },
 
   analyzeProjectHealth: async (_parent: unknown, args: { projectId: string }, context: Context) => {
@@ -1144,6 +1186,7 @@ export const aiQueries = {
       ? Math.round(openTasks.reduce((sum, t) => sum + (now - t.createdAt.getTime()) / (1000 * 60 * 60 * 24), 0) / openTasks.length)
       : 0;
 
+    const plc = await buildPromptLogContext(context);
     return aiAnalyzeProjectHealth(apiKey, {
       projectName: project.name,
       totalTasks,
@@ -1152,7 +1195,7 @@ export const aiQueries = {
       unassignedCount,
       tasksWithoutDueDate,
       avgTaskAgeInDays,
-    });
+    }, plc);
   },
 
   extractTasksFromNotes: async (_parent: unknown, args: { projectId: string; notes: string }, context: Context) => {
@@ -1165,6 +1208,7 @@ export const aiQueries = {
     });
     const teamMembers = orgUsers.map((u) => u.email);
 
-    return aiExtractTasksFromNotes(apiKey, args.notes, project.name, teamMembers);
+    const plc = await buildPromptLogContext(context);
+    return aiExtractTasksFromNotes(apiKey, args.notes, project.name, teamMembers, plc);
   },
 };

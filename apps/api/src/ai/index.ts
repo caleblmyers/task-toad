@@ -30,6 +30,8 @@ export {
 
 export { logUsageToDB, checkBudget } from './aiUsageTracker.js';
 
+export type { PromptLogContext } from './aiClient.js';
+
 export type {
   ProjectOption,
   ToolSuggestion,

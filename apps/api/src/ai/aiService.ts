@@ -30,7 +30,7 @@ import {
 } from './aiTypes.js';
 import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse, DriftAnalysis, BatchCodeGeneration, TrendAnalysis } from './aiTypes.js';
 import { FEATURE_CONFIG } from './aiConfig.js';
-import { callAI } from './aiClient.js';
+import { callAI, type PromptLogContext } from './aiClient.js';
 import { parseJSON } from './responseParser.js';
 import {
   buildProjectOptionsPrompt,
@@ -77,7 +77,8 @@ async function callAndParse<T>(
   apiKey: string,
   feature: AIFeature,
   prompt: { systemPrompt: string; userPrompt: string },
-  schema: z.ZodType<T>
+  schema: z.ZodType<T>,
+  promptLogContext?: PromptLogContext
 ): Promise<T> {
   const config = FEATURE_CONFIG[feature];
   const prefill = isArraySchema(schema as z.ZodType<unknown>) ? '[' : '{';
@@ -90,6 +91,7 @@ async function callAndParse<T>(
       feature,
       cacheTTLMs: config.cacheTTLMs,
       prefill,
+      promptLogContext,
     });
 
     try {
@@ -105,6 +107,7 @@ async function callAndParse<T>(
           feature,
           cacheTTLMs: 0, // skip cache on retry
           prefill,
+          promptLogContext,
         });
         return parseJSON(retry.raw, schema);
       }
@@ -125,10 +128,11 @@ async function callAndParse<T>(
 
 export async function generateProjectOptions(
   apiKey: string,
-  prompt: string
+  prompt: string,
+  promptLogContext?: PromptLogContext
 ): Promise<ProjectOption[]> {
   const p = buildProjectOptionsPrompt(prompt);
-  const options = await callAndParse(apiKey, 'generateProjectOptions', p, z.array(ProjectOptionSchema));
+  const options = await callAndParse(apiKey, 'generateProjectOptions', p, z.array(ProjectOptionSchema), promptLogContext);
   if (options.length === 0) {
     throw new GraphQLError('Failed to parse AI response');
   }
@@ -142,10 +146,11 @@ export async function generateTaskPlan(
   projectPrompt: string,
   context?: string | null,
   knowledgeBase?: string | null,
-  existingTaskTitles?: string[]
+  existingTaskTitles?: string[],
+  promptLogContext?: PromptLogContext
 ): Promise<TaskPlan[]> {
   const p = buildTaskPlanPrompt(projectTitle, projectDescription, projectPrompt, context, knowledgeBase, existingTaskTitles);
-  const tasks = await callAndParse(apiKey, 'generateTaskPlan', p, z.array(TaskPlanSchema));
+  const tasks = await callAndParse(apiKey, 'generateTaskPlan', p, z.array(TaskPlanSchema), promptLogContext);
   if (tasks.length === 0) {
     throw new GraphQLError('Failed to parse AI response');
   }
@@ -159,10 +164,11 @@ export async function expandTask(
   projectName: string,
   context?: string | null,
   knowledgeBase?: string | null,
-  siblingTitles?: string[]
+  siblingTitles?: string[],
+  promptLogContext?: PromptLogContext
 ): Promise<TaskPlan[]> {
   const p = buildExpandTaskPrompt(taskTitle, taskDescription, projectName, context, knowledgeBase, siblingTitles);
-  const subtasks = await callAndParse(apiKey, 'expandTask', p, z.array(TaskPlanSchema));
+  const subtasks = await callAndParse(apiKey, 'expandTask', p, z.array(TaskPlanSchema), promptLogContext);
   if (subtasks.length === 0) {
     throw new GraphQLError('Failed to parse AI response');
   }
@@ -173,7 +179,8 @@ export async function summarizeProject(
   apiKey: string,
   projectName: string,
   projectDescription: string,
-  tasks: { title: string; status: string }[]
+  tasks: { title: string; status: string }[],
+  promptLogContext?: PromptLogContext
 ): Promise<string> {
   const p = buildSummarizeProjectPrompt(projectName, projectDescription, tasks);
   const config = FEATURE_CONFIG.summarizeProject;
@@ -184,6 +191,7 @@ export async function summarizeProject(
     maxTokens: config.maxTokens,
     feature: 'summarizeProject',
     cacheTTLMs: config.cacheTTLMs,
+    promptLogContext,
   });
   return result.raw;
 }
@@ -193,10 +201,11 @@ export async function planSprints(
   projectName: string,
   tasks: { title: string; estimatedHours: number | null; priority: string; dependsOn: string | null }[],
   sprintLengthWeeks: number,
-  teamSize: number
+  teamSize: number,
+  promptLogContext?: PromptLogContext
 ): Promise<SprintPlan[]> {
   const p = buildPlanSprintsPrompt(projectName, tasks, sprintLengthWeeks, teamSize);
-  const plans = await callAndParse(apiKey, 'planSprints', p, z.array(SprintPlanSchema));
+  const plans = await callAndParse(apiKey, 'planSprints', p, z.array(SprintPlanSchema), promptLogContext);
   if (plans.length === 0) {
     throw new GraphQLError('Failed to parse AI sprint plan');
   }
@@ -209,10 +218,11 @@ export async function generateTaskInstructions(
   taskDescription: string,
   projectName: string,
   existingTaskTitles: string[] = [],
-  knowledgeBase?: string | null
+  knowledgeBase?: string | null,
+  promptLogContext?: PromptLogContext
 ): Promise<TaskInstructions> {
   const p = buildGenerateTaskInstructionsPrompt(taskTitle, taskDescription, projectName, existingTaskTitles, knowledgeBase);
-  return callAndParse(apiKey, 'generateTaskInstructions', p, TaskInstructionsSchema);
+  return callAndParse(apiKey, 'generateTaskInstructions', p, TaskInstructionsSchema, promptLogContext);
 }
 
 export async function generateStandupReport(
@@ -225,10 +235,11 @@ export async function generateStandupReport(
     completedTasks: string[];
     inProgressTasks: string[];
     overdueTasks: string[];
-  }
+  },
+  promptLogContext?: PromptLogContext
 ): Promise<StandupReport> {
   const p = buildStandupPrompt(data);
-  return callAndParse(apiKey, 'generateStandupReport', p, StandupReportSchema);
+  return callAndParse(apiKey, 'generateStandupReport', p, StandupReportSchema, promptLogContext);
 }
 
 export async function generateSprintReport(
@@ -240,10 +251,11 @@ export async function generateSprintReport(
     tasks: { title: string; status: string; priority: string; assigneeEmail?: string | null }[];
     totalTasks: number;
     completedTasks: number;
-  }
+  },
+  promptLogContext?: PromptLogContext
 ): Promise<SprintReport> {
   const p = buildSprintReportPrompt(data);
-  return callAndParse(apiKey, 'generateSprintReport', p, SprintReportSchema);
+  return callAndParse(apiKey, 'generateSprintReport', p, SprintReportSchema, promptLogContext);
 }
 
 export async function analyzeProjectHealth(
@@ -256,20 +268,22 @@ export async function analyzeProjectHealth(
     unassignedCount: number;
     tasksWithoutDueDate: number;
     avgTaskAgeInDays: number;
-  }
+  },
+  promptLogContext?: PromptLogContext
 ): Promise<HealthAnalysis> {
   const p = buildHealthAnalysisPrompt(data);
-  return callAndParse(apiKey, 'analyzeProjectHealth', p, HealthAnalysisSchema);
+  return callAndParse(apiKey, 'analyzeProjectHealth', p, HealthAnalysisSchema, promptLogContext);
 }
 
 export async function extractTasksFromNotes(
   apiKey: string,
   notes: string,
   projectName: string,
-  teamMembers: string[]
+  teamMembers: string[],
+  promptLogContext?: PromptLogContext
 ): Promise<MeetingNotesExtraction> {
   const p = buildMeetingNotesPrompt(notes, projectName, teamMembers);
-  return callAndParse(apiKey, 'extractTasksFromNotes', p, MeetingNotesExtractionSchema);
+  return callAndParse(apiKey, 'extractTasksFromNotes', p, MeetingNotesExtractionSchema, promptLogContext);
 }
 
 export async function generateCode(
@@ -281,13 +295,14 @@ export async function generateCode(
   projectDescription: string,
   existingFiles?: Array<{ path: string; language: string; size: number }>,
   styleGuide?: string | null,
-  knowledgeBase?: string | null
+  knowledgeBase?: string | null,
+  promptLogContext?: PromptLogContext
 ): Promise<CodeGeneration> {
   const p = buildGenerateCodePrompt({
     taskTitle, taskDescription, taskInstructions,
     projectName, projectDescription, existingFiles, styleGuide, knowledgeBase,
   });
-  return callAndParse(apiKey, 'generateCode', p, CodeGenerationSchema);
+  return callAndParse(apiKey, 'generateCode', p, CodeGenerationSchema, promptLogContext);
 }
 
 export async function regenerateFile(
@@ -298,20 +313,22 @@ export async function regenerateFile(
   filePath: string,
   originalContent: string,
   projectName: string,
-  feedback?: string | null
+  feedback?: string | null,
+  promptLogContext?: PromptLogContext
 ): Promise<GeneratedFile> {
   const p = buildRegenerateFilePrompt({
     taskTitle, taskDescription, taskInstructions,
     filePath, originalContent, feedback, projectName,
   });
-  return callAndParse(apiKey, 'regenerateFile', p, GeneratedFileSchema);
+  return callAndParse(apiKey, 'regenerateFile', p, GeneratedFileSchema, promptLogContext);
 }
 
 export async function generateCommitMessage(
   apiKey: string,
   taskTitle: string,
   taskDescription: string,
-  files: Array<{ path: string }>
+  files: Array<{ path: string }>,
+  promptLogContext?: PromptLogContext
 ): Promise<string> {
   const p = buildCommitMessagePrompt({ taskTitle, taskDescription, files });
   const config = FEATURE_CONFIG.generateCommitMessage;
@@ -322,6 +339,7 @@ export async function generateCommitMessage(
     maxTokens: config.maxTokens,
     feature: 'generateCommitMessage',
     cacheTTLMs: config.cacheTTLMs,
+    promptLogContext,
   });
   return result.raw.trim();
 }
@@ -335,10 +353,11 @@ export async function reviewCode(
     acceptanceCriteria?: string;
     diff: string;
     projectName: string;
-  }
+  },
+  promptLogContext?: PromptLogContext
 ): Promise<CodeReview> {
   const p = buildCodeReviewPrompt(data);
-  return callAndParse(apiKey, 'reviewCode', p, CodeReviewSchema);
+  return callAndParse(apiKey, 'reviewCode', p, CodeReviewSchema, promptLogContext);
 }
 
 export async function generateReviewFix(
@@ -349,10 +368,11 @@ export async function generateReviewFix(
     reviewComments: string;
     currentFiles: Array<{ path: string; content: string }>;
     projectName: string;
-  }
+  },
+  promptLogContext?: PromptLogContext
 ): Promise<ReviewFix> {
   const p = buildReviewFixPrompt(data);
-  return callAndParse(apiKey, 'generateReviewFix', p, ReviewFixSchema);
+  return callAndParse(apiKey, 'generateReviewFix', p, ReviewFixSchema, promptLogContext);
 }
 
 export async function decomposeIssue(
@@ -364,10 +384,11 @@ export async function decomposeIssue(
     projectName: string;
     projectDescription?: string;
     existingTaskTitles: string[];
-  }
+  },
+  promptLogContext?: PromptLogContext
 ): Promise<IssueDecomposition> {
   const p = buildDecomposeIssuePrompt(data);
-  return callAndParse(apiKey, 'decomposeIssue', p, IssueDecompositionSchema);
+  return callAndParse(apiKey, 'decomposeIssue', p, IssueDecompositionSchema, promptLogContext);
 }
 
 export async function enrichPRDescription(
@@ -375,7 +396,8 @@ export async function enrichPRDescription(
   taskTitle: string,
   taskDescription: string,
   taskInstructions: string,
-  files: Array<{ path: string; language: string }>
+  files: Array<{ path: string; language: string }>,
+  promptLogContext?: PromptLogContext
 ): Promise<string> {
   const p = buildEnrichPRDescriptionPrompt({ taskTitle, taskDescription, taskInstructions, files });
   const config = FEATURE_CONFIG.enrichPRDescription;
@@ -386,24 +408,27 @@ export async function enrichPRDescription(
     maxTokens: config.maxTokens,
     feature: 'enrichPRDescription',
     cacheTTLMs: config.cacheTTLMs,
+    promptLogContext,
   });
   return result.raw.trim();
 }
 
 export async function parseBugReport(
   apiKey: string,
-  data: { bugReport: string; projectName: string; projectDescription?: string | null }
+  data: { bugReport: string; projectName: string; projectDescription?: string | null },
+  promptLogContext?: PromptLogContext
 ): Promise<BugReportTask> {
   const p = buildParseBugReportPrompt(data);
-  return callAndParse(apiKey, 'parseBugReport', p, BugReportTaskSchema);
+  return callAndParse(apiKey, 'parseBugReport', p, BugReportTaskSchema, promptLogContext);
 }
 
 export async function breakdownPRD(
   apiKey: string,
-  data: { prd: string; projectName: string; projectDescription?: string | null }
+  data: { prd: string; projectName: string; projectDescription?: string | null },
+  promptLogContext?: PromptLogContext
 ): Promise<PRDBreakdown> {
   const p = buildPRDBreakdownPrompt(data);
-  return callAndParse(apiKey, 'breakdownPRD', p, PRDBreakdownSchema);
+  return callAndParse(apiKey, 'breakdownPRD', p, PRDBreakdownSchema, promptLogContext);
 }
 
 export async function analyzeSprintTransition(
@@ -413,10 +438,11 @@ export async function analyzeSprintTransition(
     sprintGoal?: string | null;
     tasks: Array<{ taskId: string; title: string; status: string; priority: string; assignee?: string | null; storyPoints?: number | null }>;
     completionRate: number;
-  }
+  },
+  promptLogContext?: PromptLogContext
 ): Promise<SprintTransition> {
   const p = buildSprintTransitionPrompt(data);
-  return callAndParse(apiKey, 'analyzeSprintTransition', p, SprintTransitionSchema);
+  return callAndParse(apiKey, 'analyzeSprintTransition', p, SprintTransitionSchema, promptLogContext);
 }
 
 export async function bootstrapFromRepo(
@@ -428,10 +454,11 @@ export async function bootstrapFromRepo(
     packageJson?: string | null;
     fileTree: Array<{ path: string; language?: string | null; size?: number | null }>;
     languages: string[];
-  }
+  },
+  promptLogContext?: PromptLogContext
 ): Promise<RepoBootstrap> {
   const p = buildRepoBootstrapPrompt(data);
-  return callAndParse(apiKey, 'bootstrapFromRepo', p, RepoBootstrapSchema);
+  return callAndParse(apiKey, 'bootstrapFromRepo', p, RepoBootstrapSchema, promptLogContext);
 }
 
 export async function projectChat(
@@ -444,10 +471,11 @@ export async function projectChat(
     sprints: Array<{ name: string; isActive: boolean; taskCount: number }>;
     recentActivity: Array<{ action: string; field?: string | null; taskTitle?: string | null; createdAt: string }>;
     knowledgeBase?: string | null;
-  }
+  },
+  promptLogContext?: PromptLogContext
 ): Promise<ProjectChatResponse> {
   const p = buildProjectChatPrompt(data);
-  return callAndParse(apiKey, 'projectChat', p, ProjectChatResponseSchema);
+  return callAndParse(apiKey, 'projectChat', p, ProjectChatResponseSchema, promptLogContext);
 }
 
 export async function analyzeRepoDrift(
@@ -457,10 +485,11 @@ export async function analyzeRepoDrift(
     recentCommits: Array<{ sha: string; message: string; date: string }>;
     openPRs: Array<{ title: string; state: string }>;
     tasks: Array<{ taskId: string; title: string; status: string; description?: string | null }>;
-  }
+  },
+  promptLogContext?: PromptLogContext
 ): Promise<DriftAnalysis> {
   const p = buildRepoDriftPrompt(data);
-  return callAndParse(apiKey, 'analyzeRepoDrift', p, DriftAnalysisSchema);
+  return callAndParse(apiKey, 'analyzeRepoDrift', p, DriftAnalysisSchema, promptLogContext);
 }
 
 export async function batchGenerateCode(
@@ -472,10 +501,11 @@ export async function batchGenerateCode(
     existingFiles?: Array<{ path: string; language: string; size: number }>;
     styleGuide?: string | null;
     knowledgeBase?: string | null;
-  }
+  },
+  promptLogContext?: PromptLogContext
 ): Promise<BatchCodeGeneration> {
   const p = buildBatchCodeGenerationPrompt(data);
-  return callAndParse(apiKey, 'batchGenerateCode', p, BatchCodeGenerationSchema);
+  return callAndParse(apiKey, 'batchGenerateCode', p, BatchCodeGenerationSchema, promptLogContext);
 }
 
 export async function analyzeTrends(
@@ -484,8 +514,9 @@ export async function analyzeTrends(
     projectName: string;
     reports: Array<{ type: string; title: string; data: string; createdAt: string }>;
     period?: string | null;
-  }
+  },
+  promptLogContext?: PromptLogContext
 ): Promise<TrendAnalysis> {
   const p = buildTrendAnalysisPrompt(data);
-  return callAndParse(apiKey, 'analyzeTrends', p, TrendAnalysisSchema);
+  return callAndParse(apiKey, 'analyzeTrends', p, TrendAnalysisSchema, promptLogContext);
 }
