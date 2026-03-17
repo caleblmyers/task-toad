@@ -187,9 +187,11 @@ app.get(['/events', '/api/events'], async (req, res) => {
 });
 
 // Export rate limit: 5 requests per 10 minutes per IP
+// In test environment, use a high limit to avoid 429s from integration test suites
+// that make multiple export requests in quick succession.
 const exportLimiter = rateLimit({
   windowMs: 10 * 60_000,
-  limit: 5,
+  limit: process.env.NODE_ENV === 'test' ? 1000 : 5,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   message: { error: 'Too many export requests. Please try again later.' },

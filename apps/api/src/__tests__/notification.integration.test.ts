@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
 import {
   prisma,
   setupTestDatabase,
@@ -9,6 +9,7 @@ import { authMutations } from '../graphql/resolvers/auth.js';
 import { notificationQueries, notificationMutations } from '../graphql/resolvers/notification.js';
 import type { Context } from '../graphql/context.js';
 import { createLoaders } from '../graphql/loaders.js';
+import { sseManager } from '../utils/sseManager.js';
 
 // ── Helpers ──
 
@@ -185,5 +186,95 @@ describe('notificationPreferences', () => {
     expect(assignedPref).toBeDefined();
     expect(assignedPref!.inApp).toBe(false);
     expect(assignedPref!.email).toBe(true);
+  });
+});
+
+// ── SSE Manager Unit Tests ──
+
+describe('SSE Manager', () => {
+  function mockResponse(): { res: import('express').Response; written: string[]; ended: boolean; closeCb: (() => void) | null } {
+    const state = { written: [] as string[], ended: false, closeCb: null as (() => void) | null };
+    const res = {
+      write: vi.fn((data: string) => { state.written.push(data); return true; }),
+      end: vi.fn(() => { state.ended = true; }),
+      on: vi.fn((event: string, cb: () => void) => {
+        if (event === 'close') state.closeCb = cb;
+      }),
+    } as unknown as import('express').Response;
+    return { res, ...state, get written() { return state.written; }, get ended() { return state.ended; }, get closeCb() { return state.closeCb; } };
+  }
+
+  beforeEach(() => {
+    sseManager.closeAllConnections();
+  });
+
+  it('addClient adds a client and getClientCount reflects it', () => {
+    const { res } = mockResponse();
+    sseManager.addClient('c1', 'org-1', 'user-1', res);
+
+    expect(sseManager.getClientCount('org-1')).toBe(1);
+    expect(sseManager.getUserClientCount('user-1')).toBe(1);
+  });
+
+  it('broadcast sends SSE-formatted event to matching org clients', () => {
+    const m1 = mockResponse();
+    const m2 = mockResponse();
+    const m3 = mockResponse();
+    sseManager.addClient('c1', 'org-1', 'user-1', m1.res);
+    sseManager.addClient('c2', 'org-1', 'user-2', m2.res);
+    sseManager.addClient('c3', 'org-2', 'user-3', m3.res);
+
+    sseManager.broadcast('org-1', 'notification', { title: 'Hello' });
+
+    expect(m1.res.write).toHaveBeenCalledWith('event: notification\ndata: {"title":"Hello"}\n\n');
+    expect(m2.res.write).toHaveBeenCalledWith('event: notification\ndata: {"title":"Hello"}\n\n');
+    // org-2 client should NOT receive the broadcast
+    expect(m3.res.write).not.toHaveBeenCalled();
+  });
+
+  it('client is removed on connection close', () => {
+    const mock = mockResponse();
+    sseManager.addClient('c1', 'org-1', 'user-1', mock.res);
+    expect(sseManager.getClientCount('org-1')).toBe(1);
+
+    // Simulate close
+    const onCall = (mock.res.on as ReturnType<typeof vi.fn>).mock.calls.find(
+      (call: unknown[]) => call[0] === 'close',
+    );
+    expect(onCall).toBeDefined();
+    (onCall![1] as () => void)();
+
+    expect(sseManager.getClientCount('org-1')).toBe(0);
+  });
+
+  it('enforces MAX_CONNECTIONS_PER_USER (5) by evicting oldest', () => {
+    const mocks = Array.from({ length: 6 }, (_, i) => {
+      const m = mockResponse();
+      sseManager.addClient(`c${i}`, 'org-1', 'user-1', m.res);
+      return m;
+    });
+
+    // Only 5 connections should remain (first was evicted)
+    expect(sseManager.getUserClientCount('user-1')).toBe(5);
+    // The first client's response should have been ended
+    expect(mocks[0].res.end).toHaveBeenCalled();
+  });
+
+  it('getClientCount returns 0 for unknown org', () => {
+    expect(sseManager.getClientCount('nonexistent')).toBe(0);
+  });
+
+  it('closeAllConnections ends all connections and clears state', () => {
+    const m1 = mockResponse();
+    const m2 = mockResponse();
+    sseManager.addClient('c1', 'org-1', 'user-1', m1.res);
+    sseManager.addClient('c2', 'org-2', 'user-2', m2.res);
+
+    sseManager.closeAllConnections();
+
+    expect(m1.res.end).toHaveBeenCalled();
+    expect(m2.res.end).toHaveBeenCalled();
+    expect(sseManager.getClientCount('org-1')).toBe(0);
+    expect(sseManager.getClientCount('org-2')).toBe(0);
   });
 });

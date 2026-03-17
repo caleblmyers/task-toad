@@ -166,11 +166,8 @@ describe('Export REST endpoints', () => {
         .get(`/api/export/project/${projectId}/json`)
         .set('Authorization', `Bearer ${token}`);
 
-      // Export endpoint has a 5-req/10-min rate limit — may return 429 in test suite
-      expect([404, 429]).toContain(res.status);
-      if (res.status === 404) {
-        expect(res.body.error).toBe('Project not found');
-      }
+      expect(res.status).toBe(404);
+      expect(res.body.error).toBe('Project not found');
     });
   });
 });
