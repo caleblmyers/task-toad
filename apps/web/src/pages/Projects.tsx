@@ -1,50 +1,29 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { gql } from '../api/client';
 import type { Project } from '../types';
 import { useAuth } from '../auth/context';
 import ErrorBanner from '../components/shared/ErrorBanner';
+import useAsyncData from '../hooks/useAsyncData';
 
 export default function Projects() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'org:admin';
   const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showArchived, setShowArchived] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
 
-  const fetchProjects = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    gql<{ projects: Project[] }>(
-      `query ($includeArchived: Boolean) { projects(includeArchived: $includeArchived) { projectId name description createdAt archived } }`,
-      { includeArchived: showArchived }
-    )
-      .then((data) => setProjects(data.projects))
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load projects'))
-      .finally(() => setLoading(false));
-  }, [showArchived]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await gql<{ projects: Project[] }>(
-          `query ($includeArchived: Boolean) { projects(includeArchived: $includeArchived) { projectId name description createdAt archived } }`,
-          { includeArchived: showArchived },
-        );
-        if (!cancelled) setProjects(data.projects);
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load projects');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    run();
-    return () => { cancelled = true; };
-  }, [showArchived]);
+  const { loading, error, retry: fetchProjects } = useAsyncData(
+    async () => {
+      const data = await gql<{ projects: Project[] }>(
+        `query ($includeArchived: Boolean) { projects(includeArchived: $includeArchived) { projectId name description createdAt archived } }`,
+        { includeArchived: showArchived },
+      );
+      setProjects(data.projects);
+      return data.projects;
+    },
+    [showArchived],
+  );
 
   const handleArchive = async (projectId: string, archived: boolean) => {
     try {
@@ -62,7 +41,7 @@ export default function Projects() {
         );
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to archive project');
+      setArchiveError(e instanceof Error ? e.message : 'Failed to archive project');
     }
   };
 
@@ -91,9 +70,9 @@ export default function Projects() {
         </div>
       </div>
 
-      {error && (
+      {(error || archiveError) && (
         <div className="mb-4">
-          <ErrorBanner message={error} onRetry={fetchProjects} onDismiss={() => setError(null)} />
+          <ErrorBanner message={error ?? archiveError!} onRetry={error ? fetchProjects : undefined} onDismiss={() => setArchiveError(null)} />
         </div>
       )}
 

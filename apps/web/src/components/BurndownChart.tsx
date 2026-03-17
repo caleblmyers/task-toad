@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { gql } from '../api/client';
+import useAsyncData from '../hooks/useAsyncData';
 
 interface BurndownDay {
   date: string;
@@ -36,9 +37,6 @@ function fmtDate(dateStr: string): string {
 }
 
 export default function BurndownChart(props: BurndownChartProps) {
-  const [fetched, setFetched] = useState<BurndownData | null>(null);
-  const [loading, setLoading] = useState(!props.data);
-  const [error, setError] = useState(false);
   const [mode, setMode] = useState<'burndown' | 'burnup'>('burndown');
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -46,34 +44,15 @@ export default function BurndownChart(props: BurndownChartProps) {
 
   const sprintId = props.sprintId;
 
-  const fetchData = useCallback(() => {
-    if (!sprintId) return;
-    setLoading(true);
-    setError(false);
-    gql<{ sprintBurndown: BurndownData }>(QUERY, { sprintId })
-      .then((d) => setFetched(d.sprintBurndown))
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
-  }, [sprintId]);
-
-  useEffect(() => {
-    if (!sprintId) return;
-    let cancelled = false;
-    const run = async () => {
-      setLoading(true);
-      setError(false);
-      try {
-        const d = await gql<{ sprintBurndown: BurndownData }>(QUERY, { sprintId });
-        if (!cancelled) setFetched(d.sprintBurndown);
-      } catch {
-        if (!cancelled) setError(true);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    run();
-    return () => { cancelled = true; };
-  }, [sprintId]);
+  const { data: fetched, loading, error: fetchError, retry: fetchData } = useAsyncData(
+    async () => {
+      if (!sprintId) return null;
+      const d = await gql<{ sprintBurndown: BurndownData }>(QUERY, { sprintId });
+      return d.sprintBurndown;
+    },
+    [sprintId],
+  );
+  const error = !!fetchError;
 
   useEffect(() => {
     const el = containerRef.current;

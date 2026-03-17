@@ -211,8 +211,10 @@ export const TaskRow = memo(function TaskRow({
           <span className="text-xs bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">{task.sprintColumn}</span>
         )}
         {assignee && (
-          <span className="text-xs bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full font-medium" title={assignee.email}>
-            {assignee.email.charAt(0).toUpperCase()}
+          <span title={assignee.email}>
+            <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400" size="sm">
+              {assignee.email.charAt(0).toUpperCase()}
+            </Badge>
           </span>
         )}
         {onAssignSprint && sprints && (

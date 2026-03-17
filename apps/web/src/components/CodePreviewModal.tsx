@@ -458,9 +458,9 @@ export default function CodePreviewModal({
                       </span>
                     )}
                     {subtaskTitle && (
-                      <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded flex-shrink-0 truncate max-w-[200px]">
+                      <Badge variant="purple" size="sm" className="flex-shrink-0 truncate max-w-[200px]">
                         {subtaskTitle}
-                      </span>
+                      </Badge>
                     )}
                   </div>
                   <span className="text-slate-400 flex-shrink-0 ml-auto">

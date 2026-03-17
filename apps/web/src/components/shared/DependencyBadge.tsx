@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Task } from '../../types';
+import Badge from './Badge';
 
 interface DependencyBadgeProps {
   task: Task;
@@ -52,22 +53,19 @@ export default function DependencyBadge({ task, allTasks, onTaskClick }: Depende
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
         onClick={(e) => { e.stopPropagation(); setShowTooltip((v) => !v); }}
-        className={`text-xs px-1.5 py-0.5 rounded font-medium inline-flex items-center gap-1 ${
-          isBlocked
-            ? 'bg-amber-100 text-amber-700'
-            : 'bg-green-100 text-green-700'
-        }`}
       >
-        {isBlocked ? (
-          <>Blocked ({blockedCount})</>
-        ) : (
-          <>
-            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="3,8 7,12 13,4" />
-            </svg>
-            {depIds.length}
-          </>
-        )}
+        <Badge variant={isBlocked ? 'warning' : 'success'} size="sm" className="inline-flex items-center gap-1">
+          {isBlocked ? (
+            <>Blocked ({blockedCount})</>
+          ) : (
+            <>
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="3,8 7,12 13,4" />
+              </svg>
+              {depIds.length}
+            </>
+          )}
+        </Badge>
       </button>
 
       {showTooltip && (

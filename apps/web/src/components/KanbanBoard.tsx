@@ -2,13 +2,18 @@ import { useRef, useMemo, useState, useCallback } from 'react';
 import type { Task } from '../types';
 import { parseDependsOn } from '../utils/taskHelpers';
 import DependencyBadge from './shared/DependencyBadge';
+import Badge from './shared/Badge';
+import Card from './shared/Card';
+import type { ComponentProps } from 'react';
+
+type BadgeVariant = ComponentProps<typeof Badge>['variant'];
 
 const COLUMN_ACCENTS = [
-  { accent: 'border-t-slate-400',  barColor: 'border-l-slate-300',  pillClass: 'bg-slate-100 text-slate-700' },
-  { accent: 'border-t-blue-500',   barColor: 'border-l-blue-400',   pillClass: 'bg-blue-100 text-blue-700' },
-  { accent: 'border-t-purple-500', barColor: 'border-l-purple-400', pillClass: 'bg-purple-100 text-purple-700' },
-  { accent: 'border-t-green-500',  barColor: 'border-l-green-400',  pillClass: 'bg-green-100 text-green-700' },
-  { accent: 'border-t-orange-500', barColor: 'border-l-orange-400', pillClass: 'bg-orange-100 text-orange-700' },
+  { accent: 'border-t-slate-400',  barColor: 'border-l-slate-300',  pillVariant: 'neutral' as BadgeVariant },
+  { accent: 'border-t-blue-500',   barColor: 'border-l-blue-400',   pillVariant: 'info' as BadgeVariant },
+  { accent: 'border-t-purple-500', barColor: 'border-l-purple-400', pillVariant: 'purple' as BadgeVariant },
+  { accent: 'border-t-green-500',  barColor: 'border-l-green-400',  pillVariant: 'success' as BadgeVariant },
+  { accent: 'border-t-orange-500', barColor: 'border-l-orange-400', pillVariant: 'accent' as BadgeVariant },
 ];
 
 function sortByPosition(a: Task, b: Task): number {
@@ -238,17 +243,10 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
                   const isBlocked = blockedTasks.has(task.taskId);
                   const isMoving = movingTaskId === task.taskId;
                   return (
-                    <div
+                    <Card
                       key={task.taskId}
-                      draggable
-                      tabIndex={0}
-                      role="option"
-                      aria-selected={isSelected}
-                      aria-description="Press Enter to move this task. Use Left/Right arrows to change column, Up/Down arrows to reorder within column."
-                      onDragStart={() => { draggedId.current = task.taskId; }}
-                      onClick={() => onSelectTask(task)}
-                      onKeyDown={(e) => handleCardKeyDown(e, task)}
-                      className={`bg-white dark:bg-slate-900 rounded-lg p-3 shadow-sm border border-slate-200 dark:border-slate-700 border-l-4 ${
+                      padding="none"
+                      className={`p-3 shadow-sm border-l-4 ${
                         task.taskType === 'epic' ? 'border-l-purple-500' :
                         task.taskType === 'story' ? 'border-l-blue-500' :
                         style.barColor
@@ -259,43 +257,54 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
                         ${isBlocked ? 'opacity-75' : ''}
                         ${isMoving ? 'border-dashed border-2 border-blue-400 shadow-lg' : ''}`}
                     >
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        {task.taskType !== 'task' && (
-                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                            task.taskType === 'epic' ? 'bg-purple-500' :
-                            task.taskType === 'story' ? 'bg-blue-500' :
-                            'bg-slate-400'
-                          }`} title={task.taskType} />
-                        )}
-                        <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-snug line-clamp-2">{task.title}</p>
-                      </div>
-                      {task.description && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{task.description}</p>
-                      )}
-                      {task.labels && task.labels.length > 0 && (
-                        <div className="flex items-center gap-1 mt-1.5">
-                          {task.labels.slice(0, 4).map((l) => (
-                            <span
-                              key={l.labelId}
-                              className="text-[10px] px-1.5 py-0 rounded-full"
-                              style={{ backgroundColor: l.color + '20', color: l.color }}
-                            >
-                              {l.name}
-                            </span>
-                          ))}
+                      <div
+                        draggable
+                        tabIndex={0}
+                        role="option"
+                        aria-selected={isSelected}
+                        aria-description="Press Enter to move this task. Use Left/Right arrows to change column, Up/Down arrows to reorder within column."
+                        onDragStart={() => { draggedId.current = task.taskId; }}
+                        onClick={() => onSelectTask(task)}
+                        onKeyDown={(e) => handleCardKeyDown(e, task)}
+                      >
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          {task.taskType !== 'task' && (
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                              task.taskType === 'epic' ? 'bg-purple-500' :
+                              task.taskType === 'story' ? 'bg-blue-500' :
+                              'bg-slate-400'
+                            }`} title={task.taskType} />
+                          )}
+                          <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-snug line-clamp-2">{task.title}</p>
                         </div>
-                      )}
-                      <DependencyBadge task={task} allTasks={tasks} onTaskClick={(id) => {
-                        const t = tasks.find((at) => at.taskId === id);
-                        if (t) onSelectTask(t);
-                      }} />
-                      <div className="flex items-center justify-between mt-2">
-                        <span className={`text-xs px-1.5 py-0.5 rounded ${style.pillClass}`}>{col}</span>
-                        {subtaskCount > 0 && (
-                          <span className="text-xs text-slate-500">{subtaskCount} subtasks</span>
+                        {task.description && (
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{task.description}</p>
                         )}
+                        {task.labels && task.labels.length > 0 && (
+                          <div className="flex items-center gap-1 mt-1.5">
+                            {task.labels.slice(0, 4).map((l) => (
+                              <span
+                                key={l.labelId}
+                                className="text-[10px] px-1.5 py-0 rounded-full"
+                                style={{ backgroundColor: l.color + '20', color: l.color }}
+                              >
+                                {l.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <DependencyBadge task={task} allTasks={tasks} onTaskClick={(id) => {
+                          const t = tasks.find((at) => at.taskId === id);
+                          if (t) onSelectTask(t);
+                        }} />
+                        <div className="flex items-center justify-between mt-2">
+                          <Badge variant={style.pillVariant}>{col}</Badge>
+                          {subtaskCount > 0 && (
+                            <span className="text-xs text-slate-500">{subtaskCount} subtasks</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    </Card>
                   );
                 })
               )}

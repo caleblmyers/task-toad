@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'purple' | 'accent';
+type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'purple' | 'accent' | 'pink';
 type BadgeSize = 'sm' | 'md';
 
 interface BadgeProps {
@@ -18,6 +18,7 @@ const VARIANT_CLASSES: Record<BadgeVariant, string> = {
   neutral: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
   purple: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
   accent: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+  pink: 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400',
 };
 
 const SIZE_CLASSES: Record<BadgeSize, string> = {
