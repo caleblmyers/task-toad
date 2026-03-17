@@ -443,27 +443,68 @@ export default function ProjectDetail() {
           )}
         </div>
 
-        {/* Right: task detail panel */}
+        {/* Right: task detail panel — sidebar on md+, full-screen drawer on mobile */}
         {d.selectedTask && (
-          <div className="w-[440px] flex-shrink-0 border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex flex-col overflow-hidden">
-            <div className="px-4 pt-2 pb-1 border-b border-slate-100 dark:border-slate-700 flex-shrink-0">
-              <button
-                type="button"
-                onClick={handleSaveAsTemplate}
-                className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1 border border-slate-200 rounded hover:bg-slate-50"
-              >
-                Save as Template
-              </button>
+          <>
+            {/* Desktop sidebar */}
+            <div className="hidden md:flex w-[440px] flex-shrink-0 border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex-col overflow-hidden">
+              <div className="px-4 pt-2 pb-1 border-b border-slate-100 dark:border-slate-700 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={handleSaveAsTemplate}
+                  className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1 border border-slate-200 rounded hover:bg-slate-50"
+                >
+                  Save as Template
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                <TaskDetailPanel
+                  task={d.selectedTask}
+                  subtasks={d.subtasks[d.selectedTask.taskId] ?? []}
+                  onClose={() => d.setSelectedTask(null)}
+                  {...detailPanelProps}
+                />
+              </div>
             </div>
-            <div className="flex-1 overflow-y-auto">
-              <TaskDetailPanel
-                task={d.selectedTask}
-                subtasks={d.subtasks[d.selectedTask.taskId] ?? []}
-                onClose={() => d.setSelectedTask(null)}
-                {...detailPanelProps}
+
+            {/* Mobile drawer overlay */}
+            <div className="md:hidden fixed inset-0 z-40 flex">
+              {/* Backdrop */}
+              <div
+                className="absolute inset-0 bg-black/50 transition-opacity"
+                onClick={() => d.setSelectedTask(null)}
               />
+              {/* Drawer panel */}
+              <div className="relative ml-auto w-full max-w-lg bg-white dark:bg-slate-900 flex flex-col overflow-hidden shadow-xl animate-slide-in-right">
+                <div className="px-4 pt-3 pb-1 border-b border-slate-100 dark:border-slate-700 flex-shrink-0 flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={handleSaveAsTemplate}
+                    className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1 border border-slate-200 rounded hover:bg-slate-50"
+                  >
+                    Save as Template
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => d.setSelectedTask(null)}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1"
+                    aria-label="Close"
+                  >
+                    <IconClose className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  <TaskDetailPanel
+                    task={d.selectedTask}
+                    subtasks={d.subtasks[d.selectedTask.taskId] ?? []}
+                    onClose={() => d.setSelectedTask(null)}
+                    isDrawer
+                    {...detailPanelProps}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
+          </>
         )}
       </div>
 
