@@ -43,7 +43,7 @@ export function createHandler(prisma: PrismaClient) {
 
     // Check budget for AI-consuming actions
     const actionType = action.actionType as ActionType;
-    if (actionType === 'generate_code' || actionType === 'write_docs') {
+    if (actionType === 'generate_code' || actionType === 'write_docs' || actionType === 'review_pr') {
       const budget = await checkBudget(prisma, orgId);
       if (!budget.allowed) {
         await prisma.taskAction.update({
@@ -105,6 +105,8 @@ export function createHandler(prisma: PrismaClient) {
       task: { taskId: task.taskId, title: task.title, description: task.description, instructions: task.instructions, projectId: task.projectId },
       project: { projectId: project.projectId, name: project.name, description: project.description, knowledgeBase: project.knowledgeBase },
       apiKey,
+      orgId,
+      userId,
       prisma,
       previousResults,
     };
@@ -185,6 +187,38 @@ export function createHandler(prisma: PrismaClient) {
           where: { id: planId },
           data: { status: 'completed' },
         });
+
+        // If plan included a review_pr action, transition task to in_review
+        const completedActions = await prisma.taskAction.findMany({
+          where: { planId, status: 'completed' },
+          select: { actionType: true },
+        });
+        const hasReview = completedActions.some((a) => a.actionType === 'review_pr');
+        if (hasReview) {
+          const previousStatus = task.status;
+          const updatedTask = await prisma.task.update({
+            where: { taskId: task.taskId },
+            data: { status: 'in_review' },
+          });
+          bus.emit('task.updated', {
+            orgId,
+            userId,
+            projectId: task.projectId,
+            timestamp: new Date().toISOString(),
+            task: {
+              taskId: updatedTask.taskId,
+              title: updatedTask.title,
+              status: updatedTask.status,
+              projectId: updatedTask.projectId,
+              orgId: updatedTask.orgId,
+              taskType: updatedTask.taskType,
+            },
+            changes: {
+              status: { old: previousStatus, new: 'in_review' },
+            },
+          });
+        }
+
         bus.emit('task.action_plan_completed', {
           orgId,
           userId,

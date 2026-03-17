@@ -1059,8 +1059,8 @@ export function buildPlanTaskActionsPrompt(data: {
     ? `\nSuggested Tools: ${userInput('suggested_tools', data.suggestedTools)}`
     : '';
   const repoLine = data.hasGitHubRepo
-    ? '\nThis project has a connected GitHub repository, so create_pr actions are available after code generation.'
-    : '\nNo GitHub repo is connected — do not include create_pr actions.';
+    ? '\nThis project has a connected GitHub repository, so create_pr and review_pr actions are available after code generation.'
+    : '\nNo GitHub repo is connected — do not include create_pr or review_pr actions.';
 
   return {
     systemPrompt: SYSTEM_JSON,
@@ -1077,15 +1077,17 @@ Available action types: ${data.availableActionTypes.join(', ')}
 Action type guide:
 - generate_code: Generate implementation code files. Config: { "styleGuide"?: string }
 - create_pr: Create a GitHub pull request from previously generated code. Config: { "sourceActionId": "<id of generate_code action>" }. ONLY use if GitHub repo is connected.
+- review_pr: Review the PR created by a prior create_pr action. Config: { "sourcePRActionId": "<id of create_pr action>" }. ONLY use after create_pr.
 - write_docs: Generate documentation (README, API docs, changelog). Config: { "docType": "readme" | "api-docs" | "changelog" }
 - manual_step: A step the user must complete manually. Config: { "description": string, "checklist"?: string[] }
 
 Rules:
 1. Order actions logically — code gen before PR creation, setup before implementation.
 2. Use manual_step for anything that can't be automated (account setup, API key configuration, manual testing, deployment).
-3. Set requiresApproval to true for actions that modify external systems (create_pr) and false for safe actions (generate_code, write_docs).
+3. Set requiresApproval to true for actions that modify external systems (create_pr) and false for safe actions (generate_code, write_docs, review_pr).
 4. Keep the plan focused — typically 2–6 actions. Don't over-plan.
 5. create_pr must always reference a prior generate_code action via sourceActionId (use a placeholder ID like "action_0" referring to the action at index 0).
+6. If the plan includes create_pr, always follow it with review_pr. review_pr should have requiresApproval: false.
 
 Return JSON:
 {

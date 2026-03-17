@@ -251,7 +251,7 @@ export const TrendAnalysisSchema = z.object({
 export type TrendAnalysis = z.infer<typeof TrendAnalysisSchema>;
 
 export const ActionPlanItemSchema = z.object({
-  actionType: z.enum(['generate_code', 'create_pr', 'write_docs', 'manual_step']),
+  actionType: z.enum(['generate_code', 'create_pr', 'review_pr', 'write_docs', 'manual_step']),
   label: z.string(),
   config: z.record(z.string(), z.unknown()),
   requiresApproval: z.boolean(),
