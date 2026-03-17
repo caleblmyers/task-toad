@@ -12,7 +12,7 @@ export const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET ?? 'de
 
 export interface Context {
   user: { userId: string; email: string; orgId: string | null; role: string | null; emailVerifiedAt: Date | null } | null;
-  org: { orgId: string; name: string; anthropicApiKeyEncrypted: string | null } | null;
+  org: { orgId: string; name: string; anthropicApiKeyEncrypted: string | null; promptLoggingEnabled: boolean; monthlyBudgetCentsUSD: number | null; budgetAlertThreshold: number } | null;
   prisma: PrismaClient;
   loaders: Loaders;
 }
@@ -38,7 +38,7 @@ export async function buildContext(ctx: { request: Request }): Promise<Context> 
     if (dbUser.orgId) {
       org = await prisma.org.findUnique({
         where: { orgId: dbUser.orgId },
-        select: { orgId: true, name: true, anthropicApiKeyEncrypted: true },
+        select: { orgId: true, name: true, anthropicApiKeyEncrypted: true, promptLoggingEnabled: true, monthlyBudgetCentsUSD: true, budgetAlertThreshold: true },
       });
     }
 

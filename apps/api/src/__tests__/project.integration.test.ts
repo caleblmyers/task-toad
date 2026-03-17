@@ -18,7 +18,7 @@ let userId: string;
 function makeContext(overrides?: Partial<Context['user']>): Context {
   return {
     user: { userId, email: 'proj-test@example.com', orgId, role: 'org:admin', emailVerifiedAt: null, ...overrides },
-    org: { orgId, name: 'Test Org', anthropicApiKeyEncrypted: null },
+    org: { orgId, name: 'Test Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80 },
     prisma,
     loaders: createLoaders(prisma),
   };
@@ -27,7 +27,7 @@ function makeContext(overrides?: Partial<Context['user']>): Context {
 function makeMemberContext(memberId: string, memberEmail: string): Context {
   return {
     user: { userId: memberId, email: memberEmail, orgId, role: 'org:member', emailVerifiedAt: null },
-    org: { orgId, name: 'Test Org', anthropicApiKeyEncrypted: null },
+    org: { orgId, name: 'Test Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80 },
     prisma,
     loaders: createLoaders(prisma),
   };
@@ -175,7 +175,7 @@ describe('project query', () => {
 
     const otherCtx: Context = {
       user: { userId: otherUser.userId, email: 'other@example.com', orgId: otherOrg.orgId, role: 'org:admin', emailVerifiedAt: null },
-      org: { orgId: otherOrg.orgId, name: 'Other Org', anthropicApiKeyEncrypted: null },
+      org: { orgId: otherOrg.orgId, name: 'Other Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80 },
       prisma,
       loaders: createLoaders(prisma),
     };
