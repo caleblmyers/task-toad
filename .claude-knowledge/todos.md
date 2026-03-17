@@ -84,7 +84,7 @@ Organized into **Task Sets** for parallel swarm development. Completed items are
 - [ ] Dark mode for remaining modals — BatchCodeGenModal, DriftAnalysisModal, etc.
 
 ### Misc Follow-ups
-- [ ] Review uncommitted `schema.ts` change — `'tasks'` added to `SINGLE_OBJECT_FIELDS` (Wave 18 leftover, may be intentional cost analysis fix or reviewer artifact)
+- [x] ~~Review `schema.ts` change — `'tasks'` added to `SINGLE_OBJECT_FIELDS`~~ — committed as fix(api) in e3006a3, was causing query cost 430K > 100K limit
 
 ### SW1: Swarm Workflow Optimization
 **Touches:** `.claude/skills/`, `scripts/swarm/`
