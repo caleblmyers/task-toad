@@ -11,8 +11,8 @@ You are setting up a new swarm wave. Follow these steps precisely.
 
 ## Pre-flight Checks
 
-1. **Verify clean state:**
-   - Run `git status` — working tree must be clean (commit or stash first if dirty)
+1. **Verify worktree state:**
+   - Run `git status` — if working tree is dirty, that's OK (another agent may be working). Worktrees branch from HEAD (last commit), so uncommitted changes are excluded and unaffected. Just note it and proceed.
    - Run `git worktree list` — no stale worktrees should exist (run teardown if needed)
    - Check for stale swarm branches: `git branch | grep swarm`
 

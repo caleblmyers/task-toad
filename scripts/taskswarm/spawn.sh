@@ -20,10 +20,12 @@ if [ "$WORKER_COUNT" -lt 1 ]; then
   exit 1
 fi
 
-# Check for clean working tree
+# Warn if working tree is dirty (worktrees branch from HEAD, so this is safe)
 if ! git -C "$MAIN_REPO" diff --quiet || ! git -C "$MAIN_REPO" diff --cached --quiet; then
-  echo "Error: working tree is dirty. Commit or stash changes first."
-  exit 1
+  echo "Warning: working tree has uncommitted changes."
+  echo "  Worktrees will branch from HEAD (last commit) — uncommitted changes are excluded."
+  echo "  This is safe if another agent is actively working in the main tree."
+  echo ""
 fi
 
 echo "=== Spawning swarm: $SWARM_ID ==="
