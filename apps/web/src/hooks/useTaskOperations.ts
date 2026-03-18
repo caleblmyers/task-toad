@@ -8,13 +8,19 @@ import { columnToStatus, statusToColumn } from '../utils/taskHelpers';
 import { parseColumns } from '../utils/jsonHelpers';
 import type { Task, TaskConnection, Sprint, TaskDependency } from '../types';
 
+interface UpdateTaskResult {
+  task: { taskId: string };
+  warnings: string[];
+}
+
 interface UseTaskOperationsOptions {
   projectId: string | undefined;
   userId: string | undefined;
   sprints: Sprint[];
+  onWarnings?: (warnings: string[]) => void;
 }
 
-export function useTaskOperations({ projectId, userId, sprints }: UseTaskOperationsOptions) {
+export function useTaskOperations({ projectId, userId, sprints, onWarnings }: UseTaskOperationsOptions) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [taskOffset, setTaskOffset] = useState(0);
@@ -110,31 +116,36 @@ export function useTaskOperations({ projectId, userId, sprints }: UseTaskOperati
     );
 
     try {
-      await gql<{ updateTask: Task }>(
+      const data = await gql<{ updateTask: UpdateTaskResult }>(
         `mutation UpdateTask($taskId: ID!, $status: String!${newColumn !== undefined ? ', $sprintColumn: String' : ''}${autoAssign ? ', $assigneeId: ID' : ''}) {
-          updateTask(taskId: $taskId, status: $status${newColumn !== undefined ? ', sprintColumn: $sprintColumn' : ''}${autoAssign ? ', assigneeId: $assigneeId' : ''}) { taskId }
+          updateTask(taskId: $taskId, status: $status${newColumn !== undefined ? ', sprintColumn: $sprintColumn' : ''}${autoAssign ? ', assigneeId: $assigneeId' : ''}) { task { taskId } warnings }
         }`,
         { taskId, status, ...(newColumn !== undefined ? { sprintColumn: newColumn } : {}), ...(autoAssign ? { assigneeId: autoAssign } : {}) },
       );
-    } catch {
+      if (data.updateTask.warnings.length > 0) onWarnings?.(data.updateTask.warnings);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not allowed by the project workflow')) {
+        onWarnings?.([error.message]);
+      }
       loadTasks();
     }
-  }, [tasks, getTaskSprintColumns, userId, loadTasks]);
+  }, [tasks, getTaskSprintColumns, userId, loadTasks, onWarnings]);
 
   const handleSubtaskStatusChange = useCallback(async (parentTaskId: string, taskId: string, status: string) => {
     try {
-      await gql<{ updateTask: Task }>(
-        `mutation UpdateTask($taskId: ID!, $status: String!) { updateTask(taskId: $taskId, status: $status) { taskId } }`,
+      const data = await gql<{ updateTask: UpdateTaskResult }>(
+        `mutation UpdateTask($taskId: ID!, $status: String!) { updateTask(taskId: $taskId, status: $status) { task { taskId } warnings } }`,
         { taskId, status },
       );
       setSubtasks((prev) => ({
         ...prev,
         [parentTaskId]: (prev[parentTaskId] ?? []).map((t) => t.taskId === taskId ? { ...t, status } : t),
       }));
+      if (data.updateTask.warnings.length > 0) onWarnings?.(data.updateTask.warnings);
     } catch {
       // ignore
     }
-  }, []);
+  }, [onWarnings]);
 
   const handleSprintColumnChange = useCallback(async (taskId: string, sprintColumn: string) => {
     const newStatus = columnToStatus(sprintColumn);
@@ -151,16 +162,20 @@ export function useTaskOperations({ projectId, userId, sprints }: UseTaskOperati
       : t
     );
     try {
-      await gql<{ updateTask: Task }>(
+      const data = await gql<{ updateTask: UpdateTaskResult }>(
         `mutation UpdateTask($taskId: ID!, $sprintColumn: String${newStatus ? ', $status: String!' : ''}${autoAssign ? ', $assigneeId: ID' : ''}) {
-          updateTask(taskId: $taskId, sprintColumn: $sprintColumn${newStatus ? ', status: $status' : ''}${autoAssign ? ', assigneeId: $assigneeId' : ''}) { taskId }
+          updateTask(taskId: $taskId, sprintColumn: $sprintColumn${newStatus ? ', status: $status' : ''}${autoAssign ? ', assigneeId: $assigneeId' : ''}) { task { taskId } warnings }
         }`,
         { taskId, sprintColumn, ...(newStatus ? { status: newStatus } : {}), ...(autoAssign ? { assigneeId: autoAssign } : {}) },
       );
-    } catch {
+      if (data.updateTask.warnings.length > 0) onWarnings?.(data.updateTask.warnings);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not allowed by the project workflow')) {
+        onWarnings?.([error.message]);
+      }
       loadTasks();
     }
-  }, [tasks, userId, loadTasks]);
+  }, [tasks, userId, loadTasks, onWarnings]);
 
   // ── Field updates ──
 
@@ -170,9 +185,9 @@ export function useTaskOperations({ projectId, userId, sprints }: UseTaskOperati
     setTasks((prev) => prev.map((t) => t.taskId === taskId ? { ...t, sprintId, sprintColumn: firstColumn } : t));
     setSelectedTask((t) => t?.taskId === taskId ? { ...t, sprintId, sprintColumn: firstColumn } : t);
     try {
-      await gql<{ updateTask: Task }>(
+      await gql<{ updateTask: UpdateTaskResult }>(
         `mutation UpdateTask($taskId: ID!, $sprintId: ID, $sprintColumn: String) {
-          updateTask(taskId: $taskId, sprintId: $sprintId, sprintColumn: $sprintColumn) { taskId }
+          updateTask(taskId: $taskId, sprintId: $sprintId, sprintColumn: $sprintColumn) { task { taskId } warnings }
         }`,
         { taskId, sprintId, sprintColumn: firstColumn },
       );
@@ -185,8 +200,8 @@ export function useTaskOperations({ projectId, userId, sprints }: UseTaskOperati
     setTasks((prev) => prev.map((t) => t.taskId === taskId ? { ...t, assigneeId } : t));
     setSelectedTask((t) => t?.taskId === taskId ? { ...t, assigneeId } : t);
     try {
-      await gql<{ updateTask: Task }>(
-        `mutation UpdateTask($taskId: ID!, $assigneeId: ID) { updateTask(taskId: $taskId, assigneeId: $assigneeId) { taskId } }`,
+      await gql<{ updateTask: UpdateTaskResult }>(
+        `mutation UpdateTask($taskId: ID!, $assigneeId: ID) { updateTask(taskId: $taskId, assigneeId: $assigneeId) { task { taskId } warnings } }`,
         { taskId, assigneeId },
       );
     } catch {
@@ -198,8 +213,8 @@ export function useTaskOperations({ projectId, userId, sprints }: UseTaskOperati
     setTasks((prev) => prev.map((t) => t.taskId === taskId ? { ...t, dueDate } : t));
     setSelectedTask((t) => t?.taskId === taskId ? { ...t, dueDate } : t);
     try {
-      await gql<{ updateTask: Task }>(
-        `mutation UpdateTask($taskId: ID!, $dueDate: String) { updateTask(taskId: $taskId, dueDate: $dueDate) { taskId } }`,
+      await gql<{ updateTask: UpdateTaskResult }>(
+        `mutation UpdateTask($taskId: ID!, $dueDate: String) { updateTask(taskId: $taskId, dueDate: $dueDate) { task { taskId } warnings } }`,
         { taskId, dueDate },
       );
     } catch {
@@ -298,9 +313,9 @@ export function useTaskOperations({ projectId, userId, sprints }: UseTaskOperati
     );
 
     try {
-      await gql<{ updateTask: Task }>(
+      await gql<{ updateTask: UpdateTaskResult }>(
         `mutation UpdateTask($taskId: ID!, $position: Float, $sprintId: ID, $sprintColumn: String) {
-          updateTask(taskId: $taskId, position: $position, sprintId: $sprintId, sprintColumn: $sprintColumn) { taskId }
+          updateTask(taskId: $taskId, position: $position, sprintId: $sprintId, sprintColumn: $sprintColumn) { task { taskId } warnings }
         }`,
         { taskId, position: newPosition, sprintId: targetSprintId, sprintColumn: newSprintColumn },
       );
@@ -362,8 +377,8 @@ export function useTaskOperations({ projectId, userId, sprints }: UseTaskOperati
     if (!selectedTask || !editTitleValue.trim()) return;
     setEditingTitle(false);
     try {
-      await gql<{ updateTask: Task }>(
-        `mutation UpdateTask($taskId: ID!, $title: String!) { updateTask(taskId: $taskId, title: $title) { taskId } }`,
+      await gql<{ updateTask: UpdateTaskResult }>(
+        `mutation UpdateTask($taskId: ID!, $title: String!) { updateTask(taskId: $taskId, title: $title) { task { taskId } warnings } }`,
         { taskId: selectedTask.taskId, title: editTitleValue },
       );
       const updated = { ...selectedTask, title: editTitleValue };
@@ -391,8 +406,8 @@ export function useTaskOperations({ projectId, userId, sprints }: UseTaskOperati
     setSelectedTask((t) => t?.taskId === taskId ? { ...t, ...updates } : t);
 
     try {
-      await gql<{ updateTask: Task }>(
-        `mutation UpdateTask(${mutationParts.join(', ')}) { updateTask(taskId: $taskId, ${argsPart}) { taskId } }`,
+      await gql<{ updateTask: UpdateTaskResult }>(
+        `mutation UpdateTask(${mutationParts.join(', ')}) { updateTask(taskId: $taskId, ${argsPart}) { task { taskId } warnings } }`,
         vars,
       );
     } catch {
@@ -419,8 +434,8 @@ export function useTaskOperations({ projectId, userId, sprints }: UseTaskOperati
     if (archived) setSelectedTask((t) => t?.taskId === taskId ? null : t);
     else setSelectedTask((t) => t?.taskId === taskId ? { ...t, archived } : t);
     try {
-      await gql<{ updateTask: Task }>(
-        `mutation UpdateTask($taskId: ID!, $archived: Boolean) { updateTask(taskId: $taskId, archived: $archived) { taskId } }`,
+      await gql<{ updateTask: UpdateTaskResult }>(
+        `mutation UpdateTask($taskId: ID!, $archived: Boolean) { updateTask(taskId: $taskId, archived: $archived) { task { taskId } warnings } }`,
         { taskId, archived },
       );
     } catch {

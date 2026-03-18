@@ -5,6 +5,7 @@ import MembersTab from './settings/MembersTab';
 import AutomationTab from './settings/AutomationTab';
 import CustomFieldsTab from './settings/CustomFieldsTab';
 import TemplatesTab from './settings/TemplatesTab';
+import WorkflowTab from './settings/WorkflowTab';
 
 interface Props {
   projectId: string;
@@ -12,13 +13,14 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = 'members' | 'automation' | 'fields' | 'templates';
+type Tab = 'members' | 'automation' | 'fields' | 'templates' | 'workflow';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'members', label: 'Members' },
   { key: 'automation', label: 'Automation' },
   { key: 'fields', label: 'Custom Fields' },
   { key: 'templates', label: 'Templates' },
+  { key: 'workflow', label: 'Workflow' },
 ];
 
 export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: Props) {
@@ -49,6 +51,7 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
         {tab === 'automation' && <AutomationTab projectId={projectId} orgUsers={orgUsers} />}
         {tab === 'fields' && <CustomFieldsTab projectId={projectId} />}
         {tab === 'templates' && <TemplatesTab projectId={projectId} />}
+        {tab === 'workflow' && <WorkflowTab projectId={projectId} />}
       </div>
     </Modal>
   );
