@@ -46,8 +46,7 @@ describe('buildTaskPlanPrompt', () => {
 
   it('contains the task count cap in systemPrompt', () => {
     const result = buildTaskPlanPrompt('My Project', 'desc', 'prompt');
-    expect(result.systemPrompt).toContain('5–10 tasks');
-    expect(result.systemPrompt).toContain('NEVER more than 10');
+    expect(result.systemPrompt).toContain('1–8 implementation tasks');
   });
 
   it('wraps project title in user_input tags', () => {
