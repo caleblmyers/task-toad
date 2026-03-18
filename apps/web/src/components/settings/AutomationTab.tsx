@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { gql } from '../../api/client';
+import { useFormState } from '../../hooks/useFormState';
 import type { OrgUser } from '../../types';
 import Button from '../shared/Button';
 
@@ -34,12 +35,30 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [ruleName, setRuleName] = useState('');
-  const [triggerEvent, setTriggerEvent] = useState('task.status_changed');
-  const [triggerConditionKey, setTriggerConditionKey] = useState('newStatus');
-  const [triggerConditionValue, setTriggerConditionValue] = useState('');
-  const [actionType, setActionType] = useState('notify_assignee');
-  const [actionParam, setActionParam] = useState('');
+  const createRuleForm = useFormState(
+    { name: '', triggerEvent: 'task.status_changed', conditionKey: 'newStatus', conditionValue: '', actionType: 'notify_assignee', actionParam: '' },
+    async (values) => {
+      if (!values.name.trim()) return;
+      const trigger: Record<string, unknown> = { event: values.triggerEvent };
+      if (values.conditionValue.trim()) {
+        trigger.condition = { [values.conditionKey]: values.conditionValue.trim() };
+      }
+      const action: Record<string, string> = { type: values.actionType };
+      if (values.actionType === 'move_to_column') action.column = values.actionParam;
+      else if (values.actionType === 'set_status') action.status = values.actionParam;
+      else if (values.actionType === 'assign_to') action.userId = values.actionParam;
+
+      const { createAutomationRule } = await gql<{ createAutomationRule: AutomationRule }>(
+        `mutation CreateRule($projectId: ID!, $name: String!, $trigger: String!, $action: String!) {
+          createAutomationRule(projectId: $projectId, name: $name, trigger: $trigger, action: $action) { id name trigger action enabled createdAt }
+        }`,
+        { projectId, name: values.name.trim(), trigger: JSON.stringify(trigger), action: JSON.stringify(action) },
+      );
+      setRules((prev) => [...prev, createAutomationRule]);
+      // Reset name and param fields, preserve trigger/action type selections
+      createRuleForm.setValues((prev) => ({ ...prev, name: '', conditionValue: '', actionParam: '' }));
+    },
+  );
 
   const loadRules = useCallback(async () => {
     setLoading(true);
@@ -57,34 +76,6 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
   }, [projectId]);
 
   useEffect(() => { loadRules(); }, [loadRules]);
-
-  const handleCreateRule = async () => {
-    if (!ruleName.trim()) return;
-    setError(null);
-    const trigger: Record<string, unknown> = { event: triggerEvent };
-    if (triggerConditionValue.trim()) {
-      trigger.condition = { [triggerConditionKey]: triggerConditionValue.trim() };
-    }
-    const action: Record<string, string> = { type: actionType };
-    if (actionType === 'move_to_column') action.column = actionParam;
-    else if (actionType === 'set_status') action.status = actionParam;
-    else if (actionType === 'assign_to') action.userId = actionParam;
-
-    try {
-      const { createAutomationRule } = await gql<{ createAutomationRule: AutomationRule }>(
-        `mutation CreateRule($projectId: ID!, $name: String!, $trigger: String!, $action: String!) {
-          createAutomationRule(projectId: $projectId, name: $name, trigger: $trigger, action: $action) { id name trigger action enabled createdAt }
-        }`,
-        { projectId, name: ruleName.trim(), trigger: JSON.stringify(trigger), action: JSON.stringify(action) },
-      );
-      setRules((prev) => [...prev, createAutomationRule]);
-      setRuleName('');
-      setTriggerConditionValue('');
-      setActionParam('');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to create rule');
-    }
-  };
 
   const handleToggleRule = async (ruleId: string, enabled: boolean) => {
     try {
@@ -175,18 +166,19 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
 
       <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700">
         <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Add rule</p>
+        {createRuleForm.error && <p className="text-sm text-red-600 mb-2">{createRuleForm.error}</p>}
         <input
           type="text"
-          value={ruleName}
-          onChange={(e) => setRuleName(e.target.value)}
+          value={createRuleForm.values.name}
+          onChange={(e) => createRuleForm.setValue('name', e.target.value)}
           placeholder="Rule name"
           className="w-full text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1.5"
         />
         <div className="flex items-center gap-2">
           <label className="text-xs text-slate-500 dark:text-slate-400">When:</label>
           <select
-            value={triggerEvent}
-            onChange={(e) => setTriggerEvent(e.target.value)}
+            value={createRuleForm.values.triggerEvent}
+            onChange={(e) => createRuleForm.setValue('triggerEvent', e.target.value)}
             className="flex-1 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1"
           >
             {TRIGGER_EVENTS.map((e) => (
@@ -198,16 +190,16 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
           <label className="text-xs text-slate-500 dark:text-slate-400">Condition:</label>
           <input
             type="text"
-            value={triggerConditionKey}
-            onChange={(e) => setTriggerConditionKey(e.target.value)}
+            value={createRuleForm.values.conditionKey}
+            onChange={(e) => createRuleForm.setValue('conditionKey', e.target.value)}
             placeholder="key"
             className="w-24 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1"
           />
           <span className="text-xs text-slate-400">=</span>
           <input
             type="text"
-            value={triggerConditionValue}
-            onChange={(e) => setTriggerConditionValue(e.target.value)}
+            value={createRuleForm.values.conditionValue}
+            onChange={(e) => createRuleForm.setValue('conditionValue', e.target.value)}
             placeholder="value (optional)"
             className="flex-1 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1"
           />
@@ -215,8 +207,8 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
         <div className="flex items-center gap-2">
           <label className="text-xs text-slate-500 dark:text-slate-400">Then:</label>
           <select
-            value={actionType}
-            onChange={(e) => setActionType(e.target.value)}
+            value={createRuleForm.values.actionType}
+            onChange={(e) => createRuleForm.setValue('actionType', e.target.value)}
             className="flex-1 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1"
           >
             {ACTION_TYPES.map((a) => (
@@ -224,15 +216,15 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
             ))}
           </select>
         </div>
-        {actionType !== 'notify_assignee' && (
+        {createRuleForm.values.actionType !== 'notify_assignee' && (
           <div className="flex items-center gap-2">
             <label className="text-xs text-slate-500 dark:text-slate-400">
-              {actionType === 'move_to_column' ? 'Column:' : actionType === 'set_status' ? 'Status:' : 'User:'}
+              {createRuleForm.values.actionType === 'move_to_column' ? 'Column:' : createRuleForm.values.actionType === 'set_status' ? 'Status:' : 'User:'}
             </label>
-            {actionType === 'assign_to' ? (
+            {createRuleForm.values.actionType === 'assign_to' ? (
               <select
-                value={actionParam}
-                onChange={(e) => setActionParam(e.target.value)}
+                value={createRuleForm.values.actionParam}
+                onChange={(e) => createRuleForm.setValue('actionParam', e.target.value)}
                 className="flex-1 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1"
               >
                 <option value="">Select user...</option>
@@ -243,16 +235,16 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
             ) : (
               <input
                 type="text"
-                value={actionParam}
-                onChange={(e) => setActionParam(e.target.value)}
-                placeholder={actionType === 'move_to_column' ? 'Column name' : 'Status slug'}
+                value={createRuleForm.values.actionParam}
+                onChange={(e) => createRuleForm.setValue('actionParam', e.target.value)}
+                placeholder={createRuleForm.values.actionType === 'move_to_column' ? 'Column name' : 'Status slug'}
                 className="flex-1 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1"
               />
             )}
           </div>
         )}
-        <Button size="sm" disabled={!ruleName.trim()} onClick={handleCreateRule}>
-          Create Rule
+        <Button size="sm" disabled={createRuleForm.loading || !createRuleForm.values.name.trim()} onClick={() => createRuleForm.handleSubmit()}>
+          {createRuleForm.loading ? 'Creating...' : 'Create Rule'}
         </Button>
       </div>
     </>

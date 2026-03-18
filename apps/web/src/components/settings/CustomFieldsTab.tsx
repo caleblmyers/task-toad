@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { gql } from '../../api/client';
+import { useFormState } from '../../hooks/useFormState';
 import { parseOptions } from '../../utils/jsonHelpers';
 import Button from '../shared/Button';
 
@@ -21,10 +22,27 @@ export default function CustomFieldsTab({ projectId }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [cfName, setCfName] = useState('');
-  const [cfType, setCfType] = useState('TEXT');
-  const [cfOptions, setCfOptions] = useState('');
-  const [cfRequired, setCfRequired] = useState(false);
+  const createFieldForm = useFormState(
+    { name: '', type: 'TEXT', options: '', required: false },
+    async (values) => {
+      if (!values.name.trim()) return;
+      const { createCustomField } = await gql<{ createCustomField: CustomFieldDef }>(
+        `mutation CreateCF($projectId: ID!, $name: String!, $fieldType: String!, $options: String, $required: Boolean) {
+          createCustomField(projectId: $projectId, name: $name, fieldType: $fieldType, options: $options, required: $required) { customFieldId name fieldType options required position }
+        }`,
+        {
+          projectId,
+          name: values.name.trim(),
+          fieldType: values.type,
+          options: values.type === 'DROPDOWN' && values.options.trim() ? JSON.stringify(values.options.split(',').map((s) => s.trim()).filter(Boolean)) : null,
+          required: values.required,
+        },
+      );
+      setCustomFields((prev) => [...prev, createCustomField]);
+      // Reset name, options, required but preserve type selection
+      createFieldForm.setValues((prev) => ({ ...prev, name: '', options: '', required: false }));
+    },
+  );
 
   const loadFields = useCallback(async () => {
     setLoading(true);
@@ -42,31 +60,6 @@ export default function CustomFieldsTab({ projectId }: Props) {
   }, [projectId]);
 
   useEffect(() => { loadFields(); }, [loadFields]);
-
-  const handleCreateCustomField = async () => {
-    if (!cfName.trim()) return;
-    setError(null);
-    try {
-      const { createCustomField } = await gql<{ createCustomField: CustomFieldDef }>(
-        `mutation CreateCF($projectId: ID!, $name: String!, $fieldType: String!, $options: String, $required: Boolean) {
-          createCustomField(projectId: $projectId, name: $name, fieldType: $fieldType, options: $options, required: $required) { customFieldId name fieldType options required position }
-        }`,
-        {
-          projectId,
-          name: cfName.trim(),
-          fieldType: cfType,
-          options: cfType === 'DROPDOWN' && cfOptions.trim() ? JSON.stringify(cfOptions.split(',').map((s) => s.trim()).filter(Boolean)) : null,
-          required: cfRequired,
-        },
-      );
-      setCustomFields((prev) => [...prev, createCustomField]);
-      setCfName('');
-      setCfOptions('');
-      setCfRequired(false);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to create custom field');
-    }
-  };
 
   const handleDeleteCustomField = async (fieldId: string) => {
     try {
@@ -158,18 +151,19 @@ export default function CustomFieldsTab({ projectId }: Props) {
 
       <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700">
         <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Add custom field</p>
+        {createFieldForm.error && <p className="text-sm text-red-600 mb-2">{createFieldForm.error}</p>}
         <input
           type="text"
-          value={cfName}
-          onChange={(e) => setCfName(e.target.value)}
+          value={createFieldForm.values.name}
+          onChange={(e) => createFieldForm.setValue('name', e.target.value)}
           placeholder="Field name"
           className="w-full text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1.5"
         />
         <div className="flex items-center gap-2">
           <label className="text-xs text-slate-500 dark:text-slate-400">Type:</label>
           <select
-            value={cfType}
-            onChange={(e) => setCfType(e.target.value)}
+            value={createFieldForm.values.type}
+            onChange={(e) => createFieldForm.setValue('type', e.target.value)}
             className="flex-1 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1"
           >
             <option value="TEXT">Text</option>
@@ -178,11 +172,11 @@ export default function CustomFieldsTab({ projectId }: Props) {
             <option value="DROPDOWN">Dropdown</option>
           </select>
         </div>
-        {cfType === 'DROPDOWN' && (
+        {createFieldForm.values.type === 'DROPDOWN' && (
           <input
             type="text"
-            value={cfOptions}
-            onChange={(e) => setCfOptions(e.target.value)}
+            value={createFieldForm.values.options}
+            onChange={(e) => createFieldForm.setValue('options', e.target.value)}
             placeholder="Options (comma-separated)"
             className="w-full text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1.5"
           />
@@ -190,14 +184,14 @@ export default function CustomFieldsTab({ projectId }: Props) {
         <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
           <input
             type="checkbox"
-            checked={cfRequired}
-            onChange={(e) => setCfRequired(e.target.checked)}
+            checked={createFieldForm.values.required}
+            onChange={(e) => createFieldForm.setValue('required', e.target.checked)}
             className="rounded"
           />
           Required field
         </label>
-        <Button size="sm" disabled={!cfName.trim()} onClick={handleCreateCustomField}>
-          Create Field
+        <Button size="sm" disabled={createFieldForm.loading || !createFieldForm.values.name.trim()} onClick={() => createFieldForm.handleSubmit()}>
+          {createFieldForm.loading ? 'Creating...' : 'Create Field'}
         </Button>
       </div>
     </>
