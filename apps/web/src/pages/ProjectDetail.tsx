@@ -62,6 +62,12 @@ export default function ProjectDetail() {
   const [activeModal, setActiveModal] = useState<string | null>(null);
   // View panels that replace the main content (not modal overlays)
   const [activePanel, setActivePanel] = useState<'standup' | 'health' | 'trends' | 'cycle-time' | null>(null);
+  // Kanban swimlane grouping
+  const [groupBy, setGroupBy] = useState<'assignee' | 'priority' | 'epic' | null>(() => {
+    const saved = localStorage.getItem('kanban-groupBy');
+    if (saved === 'assignee' || saved === 'priority' || saved === 'epic') return saved;
+    return null;
+  });
   const [timelineView, setTimelineView] = useState(false);
   const [projectActivities, setProjectActivities] = useState<Activity[]>([]);
   const [gitHubRepo, setGitHubRepo] = useState<GitHubRepoLink | null>(null);
@@ -467,16 +473,40 @@ export default function ProjectDetail() {
               onAssignSprint={handleAssignSprint}
             />
           ) : d.activeSprint ? (
-            <div className="flex-1 overflow-x-auto overflow-y-hidden px-6 py-4">
-              <KanbanBoard
-                columns={parseColumns(d.activeSprint.columns)}
-                tasks={filtering.filteredTasks.filter((t) => t.sprintId === d.activeSprint!.sprintId && !t.archived)}
-                subtasks={d.subtasks}
-                selectedTask={d.selectedTask}
-                onSelectTask={d.selectTask}
-                onColumnChange={d.handleSprintColumnChange}
-                epicMap={d.epicMap}
-              />
+            <div className="flex-1 overflow-x-auto overflow-y-hidden px-6 py-4 flex flex-col">
+              <div className="flex items-center gap-2 mb-3 flex-shrink-0">
+                <label htmlFor="groupby-select" className="text-xs text-slate-500 dark:text-slate-400">Group by</label>
+                <select
+                  id="groupby-select"
+                  value={groupBy ?? ''}
+                  onChange={(e) => {
+                    const val = e.target.value as 'assignee' | 'priority' | 'epic' | '';
+                    const next = val || null;
+                    setGroupBy(next);
+                    if (next) localStorage.setItem('kanban-groupBy', next);
+                    else localStorage.removeItem('kanban-groupBy');
+                  }}
+                  className="text-xs border border-slate-300 dark:border-slate-600 rounded px-2 py-1 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200"
+                >
+                  <option value="">None</option>
+                  <option value="assignee">By Assignee</option>
+                  <option value="priority">By Priority</option>
+                  <option value="epic">By Epic</option>
+                </select>
+              </div>
+              <div className="flex-1 min-h-0">
+                <KanbanBoard
+                  columns={parseColumns(d.activeSprint.columns)}
+                  tasks={filtering.filteredTasks.filter((t) => t.sprintId === d.activeSprint!.sprintId && !t.archived)}
+                  subtasks={d.subtasks}
+                  selectedTask={d.selectedTask}
+                  onSelectTask={d.selectTask}
+                  onColumnChange={d.handleSprintColumnChange}
+                  epicMap={d.epicMap}
+                  groupBy={groupBy}
+                  orgUsers={d.orgUsers}
+                />
+              </div>
             </div>
           ) : (
             <div className="flex-1 flex items-center justify-center">

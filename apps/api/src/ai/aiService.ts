@@ -215,7 +215,7 @@ export async function summarizeProject(
 export async function planSprints(
   apiKey: string,
   projectName: string,
-  tasks: { title: string; estimatedHours: number | null; priority: string; dependsOn: string | null }[],
+  tasks: { title: string; estimatedHours: number | null; priority: string }[],
   sprintLengthWeeks: number,
   teamSize: number,
   promptLogContext?: PromptLogContext

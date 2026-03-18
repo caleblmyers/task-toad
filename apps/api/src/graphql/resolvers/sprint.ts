@@ -407,7 +407,6 @@ export const sprintMutations = {
         title: t.title,
         estimatedHours: t.estimatedHours,
         priority: t.priority,
-        dependsOn: t.dependsOn,
       })),
       args.sprintLengthWeeks,
       args.teamSize

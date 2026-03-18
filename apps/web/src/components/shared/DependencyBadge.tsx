@@ -15,13 +15,9 @@ const statusDot: Record<string, string> = {
   todo: 'bg-slate-400',
 };
 
-function parseDeps(raw?: string | null): string[] {
-  if (!raw) return [];
-  try { return JSON.parse(raw) as string[]; } catch { return []; }
-}
-
 export default function DependencyBadge({ task, allTasks, onTaskClick }: DependencyBadgeProps) {
-  const depIds = parseDeps(task.dependsOn);
+  // Use TaskDependency join table: dependents = tasks that block this one (linkType='blocks')
+  const blockerDeps = task.dependents?.filter(d => d.linkType === 'blocks') ?? [];
   const [showTooltip, setShowTooltip] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -36,11 +32,11 @@ export default function DependencyBadge({ task, allTasks, onTaskClick }: Depende
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showTooltip]);
 
-  if (depIds.length === 0) return null;
+  if (blockerDeps.length === 0) return null;
 
-  const deps = depIds.map((id) => {
-    const t = allTasks.find((at) => at.taskId === id);
-    return { id, task: t ?? null };
+  const deps = blockerDeps.map((dep) => {
+    const t = dep.sourceTask ?? allTasks.find((at) => at.taskId === dep.sourceTaskId) ?? null;
+    return { id: dep.sourceTaskId, task: t };
   });
 
   const blockedCount = deps.filter((d) => d.task?.status !== 'done').length;
@@ -62,7 +58,7 @@ export default function DependencyBadge({ task, allTasks, onTaskClick }: Depende
               <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="3,8 7,12 13,4" />
               </svg>
-              {depIds.length}
+              {blockerDeps.length}
             </>
           )}
         </Badge>

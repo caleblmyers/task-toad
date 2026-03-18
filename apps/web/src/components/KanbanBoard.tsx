@@ -1,6 +1,5 @@
 import { useRef, useMemo, useState, useCallback } from 'react';
 import type { Task } from '../types';
-import { parseDependsOn } from '../utils/taskHelpers';
 import DependencyBadge from './shared/DependencyBadge';
 import Badge from './shared/Badge';
 import Card from './shared/Card';
@@ -49,6 +48,13 @@ function needsRebalance(sorted: Task[]): boolean {
   return false;
 }
 
+type GroupBy = 'assignee' | 'priority' | 'epic' | null;
+
+interface OrgUser {
+  userId: string;
+  email: string;
+}
+
 interface KanbanBoardProps {
   columns: string[];
   tasks: Task[];
@@ -58,9 +64,43 @@ interface KanbanBoardProps {
   onColumnChange: (taskId: string, columnName: string) => void;
   onReorderTask?: (taskId: string, position: number) => Promise<void>;
   epicMap?: Map<string, string>;
+  groupBy?: GroupBy;
+  orgUsers?: OrgUser[];
 }
 
-export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, onSelectTask, onColumnChange, onReorderTask, epicMap }: KanbanBoardProps) {
+const SPECIAL_LAST_KEYS = new Set(['Unassigned', 'No Epic', 'none']);
+
+function getGroupKey(task: Task, groupBy: NonNullable<GroupBy>, epicMap?: Map<string, string>): string {
+  switch (groupBy) {
+    case 'assignee': return task.assigneeId || 'Unassigned';
+    case 'priority': return task.priority || 'none';
+    case 'epic': return epicMap?.get(task.parentTaskId || '') || 'No Epic';
+    default: return 'all';
+  }
+}
+
+function sortGroupKeys(keys: string[]): string[] {
+  return keys.sort((a, b) => {
+    const aSpecial = SPECIAL_LAST_KEYS.has(a);
+    const bSpecial = SPECIAL_LAST_KEYS.has(b);
+    if (aSpecial && !bSpecial) return 1;
+    if (!aSpecial && bSpecial) return -1;
+    return a.localeCompare(b);
+  });
+}
+
+function getGroupLabel(key: string, groupBy: NonNullable<GroupBy>, orgUsers?: OrgUser[]): string {
+  if (groupBy === 'assignee' && key !== 'Unassigned') {
+    const user = orgUsers?.find(u => u.userId === key);
+    return user?.email ?? key.slice(0, 8);
+  }
+  if (groupBy === 'priority') {
+    return key.charAt(0).toUpperCase() + key.slice(1);
+  }
+  return key;
+}
+
+export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, onSelectTask, onColumnChange, onReorderTask, epicMap, groupBy, orgUsers }: KanbanBoardProps) {
   const draggedId = useRef<string | null>(null);
   const [movingTaskId, setMovingTaskId] = useState<string | null>(null);
   const [moveAnnouncement, setMoveAnnouncement] = useState('');
@@ -95,16 +135,41 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
   const blockedTasks = useMemo(() => {
     const blocked = new Set<string>();
     for (const task of tasks) {
-      const ids = parseDependsOn(task.dependsOn);
-      if (ids.length === 0) continue;
-      const isBlocked = ids.some((id) => {
-        const dep = tasks.find((t) => t.taskId === id);
-        return !dep || dep.status !== 'done';
-      });
+      // Check dependents (tasks that block this one via 'blocks' link type)
+      const blockers = task.dependents?.filter(d => d.linkType === 'blocks') ?? [];
+      if (blockers.length === 0) continue;
+      const isBlocked = blockers.some(d => d.sourceTask && d.sourceTask.status !== 'done');
       if (isBlocked) blocked.add(task.taskId);
     }
     return blocked;
   }, [tasks]);
+
+  // Swimlane grouping: group tasks within each column by groupBy key
+  const swimlaneData = useMemo(() => {
+    if (!groupBy) return null;
+    const result = new Map<string, Map<string, Task[]>>();
+    const allGroupKeys = new Set<string>();
+    for (const [col, colTasks] of tasksByColumn) {
+      const groups = new Map<string, Task[]>();
+      for (const task of colTasks) {
+        const key = getGroupKey(task, groupBy, epicMap);
+        allGroupKeys.add(key);
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(task);
+      }
+      result.set(col, groups);
+    }
+    return { grouped: result, sortedKeys: sortGroupKeys([...allGroupKeys]) };
+  }, [tasksByColumn, groupBy, epicMap]);
+
+  const [collapsedSwimlanes, setCollapsedSwimlanes] = useState<Set<string>>(new Set());
+  const toggleSwimlane = useCallback((key: string) => {
+    setCollapsedSwimlanes(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }, []);
 
   const handleCardKeyDown = useCallback((e: React.KeyboardEvent, task: Task) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -188,6 +253,92 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
     }
   }, [movingTaskId, columns, onColumnChange, tasksByColumn, onReorderTask]);
 
+  const renderCard = useCallback((task: Task, style: typeof COLUMN_ACCENTS[number], col: string) => {
+    const isSelected = selectedTask?.taskId === task.taskId;
+    const subtaskCount = subtasks[task.taskId]?.length ?? 0;
+    const isBlocked = blockedTasks.has(task.taskId);
+    const isMoving = movingTaskId === task.taskId;
+    return (
+      <Card
+        key={task.taskId}
+        padding="none"
+        className={`p-3 shadow-sm border-l-4 ${
+          task.taskType === 'epic' ? 'border-l-purple-500' :
+          task.taskType === 'story' ? 'border-l-blue-500' :
+          style.barColor
+        }
+          cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow duration-150
+          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1
+          ${isSelected ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
+          ${isBlocked ? 'opacity-75' : ''}
+          ${isMoving ? 'border-dashed border-2 border-blue-400 shadow-lg' : ''}`}
+      >
+        <div
+          draggable
+          tabIndex={0}
+          role="option"
+          aria-selected={isSelected}
+          aria-description="Press Enter to move this task. Use Left/Right arrows to change column, Up/Down arrows to reorder within column."
+          onDragStart={() => { draggedId.current = task.taskId; }}
+          onClick={() => onSelectTask(task)}
+          onKeyDown={(e) => handleCardKeyDown(e, task)}
+        >
+          <div className="flex items-center gap-1.5 mb-0.5">
+            {task.taskType !== 'task' && (
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                task.taskType === 'epic' ? 'bg-purple-500' :
+                task.taskType === 'story' ? 'bg-blue-500' :
+                'bg-slate-400'
+              }`} title={task.taskType} />
+            )}
+            <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-snug line-clamp-2">{task.title}</p>
+          </div>
+          {task.parentTaskId && epicMap?.get(task.parentTaskId) && (
+            <span className="text-[10px] text-purple-600 bg-purple-50 dark:text-purple-400 dark:bg-purple-900/30 px-1.5 py-0.5 rounded-full truncate max-w-[120px] inline-block mt-0.5">
+              {epicMap.get(task.parentTaskId)}
+            </span>
+          )}
+          {task.description && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{task.description}</p>
+          )}
+          {task.labels && task.labels.length > 0 && (
+            <div className="flex items-center gap-1 mt-1.5">
+              {task.labels.slice(0, 4).map((l) => (
+                <span
+                  key={l.labelId}
+                  className="text-[10px] px-1.5 py-0 rounded-full"
+                  style={{ backgroundColor: l.color + '20', color: l.color }}
+                >
+                  {l.name}
+                </span>
+              ))}
+            </div>
+          )}
+          <DependencyBadge task={task} allTasks={tasks} onTaskClick={(id) => {
+            const t = tasks.find((at) => at.taskId === id);
+            if (t) onSelectTask(t);
+          }} />
+          <div className="flex items-center justify-between mt-2">
+            <Badge variant={style.pillVariant}>{col}</Badge>
+            {subtaskCount > 0 && (
+              <span className="text-xs text-slate-500">{subtaskCount} tasks</span>
+            )}
+          </div>
+        </div>
+      </Card>
+    );
+  }, [selectedTask, subtasks, blockedTasks, movingTaskId, epicMap, tasks, onSelectTask, handleCardKeyDown]);
+
+  const renderTaskList = useCallback((taskList: Task[], style: typeof COLUMN_ACCENTS[number], col: string) => (
+    taskList.length === 0 ? (
+      <div className="flex items-center justify-center h-16 text-xs text-slate-500">
+        No tasks
+      </div>
+    ) : (
+      taskList.map((task) => renderCard(task, style, col))
+    )
+  ), [renderCard]);
+
   return (
     <div className="flex gap-4 h-full">
       {/* Live region for keyboard move announcements */}
@@ -233,86 +384,42 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
             </div>
 
             <div className="flex-1 px-2 pb-2 space-y-2 min-h-[4rem]" role="listbox" aria-label={`${col} column`}>
-              {colTasks.length === 0 ? (
-                <div className="flex items-center justify-center h-16 text-xs text-slate-500">
-                  No tasks
-                </div>
-              ) : (
-                colTasks.map((task) => {
-                  const isSelected = selectedTask?.taskId === task.taskId;
-                  const subtaskCount = subtasks[task.taskId]?.length ?? 0;
-                  const isBlocked = blockedTasks.has(task.taskId);
-                  const isMoving = movingTaskId === task.taskId;
+              {swimlaneData ? (
+                // Swimlane mode: group tasks by the groupBy key
+                swimlaneData.sortedKeys.map((groupKey) => {
+                  const groupTasks = swimlaneData.grouped.get(col)?.get(groupKey) ?? [];
+                  const isCollapsed = collapsedSwimlanes.has(groupKey);
+                  const label = getGroupLabel(groupKey, groupBy!, orgUsers);
                   return (
-                    <Card
-                      key={task.taskId}
-                      padding="none"
-                      className={`p-3 shadow-sm border-l-4 ${
-                        task.taskType === 'epic' ? 'border-l-purple-500' :
-                        task.taskType === 'story' ? 'border-l-blue-500' :
-                        style.barColor
-                      }
-                        cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow duration-150
-                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1
-                        ${isSelected ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
-                        ${isBlocked ? 'opacity-75' : ''}
-                        ${isMoving ? 'border-dashed border-2 border-blue-400 shadow-lg' : ''}`}
-                    >
-                      <div
-                        draggable
-                        tabIndex={0}
-                        role="option"
-                        aria-selected={isSelected}
-                        aria-description="Press Enter to move this task. Use Left/Right arrows to change column, Up/Down arrows to reorder within column."
-                        onDragStart={() => { draggedId.current = task.taskId; }}
-                        onClick={() => onSelectTask(task)}
-                        onKeyDown={(e) => handleCardKeyDown(e, task)}
+                    <div key={groupKey}>
+                      <button
+                        type="button"
+                        onClick={() => toggleSwimlane(groupKey)}
+                        className="w-full flex items-center gap-1.5 px-1 py-1 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
                       >
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          {task.taskType !== 'task' && (
-                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                              task.taskType === 'epic' ? 'bg-purple-500' :
-                              task.taskType === 'story' ? 'bg-blue-500' :
-                              'bg-slate-400'
-                            }`} title={task.taskType} />
-                          )}
-                          <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-snug line-clamp-2">{task.title}</p>
+                        <svg
+                          width="10"
+                          height="10"
+                          viewBox="0 0 10 10"
+                          className={`transition-transform ${isCollapsed ? '' : 'rotate-90'}`}
+                          fill="currentColor"
+                        >
+                          <path d="M3 1l4 4-4 4z" />
+                        </svg>
+                        <span className="truncate">{label}</span>
+                        <span className="ml-auto text-slate-400 flex-shrink-0">{groupTasks.length}</span>
+                      </button>
+                      {!isCollapsed && (
+                        <div className="space-y-2 mt-1">
+                          {renderTaskList(groupTasks, style, col)}
                         </div>
-                        {task.parentTaskId && epicMap?.get(task.parentTaskId) && (
-                          <span className="text-[10px] text-purple-600 bg-purple-50 dark:text-purple-400 dark:bg-purple-900/30 px-1.5 py-0.5 rounded-full truncate max-w-[120px] inline-block mt-0.5">
-                            {epicMap.get(task.parentTaskId)}
-                          </span>
-                        )}
-                        {task.description && (
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{task.description}</p>
-                        )}
-                        {task.labels && task.labels.length > 0 && (
-                          <div className="flex items-center gap-1 mt-1.5">
-                            {task.labels.slice(0, 4).map((l) => (
-                              <span
-                                key={l.labelId}
-                                className="text-[10px] px-1.5 py-0 rounded-full"
-                                style={{ backgroundColor: l.color + '20', color: l.color }}
-                              >
-                                {l.name}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        <DependencyBadge task={task} allTasks={tasks} onTaskClick={(id) => {
-                          const t = tasks.find((at) => at.taskId === id);
-                          if (t) onSelectTask(t);
-                        }} />
-                        <div className="flex items-center justify-between mt-2">
-                          <Badge variant={style.pillVariant}>{col}</Badge>
-                          {subtaskCount > 0 && (
-                            <span className="text-xs text-slate-500">{subtaskCount} tasks</span>
-                          )}
-                        </div>
-                      </div>
-                    </Card>
+                      )}
+                    </div>
                   );
                 })
+              ) : (
+                // Flat mode: no swimlanes
+                renderTaskList(colTasks, style, col)
               )}
             </div>
           </div>

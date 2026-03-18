@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import type { Task } from '../types';
-import { parseDependsOn } from '../utils/taskHelpers';
 
 interface GanttChartProps {
   tasks: Task[];
@@ -182,17 +181,17 @@ export default function GanttChart({ tasks, onSelectTask }: GanttChartProps) {
     const paths: { d: string; key: string }[] = [];
 
     for (const task of allTasks) {
-      if (!task.dependsOn) continue;
-      const depIds = parseDependsOn(task.dependsOn);
-      if (depIds.length === 0) continue;
+      // Use dependents (tasks that block this one) for dependency arrows
+      const blockers = task.dependents?.filter(d => d.linkType === 'blocks') ?? [];
+      if (blockers.length === 0) continue;
 
       const toIdx = taskIndex.get(task.taskId);
       if (toIdx === undefined) continue;
       const toBar = getTaskBar(task);
       if (!toBar) continue;
 
-      for (const depId of depIds) {
-        const fromIdx = taskIndex.get(depId);
+      for (const dep of blockers) {
+        const fromIdx = taskIndex.get(dep.sourceTaskId);
         if (fromIdx === undefined) continue;
         const fromTask = allTasks[fromIdx];
         const fromBar = getTaskBar(fromTask);
@@ -205,7 +204,7 @@ export default function GanttChart({ tasks, onSelectTask }: GanttChartProps) {
         const cpx = (x1 + x2) / 2;
 
         paths.push({
-          key: `${depId}-${task.taskId}`,
+          key: `${dep.sourceTaskId}-${task.taskId}`,
           d: `M ${x1} ${y1} Q ${cpx} ${y1}, ${cpx} ${(y1 + y2) / 2} Q ${cpx} ${y2}, ${x2} ${y2}`,
         });
       }

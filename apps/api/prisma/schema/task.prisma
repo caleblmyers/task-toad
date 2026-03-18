@@ -11,7 +11,6 @@ model Task {
   estimatedHours Float?   @map("estimated_hours")
   storyPoints    Int?     @map("story_points")
   priority       String   @default("medium")
-  dependsOn      String?  @map("depends_on")
   status         String   @default("todo")
   taskType       String   @default("task") @map("task_type")
   sprintId       String?  @map("sprint_id")

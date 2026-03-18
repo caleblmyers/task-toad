@@ -62,7 +62,7 @@ export const taskMutations = {
 
   updateTask: async (
     _parent: unknown,
-    args: { taskId: string; title?: string; status?: string; description?: string; instructions?: string; acceptanceCriteria?: string; dependsOn?: string | null; sprintId?: string | null; sprintColumn?: string | null; assigneeId?: string | null; dueDate?: string | null; position?: number | null; archived?: boolean; storyPoints?: number | null; taskType?: string; recurrenceRule?: string | null; force?: boolean },
+    args: { taskId: string; title?: string; status?: string; description?: string; instructions?: string; acceptanceCriteria?: string; sprintId?: string | null; sprintColumn?: string | null; assigneeId?: string | null; dueDate?: string | null; position?: number | null; archived?: boolean; storyPoints?: number | null; taskType?: string; recurrenceRule?: string | null; force?: boolean },
     context: Context
   ) => {
     parseInput(UpdateTaskInput, { title: args.title, description: args.description, instructions: args.instructions, acceptanceCriteria: args.acceptanceCriteria });
@@ -135,7 +135,6 @@ export const taskMutations = {
         ...(args.description !== undefined ? { description: args.description } : {}),
         ...(args.instructions !== undefined ? { instructions: args.instructions } : {}),
         ...(args.acceptanceCriteria !== undefined ? { acceptanceCriteria: args.acceptanceCriteria } : {}),
-        ...(args.dependsOn !== undefined ? { dependsOn: args.dependsOn } : {}),
         ...(args.sprintId !== undefined ? { sprintId: args.sprintId } : {}),
         ...(args.sprintColumn !== undefined ? { sprintColumn: args.sprintColumn } : {}),
         ...(args.assigneeId !== undefined ? { assigneeId: args.assigneeId } : {}),
@@ -154,7 +153,6 @@ export const taskMutations = {
       ['assigneeId', task.assigneeId, args.assigneeId],
       ['sprintId', task.sprintId, args.sprintId],
       ['dueDate', task.dueDate, args.dueDate],
-      ['dependsOn', task.dependsOn, args.dependsOn],
       ['archived', String(task.archived), args.archived !== undefined ? String(args.archived) : undefined],
       ['recurrenceRule', task.recurrenceRule ?? null, args.recurrenceRule !== undefined ? (args.recurrenceRule || null) : undefined],
     ];

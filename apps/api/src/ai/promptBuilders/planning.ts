@@ -13,7 +13,7 @@ import {
 
 export function buildPlanSprintsPrompt(
   projectName: string,
-  tasks: { title: string; estimatedHours: number | null; priority: string; dependsOn: string | null }[],
+  tasks: { title: string; estimatedHours: number | null; priority: string }[],
   sprintLengthWeeks: number,
   teamSize: number
 ): Prompt {

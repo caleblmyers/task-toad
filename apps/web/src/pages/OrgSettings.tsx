@@ -133,7 +133,8 @@ export default function OrgSettings() {
       }
 
       // Otherwise handle inline (direct navigation fallback)
-      linkInstallation(callbackInstallationId, loadInstallations);
+      // Defer to avoid setState-during-render lint warning
+      setTimeout(() => linkInstallation(callbackInstallationId, loadInstallations), 0);
     } else {
       loadInstallations();
     }

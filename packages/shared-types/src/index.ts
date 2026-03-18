@@ -58,7 +58,6 @@ export interface Task {
   estimatedHours?: number | null;
   storyPoints?: number | null;
   priority: string;
-  dependsOn?: string | null;
   status: string;
   taskType: string;
   projectId: string;
