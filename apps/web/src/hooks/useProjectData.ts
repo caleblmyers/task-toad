@@ -1,16 +1,13 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { useCallback, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import { gql } from '../api/client';
 import { useAuth } from '../auth/context';
-import { PROJECT_QUERY, ORG_USERS_QUERY, PROJECT_STATS_QUERY, UPDATE_PROJECT_MUTATION, EPICS_QUERY, REFRESH_REPO_PROFILE_MUTATION } from '../api/queries';
 import { useTaskCRUD } from './useTaskCRUD';
 import { useSprintManagement } from './useSprintManagement';
 import { useAIGeneration } from './useAIGeneration';
-import { useConfirmDialog } from '../components/shared/ConfirmDialog';
-import { parseStatuses } from '../utils/jsonHelpers';
+import { useProjectState } from './useProjectState';
+import { useProjectEffects } from './useProjectEffects';
 import type { Task, TaskPlanPreview, Sprint, OrgUser, CloseSprintResult, Project, Comment, Activity, ProjectStats, Label, Epic, ActionPlanPreview, TaskActionPlan } from '../types';
-
-const VIEW_KEY = 'task-toad-view';
 
 export interface ProjectData {
   projectId: string | undefined;
@@ -142,37 +139,12 @@ export interface ProjectData {
 
 export function useProjectData(): ProjectData {
   const { projectId } = useParams<{ projectId: string }>();
-  const location = useLocation();
-  const navigate = useNavigate();
   const { user } = useAuth();
-  const locationState = location.state as { autoPreview?: boolean } | null;
 
-  // ── Project state ──
-  const [project, setProject] = useState<Project | null>(null);
-  const [orgUsers, setOrgUsers] = useState<OrgUser[]>([]);
-  const [dashboardStats, setDashboardStats] = useState<ProjectStats | null>(null);
-
-  const [epics, setEpics] = useState<Epic[]>([]);
-
-  const stored = localStorage.getItem(VIEW_KEY);
-  const validViews = ['backlog', 'board', 'dashboard', 'table', 'calendar', 'epics'];
-  const [view, setView] = useState<'backlog' | 'board' | 'dashboard' | 'table' | 'calendar' | 'epics'>(
-    validViews.includes(stored ?? '') ? (stored as 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar' | 'epics') : 'backlog'
-  );
-
-  const autoPreviewFiredRef = useRef(false);
-
-  const projectStatuses: string[] = useMemo(() => {
-    if (!project) return ['todo', 'in_progress', 'done'];
-    return parseStatuses(project.statuses);
-  }, [project]);
-
-  // ── Refs for cross-hook communication (breaks circular init dependency) ──
+  // ── Refs for cross-hook communication ──
   const taskCrudRef = useRef<ReturnType<typeof useTaskCRUD>>(null!);
 
   // ── Compose sub-hooks ──
-  // sprintMgmt needs setTasks/setErr from taskCrud, but taskCrud needs sprints from sprintMgmt.
-  // We use refs so callbacks can access taskCrud without initialization-order issues.
   const sprintMgmt = useSprintManagement({
     projectId,
     onTasksChanged: (updater) => taskCrudRef.current.setTasks((prev) => updater(prev)),
@@ -186,6 +158,11 @@ export function useProjectData(): ProjectData {
   });
   taskCrudRef.current = taskCrud;
 
+  const projectState = useProjectState({
+    projectId,
+    setErr: (e) => taskCrud.setErr(e),
+  });
+
   const ai = useAIGeneration({
     projectId,
     setTasks: taskCrud.setTasks,
@@ -196,160 +173,45 @@ export function useProjectData(): ProjectData {
     loadSubtasks: taskCrud.loadSubtasks,
   });
 
-  // ── Project data loading ──
-
-  const loadProject = useCallback(async () => {
-    if (!projectId) return;
-    try {
-      const data = await gql<{ project: Project | null }>(PROJECT_QUERY, { projectId });
-      if (data.project) setProject(data.project);
-    } catch {
-      // ignore
-    }
+  // ── Effects ──
+  const loadAll = useCallback(async () => {
+    const results = await Promise.all([
+      projectState.loadProject(), taskCrud.loadTasks(), sprintMgmt.loadSprints(),
+      projectState.loadOrgUsers(), taskCrud.loadLabels(), projectState.loadEpics(),
+    ]);
+    return results[1]; // loadTasks result
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
-  const loadOrgUsers = useCallback(async () => {
-    try {
-      const data = await gql<{ orgUsers: OrgUser[] }>(ORG_USERS_QUERY);
-      setOrgUsers(data.orgUsers);
-    } catch {
-      // ignore
-    }
-  }, []);
+  const { ConfirmDialogPortal } = useProjectEffects({
+    projectId,
+    isGenerating: ai.isGenerating,
+    abortRef: ai.abortRef,
+    loadAll: async () => { await loadAll(); },
+    autoPreviewCheck: () => true, // The effect itself handles task count check
+    onAutoPreview: () => ai.openPreview(),
+  });
 
-  const loadEpics = useCallback(async () => {
-    if (!projectId) return;
-    try {
-      const data = await gql<{ epics: Epic[] }>(EPICS_QUERY, { projectId });
-      setEpics(data.epics);
-    } catch {
-      // ignore
-    }
-  }, [projectId]);
-
-  const epicMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const e of epics) map.set(e.taskId, e.title);
-    return map;
-  }, [epics]);
-
-  const loadDashboardStats = useCallback(async () => {
-    if (!projectId) return;
-    try {
-      const data = await gql<{ projectStats: ProjectStats }>(PROJECT_STATS_QUERY, { projectId });
-      setDashboardStats(data.projectStats);
-    } catch {
-      // ignore
-    }
-  }, [projectId]);
-
-  const handleUpdateProject = useCallback(async (data: { name?: string; description?: string; prompt?: string; knowledgeBase?: string; statuses?: string }) => {
-    if (!projectId) return;
-    try {
-      const result = await gql<{ updateProject: Project }>(UPDATE_PROJECT_MUTATION, { projectId, ...data });
-      setProject(result.updateProject);
-    } catch (error) {
-      taskCrudRef.current.setErr(error instanceof Error ? error.message : 'Failed to update project');
-    }
-  }, [projectId]);
-
-  const handleRefreshRepoProfile = useCallback(async () => {
-    if (!projectId) return;
-    try {
-      const result = await gql<{ refreshRepoProfile: Project }>(REFRESH_REPO_PROFILE_MUTATION, { projectId });
-      setProject(result.refreshRepoProfile);
-    } catch (error) {
-      taskCrudRef.current.setErr(error instanceof Error ? error.message : 'Failed to refresh repo profile');
-    }
-  }, [projectId]);
-
-  const switchView = useCallback((v: 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar' | 'epics') => {
-    setView(v);
-    localStorage.setItem(VIEW_KEY, v);
-    if (v === 'dashboard') loadDashboardStats();
-  }, [loadDashboardStats]);
-
-  // ── Lifecycle effects ──
-
-  // Load all data on project change
-  useEffect(() => {
-    Promise.all([loadProject(), taskCrud.loadTasks(), sprintMgmt.loadSprints(), loadOrgUsers(), taskCrud.loadLabels(), loadEpics()]).then(([, loadedTasks]) => {
-      if (locationState?.autoPreview && loadedTasks.length === 0 && !autoPreviewFiredRef.current) {
-        autoPreviewFiredRef.current = true;
-        navigate(location.pathname, { replace: true, state: {} });
-        ai.openPreview();
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId]);
-
-  // Block browser tab close during generation
-  useEffect(() => {
-    if (!ai.isGenerating) return;
-    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
-  }, [ai.isGenerating]);
-
-  // Intercept browser back/forward during generation
-  const isGeneratingRef = useRef(false);
-  isGeneratingRef.current = ai.isGenerating;
-
-  const { confirm: confirmNavAway, ConfirmDialogPortal } = useConfirmDialog();
-  const confirmNavAwayRef = useRef(confirmNavAway);
-  confirmNavAwayRef.current = confirmNavAway;
-
-  useEffect(() => {
-    if (!ai.isGenerating) return;
-    window.history.pushState(null, '', window.location.href);
-    const handlePopState = () => {
-      if (!isGeneratingRef.current) return;
-      window.history.pushState(null, '', window.location.href);
-      confirmNavAwayRef.current({
-        title: 'Leave page?',
-        message: 'An AI generation is in progress. If you leave, the request will be cancelled.',
-        confirmLabel: 'Leave',
-        cancelLabel: 'Stay',
-        variant: 'warning',
-      }).then((leave) => {
-        if (leave) {
-          ai.abortRef.current?.abort();
-          ai.abortRef.current = null;
-          window.history.back();
-        }
-      });
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [ai.isGenerating, ai.abortRef]);
-
-  // Cleanup abort controller on unmount
-  useEffect(() => {
-    return () => { ai.abortRef.current?.abort(); };
-  }, [ai.abortRef]);
-
-  // ── Wrap handleSprintClosed to pass loadTasks ──
+  // ── Wrapped handlers ──
   const handleSprintClosed = useCallback((result: CloseSprintResult) => {
     sprintMgmt.handleSprintClosed(result, taskCrud.loadTasks);
   }, [sprintMgmt.handleSprintClosed, taskCrud.loadTasks]);
 
-  // ── Wrap AI handlers that create epics to also reload epic list ──
   const handleCommitPlan = useCallback(async (selectedTasks: TaskPlanPreview[]) => {
     await ai.handleCommitPlan(selectedTasks);
-    loadEpics();
-  }, [ai.handleCommitPlan, loadEpics]);
+    projectState.loadEpics();
+  }, [ai.handleCommitPlan, projectState.loadEpics]);
 
   const handleCommitPRD = useCallback(async (epics: string) => {
     await ai.handleCommitPRD(epics);
-    loadEpics();
-  }, [ai.handleCommitPRD, loadEpics]);
+    projectState.loadEpics();
+  }, [ai.handleCommitPRD, projectState.loadEpics]);
 
   const handleBootstrapFromRepo = useCallback(async () => {
     await ai.handleBootstrapFromRepo();
-    loadEpics();
-  }, [ai.handleBootstrapFromRepo, loadEpics]);
+    projectState.loadEpics();
+  }, [ai.handleBootstrapFromRepo, projectState.loadEpics]);
 
-  // ── Kanban reorder (direct position update) ──
   const handleKanbanReorderTask = useCallback(async (taskId: string, position: number) => {
     taskCrud.setTasks((prev) => prev.map((t) => t.taskId === taskId ? { ...t, position } : t));
     taskCrud.setSelectedTask((t) => t?.taskId === taskId ? { ...t, position } : t);
@@ -366,129 +228,83 @@ export function useProjectData(): ProjectData {
   // ── Return unified interface ──
   return {
     projectId,
-    project,
-    tasks: taskCrud.tasks,
-    hasMore: taskCrud.hasMore,
-    loading: taskCrud.loading,
-    err: taskCrud.err,
-    selectedTask: taskCrud.selectedTask,
-    subtasks: taskCrud.subtasks,
-    sprints: sprintMgmt.sprints,
-    orgUsers,
-    labels: taskCrud.labels,
-    epics,
-    epicMap,
-    previewTasks: ai.previewTasks,
-    previewLoading: ai.previewLoading,
-    previewError: ai.previewError,
-    committing: ai.committing,
-    summary: ai.summary,
-    summarizing: ai.summarizing,
-    generatingInstructions: ai.generatingInstructions,
-    isGenerating: ai.isGenerating,
-    view,
-    editingTitle: taskCrud.editingTitle,
-    editTitleValue: taskCrud.editTitleValue,
-    showAddForm: taskCrud.showAddForm,
-    newTaskTitle: taskCrud.newTaskTitle,
+    project: projectState.project,
+    tasks: taskCrud.tasks, hasMore: taskCrud.hasMore, loading: taskCrud.loading,
+    err: taskCrud.err, selectedTask: taskCrud.selectedTask, subtasks: taskCrud.subtasks,
+    sprints: sprintMgmt.sprints, orgUsers: projectState.orgUsers, labels: taskCrud.labels,
+    epics: projectState.epics, epicMap: projectState.epicMap,
+    previewTasks: ai.previewTasks, previewLoading: ai.previewLoading,
+    previewError: ai.previewError, committing: ai.committing,
+    summary: ai.summary, summarizing: ai.summarizing,
+    generatingInstructions: ai.generatingInstructions, isGenerating: ai.isGenerating,
+    view: projectState.view,
+    editingTitle: taskCrud.editingTitle, editTitleValue: taskCrud.editTitleValue,
+    showAddForm: taskCrud.showAddForm, newTaskTitle: taskCrud.newTaskTitle,
     addErr: taskCrud.addErr,
-    showSprintModal: sprintMgmt.showSprintModal,
-    editingSprint: sprintMgmt.editingSprint,
-    showSprintPlanModal: sprintMgmt.showSprintPlanModal,
-    closeSprintId: sprintMgmt.closeSprintId,
-    comments: taskCrud.comments,
-    taskActivities: taskCrud.taskActivities,
-    dashboardStats,
-    selectedTaskIds: taskCrud.selectedTaskIds,
-    projectStatuses,
+    showSprintModal: sprintMgmt.showSprintModal, editingSprint: sprintMgmt.editingSprint,
+    showSprintPlanModal: sprintMgmt.showSprintPlanModal, closeSprintId: sprintMgmt.closeSprintId,
+    comments: taskCrud.comments, taskActivities: taskCrud.taskActivities,
+    dashboardStats: projectState.dashboardStats,
+    selectedTaskIds: taskCrud.selectedTaskIds, projectStatuses: projectState.projectStatuses,
 
     // Actions
-    loadTasks: taskCrud.loadTasks,
-    loadMoreTasks: taskCrud.loadMoreTasks,
+    loadTasks: taskCrud.loadTasks, loadMoreTasks: taskCrud.loadMoreTasks,
     selectTask: taskCrud.selectTask,
     handleStatusChange: taskCrud.handleStatusChange,
     handleSubtaskStatusChange: taskCrud.handleSubtaskStatusChange,
     handleSprintColumnChange: taskCrud.handleSprintColumnChange,
-    handleAssignSprint: taskCrud.handleAssignSprint,
-    handleAssignUser: taskCrud.handleAssignUser,
-    handleDueDateChange: taskCrud.handleDueDateChange,
-    handleReorderTask: taskCrud.handleReorderTask,
+    handleAssignSprint: taskCrud.handleAssignSprint, handleAssignUser: taskCrud.handleAssignUser,
+    handleDueDateChange: taskCrud.handleDueDateChange, handleReorderTask: taskCrud.handleReorderTask,
     handleKanbanReorderTask,
     handleActivateSprint: sprintMgmt.handleActivateSprint,
     handleCreateSprint: sprintMgmt.handleCreateSprint,
     handleSprintPlanCreated: sprintMgmt.handleSprintPlanCreated,
-    handleSprintClosed,
-    handleSprintUpdated: sprintMgmt.handleSprintUpdated,
+    handleSprintClosed, handleSprintUpdated: sprintMgmt.handleSprintUpdated,
     handleDeleteSprint: sprintMgmt.handleDeleteSprint,
-    openPreview: ai.openPreview,
-    handleCommitPlan,
-    handleSummarize: ai.handleSummarize,
+    openPreview: ai.openPreview, handleCommitPlan, handleSummarize: ai.handleSummarize,
     handleGenerateInstructions: ai.handleGenerateInstructions,
-    handleAddTask: taskCrud.handleAddTask,
-    startEditTitle: taskCrud.startEditTitle,
-    handleTitleSave: taskCrud.handleTitleSave,
-    handleUpdateTask: taskCrud.handleUpdateTask,
-    switchView,
-    handleUpdateProject,
-    handleRefreshRepoProfile,
+    handleAddTask: taskCrud.handleAddTask, startEditTitle: taskCrud.startEditTitle,
+    handleTitleSave: taskCrud.handleTitleSave, handleUpdateTask: taskCrud.handleUpdateTask,
+    switchView: projectState.switchView,
+    handleUpdateProject: projectState.handleUpdateProject,
+    handleRefreshRepoProfile: projectState.handleRefreshRepoProfile,
     handleUpdateDependencies: taskCrud.handleUpdateDependencies,
-    handleBulkUpdate: taskCrud.handleBulkUpdate,
-    handleArchiveTask: taskCrud.handleArchiveTask,
+    handleBulkUpdate: taskCrud.handleBulkUpdate, handleArchiveTask: taskCrud.handleArchiveTask,
     handleBulkCreateTasks: taskCrud.handleBulkCreateTasks,
     handleCreateSubtask: taskCrud.handleCreateSubtask,
-    handleCreateLabel: taskCrud.handleCreateLabel,
-    handleDeleteLabel: taskCrud.handleDeleteLabel,
-    handleAddTaskLabel: taskCrud.handleAddTaskLabel,
-    handleRemoveTaskLabel: taskCrud.handleRemoveTaskLabel,
-    handleCreateComment: taskCrud.handleCreateComment,
-    handleUpdateComment: taskCrud.handleUpdateComment,
+    handleCreateLabel: taskCrud.handleCreateLabel, handleDeleteLabel: taskCrud.handleDeleteLabel,
+    handleAddTaskLabel: taskCrud.handleAddTaskLabel, handleRemoveTaskLabel: taskCrud.handleRemoveTaskLabel,
+    handleCreateComment: taskCrud.handleCreateComment, handleUpdateComment: taskCrud.handleUpdateComment,
     handleDeleteComment: taskCrud.handleDeleteComment,
-    handleParseBugReport: ai.handleParseBugReport,
-    handlePreviewPRD: ai.handlePreviewPRD,
-    handleCommitPRD,
-    handleBootstrapFromRepo,
-    loadDashboardStats,
+    handleParseBugReport: ai.handleParseBugReport, handlePreviewPRD: ai.handlePreviewPRD,
+    handleCommitPRD, handleBootstrapFromRepo, loadDashboardStats: projectState.loadDashboardStats,
 
-    // State setters (backwards compat)
-    setSelectedTask: taskCrud.setSelectedTask,
-    setErr: taskCrud.setErr,
-    setSummary: ai.setSummary,
-    setPreviewTasks: ai.setPreviewTasks,
+    // State setters
+    setSelectedTask: taskCrud.setSelectedTask, setErr: taskCrud.setErr,
+    setSummary: ai.setSummary, setPreviewTasks: ai.setPreviewTasks,
     setPreviewError: ai.setPreviewError,
-    setShowAddForm: taskCrud.setShowAddForm,
-    setNewTaskTitle: taskCrud.setNewTaskTitle,
-    setEditTitleValue: taskCrud.setEditTitleValue,
-    setEditingTitle: taskCrud.setEditingTitle,
-    setShowSprintModal: sprintMgmt.setShowSprintModal,
-    setEditingSprint: sprintMgmt.setEditingSprint,
-    setShowSprintPlanModal: sprintMgmt.setShowSprintPlanModal,
-    setCloseSprintId: sprintMgmt.setCloseSprintId,
+    setShowAddForm: taskCrud.setShowAddForm, setNewTaskTitle: taskCrud.setNewTaskTitle,
+    setEditTitleValue: taskCrud.setEditTitleValue, setEditingTitle: taskCrud.setEditingTitle,
+    setShowSprintModal: sprintMgmt.setShowSprintModal, setEditingSprint: sprintMgmt.setEditingSprint,
+    setShowSprintPlanModal: sprintMgmt.setShowSprintPlanModal, setCloseSprintId: sprintMgmt.setCloseSprintId,
     setSelectedTaskIds: taskCrud.setSelectedTaskIds,
 
     // Action plan
-    actionPlanPreview: ai.actionPlanPreview,
-    actionPlanPreviewLoading: ai.actionPlanPreviewLoading,
+    actionPlanPreview: ai.actionPlanPreview, actionPlanPreviewLoading: ai.actionPlanPreviewLoading,
     actionPlan: ai.actionPlan,
     handlePreviewActionPlan: ai.handlePreviewActionPlan,
     handleCommitActionPlan: ai.handleCommitActionPlan,
     handleExecuteActionPlan: ai.handleExecuteActionPlan,
     handleCompleteManualAction: ai.handleCompleteManualAction,
-    handleSkipAction: ai.handleSkipAction,
-    handleRetryAction: ai.handleRetryAction,
-    handleCancelActionPlan: ai.handleCancelActionPlan,
-    loadActionPlan: ai.loadActionPlan,
-    setActionPlanPreview: ai.setActionPlanPreview,
-    setActionPlan: ai.setActionPlan,
+    handleSkipAction: ai.handleSkipAction, handleRetryAction: ai.handleRetryAction,
+    handleCancelActionPlan: ai.handleCancelActionPlan, loadActionPlan: ai.loadActionPlan,
+    setActionPlanPreview: ai.setActionPlanPreview, setActionPlan: ai.setActionPlan,
 
     // Computed
-    activeSprint: sprintMgmt.activeSprint,
-    rootTasks: taskCrud.rootTasks,
+    activeSprint: sprintMgmt.activeSprint, rootTasks: taskCrud.rootTasks,
 
     // Refs
-    titleEditRef: taskCrud.titleEditRef,
-    abortRef: ai.abortRef,
-
-    // Confirm dialog portal
+    titleEditRef: taskCrud.titleEditRef, abortRef: ai.abortRef,
     ConfirmDialogPortal,
   };
 }
