@@ -2,8 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { gql } from '../api/client';
 import {
   PREVIEW_TASK_PLAN_MUTATION, COMMIT_TASK_PLAN_MUTATION, SUMMARIZE_PROJECT_MUTATION,
-  GENERATE_INSTRUCTIONS_MUTATION, GENERATE_CODE_MUTATION, GENERATE_CODE_FROM_CHILD_TASK_MUTATION,
-  REGENERATE_FILE_MUTATION, PLAN_CODE_MUTATION, GENERATE_PLANNED_FILE_MUTATION,
+  GENERATE_INSTRUCTIONS_MUTATION, PLAN_CODE_MUTATION, GENERATE_PLANNED_FILE_MUTATION,
   CREATE_PR_MUTATION, PARSE_BUG_REPORT_MUTATION, PREVIEW_PRD_MUTATION,
   COMMIT_PRD_MUTATION, BOOTSTRAP_REPO_MUTATION,
   PREVIEW_ACTION_PLAN_MUTATION, COMMIT_ACTION_PLAN_MUTATION, EXECUTE_ACTION_PLAN_MUTATION,
@@ -84,7 +83,6 @@ export function useAIGeneration({
   const [codeGenProgress, setCodeGenProgress] = useState<CodeGenProgress | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
-  const subtaskAbortRef = useRef<AbortController | null>(null);
 
   const isGenerating = previewLoading || summarizing || committing || generatingInstructions !== null || generatingCode !== null;
 
@@ -318,70 +316,6 @@ export function useAIGeneration({
     await handleGeneratePlannedFiles(taskId, [filePath]);
   }, [handleGeneratePlannedFiles]);
 
-  // ── Single-call code generation ──
-
-  const handleGenerateCode = useCallback(async (task: Task) => {
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setGeneratingCode(task.taskId);
-    try {
-      const styleGuide = projectId ? localStorage.getItem(`tasktoad-style-guide-${projectId}`) : null;
-      const data = await gql<{ generateCodeFromTask: GeneratedCode }>(
-        GENERATE_CODE_MUTATION, { taskId: task.taskId, styleGuide }, controller.signal,
-      );
-      setGeneratedCode(data.generateCodeFromTask);
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') return;
-      setErr(error instanceof Error ? error.message : 'Failed to generate code');
-    } finally {
-      setGeneratingCode(null);
-      if (abortRef.current === controller) abortRef.current = null;
-    }
-  }, [projectId, setErr]);
-
-  const handleGenerateCodeFromChildTask = useCallback(async (taskId: string, subtaskId: string): Promise<GeneratedCode | null> => {
-    const controller = new AbortController();
-    subtaskAbortRef.current = controller;
-    try {
-      const styleGuide = projectId ? localStorage.getItem(`tasktoad-style-guide-${projectId}`) : null;
-      const data = await gql<{ generateCodeFromSubtask: GeneratedCode }>(
-        GENERATE_CODE_FROM_CHILD_TASK_MUTATION, { taskId, subtaskId, styleGuide }, controller.signal,
-      );
-      return data.generateCodeFromSubtask;
-    } catch (err: unknown) {
-      if ((err as Error).name !== 'AbortError') {
-        setErr((err as Error).message || 'Child task code generation failed');
-      }
-      return null;
-    } finally {
-      if (subtaskAbortRef.current === controller) subtaskAbortRef.current = null;
-    }
-  }, [projectId, setErr]);
-
-  const cancelSubtaskGeneration = useCallback(() => {
-    subtaskAbortRef.current?.abort();
-    subtaskAbortRef.current = null;
-  }, []);
-
-  const handleRegenerateFile = useCallback(async (
-    taskId: string, filePath: string, feedback?: string,
-  ): Promise<{ path: string; content: string; language: string; description: string } | null> => {
-    try {
-      const data = await gql<{ regenerateCodeFile: { path: string; content: string; language: string; description: string } }>(
-        REGENERATE_FILE_MUTATION, { taskId, filePath, feedback: feedback || null },
-      );
-      const newFile = data.regenerateCodeFile;
-      setGeneratedCode((prev) => {
-        if (!prev) return prev;
-        return { ...prev, files: prev.files.map((f) => f.path === filePath ? newFile : f) };
-      });
-      return newFile;
-    } catch (err: unknown) {
-      setErr((err as Error).message || 'Failed to regenerate file');
-      return null;
-    }
-  }, [setErr]);
-
   const handleCreatePR = useCallback(async (files: Array<{ path: string; content: string }>) => {
     if (!selectedTask || !projectId) return;
     setCreatingPR(true);
@@ -549,11 +483,9 @@ export function useAIGeneration({
     codeGenProgress,
     abortRef,
     openPreview, handleCommitPlan, handleSummarize,
-    handleGenerateInstructions, handleGenerateCode, handleGenerateCodeFromChildTask,
-    handleRegenerateFile, handleCreatePR,
+    handleGenerateInstructions, handleCreatePR,
     handlePlanCodeGeneration, handleGeneratePlannedFiles, handleRetryPlannedFile,
     handleParseBugReport, handlePreviewPRD, handleCommitPRD, handleBootstrapFromRepo,
-    cancelSubtaskGeneration,
     setPreviewTasks, setPreviewError, setSummary, setGeneratedCode, setCodeGenProgress,
     // Action plan
     actionPlanPreview, actionPlanPreviewLoading, actionPlan,

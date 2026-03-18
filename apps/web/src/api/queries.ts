@@ -140,12 +140,6 @@ export const GENERATE_INSTRUCTIONS_MUTATION = `mutation GenerateTaskInstructions
   generateTaskInstructions(taskId: $taskId) { ${TASK_FIELDS} }
 }`;
 
-export const GENERATE_CODE_MUTATION = `mutation($taskId: ID!, $styleGuide: String) {
-  generateCodeFromTask(taskId: $taskId, styleGuide: $styleGuide) {
-    files { path content language description } summary estimatedTokensUsed delegationHint
-  }
-}`;
-
 export const PLAN_CODE_MUTATION = `mutation PlanCodeGeneration($taskId: ID!, $styleGuide: String) {
   planCodeGeneration(taskId: $taskId, styleGuide: $styleGuide) {
     files { path language description exports dependsOn }
@@ -158,16 +152,6 @@ export const GENERATE_PLANNED_FILE_MUTATION = `mutation GeneratePlannedFile($tas
   generatePlannedFile(taskId: $taskId, filePath: $filePath, fileDescription: $fileDescription, planContext: $planContext, completedExports: $completedExports, styleGuide: $styleGuide) {
     path content language description
   }
-}`;
-
-export const GENERATE_CODE_FROM_CHILD_TASK_MUTATION = `mutation GenerateCodeFromSubtask($taskId: ID!, $subtaskId: ID!, $styleGuide: String) {
-  generateCodeFromSubtask(taskId: $taskId, subtaskId: $subtaskId, styleGuide: $styleGuide) {
-    files { path content language description } summary estimatedTokensUsed delegationHint
-  }
-}`;
-
-export const REGENERATE_FILE_MUTATION = `mutation($taskId: ID!, $filePath: String!, $feedback: String) {
-  regenerateCodeFile(taskId: $taskId, filePath: $filePath, feedback: $feedback) { path content language description }
 }`;
 
 export const CREATE_PR_MUTATION = `mutation($projectId: ID!, $taskId: ID!, $files: [GitHubFileInput!]!) {

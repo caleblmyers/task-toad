@@ -4,8 +4,6 @@ import {
   generateTaskPlan as aiGenerateTaskPlan,
   expandTask as aiExpandTask,
   generateTaskInstructions as aiGenerateTaskInstructions,
-  generateCode as aiGenerateCode,
-  regenerateFile as aiRegenerateFile,
   summarizeProject as aiSummarizeProject,
   generateStandupReport as aiGenerateStandupReport,
   generateSprintReport as aiGenerateSprintReport,
@@ -18,7 +16,6 @@ import {
   bootstrapFromRepo as aiBootstrapFromRepo,
   projectChat as aiProjectChat,
   analyzeRepoDrift as aiAnalyzeRepoDrift,
-  batchGenerateCode as aiBatchGenerateCode,
   generateRepoProfile as aiGenerateRepoProfile,
 } from '../../ai/index.js';
 import type { PromptLogContext } from '../../ai/index.js';
@@ -45,7 +42,7 @@ async function buildPromptLogContext(context: Context): Promise<PromptLogContext
     promptLoggingEnabled: org?.promptLoggingEnabled ?? true,
   };
 }
-import { getProjectRepo, fetchProjectFileTree, fetchFileContent, getPullRequestDiff, resolveCodeGenContext, resolveReviewContext } from '../../github/index.js';
+import { getProjectRepo, fetchProjectFileTree, fetchFileContent, getPullRequestDiff, resolveReviewContext } from '../../github/index.js';
 import type { RelevantFile } from '../../github/index.js';
 import { listRecentCommits, listOpenPullRequests } from '../../github/githubFileService.js';
 import { requireProject, sanitizeForPrompt } from '../../utils/resolverHelpers.js';
@@ -496,143 +493,6 @@ export const aiMutations = {
     });
   },
 
-  generateCodeFromTask: async (_parent: unknown, args: { taskId: string; styleGuide?: string | null }, context: Context) => {
-    const user = requireOrg(context);
-    const apiKey = requireApiKey(context);
-    await enforceBudget(context);
-    const task = await context.loaders.taskById.load(args.taskId);
-    if (!task || task.orgId !== user.orgId) {
-      throw new NotFoundError('Task not found');
-    }
-    if (!task.instructions) {
-      throw new ValidationError('Task has no instructions. Generate instructions first.');
-    }
-    const project = await context.loaders.projectById.load(task.projectId);
-    if (!project) throw new NotFoundError('Project not found');
-
-    // Fetch project file tree and targeted file context if repo is connected
-    let projectFiles: Array<{ path: string; language: string; size: number }> | undefined;
-    let relevantFiles: RelevantFile[] | undefined;
-    const repo = await getProjectRepo(task.projectId);
-    if (repo) {
-      const repoContext = await resolveCodeGenContext(repo, task, 15_000).catch(() => null);
-      if (repoContext) {
-        projectFiles = repoContext.fileTree;
-        relevantFiles = repoContext.relevantFiles;
-      } else {
-        projectFiles = await fetchProjectFileTree(repo).catch(() => undefined);
-      }
-    }
-
-    const plc = await buildPromptLogContext(context);
-    return aiGenerateCode(
-      apiKey,
-      task.title,
-      task.description ?? '',
-      task.instructions,
-      project.name,
-      project.description ?? '',
-      projectFiles,
-      args.styleGuide,
-      project.knowledgeBase,
-      plc,
-      relevantFiles
-    );
-  },
-
-  generateCodeFromSubtask: async (_parent: unknown, args: { taskId: string; subtaskId: string; styleGuide?: string | null }, context: Context) => {
-    const user = requireOrg(context);
-    const apiKey = requireApiKey(context);
-    await enforceBudget(context);
-    const parentTask = await context.loaders.taskById.load(args.taskId);
-    if (!parentTask || parentTask.orgId !== user.orgId) {
-      throw new NotFoundError('Parent task not found');
-    }
-    const subtask = await context.loaders.taskById.load(args.subtaskId);
-    if (!subtask || subtask.parentTaskId !== args.taskId) {
-      throw new NotFoundError('Subtask not found or does not belong to the specified parent task');
-    }
-    const project = await context.loaders.projectById.load(parentTask.projectId);
-    if (!project) throw new NotFoundError('Project not found');
-
-    // Build combined instructions: parent context + subtask specifics
-    const subtaskInstructions = [
-      `This is a subtask of '${parentTask.title}'.`,
-      parentTask.instructions ? `Parent task instructions: ${parentTask.instructions}` : '',
-      `Generate code ONLY for this specific subtask: ${subtask.title}`,
-      subtask.description ? `Subtask description: ${subtask.description}` : '',
-      subtask.instructions || '',
-    ].filter(Boolean).join('\n\n');
-
-    let projectFiles: Array<{ path: string; language: string; size: number }> | undefined;
-    let relevantFiles: RelevantFile[] | undefined;
-    const repo = await getProjectRepo(parentTask.projectId);
-    if (repo) {
-      const repoContext = await resolveCodeGenContext(repo, subtask, 15_000).catch(() => null);
-      if (repoContext) {
-        projectFiles = repoContext.fileTree;
-        relevantFiles = repoContext.relevantFiles;
-      } else {
-        projectFiles = await fetchProjectFileTree(repo).catch(() => undefined);
-      }
-    }
-
-    const plc = await buildPromptLogContext(context);
-    return aiGenerateCode(
-      apiKey,
-      subtask.title,
-      subtask.description ?? '',
-      subtaskInstructions,
-      project.name,
-      project.description ?? '',
-      projectFiles,
-      args.styleGuide,
-      project.knowledgeBase,
-      plc,
-      relevantFiles
-    );
-  },
-
-  regenerateCodeFile: async (
-    _parent: unknown,
-    args: { taskId: string; filePath: string; feedback?: string | null },
-    context: Context
-  ) => {
-    const user = requireOrg(context);
-    const apiKey = requireApiKey(context);
-    await enforceBudget(context);
-    const task = await context.loaders.taskById.load(args.taskId);
-    if (!task || task.orgId !== user.orgId) {
-      throw new NotFoundError('Task not found');
-    }
-    if (!task.instructions) {
-      throw new ValidationError('Task has no instructions. Generate instructions first.');
-    }
-    const project = await context.loaders.projectById.load(task.projectId);
-    if (!project) throw new NotFoundError('Project not found');
-
-    let relevantFiles: RelevantFile[] | undefined;
-    const repo = await getProjectRepo(task.projectId);
-    if (repo) {
-      const repoContext = await resolveCodeGenContext(repo, task, 10_000).catch(() => null);
-      relevantFiles = repoContext?.relevantFiles;
-    }
-
-    const plc = await buildPromptLogContext(context);
-    return aiRegenerateFile(
-      apiKey,
-      task.title,
-      task.description ?? '',
-      task.instructions,
-      args.filePath,
-      '', // original content will be passed from frontend in feedback if needed
-      project.name,
-      args.feedback,
-      plc,
-      relevantFiles
-    );
-  },
-
   reviewPullRequest: async (
     _parent: unknown,
     args: { taskId: string; prNumber: number },
@@ -783,59 +643,6 @@ export const aiMutations = {
     }
     // Return only non-epic tasks (epics shown in dedicated Epics view)
     return allCreated.filter((t) => t.taskType !== 'epic');
-  },
-
-  batchGenerateCode: async (
-    _parent: unknown,
-    args: { projectId: string; taskIds: string[]; styleGuide?: string | null },
-    context: Context
-  ) => {
-    const { project } = await requireProject(context, args.projectId);
-    const apiKey = requireApiKey(context);
-    await enforceBudget(context);
-    if (!args.taskIds.length || args.taskIds.length > 5) {
-      throw new ValidationError('Provide 1-5 task IDs');
-    }
-    const tasks = await context.prisma.task.findMany({
-      where: { taskId: { in: args.taskIds }, projectId: args.projectId },
-    });
-    if (tasks.length !== args.taskIds.length) {
-      throw new NotFoundError('One or more tasks not found in this project');
-    }
-    const missingInstructions = tasks.filter((t: { instructions: string | null }) => !t.instructions);
-    if (missingInstructions.length > 0) {
-      throw new ValidationError(`Tasks missing instructions: ${missingInstructions.map((t: { title: string }) => t.title).join(', ')}`);
-    }
-
-    let projectFiles: Array<{ path: string; language: string; size: number }> | undefined;
-    let relevantFiles: RelevantFile[] | undefined;
-    const repo = await getProjectRepo(args.projectId);
-    if (repo) {
-      // Use the first task for keyword context
-      const firstTask = tasks[0] as { title: string; description: string | null; instructions: string | null };
-      const repoContext = await resolveCodeGenContext(repo, firstTask, 12_000).catch(() => null);
-      if (repoContext) {
-        projectFiles = repoContext.fileTree;
-        relevantFiles = repoContext.relevantFiles;
-      } else {
-        projectFiles = await fetchProjectFileTree(repo).catch(() => undefined);
-      }
-    }
-
-    const plc = await buildPromptLogContext(context);
-    return aiBatchGenerateCode(apiKey, {
-      tasks: tasks.map((t: { title: string; description: string | null; instructions: string | null }) => ({
-        title: t.title,
-        description: t.description ?? '',
-        instructions: t.instructions ?? '',
-      })),
-      projectName: project.name,
-      projectDescription: project.description,
-      existingFiles: projectFiles,
-      styleGuide: args.styleGuide,
-      knowledgeBase: project.knowledgeBase,
-      repoContext: relevantFiles,
-    }, plc);
   },
 
   bootstrapProjectFromRepo: async (

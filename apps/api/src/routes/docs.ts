@@ -13,7 +13,7 @@ const domainKeywords: Record<string, string[]> = {
   Task: ['tasks', 'createTask', 'updateTask', 'createSubtask', 'bulkUpdateTasks', 'createLabel', 'deleteLabel', 'addTaskLabel', 'removeTaskLabel', 'labels', 'epics', 'customField', 'setCustomFieldValue', 'addTaskAssignee', 'removeTaskAssignee', 'expandTask'],
   Sprint: ['sprint', 'createSprint', 'updateSprint', 'deleteSprint', 'closeSprint', 'sprintVelocity', 'sprintBurndown', 'previewSprintPlan', 'commitSprintPlan'],
   Comment: ['comment', 'createComment', 'updateComment', 'deleteComment', 'activities'],
-  AI: ['ai', 'generateTaskPlan', 'previewTaskPlan', 'commitTaskPlan', 'generateTaskInstructions', 'generateCodeFromTask', 'generateCodeFromSubtask', 'regenerateCodeFile', 'reviewPullRequest', 'parseBugReport', 'previewPRDBreakdown', 'commitPRDBreakdown', 'bootstrapProjectFromRepo', 'batchGenerateCode', 'analyzeTrends', 'analyzeSprintTransition', 'projectChat', 'analyzeRepoDrift', 'summarizeProject'],
+  AI: ['ai', 'generateTaskPlan', 'previewTaskPlan', 'commitTaskPlan', 'generateTaskInstructions', 'reviewPullRequest', 'parseBugReport', 'previewPRDBreakdown', 'commitPRDBreakdown', 'bootstrapProjectFromRepo', 'analyzeTrends', 'analyzeSprintTransition', 'projectChat', 'analyzeRepoDrift', 'summarizeProject'],
   Search: ['globalSearch'],
   Notification: ['notification', 'markNotificationRead', 'markAllNotificationsRead', 'updateNotificationPreference', 'unreadNotificationCount', 'notificationPreferences'],
   GitHub: ['github', 'linkGitHubInstallation', 'connectGitHubRepo', 'disconnectGitHubRepo', 'createGitHubRepo', 'createPullRequestFromTask', 'syncTaskToGitHub', 'decomposeGitHubIssue', 'generateFixFromReview', 'fetchRepoFileContent'],

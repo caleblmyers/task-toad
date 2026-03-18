@@ -25,7 +25,6 @@ export {
   bootstrapFromRepo,
   projectChat,
   analyzeRepoDrift,
-  batchGenerateCode,
   planTaskActions,
   generateRepoProfile,
 } from './aiService.js';
@@ -58,7 +57,6 @@ export type {
   RepoBootstrap,
   ProjectChatResponse,
   DriftAnalysis,
-  BatchCodeGeneration,
   ActionPlanResponse,
   ActionPlanItem,
   AIFeature,

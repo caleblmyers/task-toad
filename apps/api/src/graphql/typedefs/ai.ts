@@ -171,12 +171,6 @@ export const aiQueryFields = /* GraphQL */ `
 `;
 
 export const aiMutationFields = /* GraphQL */ `
-  """Generate implementation code for a task. Requires task to have instructions."""
-  generateCodeFromTask(taskId: ID!, styleGuide: String): CodeGeneration!
-  """Generate code scoped to a single subtask using parent task context."""
-  generateCodeFromSubtask(taskId: ID!, subtaskId: ID!, styleGuide: String): CodeGeneration!
-  """Regenerate a single file with optional feedback for refinement."""
-  regenerateCodeFile(taskId: ID!, filePath: String!, feedback: String): GeneratedFile!
   """Run AI code review on a GitHub pull request linked to a task."""
   reviewPullRequest(taskId: ID!, prNumber: Int!): CodeReview!
   """Parse a bug report into a structured task with title, description, and priority."""
@@ -186,8 +180,6 @@ export const aiMutationFields = /* GraphQL */ `
   commitPRDBreakdown(projectId: ID!, epics: String!): [Task!]!
   """Analyze a linked GitHub repo and auto-generate tasks from its structure."""
   bootstrapProjectFromRepo(projectId: ID!): [Task!]!
-  """Generate code for multiple tasks at once (max 5)."""
-  batchGenerateCode(projectId: ID!, taskIds: [ID!]!, styleGuide: String): CodeGeneration!
   """Refresh the repo profile (knowledge base) from the linked GitHub repository."""
   refreshRepoProfile(projectId: ID!): Project!
 `;

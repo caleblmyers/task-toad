@@ -26,10 +26,9 @@ import {
   RepoBootstrapSchema,
   ProjectChatResponseSchema,
   DriftAnalysisSchema,
-  BatchCodeGenerationSchema,
   TrendAnalysisSchema,
 } from './aiTypes.js';
-import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse, DriftAnalysis, BatchCodeGeneration, TrendAnalysis, ActionPlanResponse } from './aiTypes.js';
+import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse, DriftAnalysis, TrendAnalysis, ActionPlanResponse } from './aiTypes.js';
 import { FEATURE_CONFIG } from './aiConfig.js';
 import { callAI, type PromptLogContext } from './aiClient.js';
 import { parseJSON } from './responseParser.js';
@@ -57,7 +56,6 @@ import {
   buildRepoBootstrapPrompt,
   buildProjectChatPrompt,
   buildRepoDriftPrompt,
-  buildBatchCodeGenerationPrompt,
   buildTrendAnalysisPrompt,
   buildPlanTaskActionsPrompt,
   buildRepoProfilePrompt,
@@ -511,23 +509,6 @@ export async function analyzeRepoDrift(
 ): Promise<DriftAnalysis> {
   const p = buildRepoDriftPrompt(data);
   return callAndParse(apiKey, 'analyzeRepoDrift', p, DriftAnalysisSchema, promptLogContext);
-}
-
-export async function batchGenerateCode(
-  apiKey: string,
-  data: {
-    tasks: Array<{ title: string; description: string; instructions: string }>;
-    projectName: string;
-    projectDescription?: string | null;
-    existingFiles?: Array<{ path: string; language: string; size: number }>;
-    styleGuide?: string | null;
-    knowledgeBase?: string | null;
-    repoContext?: Array<{ path: string; language: string; content: string; relevanceReason: string }>;
-  },
-  promptLogContext?: PromptLogContext
-): Promise<BatchCodeGeneration> {
-  const p = buildBatchCodeGenerationPrompt(data);
-  return callAndParse(apiKey, 'batchGenerateCode', p, BatchCodeGenerationSchema, promptLogContext);
 }
 
 export async function analyzeTrends(

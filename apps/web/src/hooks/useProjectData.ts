@@ -82,9 +82,6 @@ export interface ProjectData {
   handleCommitPlan: (selectedTasks: TaskPlanPreview[]) => Promise<void>;
   handleSummarize: () => Promise<void>;
   handleGenerateInstructions: (task: Task) => Promise<void>;
-  handleGenerateCode: (task: Task) => Promise<void>;
-  handleGenerateCodeFromChildTask: (taskId: string, subtaskId: string) => Promise<{ files: Array<{ path: string; content: string; language: string; description: string }>; summary: string; estimatedTokensUsed: number; delegationHint?: string | null } | null>;
-  handleRegenerateFile: (taskId: string, filePath: string, feedback?: string) => Promise<{ path: string; content: string; language: string; description: string } | null>;
   handleCreatePR: (files: Array<{ path: string; content: string }>) => Promise<void>;
   handleAddTask: (e: React.FormEvent) => Promise<void>;
   startEditTitle: (task: Task) => void;
@@ -109,7 +106,6 @@ export interface ProjectData {
   handlePreviewPRD: (prd: string) => Promise<{ epics: Array<{ title: string; description: string; tasks: Array<{ title: string; description: string; priority: string; estimatedHours?: number | null; acceptanceCriteria?: string | null }> }> }>;
   handleCommitPRD: (epics: string) => Promise<void>;
   handleBootstrapFromRepo: () => Promise<void>;
-  cancelSubtaskGeneration: () => void;
   loadDashboardStats: () => Promise<void>;
   setSelectedTask: React.Dispatch<React.SetStateAction<Task | null>>;
   setErr: React.Dispatch<React.SetStateAction<string | null>>;
@@ -451,9 +447,6 @@ export function useProjectData(): ProjectData {
     handleCommitPlan,
     handleSummarize: ai.handleSummarize,
     handleGenerateInstructions: ai.handleGenerateInstructions,
-    handleGenerateCode: ai.handleGenerateCode,
-    handleGenerateCodeFromChildTask: ai.handleGenerateCodeFromChildTask,
-    handleRegenerateFile: ai.handleRegenerateFile,
     handleCreatePR: ai.handleCreatePR,
     handleAddTask: taskCrud.handleAddTask,
     startEditTitle: taskCrud.startEditTitle,
@@ -478,7 +471,6 @@ export function useProjectData(): ProjectData {
     handlePreviewPRD: ai.handlePreviewPRD,
     handleCommitPRD,
     handleBootstrapFromRepo,
-    cancelSubtaskGeneration: ai.cancelSubtaskGeneration,
     loadDashboardStats,
 
     // State setters (backwards compat)
