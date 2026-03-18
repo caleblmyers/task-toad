@@ -411,6 +411,62 @@ Without these denylist entries, a request for e.g. `/sw.js` while offline could 
 
 ---
 
+## 2026-03-18 — Adopt a Workflow Engine
+
+**Decision:** Add a `WorkflowTransition` model: `{ fromStatus, toStatus, condition?, postFunction?, allowedRoles? }`. If no transitions are defined for a project, all moves remain allowed (backward-compatible). When transitions exist, `updateTask(status:)` validates the move is permitted.
+
+**Rationale:** Every serious PM tool has configurable workflows. Without transition rules, TaskToad can't enforce process (e.g., "must have assignee before moving to In Progress", "only leads can move to Released"). This also unblocks SLA tracking, automation conditions on transitions, and permission gating.
+
+**Pattern:** Store transitions as a Prisma model (not JSON-in-column) to allow querying/indexing. Evaluate as a simple lookup table (~10-30 rows per project). Reuse existing `AutomationRule` JSON condition pattern for conditions and post-functions.
+
+---
+
+## 2026-03-18 — Replace Single Dependency String with a Dependency Graph
+
+**Decision:** Replace `dependsOn: String?` with a `TaskDependency { sourceTaskId, targetTaskId, linkType: enum('blocks', 'is_blocked_by', 'relates_to', 'duplicates') }` join table. Cycle detection via DFS on create/update (O(V+E), typically O(small subgraph)). Blocking validation prevents status transition if blocking tasks are incomplete.
+
+**Rationale:** Single-string dependencies are a toy model. Real projects have webs of dependencies with different relationship types. Gantt critical path calculation, cross-project dependencies, and blocking enforcement all require a proper graph.
+
+---
+
+## 2026-03-18 — Move to Server-Side Filtering
+
+**Decision:** Add `TaskFilterInput` to the `tasks` GraphQL query with status, priority, assigneeId, labels, customFields, dueDateRange, search, sortBy, sortOrder. Build dynamic Prisma `where` clauses. Deprecate client-side filtering.
+
+**Rationale:** Client-side filtering breaks at ~1000+ tasks. This is a scaling prerequisite, not a feature. Every competitor does server-side filtering.
+
+**Internal representation:** Compound filter expressions using `FilterGroup { operator: AND|OR, conditions: [FilterCondition | FilterGroup] }` — recursively translated to Prisma AND/OR/NOT. This structure also powers the automation engine's compound conditions and any future query language.
+
+---
+
+## 2026-03-18 — Implement Time Tracking (Basic)
+
+**Decision:** Add `TimeEntry { timeEntryId, taskId, userId, orgId, minutes, description, loggedDate, billable, createdAt }`. Log time, compare estimated vs actual, feed into velocity and capacity planning.
+
+**Rationale:** Table-stakes for any team that bills clients or wants to improve estimation accuracy. The model is simple and self-contained. Auto-tracking and timesheets can wait.
+
+---
+
+## 2026-03-18 — Centralize Inline GraphQL Queries
+
+**Decision:** Move the ~65 inline GraphQL query strings scattered across 24 component files into a shared `apps/web/src/api/queries.ts` module as named exports.
+
+**Current state:** Every component that makes a GraphQL call defines its query string inline (template literal in the component or hook file). `ProjectSettingsModal.tsx` alone has 17 inline queries. Duplicated queries exist across files (e.g., the same `tasks` query appears in multiple hooks).
+
+**Target state:** Components import query constants from `api/queries.ts`. Queries are organized by domain (auth, project, task, sprint, ai, etc.) matching the API's typedefs structure.
+
+**Benefits:**
+- **Deduplication** — identical queries are defined once, reducing bundle size
+- **Refactorability** — schema changes require updating one file, not grepping across 24
+- **Discoverability** — all available queries in one place, easy to audit for unused queries
+- **Type safety foundation** — centralized queries enable future codegen (e.g., graphql-codegen) to generate typed response types
+
+**Trade-offs:** Loses query colocation (seeing the query next to the code that uses it). Mitigated by clear naming (`TASKS_QUERY`, `CREATE_TASK_MUTATION`) and IDE go-to-definition. This is the standard pattern used by Apollo Client, urql, and other mature GraphQL clients.
+
+**Rationale:** This is the natural next step as the frontend matures. The collocated pattern works for small apps but becomes a maintenance burden past ~20 queries. With 65+ queries, the refactor pays for itself immediately.
+
+---
+
 ## Stack Lock-in Notes
 
 - `graphql-yoga` requires casting as `unknown as express.RequestHandler` for TS compat in `app.ts`

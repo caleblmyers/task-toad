@@ -289,3 +289,17 @@ Format:
 **Issue:** Main repo had uncommitted wave setup changes (modified AI files, skill files, spawn scripts) that blocked the first merge attempt. Required stashing before merging.
 **Impact:** ~1 min delay for first merge. Stash pop after wave caused conflicts with task-001's deletions.
 **Suggestion:** Wave setup changes should be committed (or stashed) before workers start, so the main branch is clean for merging.
+
+### Reviewer — Positive (Wave 28)
+**Observation:** All 7 tasks merged with zero rejections. Every worker ran full validation before marking complete. No merge conflicts despite 3 workers touching both API and web packages.
+**Why it worked:** Tasks were pure decomposition refactors with non-overlapping file arrays. Barrel re-export pattern preserved backward compatibility, eliminating cross-task dependencies. Workers followed consistent patterns (domain modules + barrel + original file as re-export shim).
+
+### Reviewer — Observation (Wave 28, multi-task branches)
+**Issue:** Worker-2's branch contained both task-002 and task-007 commits, so the squash merge included both tasks in a single commit. This works but prevents clean per-task git history.
+**Impact:** Minor — both tasks validated and merged successfully as one commit.
+**Suggestion:** Workers with multiple tasks could create separate branches per task, or accept that squash merges from multi-task branches combine them. Current approach is acceptable for small, related tasks.
+
+### Reviewer — Observation (Wave 28, dead queries)
+**Issue:** After task-003 removed manual code gen handlers from useAIGeneration, three query constants (`PLAN_CODE_MUTATION`, `GENERATE_PLANNED_FILE_MUTATION`, `CREATE_PR_MUTATION`) became dead code in `apps/web/src/api/queries.ts`. Task scope didn't include cleaning up the queries file.
+**Impact:** Minor — dead code remains in queries.ts. Added to todos.md as follow-up.
+**Suggestion:** When a dead code removal task deletes consumers of query/mutation constants, include the queries file in scope to clean up the full chain.

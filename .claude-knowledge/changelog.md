@@ -6,6 +6,35 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-18
 
+### Wave 28: Codebase Cleanup (3 workers, 7 tasks)
+
+Pure refactoring wave — no behavioral changes. Decomposed oversized files, removed dead code, added missing DB index.
+
+**Worker 1 — API decomposition:**
+- Deleted `BatchCodeGenerationSchema`, `BatchCodeGeneration`, `buildBatchCodeGenerationPrompt` (dead batch code gen exports)
+- Decomposed `promptBuilder.ts` (1,155 lines) → `promptBuilders/generation.ts`, `analysis.ts`, `planning.ts` with barrel re-export
+- Decomposed `resolvers/task.ts` (656 lines) → `resolvers/task/queries.ts`, `mutations.ts`, `fields.ts` with barrel re-export
+
+**Worker 2 — API decomposition + DX:**
+- Decomposed `resolvers/ai.ts` (1,227 lines) → `resolvers/ai/generation.ts`, `analysis.ts`, `reports.ts`, `helpers.ts` with barrel re-export
+- Fixed `as unknown as PromptLogContext['prisma']` unsafe type casts in `resolvers/ai.ts` and `resolvers/taskaction.ts`
+- Added `@@index([orgId])` to User model in `auth.prisma` (was missing, unlike every other model with orgId)
+- Created `useFormState` hook for reusable form loading/error/success state management
+
+**Worker 3 — Web cleanup + decomposition:**
+- Deleted `diff.ts` entirely (unused), `STATUS_TO_COLUMN` from `taskHelpers.ts`, 3 dead handlers from `useAIGeneration.ts` + re-exports from `useProjectData.ts`
+- Decomposed `ProjectSettingsModal.tsx` (910 lines) → parent shell + `settings/MembersTab.tsx`, `AutomationTab.tsx`, `CustomFieldsTab.tsx`, `TemplatesTab.tsx`
+- Decomposed `useTaskCRUD.ts` (608 lines) → `useTaskOperations.ts` + `useTaskRelations.ts`
+- Decomposed `useProjectData.ts` (524 lines) → `useProjectState.ts` + `useProjectEffects.ts`
+
+**Process:** Zero rejections. All 7 tasks merged cleanly. Worker-2's two tasks were squash-merged as a single commit (minor — both validated together).
+
+**Open follow-ups:**
+- Dead query constants (`PLAN_CODE_MUTATION`, `GENERATE_PLANNED_FILE_MUTATION`, `CREATE_PR_MUTATION`) remain in `queries.ts` — consumers removed but constants not cleaned up
+- `useFormState` hook created but not yet adopted in existing settings components
+
+---
+
 ### Wave 27: Dead Code Cleanup, Accessibility, SSE Dedup (3 workers, 3 tasks)
 
 **Worker 1 — Dead Code Cleanup:**
