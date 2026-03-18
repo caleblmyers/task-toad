@@ -32,14 +32,6 @@ export interface ProjectData {
   summary: string | null;
   summarizing: boolean;
   generatingInstructions: string | null;
-  generatingCode: string | null;
-  generatedCode: {
-    files: Array<{ path: string; content: string; language: string; description: string }>;
-    summary: string;
-    estimatedTokensUsed: number;
-    delegationHint?: string | null;
-  } | null;
-  creatingPR: boolean;
   isGenerating: boolean;
   epics: Epic[];
   epicMap: Map<string, string>;
@@ -82,7 +74,6 @@ export interface ProjectData {
   handleCommitPlan: (selectedTasks: TaskPlanPreview[]) => Promise<void>;
   handleSummarize: () => Promise<void>;
   handleGenerateInstructions: (task: Task) => Promise<void>;
-  handleCreatePR: (files: Array<{ path: string; content: string }>) => Promise<void>;
   handleAddTask: (e: React.FormEvent) => Promise<void>;
   startEditTitle: (task: Task) => void;
   handleTitleSave: () => Promise<void>;
@@ -120,16 +111,6 @@ export interface ProjectData {
   setEditingSprint: React.Dispatch<React.SetStateAction<Sprint | null>>;
   setShowSprintPlanModal: React.Dispatch<React.SetStateAction<boolean>>;
   setCloseSprintId: React.Dispatch<React.SetStateAction<string | null>>;
-  setGeneratedCode: React.Dispatch<React.SetStateAction<{
-    files: Array<{ path: string; content: string; language: string; description: string }>;
-    summary: string;
-    estimatedTokensUsed: number;
-  } | null>>;
-  setCodeGenProgress: React.Dispatch<React.SetStateAction<import('./useAIGeneration').CodeGenProgress | null>>;
-  codeGenProgress: import('./useAIGeneration').CodeGenProgress | null;
-  handlePlanCodeGeneration: (task: Task) => Promise<void>;
-  handleGeneratePlannedFiles: (taskId: string, filePaths?: string[]) => Promise<void>;
-  handleRetryPlannedFile: (taskId: string, filePath: string) => Promise<void>;
   setSelectedTaskIds: React.Dispatch<React.SetStateAction<Set<string>>>;
 
   // Action plan
@@ -210,7 +191,6 @@ export function useProjectData(): ProjectData {
     setTasks: taskCrud.setTasks,
     setSubtasks: taskCrud.setSubtasks,
     setSelectedTask: taskCrud.setSelectedTask,
-    selectedTask: taskCrud.selectedTask,
     setErr: (e) => taskCrud.setErr(e),
     loadTasks: taskCrud.loadTasks,
     loadSubtasks: taskCrud.loadSubtasks,
@@ -405,9 +385,6 @@ export function useProjectData(): ProjectData {
     summary: ai.summary,
     summarizing: ai.summarizing,
     generatingInstructions: ai.generatingInstructions,
-    generatingCode: ai.generatingCode,
-    generatedCode: ai.generatedCode,
-    creatingPR: ai.creatingPR,
     isGenerating: ai.isGenerating,
     view,
     editingTitle: taskCrud.editingTitle,
@@ -447,7 +424,6 @@ export function useProjectData(): ProjectData {
     handleCommitPlan,
     handleSummarize: ai.handleSummarize,
     handleGenerateInstructions: ai.handleGenerateInstructions,
-    handleCreatePR: ai.handleCreatePR,
     handleAddTask: taskCrud.handleAddTask,
     startEditTitle: taskCrud.startEditTitle,
     handleTitleSave: taskCrud.handleTitleSave,
@@ -487,12 +463,6 @@ export function useProjectData(): ProjectData {
     setEditingSprint: sprintMgmt.setEditingSprint,
     setShowSprintPlanModal: sprintMgmt.setShowSprintPlanModal,
     setCloseSprintId: sprintMgmt.setCloseSprintId,
-    setGeneratedCode: ai.setGeneratedCode,
-    setCodeGenProgress: ai.setCodeGenProgress,
-    codeGenProgress: ai.codeGenProgress,
-    handlePlanCodeGeneration: ai.handlePlanCodeGeneration,
-    handleGeneratePlannedFiles: ai.handleGeneratePlannedFiles,
-    handleRetryPlannedFile: ai.handleRetryPlannedFile,
     setSelectedTaskIds: taskCrud.setSelectedTaskIds,
 
     // Action plan
