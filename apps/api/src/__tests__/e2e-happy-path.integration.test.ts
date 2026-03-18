@@ -109,13 +109,13 @@ describe('E2E happy path: signup through export', () => {
     expect(task.projectId).toBe(project.projectId);
 
     // 7. Update task
-    const updatedTask = await taskMutations.updateTask(
+    const updateResult = await taskMutations.updateTask(
       null,
       { taskId: task.taskId, status: 'in_progress', description: 'Updated via E2E test' },
       ctx,
     );
-    expect(updatedTask.status).toBe('in_progress');
-    expect(updatedTask.description).toBe('Updated via E2E test');
+    expect(updateResult.task.status).toBe('in_progress');
+    expect(updateResult.task.description).toBe('Updated via E2E test');
 
     // 8. Create comment
     const comment = await taskMutations.createComment(
@@ -150,12 +150,12 @@ describe('E2E happy path: signup through export', () => {
     expect(sprint.projectId).toBe(project.projectId);
 
     // 10. Assign task to sprint
-    const sprintedTask = await taskMutations.updateTask(
+    const sprintResult = await taskMutations.updateTask(
       null,
       { taskId: task.taskId, sprintId: sprint.sprintId },
       ctx,
     );
-    expect(sprintedTask.sprintId).toBe(sprint.sprintId);
+    expect(sprintResult.task.sprintId).toBe(sprint.sprintId);
 
     // 11. Verify export data (query DB directly to check exportable state)
     const exportProject = await prisma.project.findUnique({

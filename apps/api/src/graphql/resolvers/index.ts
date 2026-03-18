@@ -12,6 +12,7 @@ import { webhookQueries, webhookMutations } from './webhook.js';
 import { slackQueries, slackMutations, slackFieldResolvers } from './slack.js';
 import { templateQueries, templateMutations } from './template.js';
 import { taskActionQueries, taskActionMutations, taskActionFieldResolvers } from './taskaction.js';
+import { workflowQueries, workflowMutations } from './workflow.js';
 
 export const resolvers = {
   Query: {
@@ -29,6 +30,7 @@ export const resolvers = {
     ...slackQueries,
     ...templateQueries,
     ...taskActionQueries,
+    ...workflowQueries,
   },
   Mutation: {
     ...authMutations,
@@ -45,6 +47,7 @@ export const resolvers = {
     ...slackMutations,
     ...templateMutations,
     ...taskActionMutations,
+    ...workflowMutations,
   },
   // Field resolvers
   User: { ...authFieldResolvers.User },

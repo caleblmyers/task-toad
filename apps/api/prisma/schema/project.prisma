@@ -22,6 +22,7 @@ model Project {
   customFields          CustomField[]
   savedFilters          SavedFilter[]
   taskTemplates         TaskTemplate[]
+  transitions           WorkflowTransition[]
 
   @@index([orgId])
   @@map("projects")

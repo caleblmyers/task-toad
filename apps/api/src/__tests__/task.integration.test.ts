@@ -81,28 +81,29 @@ describe('createTask', () => {
 describe('updateTask', () => {
   it('updates task status', async () => {
     const task = await taskMutations.createTask(null, { projectId, title: 'Status Task' }, makeContext());
-    const updated = await taskMutations.updateTask(null, { taskId: task.taskId, status: 'in_progress' }, makeContext());
-    expect(updated.status).toBe('in_progress');
+    const result = await taskMutations.updateTask(null, { taskId: task.taskId, status: 'in_progress' }, makeContext());
+    expect(result.task.status).toBe('in_progress');
+    expect(result.warnings).toEqual([]);
   });
 
   it('updates task title', async () => {
     const task = await taskMutations.createTask(null, { projectId, title: 'Old Title' }, makeContext());
-    const updated = await taskMutations.updateTask(null, { taskId: task.taskId, title: 'New Title' }, makeContext());
-    expect(updated.title).toBe('New Title');
+    const result = await taskMutations.updateTask(null, { taskId: task.taskId, title: 'New Title' }, makeContext());
+    expect(result.task.title).toBe('New Title');
   });
 
   it('updates task description', async () => {
     const task = await taskMutations.createTask(null, { projectId, title: 'Desc Task' }, makeContext());
-    const updated = await taskMutations.updateTask(null, { taskId: task.taskId, description: 'New desc' }, makeContext());
-    expect(updated.description).toBe('New desc');
+    const result = await taskMutations.updateTask(null, { taskId: task.taskId, description: 'New desc' }, makeContext());
+    expect(result.task.description).toBe('New desc');
   });
 });
 
 describe('archiveTask', () => {
   it('archives a task via updateTask', async () => {
     const task = await taskMutations.createTask(null, { projectId, title: 'Archive Me' }, makeContext());
-    const updated = await taskMutations.updateTask(null, { taskId: task.taskId, archived: true }, makeContext());
-    expect(updated.archived).toBe(true);
+    const result = await taskMutations.updateTask(null, { taskId: task.taskId, archived: true }, makeContext());
+    expect(result.task.archived).toBe(true);
 
     const dbTask = await prisma.task.findUnique({ where: { taskId: task.taskId } });
     expect(dbTask!.archived).toBe(true);

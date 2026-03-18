@@ -1,0 +1,14 @@
+model WorkflowTransition {
+  transitionId String   @id @default(uuid()) @map("transition_id")
+  projectId    String   @map("project_id")
+  fromStatus   String   @map("from_status")
+  toStatus     String   @map("to_status")
+  allowedRoles String?  @map("allowed_roles") // JSON array of role strings, null = all roles
+  condition    String?  // JSON condition object (future: compound conditions)
+  createdAt    DateTime @default(now()) @map("created_at")
+  project      Project  @relation(fields: [projectId], references: [projectId], onDelete: Cascade)
+
+  @@unique([projectId, fromStatus, toStatus])
+  @@index([projectId])
+  @@map("workflow_transitions")
+}

@@ -71,6 +71,7 @@ export const taskMutations = {
     if (args.assigneeId) {
       await requireOrgUser(context, args.assigneeId);
     }
+    const warnings: string[] = [];
     if (args.status !== undefined) {
       const statusParse = StringArraySchema.safeParse(JSON.parse(task.project.statuses));
       if (!statusParse.success) {
@@ -78,6 +79,23 @@ export const taskMutations = {
       }
       const validStatuses = statusParse.success ? statusParse.data : ['todo', 'in_progress', 'in_review', 'done'];
       validateStatus(validStatuses, args.status);
+
+      // Workflow transition validation
+      if (args.status !== task.status) {
+        const transitions = await context.prisma.workflowTransition.findMany({
+          where: { projectId: task.projectId },
+        });
+        if (transitions.length > 0) {
+          const allowed = transitions.some(
+            t => t.fromStatus === task.status && t.toStatus === args.status
+          );
+          if (!allowed) {
+            throw new ValidationError(
+              `Status transition from '${task.status}' to '${args.status}' is not allowed by the project workflow`
+            );
+          }
+        }
+      }
     }
     // Blocking dependency validation: warn if moving to in_progress/done with incomplete blockers
     if (args.status && ['in_progress', 'done'].includes(args.status) && !args.force) {
@@ -105,6 +123,7 @@ export const taskMutations = {
           const blocker = dep.linkType === 'blocks' ? dep.sourceTask : dep.targetTask;
           return `"${blocker.title}" (${blocker.status})`;
         });
+        warnings.push(`Task has incomplete blocking dependencies: ${blockerNames.join(', ')}`);
         log.warn({ taskId: args.taskId, blockers: blockerNames }, 'Task has incomplete blocking dependencies');
       }
     }
@@ -190,7 +209,7 @@ export const taskMutations = {
         }
       }
     }
-    return updated;
+    return { task: updated, warnings };
   },
 
   bulkUpdateTasks: async (
