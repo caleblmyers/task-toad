@@ -78,7 +78,7 @@ function redactSensitive(text: string): string {
 // ---------------------------------------------------------------------------
 
 export interface PromptLogContext {
-  prisma: { aIPromptLog: { create: (args: { data: Record<string, unknown> }) => Promise<unknown> } };
+  prisma: Pick<import('@prisma/client').PrismaClient, 'aIPromptLog'>;
   orgId: string;
   userId: string;
   taskId?: string | null;

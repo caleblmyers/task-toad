@@ -15,7 +15,7 @@ async function buildPromptLogContext(context: Context): Promise<PromptLogContext
     select: { promptLoggingEnabled: true },
   });
   return {
-    prisma: context.prisma as unknown as PromptLogContext['prisma'],
+    prisma: context.prisma,
     orgId: user.orgId,
     userId: user.userId,
     promptLoggingEnabled: org?.promptLoggingEnabled ?? true,

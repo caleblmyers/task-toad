@@ -27,6 +27,7 @@ model User {
   taskAssignments   TaskAssignee[] @relation("TaskAssignees")
   attachments       Attachment[]   @relation("UserAttachments")
 
+  @@index([orgId])
   @@map("users")
 }
 
