@@ -27,6 +27,7 @@ const ProjectSettingsModal = lazyWithRetry(() => import('../components/ProjectSe
 const SprintCreateModal = lazyWithRetry(() => import('../components/SprintCreateModal'));
 const SprintPlanModal = lazyWithRetry(() => import('../components/SprintPlanModal'));
 const GitHubRepoModal = lazyWithRetry(() => import('../components/GitHubRepoModal'));
+const CycleTimePanel = lazyWithRetry(() => import('../components/CycleTimePanel'));
 const StandupReportPanel = lazyWithRetry(() => import('../components/StandupReportPanel'));
 const ProjectHealthPanel = lazyWithRetry(() => import('../components/ProjectHealthPanel'));
 const TrendAnalysisPanel = lazyWithRetry(() => import('../components/TrendAnalysisPanel'));
@@ -60,7 +61,7 @@ export default function ProjectDetail() {
   // Consolidated modal state — replaces 8+ individual booleans
   const [activeModal, setActiveModal] = useState<string | null>(null);
   // View panels that replace the main content (not modal overlays)
-  const [activePanel, setActivePanel] = useState<'standup' | 'health' | 'trends' | null>(null);
+  const [activePanel, setActivePanel] = useState<'standup' | 'health' | 'trends' | 'cycle-time' | null>(null);
   const [timelineView, setTimelineView] = useState(false);
   const [projectActivities, setProjectActivities] = useState<Activity[]>([]);
   const [gitHubRepo, setGitHubRepo] = useState<GitHubRepoLink | null>(null);
@@ -159,6 +160,11 @@ export default function ProjectDetail() {
     }
     if (modal === 'trends') {
       setActivePanel('trends');
+      d.setSummary(null);
+      return;
+    }
+    if (modal === 'cycle-time') {
+      setActivePanel('cycle-time');
       d.setSummary(null);
       return;
     }
@@ -363,6 +369,15 @@ export default function ProjectDetail() {
             <Suspense fallback={lazyFallback}>
               <TrendAnalysisPanel
                 projectId={d.projectId}
+                disabled={d.isGenerating}
+                onClose={() => setActivePanel(null)}
+              />
+            </Suspense>
+          ) : activePanel === 'cycle-time' && d.projectId ? (
+            <Suspense fallback={lazyFallback}>
+              <CycleTimePanel
+                projectId={d.projectId}
+                sprints={d.sprints}
                 disabled={d.isGenerating}
                 onClose={() => setActivePanel(null)}
               />

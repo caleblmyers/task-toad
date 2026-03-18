@@ -190,6 +190,16 @@ export const WEBHOOK_DELIVERIES_QUERY = `query WebhookDeliveries($endpointId: ID
   }
 }`;
 
+export const CYCLE_TIME_METRICS_QUERY = `query CycleTimeMetrics($projectId: ID!, $sprintId: ID, $fromDate: String, $toDate: String) {
+  cycleTimeMetrics(projectId: $projectId, sprintId: $sprintId, fromDate: $fromDate, toDate: $toDate) {
+    tasks { taskId title status leadTimeHours cycleTimeHours startedAt completedAt }
+    avgLeadTimeHours avgCycleTimeHours
+    p50LeadTimeHours p85LeadTimeHours
+    p50CycleTimeHours p85CycleTimeHours
+    totalCompleted
+  }
+}`;
+
 export const EPICS_QUERY = `query Epics($projectId: ID!) {
   epics(projectId: $projectId) {
     taskId title description status priority position createdAt

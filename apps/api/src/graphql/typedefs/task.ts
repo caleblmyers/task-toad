@@ -52,6 +52,27 @@ export const taskTypeDefs = /* GraphQL */ `
     assignedAt: String!
   }
 
+  type TaskCycleMetrics {
+    taskId: ID!
+    title: String!
+    status: String!
+    leadTimeHours: Float
+    cycleTimeHours: Float
+    startedAt: String
+    completedAt: String
+  }
+
+  type ProjectCycleMetrics {
+    tasks: [TaskCycleMetrics!]!
+    avgLeadTimeHours: Float!
+    avgCycleTimeHours: Float!
+    p50LeadTimeHours: Float!
+    p85LeadTimeHours: Float!
+    p50CycleTimeHours: Float!
+    p85CycleTimeHours: Float!
+    totalCompleted: Int!
+  }
+
   type CustomField {
     customFieldId: ID!
     name: String!

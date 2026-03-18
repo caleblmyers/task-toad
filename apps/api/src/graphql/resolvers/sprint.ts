@@ -48,6 +48,130 @@ export const sprintQueries = {
     });
   },
 
+  cycleTimeMetrics: async (
+    _parent: unknown,
+    args: { projectId: string; sprintId?: string | null; fromDate?: string | null; toDate?: string | null },
+    context: Context
+  ) => {
+    const { user } = await requireProjectAccess(context, args.projectId);
+
+    // Build filter for completed tasks
+    const where: Record<string, unknown> = {
+      projectId: args.projectId,
+      orgId: user.orgId,
+      status: 'done',
+    };
+    if (args.sprintId) where.sprintId = args.sprintId;
+
+    const tasks = await context.prisma.task.findMany({ where });
+
+    if (tasks.length === 0) {
+      return {
+        tasks: [],
+        avgLeadTimeHours: 0,
+        avgCycleTimeHours: 0,
+        p50LeadTimeHours: 0,
+        p85LeadTimeHours: 0,
+        p50CycleTimeHours: 0,
+        p85CycleTimeHours: 0,
+        totalCompleted: 0,
+      };
+    }
+
+    const taskIds = tasks.map((t) => t.taskId);
+
+    // Fetch all status-change activities for these tasks in one query
+    const dateFilter: Record<string, unknown> = {};
+    if (args.fromDate) dateFilter.gte = new Date(args.fromDate);
+    if (args.toDate) dateFilter.lte = new Date(args.toDate + 'T23:59:59');
+
+    const activities = await context.prisma.activity.findMany({
+      where: {
+        taskId: { in: taskIds },
+        action: 'task.updated',
+        field: 'status',
+        ...(Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {}),
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // Group activities by taskId
+    const activityByTask = new Map<string, Array<{ newValue: string | null; createdAt: Date }>>();
+    for (const a of activities) {
+      const list = activityByTask.get(a.taskId!) ?? [];
+      list.push({ newValue: a.newValue, createdAt: a.createdAt });
+      activityByTask.set(a.taskId!, list);
+    }
+
+    const taskMetrics: Array<{
+      taskId: string;
+      title: string;
+      status: string;
+      leadTimeHours: number | null;
+      cycleTimeHours: number | null;
+      startedAt: string | null;
+      completedAt: string | null;
+    }> = [];
+    const leadTimes: number[] = [];
+    const cycleTimes: number[] = [];
+
+    for (const task of tasks) {
+      const acts = activityByTask.get(task.taskId) ?? [];
+      const firstInProgress = acts.find((a) => a.newValue === 'in_progress');
+      const firstDone = acts.find((a) => a.newValue === 'done');
+
+      const startedAt = firstInProgress ? firstInProgress.createdAt : null;
+      const completedAt = firstDone ? firstDone.createdAt : null;
+
+      // Apply date filter to completed date
+      if (args.fromDate && completedAt && completedAt < new Date(args.fromDate)) continue;
+      if (args.toDate && completedAt && completedAt > new Date(args.toDate + 'T23:59:59')) continue;
+
+      const leadTimeHours = completedAt
+        ? (completedAt.getTime() - task.createdAt.getTime()) / (1000 * 60 * 60)
+        : null;
+      const cycleTimeHours = completedAt && startedAt
+        ? (completedAt.getTime() - startedAt.getTime()) / (1000 * 60 * 60)
+        : null;
+
+      if (leadTimeHours !== null) leadTimes.push(leadTimeHours);
+      if (cycleTimeHours !== null) cycleTimes.push(cycleTimeHours);
+
+      taskMetrics.push({
+        taskId: task.taskId,
+        title: task.title,
+        status: task.status,
+        leadTimeHours,
+        cycleTimeHours,
+        startedAt: startedAt ? startedAt.toISOString() : null,
+        completedAt: completedAt ? completedAt.toISOString() : null,
+      });
+    }
+
+    const percentile = (sorted: number[], p: number): number => {
+      if (sorted.length === 0) return 0;
+      const idx = Math.ceil((p / 100) * sorted.length) - 1;
+      return sorted[Math.max(0, idx)];
+    };
+
+    const avg = (arr: number[]): number =>
+      arr.length === 0 ? 0 : arr.reduce((s, v) => s + v, 0) / arr.length;
+
+    leadTimes.sort((a, b) => a - b);
+    cycleTimes.sort((a, b) => a - b);
+
+    return {
+      tasks: taskMetrics,
+      avgLeadTimeHours: Math.round(avg(leadTimes) * 100) / 100,
+      avgCycleTimeHours: Math.round(avg(cycleTimes) * 100) / 100,
+      p50LeadTimeHours: Math.round(percentile(leadTimes, 50) * 100) / 100,
+      p85LeadTimeHours: Math.round(percentile(leadTimes, 85) * 100) / 100,
+      p50CycleTimeHours: Math.round(percentile(cycleTimes, 50) * 100) / 100,
+      p85CycleTimeHours: Math.round(percentile(cycleTimes, 85) * 100) / 100,
+      totalCompleted: taskMetrics.length,
+    };
+  },
+
   sprintBurndown: async (_parent: unknown, args: { sprintId: string }, context: Context) => {
     const user = requireOrg(context);
     const sprint = await context.prisma.sprint.findUnique({ where: { sprintId: args.sprintId } });

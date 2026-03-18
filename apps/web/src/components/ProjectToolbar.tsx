@@ -276,6 +276,7 @@ export default function ProjectToolbar({
               { label: 'Standup', onClick: () => onOpenModal('standup'), disabled: d.isGenerating },
               { label: 'Health', onClick: () => onOpenModal('health'), disabled: d.isGenerating },
               { label: 'Trends', onClick: () => onOpenModal('trends'), disabled: d.isGenerating },
+              { label: 'Cycle Time', onClick: () => onOpenModal('cycle-time'), disabled: d.isGenerating },
               ...(d.activeSprint ? [{ label: 'Transition', onClick: () => onOpenModal(`transition:${d.activeSprint!.sprintId}:${d.activeSprint!.name}`), disabled: d.isGenerating }] : []),
               { label: 'Notes', onClick: () => onOpenModal('meeting-notes'), disabled: d.isGenerating },
               { label: 'Bug Report', onClick: () => onOpenModal('bug-report'), disabled: d.isGenerating },

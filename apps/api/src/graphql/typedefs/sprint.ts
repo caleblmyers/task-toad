@@ -68,6 +68,8 @@ export const sprintQueryFields = /* GraphQL */ `
   sprintVelocity(projectId: ID!): [SprintVelocityPoint!]!
   """Get daily burndown data for a specific sprint."""
   sprintBurndown(sprintId: ID!): SprintBurndownData!
+  """Get cycle time and lead time metrics for completed tasks in a project."""
+  cycleTimeMetrics(projectId: ID!, sprintId: ID, fromDate: String, toDate: String): ProjectCycleMetrics!
 `;
 
 export const sprintMutationFields = /* GraphQL */ `
