@@ -1,8 +1,7 @@
-// Barrel re-export — all prompt builders have been decomposed into
-// apps/api/src/ai/promptBuilders/ (generation, analysis, planning).
-// This file preserves backward compatibility for existing imports.
+// Barrel re-export of all prompt builder functions
+export { userInput } from './utils.js';
+
 export {
-  userInput,
   buildProjectOptionsPrompt,
   buildTaskPlanPrompt,
   buildExpandTaskPrompt,
@@ -15,6 +14,9 @@ export {
   buildParseBugReportPrompt,
   buildPRDBreakdownPrompt,
   buildGenerateTaskInstructionsPrompt,
+} from './generation.js';
+
+export {
   buildHealthAnalysisPrompt,
   buildMeetingNotesPrompt,
   buildDecomposeIssuePrompt,
@@ -23,10 +25,13 @@ export {
   buildRepoDriftPrompt,
   buildTrendAnalysisPrompt,
   buildSummarizeProjectPrompt,
+} from './analysis.js';
+
+export {
   buildPlanSprintsPrompt,
   buildStandupPrompt,
   buildSprintReportPrompt,
   buildSprintTransitionPrompt,
   buildProjectChatPrompt,
   buildPlanTaskActionsPrompt,
-} from './promptBuilders/index.js';
+} from './planning.js';

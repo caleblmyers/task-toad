@@ -314,15 +314,6 @@ export const DriftAnalysisSchema = z.object({
 
 export type DriftAnalysis = z.infer<typeof DriftAnalysisSchema>;
 
-export const BatchCodeGenerationSchema = z.object({
-  files: z.array(GeneratedFileSchema),
-  summary: z.string(),
-  estimatedTokensUsed: z.number().optional().default(0),
-  delegationHint: z.string().optional(),
-});
-
-export type BatchCodeGeneration = z.infer<typeof BatchCodeGenerationSchema>;
-
 export interface AIUsage {
   inputTokens: number;
   outputTokens: number;
