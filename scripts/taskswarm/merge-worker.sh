@@ -15,7 +15,7 @@ if [ $# -lt 1 ]; then
   echo "  merge-worker.sh swarm/worker-1 --validate"
   echo ""
   echo "Flags:"
-  echo "  --validate    Run prisma generate (if needed) + typecheck + lint before merging (exits 1 on failure)"
+  echo "  --validate    Run prisma generate (if needed) + typecheck + lint + test before merging (exits 1 on failure)"
   exit 1
 fi
 
@@ -77,6 +77,11 @@ if [ "$VALIDATE" = true ]; then
   fi
   if ! (cd "$MAIN_REPO" && pnpm lint 2>&1); then
     echo "Lint failed — aborting merge"
+    git -C "$MAIN_REPO" merge --abort
+    exit 1
+  fi
+  if ! (cd "$MAIN_REPO" && pnpm test 2>&1); then
+    echo "Tests failed — aborting merge"
     git -C "$MAIN_REPO" merge --abort
     exit 1
   fi

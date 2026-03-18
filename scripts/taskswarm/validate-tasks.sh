@@ -83,6 +83,30 @@ while IFS= read -r line; do
 done <<< "$TASK_DATA"
 
 echo ""
+echo "--- Dependency reference check ---"
+DEP_ERRORS=$(node -e "
+const tasks = JSON.parse(require('fs').readFileSync('$TASKS_FILE', 'utf8')).tasks;
+const ids = new Set(tasks.map(function(t) { return t.id; }));
+var errors = 0;
+tasks.forEach(function(t) {
+  var deps = t.dependsOn || [];
+  deps.forEach(function(dep) {
+    if (!ids.has(dep)) {
+      console.log('  ERROR  ' + t.id + ' depends on ' + dep + ' — not found in task list');
+      errors++;
+    }
+    if (dep === t.id) {
+      console.log('  ERROR  ' + t.id + ' depends on itself');
+      errors++;
+    }
+  });
+});
+if (errors === 0) console.log('  All dependency references valid.');
+process.exit(errors > 0 ? 1 : 0);
+" 2>&1) || ERRORS=$((ERRORS + $(echo "$DEP_ERRORS" | grep -c 'ERROR' || true)))
+echo "$DEP_ERRORS"
+
+echo ""
 echo "--- Cross-worker file conflicts ---"
 CONFLICTS=0
 for filepath in "${!FILE_OWNERS[@]}"; do

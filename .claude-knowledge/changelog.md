@@ -6,6 +6,50 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-18
 
+### Wave 29: Dependency Graph + Metrics + Cleanup (3 workers, 6 tasks)
+
+**Worker 1 — Task dependency graph (P0 Foundation):**
+- Added `TaskDependency` join table (task.prisma) with `sourceTaskId`, `targetTaskId`, `linkType` (blocks/is_blocked_by/relates_to/duplicates), unique constraint, cascade delete
+- GraphQL mutations: `addTaskDependency`, `removeTaskDependency` with DFS cycle detection for blocks/is_blocked_by edges
+- DataLoader for `Task.dependencies` and `Task.dependents` field resolvers
+- Blocking validation in `updateTask` — warns when moving to in_progress/done with incomplete blockers
+- Frontend: rewrote `TaskDependenciesSection` to show grouped deps by linkType with both directions
+- AI integration: `commitTaskPlan` and `expandTask` now create `TaskDependency` records instead of JSON strings
+- Updated shared-types, TASK_FIELDS, removed `parseDependsOn` utility
+
+**Worker 2 — Cycle time metrics + cleanup:**
+- New `cycleTimeMetrics` GraphQL query: computes lead time (created→done) and cycle time (in_progress→done) from Activity records
+- Aggregates: avg, P50, P85 percentiles. Filters by project, sprint, date range
+- New `CycleTimePanel.tsx` lazy-loaded in ProjectDetail with sortable task table + summary stats
+- Deleted dead query constants (`PLAN_CODE_MUTATION`, `GENERATE_PLANNED_FILE_MUTATION`, `CREATE_PR_MUTATION`)
+- Adopted `useFormState` in OrgSettings (API key + invite forms)
+
+**Worker 3 — useFormState adoption:**
+- Adopted `useFormState` in SlackSettings (connect + user mapping forms)
+- Adopted `useFormState` in WebhookSettings (create form)
+- Adopted `useFormState` in MembersTab, CustomFieldsTab, AutomationTab (add/create forms)
+- Left non-form patterns (toggles, test buttons, inline delete) as-is — they don't fit the hook
+
+**Swarm tooling improvements (between waves):**
+- New `/task-release` skill: validates (incl. tests) → pushes → monitors CI → verifies deploy health
+- `merge-worker.sh --validate` now runs `pnpm test` (previously only typecheck + lint)
+- `validate-tasks.sh` now checks `dependsOn` references for invalid/self-referencing task IDs
+- `task-worker` skill: formal `dependsOn` checking before starting tasks
+- `task-reviewer` skill: merge order respects `dependsOn`, mentions test validation
+- `task-swarm` skill: documents `dependsOn` field, adds post-wave flow reminder
+- `task-cleanup` skill: hands off to `/task-release` instead of "ready to push"
+- `spawn.sh`: writes role prompt to gitignored `.claude/swarm-role.md` as backup
+
+**Process:** Zero rejections. Worker-1 needed to modify files outside `files` array (prop-threading chain for dependency UI changes) — logged as process improvement for future task planning.
+
+**Open follow-ups:**
+- Dependency blocking warnings not surfaced to client UI (server-side only)
+- Data migration needed: existing `dependsOn` JSON strings → TaskDependency records, then drop column
+- New lint warning in OrgSettings.tsx:136 (setState-in-effect from useFormState refactor)
+- @mention notification routing confirmed already implemented (stale todo removed)
+
+---
+
 ### Wave 28: Codebase Cleanup (3 workers, 7 tasks)
 
 Pure refactoring wave — no behavioral changes. Decomposed oversized files, removed dead code, added missing DB index.

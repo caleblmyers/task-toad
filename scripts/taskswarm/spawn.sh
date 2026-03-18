@@ -94,15 +94,16 @@ for i in $(seq 1 "$WORKER_COUNT"); do
 SETTINGS_EOF
   git -C "$WORKER_DIR" update-index --assume-unchanged .claude/settings.json
 
-  # Append role prompt to CLAUDE.md
+  # Write role prompt to gitignored file (avoids CLAUDE.md contamination)
   if [ -f "$PROMPTS_DIR/worker.md" ]; then
     PROMPT=$(sed \
       -e "s|{{WORKER_ID}}|worker-$i|g" \
       -e "s|{{MAIN_REPO}}|$MAIN_REPO|g" \
       -e "s|{{BRANCH}}|$BRANCH|g" \
       "$PROMPTS_DIR/worker.md")
+    printf '%s\n' "$PROMPT" > "$WORKER_DIR/.claude/swarm-role.md"
+    # Also append to CLAUDE.md for backward compat (assume-unchanged prevents committing)
     printf '\n\n<!-- swarm-role -->\n---\n\n%s\n' "$PROMPT" >> "$WORKER_DIR/CLAUDE.md"
-    # Prevent workers from accidentally committing the role section
     git -C "$WORKER_DIR" update-index --assume-unchanged CLAUDE.md
   fi
 
@@ -162,8 +163,9 @@ SETTINGS_EOF
     PROMPT=$(sed \
       -e "s|{{MAIN_REPO}}|$MAIN_REPO|g" \
       "$PROMPTS_DIR/reviewer.md")
+    printf '%s\n' "$PROMPT" > "$REVIEWER_DIR/.claude/swarm-role.md"
+    # Also append to CLAUDE.md for backward compat (assume-unchanged prevents committing)
     printf '\n\n<!-- swarm-role -->\n---\n\n%s\n' "$PROMPT" >> "$REVIEWER_DIR/CLAUDE.md"
-    # Prevent reviewer from accidentally committing the role section
     git -C "$REVIEWER_DIR" update-index --assume-unchanged CLAUDE.md
   fi
 

@@ -303,3 +303,17 @@ Format:
 **Issue:** After task-003 removed manual code gen handlers from useAIGeneration, three query constants (`PLAN_CODE_MUTATION`, `GENERATE_PLANNED_FILE_MUTATION`, `CREATE_PR_MUTATION`) became dead code in `apps/web/src/api/queries.ts`. Task scope didn't include cleaning up the queries file.
 **Impact:** Minor — dead code remains in queries.ts. Added to todos.md as follow-up.
 **Suggestion:** When a dead code removal task deletes consumers of query/mutation constants, include the queries file in scope to clean up the full chain.
+
+### worker-1 — task-002
+**Issue:** Task files array did not include `TaskDetailPanel.tsx`, `useProjectData.ts`, `useTaskCRUD.ts`, `ProjectDetail.tsx`, or `types.ts` — but changing the `TaskDependenciesSection` props from `onUpdateDependencies` to `onAddDependency`/`onRemoveDependency` required updating the entire prop-threading chain through these files.
+**Impact:** Had to modify 5 files not in the task's `files` array. Without this, typecheck would fail.
+**Suggestion:** When a task changes a component's prop interface, include all files that pass those props through (the prop-threading chain). For TaskDetailPanel-based features, this always includes: `TaskDetailPanel.tsx`, `useProjectData.ts`, `useTaskCRUD.ts`, `ProjectDetail.tsx`, and `types.ts`.
+
+### Reviewer — Wave 29 — Positive
+**Observation:** All 6 tasks merged on first review — zero rejections. Every worker ran full validation before marking complete. Merge conflicts handled cleanly by squash merge.
+**Why it worked:** Clear task descriptions with explicit file lists. Workers properly isolated to their file sets. Task-001/task-002 dependency ordering worked perfectly. useFormState refactoring tasks (004/005/006) were well-scoped with clear patterns to follow.
+
+### Reviewer — task-006
+**Issue:** Worker-3's branch included commits from task-005 (already merged). The squash merge script handled this gracefully — only the new changes were staged.
+**Impact:** No impact, just a minor cosmetic issue in the merge output showing 2 commits instead of 1.
+**Suggestion:** Workers should rebase onto main after their first task is merged before starting their second task. This keeps the branch clean.

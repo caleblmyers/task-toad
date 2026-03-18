@@ -91,4 +91,6 @@ Show the user:
 - Number of commits ahead of origin (`git log --oneline origin/main..HEAD`)
 - Summary of what was built in this wave
 - Any issues from `.ai/taskswarm/issues.md` that need attention
-- Confirmation: "Ready to `git push`"
+- Next step: "Run `/task-release` to validate tests, push, and verify deployment."
+
+Do NOT push to remote — the release agent (`/task-release`) handles pushing, CI monitoring, and deploy verification.

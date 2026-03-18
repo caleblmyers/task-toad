@@ -40,6 +40,7 @@ You are setting up a new swarm wave. Follow these steps precisely.
    - Each worker should have **2-4 tasks** totaling 30-60 min
    - Task descriptions should be 2-3 paragraphs with specific file paths, code snippets, and implementation details
    - Include acceptance criteria that are concrete and verifiable
+   - **Task dependencies:** When a task depends on another task (e.g., frontend depends on backend), add `"dependsOn": ["task-001"]` to the dependent task in tasks.json. Workers and reviewer use this to enforce ordering. Only list direct dependencies.
    - **Worker parallelism:** When a worker has multiple tasks, minimize file overlap between them so the worker can start the next task while the previous one is in review. If two tasks on the same worker must share files, order them sequentially and note the dependency.
    - **Standard acceptance criteria reminders:**
      - If a task adds or modifies a Prisma model (any file in `apps/api/prisma/schema/`), ALWAYS include in acceptance criteria: `"Run npx prisma generate && pnpm typecheck passes"` and remind the worker to include migration files in the commit.
@@ -85,3 +86,6 @@ You are setting up a new swarm wave. Follow these steps precisely.
    | worker-1 | ... | task-001, task-002 | ... |
    | worker-2 | ... | task-003, task-004 | ... |
    | worker-3 | ... | task-005, task-006 | ... |
+
+10. **Remind the user of the post-wave flow:**
+    After workers and reviewer finish: `/task-cleanup` → `/task-release`

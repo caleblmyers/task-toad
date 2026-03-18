@@ -1,6 +1,6 @@
 # Remaining Work
 
-All original work sets completed through Wave 28. Completed items are in `changelog.md`.
+All original work sets completed through Wave 29. Completed items are in `changelog.md`.
 
 ---
 
@@ -11,6 +11,15 @@ All original work sets completed through Wave 28. Completed items are in `change
 - **File structure:** Prisma: `prisma/schema/`, TypeDefs: `typedefs/`, Resolvers: `resolvers/` — all domain-split.
 
 ---
+
+## Wave 29 — Dependency Graph + Metrics + Cleanup — Completed (2026-03-18)
+
+- [x] Task dependency graph — backend model + GraphQL API (task-001, worker-1)
+- [x] Task dependency graph — frontend + AI integration (task-002, worker-1)
+- [x] Cycle time and lead time metrics query + frontend (task-003, worker-2)
+- [x] Dead query cleanup + useFormState adoption in OrgSettings (task-004, worker-2)
+- [x] useFormState adoption in SlackSettings + WebhookSettings (task-005, worker-3)
+- [x] useFormState adoption in settings tabs + NotificationSettings (task-006, worker-3)
 
 ## Wave 28 — Codebase Cleanup — Completed (2026-03-18)
 
@@ -27,11 +36,14 @@ All original work sets completed through Wave 28. Completed items are in `change
 ## Remaining Cleanup
 
 ### Dead Code
-- [ ] Delete unused query constants `PLAN_CODE_MUTATION`, `GENERATE_PLANNED_FILE_MUTATION`, `CREATE_PR_MUTATION` from `apps/web/src/api/queries.ts` — no longer imported after Wave 28 task-003 removed their consumers
+- [x] Delete unused query constants from queries.ts (Wave 29, task-004)
 
 ### Duplication Reduction (large scope)
 - [ ] Centralize inline GraphQL queries (65 queries across 24 files → `apps/web/src/api/queries.ts`). Worst offenders: settings tab components (post-Wave 28 split), `SlackSettings.tsx` (9), `WebhookSettings.tsx` (5)
-- [ ] Adopt `useFormState` hook in existing settings components — hook created in Wave 28 but not yet applied to OrgSettings, SlackSettings, WebhookSettings, NotificationSettings, etc.
+- [x] Adopt `useFormState` hook in settings components (Wave 29, tasks 004-006)
+
+### Lint Warnings
+- [ ] Fix lint warning in OrgSettings.tsx:136 — `linkInstallation` called in useEffect triggers setState-in-effect warning (introduced by useFormState refactor in Wave 29)
 
 ### Remaining Polish
 - [ ] Remaining ARIA audit — screen reader testing, focus management on modal open/close, skip nav landmark coverage
@@ -52,13 +64,15 @@ These block scaling, process enforcement, and basic team adoption.
 
 ### Task Lifecycle & Workflow
 - [ ] **Workflow transition model** — `WorkflowTransition { fromStatus, toStatus, condition?, postFunction?, allowedRoles? }`. Validate on `updateTask`. Backward-compatible: no transitions defined = all moves allowed.
-- [ ] **Dependency graph** — Replace `dependsOn: String?` with `TaskDependency` join table. Link types: blocks, relates_to, duplicates. DFS cycle detection on write. Blocking validation on status transition.
+- [x] **Dependency graph** — Replace `dependsOn: String?` with `TaskDependency` join table. Link types: blocks, relates_to, duplicates. BFS cycle detection on write. Blocking validation on status transition. *(Wave 29 — backend in task-001, frontend in task-002)*
+- [ ] **Dependency blocking warning surfacing** — updateTask currently logs a server-side warning when moving tasks with incomplete blockers, but doesn't return it to the client. Add a `warnings: [String!]` field to updateTask response or use a GraphQL extension to surface blocking warnings in the UI.
+- [ ] **Data migration: dependsOn → TaskDependency** — Migrate existing `dependsOn` JSON string data to TaskDependency records, then drop the `dependsOn` column.
 
 ### Search & Filtering
 - [ ] **Server-side task filtering** — Add `TaskFilterInput` to `tasks` query. Translate to dynamic Prisma `where` clauses. Deprecate client-side `useTaskFiltering` for data filtering (keep for local UI state).
 
 ### Collaboration
-- [ ] **@mention notification routing** — Parse comment body for `@[email/userId]` patterns in `createComment`/`updateComment` resolvers. Create targeted notifications. ~20 lines of work, high impact.
+- [x] **@mention notification routing** — Already implemented in `createComment` resolver (lines 267-285). Extracts @email mentions via regex, batch-looks up users, passes `mentionedUserIds` to notification listener. Stale todo — was done before Wave 28.
 
 ---
 
@@ -67,7 +81,8 @@ These block scaling, process enforcement, and basic team adoption.
 Expected by teams switching from Jira/Asana/Wrike.
 
 ### Task Lifecycle & Workflow
-- [ ] **Cycle time / lead time metrics** — Computed query over existing Activity table. Lead time = created→done. Cycle time = first in_progress→done. Aggregate per sprint/time window. No schema changes.
+- [x] **Cycle time / lead time metrics** — Computed query over existing Activity table. Lead time = created→done. Cycle time = first in_progress→done. Aggregate per sprint/time window. No schema changes. *(Wave 29)*
+- [ ] **Cycle time date range filter UI** — The `cycleTimeMetrics` query accepts `fromDate`/`toDate` params but the CycleTimePanel frontend doesn't expose date range pickers yet. Add date inputs to filter metrics by time window.
 - [ ] **SLA tracking** — `SLAPolicy { projectId, name, targetMinutes, businessHoursCalendar?, pauseOnStatuses? }` and `SLATimer { taskId, policyId, startedAt, pausedMinutes, breachedAt? }`. Evaluate on status transitions.
 
 ### Planning & Estimation

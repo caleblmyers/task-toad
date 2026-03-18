@@ -7,9 +7,13 @@ user-invocable: true
 
 Start working. Read your tasks from /home/caleb/projects/task-toad/.ai/taskswarm/tasks.json, find tasks assigned to you, and begin implementing them. Follow the workflow in your CLAUDE.md. After completing each task, run `pnpm typecheck && pnpm lint && pnpm build` to validate before marking complete.
 
+## Task Dependencies
+
+Before starting a task, check its `dependsOn` array (if present). Each entry is a task ID (e.g., `"task-001"`). ALL listed dependencies must have `status === "merged"` before you can start the task. If dependencies aren't merged yet, skip to your next task that has no unmet dependencies, or wait and re-check tasks.json.
+
 ## Task Parallelism (Don't Wait Idle)
 
-After completing a task and marking it "completed", check if you have another pending task. If so, compare the `files` arrays of the completed task and the next pending task:
+After completing a task and marking it "completed", check if you have another pending task whose `dependsOn` are all merged. If so, compare the `files` arrays of the completed task and the next pending task:
 - **No file overlap** → Start the next task immediately. Don't wait for the reviewer to merge the previous one.
 - **Files overlap** → Wait for the previous task to be merged before starting the next one, to avoid conflicts.
 

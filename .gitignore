@@ -12,6 +12,8 @@ coverage
 *.tsbuildinfo
 vite.config.js
 vite.config.d.ts
+# Swarm role prompt (injected per worktree, never committed)
+.claude/swarm-role.md
 # Swarm task queue (ephemeral per swarm run)
 .ai/swarm/tasks.json
 .ai/swarm/tasks-*.json
