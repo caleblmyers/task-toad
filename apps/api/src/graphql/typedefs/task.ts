@@ -33,6 +33,25 @@ export const taskTypeDefs = /* GraphQL */ `
     recurrenceParentId: ID
     attachments: [Attachment!]!
     assignees: [TaskAssignee!]!
+    dependencies: [TaskDependency!]!
+    dependents: [TaskDependency!]!
+  }
+
+  enum DependencyLinkType {
+    blocks
+    is_blocked_by
+    relates_to
+    duplicates
+  }
+
+  type TaskDependency {
+    taskDependencyId: ID!
+    sourceTaskId: ID!
+    targetTaskId: ID!
+    linkType: DependencyLinkType!
+    sourceTask: Task
+    targetTask: Task
+    createdAt: String!
   }
 
   type Attachment {
@@ -174,7 +193,7 @@ export const taskMutationFields = /* GraphQL */ `
   """Create a new task in a project. Defaults to 'todo' status."""
   createTask(projectId: ID!, title: String!, status: String, taskType: String): Task!
   """Update one or more fields on an existing task."""
-  updateTask(taskId: ID!, title: String, status: String, description: String, instructions: String, acceptanceCriteria: String, dependsOn: String, sprintId: ID, sprintColumn: String, assigneeId: ID, dueDate: String, position: Float, archived: Boolean, storyPoints: Int, taskType: String, recurrenceRule: String): Task!
+  updateTask(taskId: ID!, title: String, status: String, description: String, instructions: String, acceptanceCriteria: String, dependsOn: String, sprintId: ID, sprintColumn: String, assigneeId: ID, dueDate: String, position: Float, archived: Boolean, storyPoints: Int, taskType: String, recurrenceRule: String, force: Boolean): Task!
   """Create a subtask under a parent task."""
   createSubtask(parentTaskId: ID!, title: String!, taskType: String): Task!
   """Update multiple tasks at once (status, assignee, sprint, or archive)."""
@@ -202,4 +221,7 @@ export const taskMutationFields = /* GraphQL */ `
   removeTaskAssignee(taskId: ID!, userId: ID!): Boolean!
 
   deleteAttachment(attachmentId: ID!): Boolean!
+
+  addTaskDependency(sourceTaskId: ID!, targetTaskId: ID!, linkType: DependencyLinkType!): TaskDependency!
+  removeTaskDependency(taskDependencyId: ID!): Boolean!
 `;

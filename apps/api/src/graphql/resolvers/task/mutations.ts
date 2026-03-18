@@ -9,6 +9,7 @@ import { decryptApiKey } from '../../../utils/encryption.js';
 import { getPullRequestDiff } from '../../../github/index.js';
 import { getEventBus } from '../../../infrastructure/eventbus/index.js';
 import { logActivity } from '../../../utils/activity.js';
+import { detectCycle } from '../../../utils/cyclicDependencyCheck.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -61,7 +62,7 @@ export const taskMutations = {
 
   updateTask: async (
     _parent: unknown,
-    args: { taskId: string; title?: string; status?: string; description?: string; instructions?: string; acceptanceCriteria?: string; dependsOn?: string | null; sprintId?: string | null; sprintColumn?: string | null; assigneeId?: string | null; dueDate?: string | null; position?: number | null; archived?: boolean; storyPoints?: number | null; taskType?: string; recurrenceRule?: string | null },
+    args: { taskId: string; title?: string; status?: string; description?: string; instructions?: string; acceptanceCriteria?: string; dependsOn?: string | null; sprintId?: string | null; sprintColumn?: string | null; assigneeId?: string | null; dueDate?: string | null; position?: number | null; archived?: boolean; storyPoints?: number | null; taskType?: string; recurrenceRule?: string | null; force?: boolean },
     context: Context
   ) => {
     parseInput(UpdateTaskInput, { title: args.title, description: args.description, instructions: args.instructions, acceptanceCriteria: args.acceptanceCriteria });
@@ -77,6 +78,35 @@ export const taskMutations = {
       }
       const validStatuses = statusParse.success ? statusParse.data : ['todo', 'in_progress', 'in_review', 'done'];
       validateStatus(validStatuses, args.status);
+    }
+    // Blocking dependency validation: warn if moving to in_progress/done with incomplete blockers
+    if (args.status && ['in_progress', 'done'].includes(args.status) && !args.force) {
+      // Find tasks that block this one:
+      // 1. 'blocks' deps where this task is target (other task blocks this one)
+      // 2. 'is_blocked_by' deps where this task is source (this task is blocked by other)
+      const blockingDeps = await context.prisma.taskDependency.findMany({
+        where: {
+          OR: [
+            { targetTaskId: args.taskId, linkType: 'blocks' },
+            { sourceTaskId: args.taskId, linkType: 'is_blocked_by' },
+          ],
+        },
+        include: {
+          sourceTask: { select: { taskId: true, title: true, status: true } },
+          targetTask: { select: { taskId: true, title: true, status: true } },
+        },
+      });
+      const incompleteBlockers = blockingDeps.filter(dep => {
+        const blocker = dep.linkType === 'blocks' ? dep.sourceTask : dep.targetTask;
+        return blocker.status !== 'done';
+      });
+      if (incompleteBlockers.length > 0) {
+        const blockerNames = incompleteBlockers.map(dep => {
+          const blocker = dep.linkType === 'blocks' ? dep.sourceTask : dep.targetTask;
+          return `"${blocker.title}" (${blocker.status})`;
+        });
+        log.warn({ taskId: args.taskId, blockers: blockerNames }, 'Task has incomplete blocking dependencies');
+      }
     }
     const updated = await context.prisma.task.update({
       where: { taskId: args.taskId },
@@ -496,6 +526,56 @@ export const taskMutations = {
     try { fs.unlinkSync(filePath); } catch { /* file may already be gone */ }
     // Delete DB record
     await context.prisma.attachment.delete({ where: { attachmentId: args.attachmentId } });
+    return true;
+  },
+
+  addTaskDependency: async (
+    _parent: unknown,
+    args: { sourceTaskId: string; targetTaskId: string; linkType: string },
+    context: Context
+  ) => {
+    const { user } = await requireTask(context, args.sourceTaskId);
+    // Verify target task exists and is in same org
+    const targetTask = await context.prisma.task.findUnique({ where: { taskId: args.targetTaskId } });
+    if (!targetTask || targetTask.orgId !== user.orgId) {
+      throw new NotFoundError('Target task not found');
+    }
+    const validLinkTypes = ['blocks', 'is_blocked_by', 'relates_to', 'duplicates'];
+    if (!validLinkTypes.includes(args.linkType)) {
+      throw new ValidationError(`Invalid linkType "${args.linkType}". Valid: ${validLinkTypes.join(', ')}`);
+    }
+    // Cycle detection for blocking link types
+    if (args.linkType === 'blocks' || args.linkType === 'is_blocked_by') {
+      const wouldCycle = await detectCycle(context.prisma, args.sourceTaskId, args.targetTaskId);
+      if (wouldCycle) {
+        throw new ValidationError('Adding this dependency would create a circular dependency');
+      }
+    }
+    const dep = await context.prisma.taskDependency.create({
+      data: {
+        sourceTaskId: args.sourceTaskId,
+        targetTaskId: args.targetTaskId,
+        linkType: args.linkType,
+      },
+      include: { sourceTask: true, targetTask: true },
+    });
+    return { ...dep, createdAt: dep.createdAt.toISOString() };
+  },
+
+  removeTaskDependency: async (
+    _parent: unknown,
+    args: { taskDependencyId: string },
+    context: Context
+  ) => {
+    const user = requireOrg(context);
+    const dep = await context.prisma.taskDependency.findUnique({
+      where: { taskDependencyId: args.taskDependencyId },
+      include: { sourceTask: { select: { orgId: true } } },
+    });
+    if (!dep || dep.sourceTask.orgId !== user.orgId) {
+      throw new NotFoundError('Task dependency not found');
+    }
+    await context.prisma.taskDependency.delete({ where: { taskDependencyId: args.taskDependencyId } });
     return true;
   },
 };

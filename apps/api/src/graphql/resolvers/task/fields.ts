@@ -39,6 +39,14 @@ export const taskFieldResolvers = {
     children: async (parent: { taskId: string }, _args: unknown, context: Context) => {
       return context.loaders.taskChildren.load(parent.taskId);
     },
+    dependencies: async (parent: { taskId: string }, _args: unknown, context: Context) => {
+      const deps = await context.loaders.taskDependencies.load(parent.taskId);
+      return deps.map(d => ({ ...d, createdAt: d.createdAt.toISOString() }));
+    },
+    dependents: async (parent: { taskId: string }, _args: unknown, context: Context) => {
+      const deps = await context.loaders.taskDependents.load(parent.taskId);
+      return deps.map(d => ({ ...d, createdAt: d.createdAt.toISOString() }));
+    },
     progress: async (parent: { taskId: string; taskType: string }, _args: unknown, context: Context) => {
       if (parent.taskType !== 'epic' && parent.taskType !== 'story') return null;
       const result = await context.loaders.taskProgress.load(parent.taskId);

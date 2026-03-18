@@ -1,8 +1,10 @@
 import DataLoader from 'dataloader';
-import type { PrismaClient, Task, Project, Sprint, User, Label, GitHubPullRequestLink, GitHubCommitLink, CustomFieldValue, CustomField, TaskAssignee, Attachment } from '@prisma/client';
+import type { PrismaClient, Task, Project, Sprint, User, Label, GitHubPullRequestLink, GitHubCommitLink, CustomFieldValue, CustomField, TaskAssignee, Attachment, TaskDependency } from '@prisma/client';
 
 export type CustomFieldValueWithField = CustomFieldValue & { customField: CustomField };
 export type TaskAssigneeWithUser = TaskAssignee & { user: User };
+export type TaskDependencyWithTask = TaskDependency & { targetTask: Task };
+export type TaskDependentWithTask = TaskDependency & { sourceTask: Task };
 
 export interface Loaders {
   taskById: DataLoader<string, Task | null>;
@@ -18,6 +20,8 @@ export interface Loaders {
   customFieldValuesByTask: DataLoader<string, CustomFieldValueWithField[]>;
   taskAssignees: DataLoader<string, TaskAssigneeWithUser[]>;
   taskAttachments: DataLoader<string, Attachment[]>;
+  taskDependencies: DataLoader<string, TaskDependencyWithTask[]>;
+  taskDependents: DataLoader<string, TaskDependentWithTask[]>;
 }
 
 export function createLoaders(prisma: PrismaClient): Loaders {
@@ -146,6 +150,32 @@ export function createLoaders(prisma: PrismaClient): Loaders {
       for (const a of attachments) {
         if (!map.has(a.taskId)) map.set(a.taskId, []);
         map.get(a.taskId)!.push(a);
+      }
+      return taskIds.map(id => map.get(id) ?? []);
+    }),
+
+    taskDependencies: new DataLoader(async (taskIds) => {
+      const deps = await prisma.taskDependency.findMany({
+        where: { sourceTaskId: { in: [...taskIds] } },
+        include: { targetTask: true },
+      });
+      const map = new Map<string, TaskDependencyWithTask[]>();
+      for (const d of deps) {
+        if (!map.has(d.sourceTaskId)) map.set(d.sourceTaskId, []);
+        map.get(d.sourceTaskId)!.push(d);
+      }
+      return taskIds.map(id => map.get(id) ?? []);
+    }),
+
+    taskDependents: new DataLoader(async (taskIds) => {
+      const deps = await prisma.taskDependency.findMany({
+        where: { targetTaskId: { in: [...taskIds] } },
+        include: { sourceTask: true },
+      });
+      const map = new Map<string, TaskDependentWithTask[]>();
+      for (const d of deps) {
+        if (!map.has(d.targetTaskId)) map.set(d.targetTaskId, []);
+        map.get(d.targetTaskId)!.push(d);
       }
       return taskIds.map(id => map.get(id) ?? []);
     }),

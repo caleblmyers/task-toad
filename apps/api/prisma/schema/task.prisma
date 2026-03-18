@@ -41,6 +41,8 @@ model Task {
   customFieldValues CustomFieldValue[]
   taskAssignees     TaskAssignee[]
   actionPlans       TaskActionPlan[]
+  dependenciesAsSource TaskDependency[] @relation("TaskDependenciesSource")
+  dependenciesAsTarget TaskDependency[] @relation("TaskDependenciesTarget")
 
   @@index([projectId])
   @@index([parentTaskId])
@@ -123,6 +125,21 @@ model TaskAssignee {
   @@index([taskId])
   @@index([userId])
   @@map("task_assignees")
+}
+
+model TaskDependency {
+  taskDependencyId String   @id @default(uuid()) @map("task_dependency_id")
+  sourceTaskId     String   @map("source_task_id")
+  targetTaskId     String   @map("target_task_id")
+  linkType         String   @default("blocks") @map("link_type")
+  createdAt        DateTime @default(now()) @map("created_at")
+  sourceTask       Task     @relation("TaskDependenciesSource", fields: [sourceTaskId], references: [taskId], onDelete: Cascade)
+  targetTask       Task     @relation("TaskDependenciesTarget", fields: [targetTaskId], references: [taskId], onDelete: Cascade)
+
+  @@unique([sourceTaskId, targetTaskId, linkType])
+  @@index([sourceTaskId])
+  @@index([targetTaskId])
+  @@map("task_dependencies")
 }
 
 model Attachment {
