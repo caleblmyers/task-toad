@@ -8,6 +8,7 @@ import { useAIGeneration } from './useAIGeneration';
 import { useProjectState } from './useProjectState';
 import { useProjectEffects } from './useProjectEffects';
 import type { Task, TaskPlanPreview, Sprint, OrgUser, CloseSprintResult, Project, Comment, Activity, ProjectStats, Label, Epic, ActionPlanPreview, TaskActionPlan } from '../types';
+import type { TaskFilterInput } from './useTaskFiltering';
 
 export interface ProjectData {
   projectId: string | undefined;
@@ -50,7 +51,7 @@ export interface ProjectData {
   projectStatuses: string[];
 
   // Actions
-  loadTasks: () => Promise<Task[]>;
+  loadTasks: (filter?: TaskFilterInput) => Promise<Task[]>;
   loadMoreTasks: () => Promise<void>;
   selectTask: (task: Task) => void;
   handleStatusChange: (taskId: string, status: string) => Promise<void>;

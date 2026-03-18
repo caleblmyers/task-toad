@@ -1,6 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/triple-slash-reference
 /// <reference types="vitest" />
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useTaskFiltering } from '../hooks/useTaskFiltering';
 import type { Task } from '../types';
@@ -31,12 +31,12 @@ const sampleTasks: Task[] = [
 ];
 
 describe('useTaskFiltering', () => {
-  // ── Default behavior ──
+  // ── Default behavior — server-side filtering means filteredTasks is a passthrough ──
 
-  it('returns all non-archived tasks by default', () => {
+  it('passes through all tasks as filteredTasks (server-side filtering)', () => {
     const { result } = renderHook(() => useTaskFiltering(sampleTasks));
-    expect(result.current.filteredTasks).toHaveLength(4);
-    expect(result.current.filteredTasks.every((t) => !t.archived)).toBe(true);
+    expect(result.current.filteredTasks).toBe(sampleTasks);
+    expect(result.current.filteredTasks).toHaveLength(5);
   });
 
   it('hasActiveFilters is false initially', () => {
@@ -44,205 +44,106 @@ describe('useTaskFiltering', () => {
     expect(result.current.hasActiveFilters).toBe(false);
   });
 
-  // ── Search ──
-
-  describe('search filtering', () => {
-    it('filters by title (case-insensitive)', () => {
-      const { result } = renderHook(() => useTaskFiltering(sampleTasks));
-      act(() => result.current.setSearchQuery('LOGIN'));
-      expect(result.current.filteredTasks.map((t) => t.taskId)).toEqual(
-        expect.arrayContaining(['2', '5']),
-      );
-      expect(result.current.filteredTasks).toHaveLength(2);
-    });
-
-    it('filters by description (case-insensitive)', () => {
-      const { result } = renderHook(() => useTaskFiltering(sampleTasks));
-      act(() => result.current.setSearchQuery('postgresql'));
-      expect(result.current.filteredTasks).toHaveLength(1);
-      expect(result.current.filteredTasks[0].taskId).toBe('1');
-    });
-
-    it('handles tasks with null description', () => {
-      const { result } = renderHook(() => useTaskFiltering(sampleTasks));
-      act(() => result.current.setSearchQuery('api tests'));
-      expect(result.current.filteredTasks).toHaveLength(1);
-      expect(result.current.filteredTasks[0].taskId).toBe('3');
-    });
-
-    it('returns empty when no matches', () => {
-      const { result } = renderHook(() => useTaskFiltering(sampleTasks));
-      act(() => result.current.setSearchQuery('nonexistent xyz'));
-      expect(result.current.filteredTasks).toHaveLength(0);
-    });
+  it('filterInput is empty object by default', () => {
+    const { result } = renderHook(() => useTaskFiltering(sampleTasks));
+    expect(result.current.filterInput).toEqual({});
   });
 
-  // ── Status filter ──
+  // ── filterInput shape ──
 
-  describe('status filtering', () => {
-    it('filters by single status', () => {
+  describe('filterInput builds correct shape', () => {
+    it('status filter produces status array', () => {
       const { result } = renderHook(() => useTaskFiltering(sampleTasks));
       act(() => result.current.setStatusFilter('TODO'));
-      // task 4 is archived, so only 1 and 5
-      expect(result.current.filteredTasks.map((t) => t.taskId)).toEqual(
-        expect.arrayContaining(['1', '5']),
-      );
-      expect(result.current.filteredTasks).toHaveLength(2);
+      expect(result.current.filterInput.status).toEqual(['TODO']);
     });
 
-    it('"all" returns everything', () => {
-      const { result } = renderHook(() => useTaskFiltering(sampleTasks));
-      act(() => result.current.setStatusFilter('IN_PROGRESS'));
-      act(() => result.current.setStatusFilter('all'));
-      expect(result.current.filteredTasks).toHaveLength(4);
-    });
-  });
-
-  // ── Priority filter ──
-
-  describe('priority filtering', () => {
-    it('filters by priority', () => {
+    it('priority filter produces priority array', () => {
       const { result } = renderHook(() => useTaskFiltering(sampleTasks));
       act(() => result.current.setPriorityFilter('HIGH'));
-      // task 1 (HIGH, not archived) — task 4 is HIGH but archived
-      expect(result.current.filteredTasks).toHaveLength(1);
-      expect(result.current.filteredTasks[0].taskId).toBe('1');
+      expect(result.current.filterInput.priority).toEqual(['HIGH']);
     });
 
-    it('"all" returns everything', () => {
-      const { result } = renderHook(() => useTaskFiltering(sampleTasks));
-      act(() => result.current.setPriorityFilter('CRITICAL'));
-      expect(result.current.filteredTasks).toHaveLength(1);
-      act(() => result.current.setPriorityFilter('all'));
-      expect(result.current.filteredTasks).toHaveLength(4);
-    });
-  });
-
-  // ── Assignee filter ──
-
-  describe('assignee filtering', () => {
-    it('filters by specific assignee', () => {
+    it('assignee filter produces assigneeId array', () => {
       const { result } = renderHook(() => useTaskFiltering(sampleTasks));
       act(() => result.current.setAssigneeFilter('user-1'));
-      expect(result.current.filteredTasks.map((t) => t.taskId)).toEqual(
-        expect.arrayContaining(['1', '5']),
-      );
-      expect(result.current.filteredTasks).toHaveLength(2);
+      expect(result.current.filterInput.assigneeId).toEqual(['user-1']);
     });
 
-    it('filters for unassigned tasks', () => {
+    it('unassigned filter produces assigneeId with "unassigned"', () => {
       const { result } = renderHook(() => useTaskFiltering(sampleTasks));
       act(() => result.current.setAssigneeFilter('unassigned'));
-      expect(result.current.filteredTasks.every((t) => !t.assigneeId)).toBe(true);
-      // task 3 (unassigned, not archived) + task 4 is archived
-      expect(result.current.filteredTasks).toHaveLength(1);
-      expect(result.current.filteredTasks[0].taskId).toBe('3');
+      expect(result.current.filterInput.assigneeId).toEqual(['unassigned']);
     });
-  });
 
-  // ── Label filter ──
-
-  describe('label filtering', () => {
-    it('filters by single label', () => {
+    it('label filter produces labelIds array', () => {
       const { result } = renderHook(() => useTaskFiltering(sampleTasks));
-      act(() => result.current.setLabelFilter(['lbl-1']));
-      // tasks 1 and 3 have lbl-1
-      expect(result.current.filteredTasks.map((t) => t.taskId)).toEqual(
-        expect.arrayContaining(['1', '3']),
-      );
-      expect(result.current.filteredTasks).toHaveLength(2);
+      act(() => result.current.setLabelFilter(['lbl-1', 'lbl-2']));
+      expect(result.current.filterInput.labelIds).toEqual(['lbl-1', 'lbl-2']);
     });
 
-    it('filters by multiple labels (OR logic — task has any)', () => {
-      const { result } = renderHook(() => useTaskFiltering(sampleTasks));
-      act(() => result.current.setLabelFilter(['lbl-2', 'lbl-3']));
-      // task 2 (lbl-2), task 3 (lbl-3)
-      expect(result.current.filteredTasks.map((t) => t.taskId)).toEqual(
-        expect.arrayContaining(['2', '3']),
-      );
-      expect(result.current.filteredTasks).toHaveLength(2);
-    });
-
-    it('returns no results if no tasks match label', () => {
-      const { result } = renderHook(() => useTaskFiltering(sampleTasks));
-      act(() => result.current.setLabelFilter(['lbl-999']));
-      expect(result.current.filteredTasks).toHaveLength(0);
-    });
-  });
-
-  // ── Custom field filter ──
-
-  describe('custom field filtering', () => {
-    const tasksWithCF: Task[] = [
-      {
-        ...makeTask({ taskId: 'cf-1', title: 'Task A' }),
-        customFieldValues: [
-          { field: { customFieldId: 'cf-type' }, value: 'Bug' },
-        ],
-      } as Task & { customFieldValues: Array<{ field: { customFieldId: string }; value: string }> },
-      {
-        ...makeTask({ taskId: 'cf-2', title: 'Task B' }),
-        customFieldValues: [
-          { field: { customFieldId: 'cf-type' }, value: 'Feature' },
-        ],
-      } as Task & { customFieldValues: Array<{ field: { customFieldId: string }; value: string }> },
-      makeTask({ taskId: 'cf-3', title: 'Task C' }),
-    ];
-
-    it('filters by custom field value (case-insensitive includes)', () => {
-      const { result } = renderHook(() => useTaskFiltering(tasksWithCF));
-      act(() => result.current.setCustomFieldFilter('cf-type', 'bug'));
-      expect(result.current.filteredTasks).toHaveLength(1);
-      expect(result.current.filteredTasks[0].taskId).toBe('cf-1');
-    });
-
-    it('excludes tasks without the custom field', () => {
-      const { result } = renderHook(() => useTaskFiltering(tasksWithCF));
-      act(() => result.current.setCustomFieldFilter('cf-type', 'feature'));
-      expect(result.current.filteredTasks).toHaveLength(1);
-      expect(result.current.filteredTasks[0].taskId).toBe('cf-2');
-    });
-
-    it('ignores empty filter values', () => {
-      const { result } = renderHook(() => useTaskFiltering(tasksWithCF));
-      act(() => result.current.setCustomFieldFilter('cf-type', ''));
-      expect(result.current.filteredTasks).toHaveLength(3);
-    });
-  });
-
-  // ── Archived ──
-
-  describe('showArchived', () => {
-    it('shows archived tasks when enabled', () => {
+    it('showArchived filter produces showArchived: true', () => {
       const { result } = renderHook(() => useTaskFiltering(sampleTasks));
       act(() => result.current.setShowArchived(true));
-      expect(result.current.filteredTasks).toHaveLength(5);
+      expect(result.current.filterInput.showArchived).toBe(true);
+    });
+
+    it('search filter populates after debounce', async () => {
+      vi.useFakeTimers();
+      const { result } = renderHook(() => useTaskFiltering(sampleTasks));
+      act(() => result.current.setSearchQuery('login'));
+      // Before debounce, search not in filterInput
+      expect(result.current.filterInput.search).toBeUndefined();
+      // After 300ms debounce
+      act(() => { vi.advanceTimersByTime(300); });
+      expect(result.current.filterInput.search).toBe('login');
+      vi.useRealTimers();
+    });
+
+    it('"all" values produce empty filterInput', () => {
+      const { result } = renderHook(() => useTaskFiltering(sampleTasks));
+      act(() => result.current.setStatusFilter('TODO'));
+      expect(result.current.filterInput.status).toEqual(['TODO']);
+      act(() => result.current.setStatusFilter('all'));
+      expect(result.current.filterInput.status).toBeUndefined();
     });
   });
 
   // ── Combined filters ──
 
-  describe('combined filters', () => {
-    it('applies search + status + priority simultaneously', () => {
+  describe('combined filters produce correct filterInput', () => {
+    it('applies search + status + priority simultaneously', async () => {
+      vi.useFakeTimers();
       const { result } = renderHook(() => useTaskFiltering(sampleTasks));
       act(() => {
         result.current.setSearchQuery('login');
         result.current.setStatusFilter('TODO');
         result.current.setPriorityFilter('CRITICAL');
       });
-      // Only task 5: "Fix login bug", TODO, CRITICAL
-      expect(result.current.filteredTasks).toHaveLength(1);
-      expect(result.current.filteredTasks[0].taskId).toBe('5');
+      act(() => { vi.advanceTimersByTime(300); });
+      expect(result.current.filterInput).toEqual({
+        search: 'login',
+        status: ['TODO'],
+        priority: ['CRITICAL'],
+      });
+      vi.useRealTimers();
+    });
+  });
+
+  // ── Custom field filters — state maintained ──
+
+  describe('custom field filtering state', () => {
+    it('maintains custom field filter state', () => {
+      const { result } = renderHook(() => useTaskFiltering(sampleTasks));
+      act(() => result.current.setCustomFieldFilter('cf-type', 'bug'));
+      expect(result.current.customFieldFilters).toEqual({ 'cf-type': 'bug' });
+      expect(result.current.hasActiveFilters).toBe(true);
     });
 
-    it('search + assignee narrows results', () => {
+    it('ignores empty custom field filter values for hasActiveFilters', () => {
       const { result } = renderHook(() => useTaskFiltering(sampleTasks));
-      act(() => {
-        result.current.setSearchQuery('database');
-        result.current.setAssigneeFilter('user-1');
-      });
-      expect(result.current.filteredTasks).toHaveLength(1);
-      expect(result.current.filteredTasks[0].taskId).toBe('1');
+      act(() => result.current.setCustomFieldFilter('cf-type', ''));
+      expect(result.current.hasActiveFilters).toBe(false);
     });
   });
 
@@ -289,13 +190,14 @@ describe('useTaskFiltering', () => {
       expect(result.current.priorityFilter).toBe('all');
       expect(result.current.assigneeFilter).toBe('all');
       expect(result.current.labelFilter).toEqual([]);
+      expect(result.current.filterInput).toEqual({});
     });
   });
 
   // ── loadSavedFilter ──
 
   describe('loadSavedFilter', () => {
-    it('loads saved filter from JSON', () => {
+    it('loads saved filter from JSON and updates filterInput', () => {
       const { result } = renderHook(() => useTaskFiltering(sampleTasks));
       const saved = JSON.stringify({
         statusFilter: 'DONE',
@@ -308,6 +210,12 @@ describe('useTaskFiltering', () => {
       expect(result.current.priorityFilter).toBe('LOW');
       expect(result.current.assigneeFilter).toBe('user-2');
       expect(result.current.labelFilter).toEqual(['lbl-1']);
+      expect(result.current.filterInput).toEqual({
+        status: ['DONE'],
+        priority: ['LOW'],
+        assigneeId: ['user-2'],
+        labelIds: ['lbl-1'],
+      });
     });
 
     it('ignores invalid JSON gracefully', () => {

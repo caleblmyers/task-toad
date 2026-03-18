@@ -58,6 +58,15 @@ export default function ProjectDetail() {
   const { user } = useAuth();
   const searchRef = useRef<HTMLInputElement>(null);
 
+  // Re-fetch tasks when server-side filter changes
+  const filterInput = filtering.filterInput;
+  useEffect(() => {
+    if (d.projectId) {
+      void d.loadTasks(filterInput);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterInput]);
+
   // Consolidated modal state — replaces 8+ individual booleans
   const [activeModal, setActiveModal] = useState<string | null>(null);
   // View panels that replace the main content (not modal overlays)
@@ -100,7 +109,7 @@ export default function ProjectDetail() {
       if (event === 'task.updated') {
         const payload = data as { taskId?: string };
         if (payload?.taskId) {
-          void d.loadTasks();
+          void d.loadTasks(filterInput);
         }
       }
     },

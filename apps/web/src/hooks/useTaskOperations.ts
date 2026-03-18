@@ -7,6 +7,7 @@ import {
 import { columnToStatus, statusToColumn } from '../utils/taskHelpers';
 import { parseColumns } from '../utils/jsonHelpers';
 import type { Task, TaskConnection, Sprint, TaskDependency } from '../types';
+import type { TaskFilterInput } from './useTaskFiltering';
 
 interface UpdateTaskResult {
   task: { taskId: string };
@@ -43,10 +44,17 @@ export function useTaskOperations({ projectId, userId, sprints, onWarnings }: Us
 
   // ── Data loading ──
 
-  const loadTasks = useCallback(async (): Promise<Task[]> => {
+  // Store current filter for loadMoreTasks
+  const currentFilterRef = useRef<TaskFilterInput | undefined>();
+
+  const loadTasks = useCallback(async (filter?: TaskFilterInput): Promise<Task[]> => {
     if (!projectId) return [];
+    currentFilterRef.current = filter;
     try {
-      const data = await gql<{ tasks: TaskConnection }>(TASKS_QUERY, { projectId });
+      const data = await gql<{ tasks: TaskConnection }>(TASKS_QUERY, {
+        projectId,
+        ...(filter && Object.keys(filter).length > 0 ? { filter } : {}),
+      });
       setTasks(data.tasks.tasks);
       setHasMore(data.tasks.hasMore);
       setTaskOffset(0);
@@ -66,9 +74,13 @@ export function useTaskOperations({ projectId, userId, sprints, onWarnings }: Us
   const loadMoreTasks = useCallback(async () => {
     if (!projectId || !hasMore) return;
     const newOffset = taskOffset + 100;
+    const filter = currentFilterRef.current;
     try {
       const data = await gql<{ tasks: TaskConnection }>(
-        TASKS_PAGINATED_QUERY, { projectId, limit: 100, offset: newOffset },
+        TASKS_PAGINATED_QUERY, {
+          projectId, limit: 100, offset: newOffset,
+          ...(filter && Object.keys(filter).length > 0 ? { filter } : {}),
+        },
       );
       setTasks((prev) => [...prev, ...data.tasks.tasks]);
       setHasMore(data.tasks.hasMore);
