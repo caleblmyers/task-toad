@@ -2,29 +2,145 @@ import type { Context } from '../../context.js';
 import { requireOrg, requireProjectAccess } from '../auth.js';
 import { requireTask } from '../../../utils/resolverHelpers.js';
 
+// ── Filter types ──
+
+export interface TaskFilterInput {
+  status?: string[] | null;
+  priority?: string[] | null;
+  assigneeId?: string[] | null;
+  labelIds?: string[] | null;
+  search?: string | null;
+  showArchived?: boolean | null;
+  epicId?: string | null;
+  sprintId?: string | null;
+  dueDateFrom?: string | null;
+  dueDateTo?: string | null;
+  sortBy?: string | null;
+  sortOrder?: string | null;
+}
+
+const ALLOWED_SORT_FIELDS = new Set(['position', 'createdAt', 'dueDate', 'priority', 'title', 'status']);
+
+function buildFilterWhere(
+  projectId: string,
+  filter: TaskFilterInput | null | undefined,
+  parentTaskId: string | null | undefined,
+): Record<string, unknown> {
+  // When parentTaskId is explicitly provided, fetch subtasks (SUBTASKS_QUERY)
+  if (parentTaskId !== undefined) {
+    return { projectId, parentTaskId };
+  }
+
+  const where: Record<string, unknown> = { projectId, taskType: { not: 'epic' } };
+  // Collect AND conditions — used for label AND logic and combining OR groups
+  const andConditions: Record<string, unknown>[] = [];
+
+  if (!filter) return where;
+
+  // Archived filter — default: exclude archived
+  if (!filter.showArchived) {
+    where.archived = false;
+  }
+
+  // Status filter
+  if (filter.status && filter.status.length > 0) {
+    where.status = { in: filter.status };
+  }
+
+  // Priority filter
+  if (filter.priority && filter.priority.length > 0) {
+    where.priority = { in: filter.priority };
+  }
+
+  // Assignee filter — special handling for "unassigned"
+  if (filter.assigneeId && filter.assigneeId.length > 0) {
+    const hasUnassigned = filter.assigneeId.includes('unassigned');
+    const realIds = filter.assigneeId.filter((id) => id !== 'unassigned');
+    if (hasUnassigned && realIds.length > 0) {
+      andConditions.push({ OR: [{ assigneeId: null }, { assigneeId: { in: realIds } }] });
+    } else if (hasUnassigned) {
+      where.assigneeId = null;
+    } else {
+      where.assigneeId = { in: realIds };
+    }
+  }
+
+  // Label filter — AND logic: task must have ALL listed labels
+  if (filter.labelIds && filter.labelIds.length > 0) {
+    for (const labelId of filter.labelIds) {
+      andConditions.push({ labels: { some: { labelId } } });
+    }
+  }
+
+  // Search — case-insensitive on title and description
+  if (filter.search && filter.search.trim()) {
+    const term = filter.search.trim();
+    andConditions.push({
+      OR: [
+        { title: { contains: term, mode: 'insensitive' } },
+        { description: { contains: term, mode: 'insensitive' } },
+      ],
+    });
+  }
+
+  // Epic filter
+  if (filter.epicId) {
+    where.parentTaskId = filter.epicId;
+  }
+
+  // Sprint filter
+  if (filter.sprintId) {
+    where.sprintId = filter.sprintId;
+  }
+
+  // Due date range
+  if (filter.dueDateFrom || filter.dueDateTo) {
+    const dueDateFilter: Record<string, string> = {};
+    if (filter.dueDateFrom) dueDateFilter.gte = filter.dueDateFrom;
+    if (filter.dueDateTo) dueDateFilter.lte = filter.dueDateTo;
+    where.dueDate = dueDateFilter;
+  }
+
+  if (andConditions.length > 0) {
+    where.AND = andConditions;
+  }
+
+  return where;
+}
+
+function buildOrderBy(filter: TaskFilterInput | null | undefined): Record<string, string>[] {
+  if (filter?.sortBy && ALLOWED_SORT_FIELDS.has(filter.sortBy)) {
+    const order = filter.sortOrder === 'desc' ? 'desc' : 'asc';
+    return [{ [filter.sortBy]: order }];
+  }
+  return [{ position: 'asc' }, { createdAt: 'asc' }];
+}
+
 // ── Task queries ──
 
 export const taskQueries = {
   tasks: async (
     _parent: unknown,
-    args: { projectId: string; parentTaskId?: string | null; limit?: number | null; offset?: number | null },
+    args: {
+      projectId: string;
+      filter?: TaskFilterInput | null;
+      parentTaskId?: string | null;
+      limit?: number | null;
+      offset?: number | null;
+    },
     context: Context
   ) => {
     await requireProjectAccess(context, args.projectId);
     const limit = Math.max(0, Math.min(args.limit ?? 100, 1000));
     const offset = Math.max(0, args.offset ?? 0);
-    let where: Record<string, unknown>;
-    if (args.parentTaskId !== undefined) {
-      // Explicit parentTaskId: fetch subtasks of a specific parent (SUBTASKS_QUERY)
-      where = { projectId: args.projectId, parentTaskId: args.parentTaskId };
-    } else {
-      // Default: all non-epic tasks (root tasks + children of epics)
-      where = { projectId: args.projectId, taskType: { not: 'epic' } };
-    }
+
+    const where = buildFilterWhere(args.projectId, args.filter, args.parentTaskId);
+    const orderBy = buildOrderBy(args.filter);
+
     const [tasks, total] = await Promise.all([
       context.prisma.task.findMany({
         where,
-        orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+        orderBy,
         take: limit,
         skip: offset,
       }),

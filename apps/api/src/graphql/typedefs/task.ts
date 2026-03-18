@@ -178,9 +178,26 @@ export const taskTypeDefs = /* GraphQL */ `
   }
 `;
 
+export const taskFilterInputDef = /* GraphQL */ `
+  input TaskFilterInput {
+    status: [String!]
+    priority: [String!]
+    assigneeId: [ID!]
+    labelIds: [ID!]
+    search: String
+    showArchived: Boolean
+    epicId: ID
+    sprintId: ID
+    dueDateFrom: String
+    dueDateTo: String
+    sortBy: String
+    sortOrder: String
+  }
+`;
+
 export const taskQueryFields = /* GraphQL */ `
-  """List tasks for a project with optional pagination and parent filter."""
-  tasks(projectId: ID!, parentTaskId: ID, limit: Int, offset: Int): TaskConnection!
+  """List tasks for a project with optional pagination, parent filter, and server-side filtering."""
+  tasks(projectId: ID!, filter: TaskFilterInput, parentTaskId: ID, limit: Int, offset: Int): TaskConnection!
   """List epic-type tasks for a project."""
   epics(projectId: ID!): [Task!]!
   """List all labels in the organization."""

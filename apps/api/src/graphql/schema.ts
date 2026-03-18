@@ -6,7 +6,7 @@ import { resolvers } from './resolvers/index.js';
 import { authTypeDefs, authQueryFields, authMutationFields } from './typedefs/auth.js';
 import { orgTypeDefs, orgQueryFields, orgMutationFields } from './typedefs/org.js';
 import { projectTypeDefs, projectQueryFields, projectMutationFields } from './typedefs/project.js';
-import { taskTypeDefs, taskQueryFields, taskMutationFields } from './typedefs/task.js';
+import { taskTypeDefs, taskFilterInputDef, taskQueryFields, taskMutationFields } from './typedefs/task.js';
 import { sprintTypeDefs, sprintQueryFields, sprintMutationFields } from './typedefs/sprint.js';
 import { commentTypeDefs, commentQueryFields, commentMutationFields } from './typedefs/comment.js';
 import { notificationTypeDefs, notificationQueryFields, notificationMutationFields } from './typedefs/notification.js';
@@ -25,6 +25,7 @@ const typeDefs = /* GraphQL */ `
   ${orgTypeDefs}
   ${projectTypeDefs}
   ${taskTypeDefs}
+  ${taskFilterInputDef}
   ${sprintTypeDefs}
   ${commentTypeDefs}
   ${notificationTypeDefs}
