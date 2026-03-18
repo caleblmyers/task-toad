@@ -6,7 +6,7 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useToast } from '../hooks/useToast';
 import { useAuth } from '../auth/context';
 import { gql } from '../api/client';
-import { useEventSource } from '../hooks/useEventSource';
+import { useSSEListener } from '../hooks/useEventSource';
 import type { Activity, GitHubRepoLink, GitHubInstallation } from '../types';
 import KanbanBoard from '../components/KanbanBoard';
 import TaskDetailPanel from '../components/TaskDetailPanel';
@@ -81,21 +81,23 @@ export default function ProjectDetail() {
   });
 
   // SSE: refresh action plan when action events arrive for the selected task
-  // useEventSource stores the handler in a ref, so no useCallback needed
-  useEventSource((event: string, data: unknown) => {
-    if (event === 'task.action_completed' || event === 'task.action_plan_completed') {
-      const payload = data as { taskId?: string };
-      if (payload?.taskId && d.selectedTask?.taskId === payload.taskId) {
-        void d.loadActionPlan(payload.taskId);
+  useSSEListener(
+    ['task.action_completed', 'task.action_plan_completed', 'task.updated'],
+    (event: string, data: unknown) => {
+      if (event === 'task.action_completed' || event === 'task.action_plan_completed') {
+        const payload = data as { taskId?: string };
+        if (payload?.taskId && d.selectedTask?.taskId === payload.taskId) {
+          void d.loadActionPlan(payload.taskId);
+        }
       }
-    }
-    if (event === 'task.updated') {
-      const payload = data as { taskId?: string };
-      if (payload?.taskId) {
-        void d.loadTasks();
+      if (event === 'task.updated') {
+        const payload = data as { taskId?: string };
+        if (payload?.taskId) {
+          void d.loadTasks();
+        }
       }
-    }
-  });
+    },
+  );
 
   // Handle ?task=<taskId> deep-link from search results
   useEffect(() => {

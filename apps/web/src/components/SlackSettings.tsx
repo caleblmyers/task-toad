@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
 import { useConfirmDialog } from './shared/ConfirmDialog';
+import Badge from './shared/Badge';
 
 interface SlackIntegration {
   id: string;
@@ -249,13 +250,11 @@ export default function SlackSettings() {
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => handleToggleEnabled(int)}
-                    className={`text-xs px-2 py-0.5 rounded ${
-                      int.enabled
-                        ? 'bg-green-50 text-green-700'
-                        : 'bg-slate-100 text-slate-500'
-                    }`}
+                    className="cursor-pointer"
                   >
-                    {int.enabled ? 'Active' : 'Disabled'}
+                    <Badge variant={int.enabled ? 'success' : 'neutral'}>
+                      {int.enabled ? 'Active' : 'Disabled'}
+                    </Badge>
                   </button>
                   <button
                     onClick={() => handleTest(int.id)}
@@ -274,12 +273,9 @@ export default function SlackSettings() {
               </div>
               <div className="flex flex-wrap gap-1">
                 {int.events.map((ev) => (
-                  <span
-                    key={ev}
-                    className="inline-block text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded"
-                  >
+                  <Badge key={ev} size="sm" variant="neutral">
                     {ev}
-                  </span>
+                  </Badge>
                 ))}
               </div>
               {testResult?.id === int.id && (

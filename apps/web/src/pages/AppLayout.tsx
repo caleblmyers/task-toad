@@ -7,7 +7,8 @@ import NotificationSettings from '../components/NotificationSettings';
 import GlobalSearchModal from '../components/GlobalSearchModal';
 import UserAvatar from '../components/shared/UserAvatar';
 import { IconSun, IconMoon } from '../components/shared/Icons';
-import { useEventSource } from '../hooks/useEventSource';
+import Card from '../components/shared/Card';
+import { SSEProvider, useSSEListener } from '../hooks/useEventSource';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 
 const SIDEBAR_COLLAPSED_KEY = 'task-toad-sidebar-collapsed';
@@ -164,13 +165,13 @@ export default function AppLayout() {
     }
   }, []);
 
-  // SSE real-time events
+  // SSE real-time events (single connection via SSEProvider wrapping Outlet)
   const handleSSEEvent = useCallback((event: string, _data: unknown) => {
     if (event === 'notification.created') {
       void fetchCount();
     }
   }, [fetchCount]);
-  const { connected: sseConnected } = useEventSource(handleSSEEvent);
+  const { connected: sseConnected } = useSSEListener(['notification.created'], handleSSEEvent);
 
   // Poll unread count every 60s as SSE fallback
   useEffect(() => {
@@ -371,6 +372,7 @@ export default function AppLayout() {
   };
 
   return (
+    <SSEProvider>
     <div className="h-screen flex flex-col md:flex-row bg-slate-50 dark:bg-slate-900 overflow-hidden">
       {/* Skip to main content link */}
       <a
@@ -480,7 +482,7 @@ export default function AppLayout() {
           </div>
         )}
         {showNotifSettings && (
-          <div className={`absolute bottom-full ${collapsed ? 'left-14' : 'left-0'} mb-2 w-80 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 p-4 z-50`}>
+          <Card padding="sm" className={`absolute bottom-full ${collapsed ? 'left-14' : 'left-0'} mb-2 w-80 shadow-lg z-50 dark:!bg-slate-800`}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Notification Preferences</h3>
               <button
@@ -493,7 +495,7 @@ export default function AppLayout() {
               </button>
             </div>
             <NotificationSettings />
-          </div>
+          </Card>
         )}
       </aside>
 
@@ -509,5 +511,6 @@ export default function AppLayout() {
       </main>
       {showSearch && <GlobalSearchModal onClose={() => setShowSearch(false)} />}
     </div>
+    </SSEProvider>
   );
 }
