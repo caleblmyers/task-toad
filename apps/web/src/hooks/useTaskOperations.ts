@@ -6,7 +6,7 @@ import {
 } from '../api/queries';
 import { columnToStatus, statusToColumn } from '../utils/taskHelpers';
 import { parseColumns } from '../utils/jsonHelpers';
-import type { Task, TaskConnection, Sprint } from '../types';
+import type { Task, TaskConnection, Sprint, TaskDependency } from '../types';
 
 interface UseTaskOperationsOptions {
   projectId: string | undefined;
@@ -207,14 +207,39 @@ export function useTaskOperations({ projectId, userId, sprints }: UseTaskOperati
     }
   }, [loadTasks]);
 
-  const handleUpdateDependencies = useCallback(async (taskId: string, dependsOnIds: string[]) => {
-    const depValue = dependsOnIds.length > 0 ? JSON.stringify(dependsOnIds) : null;
-    setTasks((prev) => prev.map((t) => t.taskId === taskId ? { ...t, dependsOn: depValue } : t));
-    setSelectedTask((t) => t?.taskId === taskId ? { ...t, dependsOn: depValue } : t);
+  const handleAddDependency = useCallback(async (sourceTaskId: string, targetTaskId: string, linkType: string) => {
     try {
-      await gql<{ updateTask: Task }>(
-        `mutation UpdateTask($taskId: ID!, $dependsOn: String) { updateTask(taskId: $taskId, dependsOn: $dependsOn) { taskId } }`,
-        { taskId, dependsOn: depValue },
+      const data = await gql<{ addTaskDependency: TaskDependency }>(
+        `mutation AddDep($sourceTaskId: ID!, $targetTaskId: ID!, $linkType: DependencyLinkType!) {
+          addTaskDependency(sourceTaskId: $sourceTaskId, targetTaskId: $targetTaskId, linkType: $linkType) {
+            taskDependencyId sourceTaskId targetTaskId linkType createdAt targetTask { taskId title status }
+          }
+        }`,
+        { sourceTaskId, targetTaskId, linkType },
+      );
+      const dep = data.addTaskDependency;
+      setTasks((prev) => prev.map((t) =>
+        t.taskId === sourceTaskId ? { ...t, dependencies: [...(t.dependencies ?? []), dep] } : t
+      ));
+      setSelectedTask((t) => t?.taskId === sourceTaskId ? { ...t, dependencies: [...(t.dependencies ?? []), dep] } : t);
+    } catch {
+      loadTasks();
+    }
+  }, [loadTasks]);
+
+  const handleRemoveDependency = useCallback(async (taskDependencyId: string) => {
+    // Optimistically remove from both dependencies and dependents
+    const removeDep = (t: Task): Task => ({
+      ...t,
+      dependencies: (t.dependencies ?? []).filter(d => d.taskDependencyId !== taskDependencyId),
+      dependents: (t.dependents ?? []).filter(d => d.taskDependencyId !== taskDependencyId),
+    });
+    setTasks((prev) => prev.map(removeDep));
+    setSelectedTask((t) => t ? removeDep(t) : t);
+    try {
+      await gql<{ removeTaskDependency: boolean }>(
+        `mutation RemoveDep($taskDependencyId: ID!) { removeTaskDependency(taskDependencyId: $taskDependencyId) }`,
+        { taskDependencyId },
       );
     } catch {
       loadTasks();
@@ -415,7 +440,7 @@ export function useTaskOperations({ projectId, userId, sprints }: UseTaskOperati
     // Task operations
     handleStatusChange, handleSubtaskStatusChange, handleSprintColumnChange,
     handleAssignSprint, handleAssignUser, handleDueDateChange,
-    handleReorderTask, handleUpdateDependencies,
+    handleReorderTask, handleAddDependency, handleRemoveDependency,
     handleAddTask, handleBulkCreateTasks, handleCreateSubtask,
     startEditTitle, handleTitleSave, handleUpdateTask,
     handleBulkUpdate, handleArchiveTask,

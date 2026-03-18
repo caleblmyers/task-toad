@@ -59,7 +59,8 @@ export interface TaskDetailPanelProps {
   onAssignSprint: (taskId: string, sprintId: string | null) => void;
   onAssignUser: (taskId: string, assigneeId: string | null) => void;
   onDueDateChange: (taskId: string, dueDate: string | null) => void;
-  onUpdateDependencies: (taskId: string, dependsOnIds: string[]) => void;
+  onAddDependency: (sourceTaskId: string, targetTaskId: string, linkType: string) => Promise<void>;
+  onRemoveDependency: (taskDependencyId: string) => Promise<void>;
   onCreateComment: (content: string, parentCommentId?: string) => Promise<void>;
   onUpdateComment: (commentId: string, content: string) => Promise<void>;
   onDeleteComment: (commentId: string) => Promise<void>;
@@ -91,7 +92,7 @@ function PanelContent({
   disabled, projectHasRepo, onSyncToGitHub,
   onStartEditTitle, onTitleChange, onTitleSave, onTitleKeyDown,
   onStatusChange, onSubtaskStatusChange, onGenerateInstructions,
-  onAssignSprint, onAssignUser, onDueDateChange, onUpdateDependencies,
+  onAssignSprint, onAssignUser, onDueDateChange, onAddDependency, onRemoveDependency,
   onCreateComment, onUpdateComment, onDeleteComment, onUpdateTask, onArchiveTask,
   onCreateSubtask,
   onReviewPR, reviewResult, reviewLoading,
@@ -213,7 +214,8 @@ function PanelContent({
         task={task}
         allTasks={allTasks}
         disabled={disabled}
-        onUpdateDependencies={onUpdateDependencies}
+        onAddDependency={onAddDependency}
+        onRemoveDependency={onRemoveDependency}
       />
 
       {/* Description */}

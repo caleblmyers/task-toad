@@ -1,20 +1,11 @@
 import type { Task } from '../types';
 
-const dependsOnCache = new Map<string, string[]>();
-const MAX_CACHE_SIZE = 1000;
-
+/** @deprecated Use task.dependencies/dependents arrays instead */
 export function parseDependsOn(raw: string | null | undefined): string[] {
   if (!raw) return [];
-  const cached = dependsOnCache.get(raw);
-  if (cached) return cached;
   try {
     const parsed = JSON.parse(raw) as string[];
     if (!Array.isArray(parsed)) return [];
-    if (dependsOnCache.size >= MAX_CACHE_SIZE) {
-      const firstKey = dependsOnCache.keys().next().value;
-      if (firstKey !== undefined) dependsOnCache.delete(firstKey);
-    }
-    dependsOnCache.set(raw, parsed);
     return parsed;
   } catch {
     return [];
@@ -29,7 +20,7 @@ export function statusLabel(status: string): string {
 }
 
 export const TASK_FIELDS = `
-  taskId title description instructions acceptanceCriteria suggestedTools estimatedHours storyPoints priority dependsOn status taskType projectId parentTaskId createdAt sprintId sprintColumn assigneeId archived position dueDate recurrenceRule recurrenceParentId labels { labelId name color } customFieldValues { customFieldValueId field { customFieldId name fieldType options required position } value } attachments { attachmentId taskId fileName fileKey mimeType sizeBytes uploadedById createdAt } assignees { id user { userId email } assignedAt } githubIssueNumber githubIssueUrl pullRequests { id prNumber prUrl prTitle state } commits { id sha message author url createdAt }
+  taskId title description instructions acceptanceCriteria suggestedTools estimatedHours storyPoints priority dependsOn status taskType projectId parentTaskId createdAt sprintId sprintColumn assigneeId archived position dueDate recurrenceRule recurrenceParentId labels { labelId name color } customFieldValues { customFieldValueId field { customFieldId name fieldType options required position } value } attachments { attachmentId taskId fileName fileKey mimeType sizeBytes uploadedById createdAt } assignees { id user { userId email } assignedAt } githubIssueNumber githubIssueUrl pullRequests { id prNumber prUrl prTitle state } commits { id sha message author url createdAt } dependencies { taskDependencyId sourceTaskId targetTaskId linkType targetTask { taskId title status } } dependents { taskDependencyId sourceTaskId targetTaskId linkType sourceTask { taskId title status } }
 `;
 
 export function columnToStatus(column: string): Task['status'] | null {

@@ -78,7 +78,8 @@ export interface ProjectData {
   switchView: (v: 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar' | 'epics') => void;
   handleUpdateProject: (data: { name?: string; description?: string; prompt?: string; knowledgeBase?: string; statuses?: string }) => Promise<void>;
   handleRefreshRepoProfile: () => Promise<void>;
-  handleUpdateDependencies: (taskId: string, dependsOnIds: string[]) => Promise<void>;
+  handleAddDependency: (sourceTaskId: string, targetTaskId: string, linkType: string) => Promise<void>;
+  handleRemoveDependency: (taskDependencyId: string) => Promise<void>;
   handleBulkUpdate: (taskIds: string[], updates: { status?: string; assigneeId?: string | null; sprintId?: string | null; archived?: boolean }) => Promise<void>;
   handleArchiveTask: (taskId: string, archived: boolean) => Promise<void>;
   handleBulkCreateTasks: (tasks: Array<{ title: string; description?: string; status?: string; priority?: string }>, onProgress?: (current: number, total: number) => void) => Promise<void>;
@@ -268,7 +269,8 @@ export function useProjectData(): ProjectData {
     switchView: projectState.switchView,
     handleUpdateProject: projectState.handleUpdateProject,
     handleRefreshRepoProfile: projectState.handleRefreshRepoProfile,
-    handleUpdateDependencies: taskCrud.handleUpdateDependencies,
+    handleAddDependency: taskCrud.handleAddDependency,
+    handleRemoveDependency: taskCrud.handleRemoveDependency,
     handleBulkUpdate: taskCrud.handleBulkUpdate, handleArchiveTask: taskCrud.handleArchiveTask,
     handleBulkCreateTasks: taskCrud.handleBulkCreateTasks,
     handleCreateSubtask: taskCrud.handleCreateSubtask,

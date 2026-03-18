@@ -43,7 +43,7 @@ export function useTaskCRUD({ projectId, userId, sprints }: UseTaskCRUDOptions) 
     handleStatusChange: ops.handleStatusChange, handleSubtaskStatusChange: ops.handleSubtaskStatusChange,
     handleSprintColumnChange: ops.handleSprintColumnChange, handleAssignSprint: ops.handleAssignSprint,
     handleAssignUser: ops.handleAssignUser, handleDueDateChange: ops.handleDueDateChange,
-    handleReorderTask: ops.handleReorderTask, handleUpdateDependencies: ops.handleUpdateDependencies,
+    handleReorderTask: ops.handleReorderTask, handleAddDependency: ops.handleAddDependency, handleRemoveDependency: ops.handleRemoveDependency,
     handleAddTask: ops.handleAddTask, handleBulkCreateTasks: ops.handleBulkCreateTasks,
     handleCreateSubtask: ops.handleCreateSubtask,
     startEditTitle: ops.startEditTitle, handleTitleSave: ops.handleTitleSave,

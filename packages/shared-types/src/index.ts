@@ -81,6 +81,8 @@ export interface Task {
   recurrenceParentId?: string | null;
   attachments?: Attachment[];
   assignees?: TaskAssignee[];
+  dependencies?: TaskDependency[];
+  dependents?: TaskDependency[];
 }
 
 export interface Label {
@@ -104,6 +106,16 @@ export interface TaskAssignee {
   id: string;
   user: { userId: string; email: string };
   assignedAt: string;
+}
+
+export interface TaskDependency {
+  taskDependencyId: string;
+  sourceTaskId: string;
+  targetTaskId: string;
+  linkType: 'blocks' | 'is_blocked_by' | 'relates_to' | 'duplicates';
+  sourceTask?: Task;
+  targetTask?: Task;
+  createdAt: string;
 }
 
 export interface TaskPullRequest {

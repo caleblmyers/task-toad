@@ -273,7 +273,8 @@ export default function ProjectDetail() {
     onAssignSprint: handleAssignSprint,
     onAssignUser: handleAssignUser,
     onDueDateChange: handleDueDateChange,
-    onUpdateDependencies: d.handleUpdateDependencies,
+    onAddDependency: d.handleAddDependency,
+    onRemoveDependency: d.handleRemoveDependency,
     onCreateComment: async (content: string, parentId?: string) => {
       if (d.selectedTask) await d.handleCreateComment(d.selectedTask.taskId, content, parentId);
     },

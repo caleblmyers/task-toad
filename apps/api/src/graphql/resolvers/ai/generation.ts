@@ -232,7 +232,7 @@ export const generationMutations = {
     const titleToId = new Map<string, string>();
     created.forEach((task) => titleToId.set(task.title, task.taskId));
 
-    // Resolve epic-level dependencies and store for later propagation to children
+    // Resolve epic-level dependencies and create TaskDependency records
     const epicDeps = new Map<string, string[]>(); // epicId → [dependencyEpicIds]
     for (let i = 0; i < created.length; i++) {
       const inputTask = args.tasks[i];
@@ -241,10 +241,14 @@ export const generationMutations = {
         .filter((id): id is string => id !== undefined);
       if (resolvedDeps.length > 0) {
         epicDeps.set(created[i].taskId, resolvedDeps);
-        await context.prisma.task.update({
-          where: { taskId: created[i].taskId },
-          data: { dependsOn: JSON.stringify(resolvedDeps) },
-        });
+        // Create TaskDependency records (sourceTask blocks targetTask)
+        await Promise.all(
+          resolvedDeps.map((depId) =>
+            context.prisma.taskDependency.create({
+              data: { sourceTaskId: depId, targetTaskId: created[i].taskId, linkType: 'blocks' },
+            }).catch(() => { /* ignore duplicate constraint violations */ })
+          )
+        );
       }
     }
 
@@ -289,27 +293,28 @@ export const generationMutations = {
         childrenByEpic.set(ct.parentTaskId, list);
       }
 
-      // For each epic with dependencies, set dependsOn on its children
-      const depUpdates: Promise<unknown>[] = [];
+      // For each epic with dependencies, create TaskDependency records for children
+      const depCreates: Promise<unknown>[] = [];
       for (const [epicId, depEpicIds] of epicDeps) {
         const myChildren = childrenByEpic.get(epicId) ?? [];
         if (myChildren.length === 0) continue;
-        // Collect all task IDs from dependency epics
         const depTaskIds: string[] = [];
         for (const depEpicId of depEpicIds) {
           const depChildren = childrenByEpic.get(depEpicId) ?? [];
           depTaskIds.push(...depChildren);
         }
         if (depTaskIds.length === 0) continue;
-        const depJson = JSON.stringify(depTaskIds);
-        depUpdates.push(
-          context.prisma.task.updateMany({
-            where: { taskId: { in: myChildren } },
-            data: { dependsOn: depJson },
-          })
-        );
+        for (const childId of myChildren) {
+          for (const depTaskId of depTaskIds) {
+            depCreates.push(
+              context.prisma.taskDependency.create({
+                data: { sourceTaskId: depTaskId, targetTaskId: childId, linkType: 'blocks' },
+              }).catch(() => { /* ignore duplicate constraint violations */ })
+            );
+          }
+        }
       }
-      await Promise.all(depUpdates);
+      await Promise.all(depCreates);
     }
 
     return context.prisma.task.findMany({
@@ -418,6 +423,16 @@ export const generationMutations = {
         })),
       });
     }
+    // Create TaskDependency records for resolved dependencies
+    if (resolvedDeps.length > 0) {
+      await Promise.all(
+        resolvedDeps.map((depId) =>
+          context.prisma.taskDependency.create({
+            data: { sourceTaskId: depId, targetTaskId: args.taskId, linkType: 'blocks' },
+          }).catch(() => { /* ignore duplicate constraint violations */ })
+        )
+      );
+    }
     return context.prisma.task.update({
       where: { taskId: args.taskId },
       data: {
@@ -425,7 +440,6 @@ export const generationMutations = {
         suggestedTools: JSON.stringify(result.suggestedTools),
         estimatedHours: result.estimatedHours,
         priority: result.priority,
-        dependsOn: resolvedDeps.length > 0 ? JSON.stringify(resolvedDeps) : null,
       },
     });
   },
