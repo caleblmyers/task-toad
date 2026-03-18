@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
 import { WEBHOOK_DELIVERIES_QUERY, REPLAY_WEBHOOK_DELIVERY_MUTATION } from '../api/queries';
+import { useFormState } from '../hooks/useFormState';
 import { useConfirmDialog } from './shared/ConfirmDialog';
 import Badge from './shared/Badge';
 
@@ -51,13 +52,37 @@ export default function WebhookSettings() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  // Add form state
+  // Create webhook form
   const [showForm, setShowForm] = useState(false);
-  const [formUrl, setFormUrl] = useState('');
-  const [formEvents, setFormEvents] = useState<string[]>(['task.created', 'task.updated']);
-  const [formDescription, setFormDescription] = useState('');
-  const [saving, setSaving] = useState(false);
   const [createdSecret, setCreatedSecret] = useState<string | null>(null);
+
+  const fetchEndpoints = () => {
+    setLoading(true);
+    gql<{ webhookEndpoints: WebhookEndpoint[] }>(WEBHOOKS_QUERY)
+      .then((data) => setEndpoints(data.webhookEndpoints))
+      .catch((e) => setErr(e instanceof Error ? e.message : 'Failed to load webhooks'))
+      .finally(() => setLoading(false));
+  };
+
+  const createForm = useFormState(
+    { url: '', events: ['task.created', 'task.updated'] as string[], description: '' },
+    async (values) => {
+      if (!values.url.trim() || values.events.length === 0) return;
+      const data = await gql<{ createWebhookEndpoint: WebhookEndpoint & { secret: string } }>(
+        `mutation CreateWebhook($url: String!, $events: [String!]!, $description: String) {
+          createWebhookEndpoint(url: $url, events: $events, description: $description) {
+            id url events enabled description lastError lastFiredAt createdAt
+          }
+        }`,
+        { url: values.url.trim(), events: values.events, description: values.description.trim() || null }
+      );
+      setCreatedSecret(null);
+      setEndpoints((prev) => [data.createWebhookEndpoint, ...prev]);
+      setShowForm(false);
+      fetchEndpoints();
+    },
+    { resetOnSuccess: true }
+  );
 
   // Testing state
   const [testingId, setTestingId] = useState<string | null>(null);
@@ -67,14 +92,6 @@ export default function WebhookSettings() {
   const [deliveries, setDeliveries] = useState<WebhookDelivery[]>([]);
   const [deliveriesLoading, setDeliveriesLoading] = useState(false);
   const [replayingId, setReplayingId] = useState<string | null>(null);
-
-  const fetchEndpoints = () => {
-    setLoading(true);
-    gql<{ webhookEndpoints: WebhookEndpoint[] }>(WEBHOOKS_QUERY)
-      .then((data) => setEndpoints(data.webhookEndpoints))
-      .catch((e) => setErr(e instanceof Error ? e.message : 'Failed to load webhooks'))
-      .finally(() => setLoading(false));
-  };
 
   useEffect(() => {
     fetchEndpoints();
@@ -112,38 +129,11 @@ export default function WebhookSettings() {
     }
   };
 
-  const handleToggleEvent = (event: string) => {
-    setFormEvents((prev) =>
-      prev.includes(event) ? prev.filter((e) => e !== event) : [...prev, event]
+  const handleToggleCreateEvent = (event: string) => {
+    const current = createForm.values.events;
+    createForm.setValue('events',
+      current.includes(event) ? current.filter((e) => e !== event) : [...current, event]
     );
-  };
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formUrl.trim() || formEvents.length === 0) return;
-    setSaving(true);
-    setErr(null);
-    try {
-      const data = await gql<{ createWebhookEndpoint: WebhookEndpoint & { secret: string } }>(
-        `mutation CreateWebhook($url: String!, $events: [String!]!, $description: String) {
-          createWebhookEndpoint(url: $url, events: $events, description: $description) {
-            id url events enabled description lastError lastFiredAt createdAt
-          }
-        }`,
-        { url: formUrl.trim(), events: formEvents, description: formDescription.trim() || null }
-      );
-      setCreatedSecret(null);
-      setEndpoints((prev) => [data.createWebhookEndpoint, ...prev]);
-      setFormUrl('');
-      setFormEvents(['task.created', 'task.updated']);
-      setFormDescription('');
-      setShowForm(false);
-      fetchEndpoints();
-    } catch (error) {
-      setErr(error instanceof Error ? error.message : 'Failed to create webhook');
-    } finally {
-      setSaving(false);
-    }
   };
 
   const handleToggleEnabled = async (endpoint: WebhookEndpoint) => {
@@ -388,14 +378,15 @@ export default function WebhookSettings() {
 
       {/* Add form */}
       {showForm ? (
-        <form onSubmit={handleCreate} className="space-y-3 border border-slate-200 rounded p-4">
+        <form onSubmit={createForm.handleSubmit} className="space-y-3 border border-slate-200 rounded p-4">
+          {createForm.error && <p className="text-sm text-red-600">{createForm.error}</p>}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">URL</label>
             <input
               type="url"
               placeholder="https://example.com/webhook"
-              value={formUrl}
-              onChange={(e) => setFormUrl(e.target.value)}
+              value={createForm.values.url}
+              onChange={(e) => createForm.setValue('url', e.target.value)}
               className="w-full px-3 py-2 border border-slate-300 rounded text-sm font-mono"
               required
             />
@@ -408,8 +399,8 @@ export default function WebhookSettings() {
                 <label key={event} className="flex items-center gap-1.5 text-sm text-slate-700">
                   <input
                     type="checkbox"
-                    checked={formEvents.includes(event)}
-                    onChange={() => handleToggleEvent(event)}
+                    checked={createForm.values.events.includes(event)}
+                    onChange={() => handleToggleCreateEvent(event)}
                     className="rounded border-slate-300"
                   />
                   {event}
@@ -425,8 +416,8 @@ export default function WebhookSettings() {
             <input
               type="text"
               placeholder="e.g., Slack notifications"
-              value={formDescription}
-              onChange={(e) => setFormDescription(e.target.value)}
+              value={createForm.values.description}
+              onChange={(e) => createForm.setValue('description', e.target.value)}
               className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
             />
           </div>
@@ -434,10 +425,10 @@ export default function WebhookSettings() {
           <div className="flex gap-2">
             <button
               type="submit"
-              disabled={saving || !formUrl.trim() || formEvents.length === 0}
+              disabled={createForm.loading || !createForm.values.url.trim() || createForm.values.events.length === 0}
               className="px-4 py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50 text-sm"
             >
-              {saving ? 'Creating…' : 'Create Webhook'}
+              {createForm.loading ? 'Creating…' : 'Create Webhook'}
             </button>
             <button
               type="button"

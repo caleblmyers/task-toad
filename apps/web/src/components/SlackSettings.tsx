@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
+import { useFormState } from '../hooks/useFormState';
 import { useConfirmDialog } from './shared/ConfirmDialog';
 import Badge from './shared/Badge';
 
@@ -47,15 +48,32 @@ export default function SlackSettings() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  // Form state
+  // Connect Slack form
   const [showForm, setShowForm] = useState(false);
-  const [formWebhookUrl, setFormWebhookUrl] = useState('');
-  const [formTeamId, setFormTeamId] = useState('');
-  const [formTeamName, setFormTeamName] = useState('');
-  const [formChannelId, setFormChannelId] = useState('');
-  const [formChannelName, setFormChannelName] = useState('');
-  const [formEvents, setFormEvents] = useState<string[]>(['task.created', 'task.updated']);
-  const [saving, setSaving] = useState(false);
+  const connectForm = useFormState(
+    { webhookUrl: '', teamId: '', teamName: '', channelId: '', channelName: '', events: ['task.created', 'task.updated'] as string[] },
+    async (values) => {
+      if (!values.webhookUrl.trim() || values.events.length === 0) return;
+      const data = await gql<{ connectSlack: SlackIntegration }>(
+        `mutation ConnectSlack($webhookUrl: String!, $teamId: String!, $teamName: String!, $channelId: String!, $channelName: String!, $events: [String!]!) {
+          connectSlack(webhookUrl: $webhookUrl, teamId: $teamId, teamName: $teamName, channelId: $channelId, channelName: $channelName, events: $events) {
+            id teamId teamName channelId channelName events enabled createdAt
+          }
+        }`,
+        {
+          webhookUrl: values.webhookUrl.trim(),
+          teamId: values.teamId.trim(),
+          teamName: values.teamName.trim(),
+          channelId: values.channelId.trim(),
+          channelName: values.channelName.trim(),
+          events: values.events,
+        }
+      );
+      setIntegrations((prev) => [data.connectSlack, ...prev]);
+      setShowForm(false);
+    },
+    { resetOnSuccess: true }
+  );
 
   // Testing state
   const [testingId, setTestingId] = useState<string | null>(null);
@@ -65,9 +83,24 @@ export default function SlackSettings() {
   const [mappings, setMappings] = useState<SlackUserMapping[]>([]);
   const [orgUsers, setOrgUsers] = useState<OrgUser[]>([]);
   const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | null>(null);
-  const [mapSlackUserId, setMapSlackUserId] = useState('');
-  const [mapTargetUserId, setMapTargetUserId] = useState('');
-  const [mappingSaving, setMappingSaving] = useState(false);
+  const mappingForm = useFormState(
+    { slackUserId: '', userId: '' },
+    async (values) => {
+      if (!selectedIntegrationId || !values.slackUserId.trim() || !values.userId) return;
+      const integration = integrations.find((i) => i.id === selectedIntegrationId);
+      if (!integration) return;
+      const data = await gql<{ mapSlackUser: SlackUserMapping }>(
+        `mutation MapSlack($slackUserId: String!, $slackTeamId: String!, $userId: ID!) {
+          mapSlackUser(slackUserId: $slackUserId, slackTeamId: $slackTeamId, userId: $userId) {
+            id slackUserId slackTeamId userId orgId createdAt user { userId email displayName }
+          }
+        }`,
+        { slackUserId: values.slackUserId.trim(), slackTeamId: integration.teamId, userId: values.userId }
+      );
+      setMappings((prev) => [data.mapSlackUser, ...prev.filter((m) => m.id !== data.mapSlackUser.id)]);
+    },
+    { resetOnSuccess: true }
+  );
 
   const fetchIntegrations = () => {
     setLoading(true);
@@ -102,32 +135,6 @@ export default function SlackSettings() {
       .catch((e) => setErr(e instanceof Error ? e.message : 'Failed to load mappings'));
   };
 
-  const handleMapUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedIntegrationId || !mapSlackUserId.trim() || !mapTargetUserId) return;
-    const integration = integrations.find((i) => i.id === selectedIntegrationId);
-    if (!integration) return;
-    setMappingSaving(true);
-    setErr(null);
-    try {
-      const data = await gql<{ mapSlackUser: SlackUserMapping }>(
-        `mutation MapSlack($slackUserId: String!, $slackTeamId: String!, $userId: ID!) {
-          mapSlackUser(slackUserId: $slackUserId, slackTeamId: $slackTeamId, userId: $userId) {
-            id slackUserId slackTeamId userId orgId createdAt user { userId email displayName }
-          }
-        }`,
-        { slackUserId: mapSlackUserId.trim(), slackTeamId: integration.teamId, userId: mapTargetUserId }
-      );
-      setMappings((prev) => [data.mapSlackUser, ...prev.filter((m) => m.id !== data.mapSlackUser.id)]);
-      setMapSlackUserId('');
-      setMapTargetUserId('');
-    } catch (error) {
-      setErr(error instanceof Error ? error.message : 'Failed to map user');
-    } finally {
-      setMappingSaving(false);
-    }
-  };
-
   const handleUnmapUser = async (mappingId: string) => {
     try {
       await gql<{ unmapSlackUser: boolean }>(
@@ -140,46 +147,11 @@ export default function SlackSettings() {
     }
   };
 
-  const handleToggleEvent = (event: string) => {
-    setFormEvents((prev) =>
-      prev.includes(event) ? prev.filter((e) => e !== event) : [...prev, event]
+  const handleToggleConnectEvent = (event: string) => {
+    const current = connectForm.values.events;
+    connectForm.setValue('events',
+      current.includes(event) ? current.filter((e) => e !== event) : [...current, event]
     );
-  };
-
-  const handleConnect = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formWebhookUrl.trim() || formEvents.length === 0) return;
-    setSaving(true);
-    setErr(null);
-    try {
-      const data = await gql<{ connectSlack: SlackIntegration }>(
-        `mutation ConnectSlack($webhookUrl: String!, $teamId: String!, $teamName: String!, $channelId: String!, $channelName: String!, $events: [String!]!) {
-          connectSlack(webhookUrl: $webhookUrl, teamId: $teamId, teamName: $teamName, channelId: $channelId, channelName: $channelName, events: $events) {
-            id teamId teamName channelId channelName events enabled createdAt
-          }
-        }`,
-        {
-          webhookUrl: formWebhookUrl.trim(),
-          teamId: formTeamId.trim(),
-          teamName: formTeamName.trim(),
-          channelId: formChannelId.trim(),
-          channelName: formChannelName.trim(),
-          events: formEvents,
-        }
-      );
-      setIntegrations((prev) => [data.connectSlack, ...prev]);
-      setFormWebhookUrl('');
-      setFormTeamId('');
-      setFormTeamName('');
-      setFormChannelId('');
-      setFormChannelName('');
-      setFormEvents(['task.created', 'task.updated']);
-      setShowForm(false);
-    } catch (error) {
-      setErr(error instanceof Error ? error.message : 'Failed to connect Slack');
-    } finally {
-      setSaving(false);
-    }
   };
 
   const handleToggleEnabled = async (integration: SlackIntegration) => {
@@ -349,15 +321,16 @@ export default function SlackSettings() {
                 </table>
               )}
 
-              <form onSubmit={handleMapUser} className="flex items-end gap-2">
+              {mappingForm.error && <p className="text-sm text-red-600">{mappingForm.error}</p>}
+              <form onSubmit={mappingForm.handleSubmit} className="flex items-end gap-2">
                 <div className="flex-1">
                   <label htmlFor="map-slack-user-id" className="block text-xs font-medium text-slate-600 mb-1">Slack User ID</label>
                   <input
                     id="map-slack-user-id"
                     type="text"
                     placeholder="U01234567"
-                    value={mapSlackUserId}
-                    onChange={(e) => setMapSlackUserId(e.target.value)}
+                    value={mappingForm.values.slackUserId}
+                    onChange={(e) => mappingForm.setValue('slackUserId', e.target.value)}
                     className="w-full px-3 py-1.5 border border-slate-300 rounded text-sm"
                     required
                   />
@@ -366,8 +339,8 @@ export default function SlackSettings() {
                   <label htmlFor="map-target-user" className="block text-xs font-medium text-slate-600 mb-1">TaskToad User</label>
                   <select
                     id="map-target-user"
-                    value={mapTargetUserId}
-                    onChange={(e) => setMapTargetUserId(e.target.value)}
+                    value={mappingForm.values.userId}
+                    onChange={(e) => mappingForm.setValue('userId', e.target.value)}
                     className="w-full px-3 py-1.5 border border-slate-300 rounded text-sm"
                     required
                   >
@@ -381,10 +354,10 @@ export default function SlackSettings() {
                 </div>
                 <button
                   type="submit"
-                  disabled={mappingSaving || !mapSlackUserId.trim() || !mapTargetUserId}
+                  disabled={mappingForm.loading || !mappingForm.values.slackUserId.trim() || !mappingForm.values.userId}
                   className="px-3 py-1.5 bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50 text-sm whitespace-nowrap"
                 >
-                  {mappingSaving ? 'Adding...' : 'Add Mapping'}
+                  {mappingForm.loading ? 'Adding...' : 'Add Mapping'}
                 </button>
               </form>
             </>
@@ -394,14 +367,15 @@ export default function SlackSettings() {
 
       {/* Connect form */}
       {showForm ? (
-        <form onSubmit={handleConnect} className="space-y-3 border border-slate-200 rounded p-4">
+        <form onSubmit={connectForm.handleSubmit} className="space-y-3 border border-slate-200 rounded p-4">
+          {connectForm.error && <p className="text-sm text-red-600">{connectForm.error}</p>}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Webhook URL</label>
             <input
               type="url"
               placeholder="https://hooks.slack.com/services/..."
-              value={formWebhookUrl}
-              onChange={(e) => setFormWebhookUrl(e.target.value)}
+              value={connectForm.values.webhookUrl}
+              onChange={(e) => connectForm.setValue('webhookUrl', e.target.value)}
               className="w-full px-3 py-2 border border-slate-300 rounded text-sm font-mono"
               required
             />
@@ -416,8 +390,8 @@ export default function SlackSettings() {
               <input
                 type="text"
                 placeholder="T01234567"
-                value={formTeamId}
-                onChange={(e) => setFormTeamId(e.target.value)}
+                value={connectForm.values.teamId}
+                onChange={(e) => connectForm.setValue('teamId', e.target.value)}
                 className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
                 required
               />
@@ -427,8 +401,8 @@ export default function SlackSettings() {
               <input
                 type="text"
                 placeholder="My Workspace"
-                value={formTeamName}
-                onChange={(e) => setFormTeamName(e.target.value)}
+                value={connectForm.values.teamName}
+                onChange={(e) => connectForm.setValue('teamName', e.target.value)}
                 className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
                 required
               />
@@ -441,8 +415,8 @@ export default function SlackSettings() {
               <input
                 type="text"
                 placeholder="C01234567"
-                value={formChannelId}
-                onChange={(e) => setFormChannelId(e.target.value)}
+                value={connectForm.values.channelId}
+                onChange={(e) => connectForm.setValue('channelId', e.target.value)}
                 className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
                 required
               />
@@ -452,8 +426,8 @@ export default function SlackSettings() {
               <input
                 type="text"
                 placeholder="general"
-                value={formChannelName}
-                onChange={(e) => setFormChannelName(e.target.value)}
+                value={connectForm.values.channelName}
+                onChange={(e) => connectForm.setValue('channelName', e.target.value)}
                 className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
                 required
               />
@@ -467,8 +441,8 @@ export default function SlackSettings() {
                 <label key={event} className="flex items-center gap-1.5 text-sm text-slate-700">
                   <input
                     type="checkbox"
-                    checked={formEvents.includes(event)}
-                    onChange={() => handleToggleEvent(event)}
+                    checked={connectForm.values.events.includes(event)}
+                    onChange={() => handleToggleConnectEvent(event)}
                     className="rounded border-slate-300"
                   />
                   {event}
@@ -480,10 +454,10 @@ export default function SlackSettings() {
           <div className="flex gap-2">
             <button
               type="submit"
-              disabled={saving || !formWebhookUrl.trim() || formEvents.length === 0}
+              disabled={connectForm.loading || !connectForm.values.webhookUrl.trim() || connectForm.values.events.length === 0}
               className="px-4 py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50 text-sm"
             >
-              {saving ? 'Connecting...' : 'Connect Slack'}
+              {connectForm.loading ? 'Connecting...' : 'Connect Slack'}
             </button>
             <button
               type="button"
