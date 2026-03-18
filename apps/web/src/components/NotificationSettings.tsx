@@ -66,6 +66,9 @@ export default function NotificationSettings() {
         </div>
         <button
           type="button"
+          role="switch"
+          aria-checked={emailEnabled}
+          aria-label="Enable email notifications"
           onClick={() => setEmailEnabled(v => !v)}
           className={`relative w-10 h-5 rounded-full transition-colors ${emailEnabled ? 'bg-green-500' : 'bg-slate-300'}`}
         >
@@ -92,6 +95,7 @@ export default function NotificationSettings() {
                   type="checkbox"
                   checked={pref.inApp}
                   onChange={e => updatePref(pref.notificationType, 'inApp', e.target.checked)}
+                  aria-label={`${pref.notificationType} in-app notifications`}
                   className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                 />
               </td>
@@ -101,6 +105,7 @@ export default function NotificationSettings() {
                   checked={pref.email}
                   disabled={!emailEnabled}
                   onChange={e => updatePref(pref.notificationType, 'email', e.target.checked)}
+                  aria-label={`${pref.notificationType} email notifications`}
                   className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-40"
                 />
               </td>

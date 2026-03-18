@@ -386,6 +386,9 @@ export default function ProjectToolbar({
                   const prev = (activeExportIndex - 1 + itemCount) % itemCount;
                   setActiveExportIndex(prev);
                   exportItemRefs.current[prev]?.focus();
+                } else if (e.key === 'Enter') {
+                  e.preventDefault();
+                  exportItemRefs.current[activeExportIndex]?.click();
                 } else if (e.key === 'Escape') {
                   setShowExportMenu(false);
                   previousFocusRef.current?.focus();

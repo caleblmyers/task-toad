@@ -316,26 +316,42 @@ export default function AppLayout() {
             </div>
           )}
           {!isExpanded && (
-            <button
-              type="button"
-              onClick={() => {
-                setShowNotifications((v) => !v);
-                setShowNotifSettings(false);
-                if (!showNotifications) setUnreadCount(0);
-              }}
-              className="relative text-slate-400 hover:text-white p-1 rounded hover:bg-slate-700 mt-1"
-              aria-label={notificationLabel}
-            >
-              <svg className="w-4.5 h-4.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-                <path d="M4 6a4 4 0 018 0c0 2 1 3 1.5 4H2.5C3 10 4 8 4 6z" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M6 11v1a2 2 0 004 0v-1" strokeLinecap="round" />
-              </svg>
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center" aria-live="polite">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNotifSettings((v) => !v);
+                  setShowNotifications(false);
+                }}
+                className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-700 mt-1"
+                aria-label="Notification preferences"
+              >
+                <svg className="w-4.5 h-4.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                  <circle cx="8" cy="8" r="2" />
+                  <path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" strokeLinecap="round" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNotifications((v) => !v);
+                  setShowNotifSettings(false);
+                  if (!showNotifications) setUnreadCount(0);
+                }}
+                className="relative text-slate-400 hover:text-white p-1 rounded hover:bg-slate-700 mt-1"
+                aria-label={notificationLabel}
+              >
+                <svg className="w-4.5 h-4.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                  <path d="M4 6a4 4 0 018 0c0 2 1 3 1.5 4H2.5C3 10 4 8 4 6z" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M6 11v1a2 2 0 004 0v-1" strokeLinecap="round" />
+                </svg>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center" aria-live="polite">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+            </>
           )}
           <button
             type="button"
