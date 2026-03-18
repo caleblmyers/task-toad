@@ -140,24 +140,6 @@ export const GENERATE_INSTRUCTIONS_MUTATION = `mutation GenerateTaskInstructions
   generateTaskInstructions(taskId: $taskId) { ${TASK_FIELDS} }
 }`;
 
-export const PLAN_CODE_MUTATION = `mutation PlanCodeGeneration($taskId: ID!, $styleGuide: String) {
-  planCodeGeneration(taskId: $taskId, styleGuide: $styleGuide) {
-    files { path language description exports dependsOn }
-    architecture
-    generationOrder
-  }
-}`;
-
-export const GENERATE_PLANNED_FILE_MUTATION = `mutation GeneratePlannedFile($taskId: ID!, $filePath: String!, $fileDescription: String!, $planContext: String!, $completedExports: [String!], $styleGuide: String) {
-  generatePlannedFile(taskId: $taskId, filePath: $filePath, fileDescription: $fileDescription, planContext: $planContext, completedExports: $completedExports, styleGuide: $styleGuide) {
-    path content language description
-  }
-}`;
-
-export const CREATE_PR_MUTATION = `mutation($projectId: ID!, $taskId: ID!, $files: [GitHubFileInput!]!) {
-  createPullRequestFromTask(projectId: $projectId, taskId: $taskId, files: $files) { url number }
-}`;
-
 export const PARSE_BUG_REPORT_MUTATION = `mutation ParseBugReport($projectId: ID!, $bugReport: String!) {
   parseBugReport(projectId: $projectId, bugReport: $bugReport) { ${TASK_FIELDS} }
 }`;

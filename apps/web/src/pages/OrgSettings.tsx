@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/context';
 import { gql } from '../api/client';
+import { useFormState } from '../hooks/useFormState';
 import type { Org, OrgUser, OrgInvite, GitHubInstallation } from '../types';
 import AIUsageDashboard from '../components/AIUsageDashboard';
 import UserAvatar from '../components/shared/UserAvatar';
@@ -23,19 +24,46 @@ export default function OrgSettings() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [org, setOrg] = useState<Org | null>(null);
-  const [apiKey, setApiKey] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
+
+  // API Key form
+  const apiKeyForm = useFormState(
+    { apiKey: '' as string },
+    async (values) => {
+      if (!values.apiKey.trim()) return;
+      const data = await gql<{ setOrgApiKey: Org }>(
+        `mutation SetOrgApiKey($apiKey: String!) { setOrgApiKey(apiKey: $apiKey) { orgId name hasApiKey apiKeyHint } }`,
+        { apiKey: values.apiKey.trim() }
+      );
+      setOrg(data.setOrgApiKey);
+    },
+    { resetOnSuccess: true }
+  );
 
   // Team section state
   const [orgUsers, setOrgUsers] = useState<OrgUser[]>([]);
   const [invites, setInvites] = useState<OrgInvite[]>([]);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState('org:member');
-  const [inviting, setInviting] = useState(false);
-  const [inviteSuccess, setInviteSuccess] = useState(false);
-  const [inviteErr, setInviteErr] = useState<string | null>(null);
+
+  const reloadInvites = async () => {
+    const data = await gql<{ orgInvites: OrgInvite[] }>(ORG_INVITES_QUERY);
+    setInvites(data.orgInvites);
+  };
+
+  // Team invite form
+  const inviteForm = useFormState(
+    { email: '' as string, role: 'org:member' as string },
+    async (values) => {
+      if (!values.email.trim()) return;
+      await gql<{ inviteOrgMember: boolean }>(
+        `mutation InviteOrgMember($email: String!, $role: String) {
+          inviteOrgMember(email: $email, role: $role)
+        }`,
+        { email: values.email.trim(), role: values.role }
+      );
+      await reloadInvites();
+    },
+    { resetOnSuccess: true }
+  );
 
   // GitHub section state
   const [installations, setInstallations] = useState<GitHubInstallation[]>([]);
@@ -44,6 +72,24 @@ export default function OrgSettings() {
   const [linkSuccess, setLinkSuccess] = useState(false);
   const [linkingInstallation, setLinkingInstallation] = useState(false);
 
+  const linkInstallation = (installationId: string, onDone: () => void) => {
+    setLinkingInstallation(true);
+    setLinkErr(null);
+    gql<{ linkGitHubInstallation: GitHubInstallation }>(
+      `mutation LinkInstallation($installationId: ID!) { linkGitHubInstallation(installationId: $installationId) { installationId accountLogin accountType orgId createdAt } }`,
+      { installationId }
+    )
+      .then(() => {
+        setLinkSuccess(true);
+        onDone();
+      })
+      .catch((e) => {
+        setLinkErr(e instanceof Error ? e.message : 'Failed to link installation');
+        onDone();
+      })
+      .finally(() => setLinkingInstallation(false));
+  };
+
   useEffect(() => {
     if (user?.role !== 'org:admin') {
       navigate('/app', { replace: true });
@@ -51,7 +97,7 @@ export default function OrgSettings() {
     }
     gql<{ org: Org }>(ORG_QUERY)
       .then((data) => setOrg(data.org))
-      .catch((e) => setErr(e instanceof Error ? e.message : 'Failed to load org'));
+      .catch((e) => setLoadErr(e instanceof Error ? e.message : 'Failed to load org'));
     gql<{ orgUsers: OrgUser[] }>(ORG_USERS_QUERY)
       .then((data) => setOrgUsers(data.orgUsers))
       .catch(() => {/* non-critical */});
@@ -101,25 +147,7 @@ export default function OrgSettings() {
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [user, navigate]);
-
-  const linkInstallation = (installationId: string, onDone: () => void) => {
-    setLinkingInstallation(true);
-    setLinkErr(null);
-    gql<{ linkGitHubInstallation: GitHubInstallation }>(
-      `mutation LinkInstallation($installationId: ID!) { linkGitHubInstallation(installationId: $installationId) { installationId accountLogin accountType orgId createdAt } }`,
-      { installationId }
-    )
-      .then(() => {
-        setLinkSuccess(true);
-        onDone();
-      })
-      .catch((e) => {
-        setLinkErr(e instanceof Error ? e.message : 'Failed to link installation');
-        onDone();
-      })
-      .finally(() => setLinkingInstallation(false));
-  };
+  }, [user, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleInstallGitHubApp = () => {
     if (!GITHUB_APP_SLUG) return;
@@ -131,52 +159,6 @@ export default function OrgSettings() {
     window.open(url, 'github-install', `width=${width},height=${height},left=${left},top=${top}`);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!apiKey.trim()) return;
-    setSaving(true);
-    setErr(null);
-    setSuccess(false);
-    try {
-      const data = await gql<{ setOrgApiKey: Org }>(
-        `mutation SetOrgApiKey($apiKey: String!) { setOrgApiKey(apiKey: $apiKey) { orgId name hasApiKey apiKeyHint } }`,
-        { apiKey: apiKey.trim() }
-      );
-      setOrg(data.setOrgApiKey);
-      setApiKey('');
-      setSuccess(true);
-    } catch (error) {
-      setErr(error instanceof Error ? error.message : 'Failed to save API key');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleInvite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inviteEmail.trim()) return;
-    setInviting(true);
-    setInviteErr(null);
-    setInviteSuccess(false);
-    try {
-      await gql<{ inviteOrgMember: boolean }>(
-        `mutation InviteOrgMember($email: String!, $role: String) {
-          inviteOrgMember(email: $email, role: $role)
-        }`,
-        { email: inviteEmail.trim(), role: inviteRole }
-      );
-      setInviteEmail('');
-      setInviteSuccess(true);
-      // Refresh invites list
-      const data = await gql<{ orgInvites: OrgInvite[] }>(ORG_INVITES_QUERY);
-      setInvites(data.orgInvites);
-    } catch (error) {
-      setInviteErr(error instanceof Error ? error.message : 'Failed to send invite');
-    } finally {
-      setInviting(false);
-    }
-  };
-
   const handleRevoke = async (inviteId: string) => {
     try {
       await gql<{ revokeInvite: boolean }>(
@@ -185,12 +167,12 @@ export default function OrgSettings() {
       );
       setInvites((prev) => prev.filter((i) => i.inviteId !== inviteId));
     } catch (error) {
-      setInviteErr(error instanceof Error ? error.message : 'Failed to revoke invite');
+      inviteForm.setError(error instanceof Error ? error.message : 'Failed to revoke invite');
     }
   };
 
   if (!org) {
-    return <div className="p-4 text-slate-500">{err ?? 'Loading…'}</div>;
+    return <div className="p-4 text-slate-500">{loadErr ?? 'Loading…'}</div>;
   }
 
   return (
@@ -220,23 +202,23 @@ export default function OrgSettings() {
                   )}
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-3">
+                <form onSubmit={apiKeyForm.handleSubmit} className="space-y-3">
                   <Input
                     label={org.hasApiKey ? 'Replace API key' : 'Add API key'}
                     type="password"
                     placeholder="sk-ant-..."
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    error={err ?? undefined}
+                    value={apiKeyForm.values.apiKey}
+                    onChange={(e) => apiKeyForm.setValue('apiKey', e.target.value)}
+                    error={apiKeyForm.error ?? undefined}
                     className="font-mono"
                   />
-                  {success && <p className="text-sm text-green-600">API key saved.</p>}
+                  {apiKeyForm.success && <p className="text-sm text-green-600">API key saved.</p>}
                   <button
                     type="submit"
-                    disabled={saving || !apiKey.trim()}
+                    disabled={apiKeyForm.loading || !apiKeyForm.values.apiKey.trim()}
                     className="px-4 py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {saving ? 'Saving…' : 'Save'}
+                    {apiKeyForm.loading ? 'Saving…' : 'Save'}
                   </button>
                 </form>
               </Card>
@@ -292,30 +274,30 @@ export default function OrgSettings() {
                 {/* Invite form */}
                 <div>
                   <SectionHeader>Invite member</SectionHeader>
-                  <form onSubmit={handleInvite} className="space-y-2">
+                  <form onSubmit={inviteForm.handleSubmit} className="space-y-2">
                     <Input
                       label="Email address"
                       type="email"
-                      value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
+                      value={inviteForm.values.email}
+                      onChange={(e) => inviteForm.setValue('email', e.target.value)}
                       required
                     />
                     <Select
                       label="Role"
-                      value={inviteRole}
-                      onChange={(e) => setInviteRole(e.target.value)}
+                      value={inviteForm.values.role}
+                      onChange={(e) => inviteForm.setValue('role', e.target.value)}
                     >
                       <option value="org:member">Member</option>
                       <option value="org:admin">Admin</option>
                     </Select>
-                    {inviteErr && <p className="text-sm text-red-600" aria-live="polite">{inviteErr}</p>}
-                    {inviteSuccess && <p className="text-sm text-green-600" aria-live="polite">Invite sent!</p>}
+                    {inviteForm.error && <p className="text-sm text-red-600" aria-live="polite">{inviteForm.error}</p>}
+                    {inviteForm.success && <p className="text-sm text-green-600" aria-live="polite">Invite sent!</p>}
                     <button
                       type="submit"
-                      disabled={inviting || !inviteEmail.trim()}
+                      disabled={inviteForm.loading || !inviteForm.values.email.trim()}
                       className="px-4 py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                     >
-                      {inviting ? 'Sending…' : 'Send invite'}
+                      {inviteForm.loading ? 'Sending…' : 'Send invite'}
                     </button>
                   </form>
                 </div>
@@ -424,7 +406,7 @@ export default function OrgSettings() {
                           );
                         } catch (error) {
                           setOrg({ ...org, promptLoggingEnabled: !newValue });
-                          setErr(error instanceof Error ? error.message : 'Failed to update prompt logging');
+                          setLoadErr(error instanceof Error ? error.message : 'Failed to update prompt logging');
                         }
                       }}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2 ${
