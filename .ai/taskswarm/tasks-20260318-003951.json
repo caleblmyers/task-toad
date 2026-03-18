@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "created": "2026-03-18T04:06:36.733Z",
+  "swarmId": "swarm-20260318-000624",
+  "config": {
+    "mainRepo": "/home/caleb/projects/task-toad",
+    "workerCount": 3,
+    "groups": []
+  },
+  "tasks": [
+    {
+      "id": "task-001",
+      "title": "Dead code cleanup: remove deprecated manual code generation",
+      "assignee": "worker-1",
+      "status": "merged",
+      "priority": 1,
+      "files": [
+        "apps/web/src/components/CodePreviewModal.tsx",
+        "apps/web/src/components/BatchCodeGenModal.tsx",
+        "apps/web/src/hooks/useAIGeneration.ts",
+        "apps/web/src/api/queries.ts",
+        "apps/api/src/graphql/resolvers/ai.ts",
+        "apps/api/src/graphql/typedefs/ai.ts",
+        "apps/api/src/ai/aiService.ts",
+        "apps/api/src/routes/docs.ts"
+      ],
+      "description": "Remove all dead code related to the deprecated manual code generation flow. The Auto-Complete action plan pipeline has fully replaced manual code gen, so these artifacts are dead weight.\n\n**Frontend deletions:**\n1. Delete `apps/web/src/components/CodePreviewModal.tsx` (602 lines) — entire file, zero imports anywhere.\n2. Delete `apps/web/src/components/BatchCodeGenModal.tsx` (160 lines) — entire file, zero imports anywhere.\n3. In `apps/web/src/hooks/useAIGeneration.ts`: remove `handleGenerateCode` (~lines 323-340), `handleRegenerateFile` (~lines 366-383), and `handleGenerateCodeFromChildTask` (~lines 342-359). Also remove them from the hook's return object. Remove the corresponding GraphQL mutation strings if they're defined inline, or if imported from queries.ts, leave the import cleanup for the next step.\n4. In `apps/web/src/api/queries.ts`: remove `GENERATE_CODE_MUTATION` (~lines 143-147), `REGENERATE_FILE_MUTATION` (~lines 169-171), and `GENERATE_CODE_FROM_CHILD_TASK_MUTATION` (nearby). Remove any other mutation strings only used by the deleted handlers (check for `batchGenerateCode` mutation string too).\n\n**Backend deletions:**\n5. In `apps/api/src/graphql/resolvers/ai.ts`: remove the resolver implementations for `generateCodeFromTask` (~lines 499-541), `generateCodeFromSubtask` (~lines 543-594), `regenerateCodeFile` (~lines 596-634), and `batchGenerateCode` (~lines 788-839). Keep the rest of the file intact.\n6. In `apps/api/src/graphql/typedefs/ai.ts`: remove the corresponding mutation type definitions (~lines 175, 177, 179, 190). Remove associated input/output types if they're only used by these mutations.\n7. In `apps/api/src/ai/aiService.ts`: remove `batchGenerateCode()` function (~line 516) if it's only called by the deleted resolver.\n8. In `apps/api/src/routes/docs.ts`: remove references to the deleted mutations from the documentation page.\n\n**Verification:** After all deletions, run `pnpm typecheck` and `pnpm lint` to confirm nothing references the removed code. Fix any import errors that surface.",
+      "acceptanceCriteria": [
+        "CodePreviewModal.tsx and BatchCodeGenModal.tsx deleted",
+        "No references to generateCodeFromTask, regenerateCodeFile, generateCodeFromSubtask, or batchGenerateCode in frontend code",
+        "Backend resolvers and typedefs for the 4 mutations removed",
+        "batchGenerateCode removed from aiService.ts",
+        "docs.ts updated to remove references to deleted mutations",
+        "pnpm typecheck passes",
+        "pnpm lint passes",
+        "pnpm build:order passes"
+      ],
+      "startedAt": "2026-03-18T04:20:50.405Z",
+      "completedAt": "2026-03-18T04:26:43.848Z",
+      "reviewedAt": "2026-03-18T04:29:21.112Z"
+    },
+    {
+      "id": "task-002",
+      "title": "Accessibility: ARIA labels, Enter key support, collapsed sidebar prefs button",
+      "assignee": "worker-2",
+      "status": "merged",
+      "priority": 2,
+      "files": [
+        "apps/web/src/components/NotificationSettings.tsx",
+        "apps/web/src/components/ProjectToolbar.tsx",
+        "apps/web/src/pages/AppLayout.tsx"
+      ],
+      "description": "Fix three accessibility gaps identified in the UX audit.\n\n**1. NotificationSettings ARIA labels** (`apps/web/src/components/NotificationSettings.tsx`):\n- The email toggle button (~lines 67-75) is a `<button>` acting as a toggle switch. Add `role=\"switch\"`, `aria-checked={emailEnabled}`, and `aria-label=\"Enable email notifications\"`.\n- The In-App checkboxes (~lines 91-96) lack aria-labels. Add `aria-label={`${pref.notificationType} in-app notifications`}` to each checkbox.\n- The Email checkboxes (~lines 99-105) similarly need `aria-label={`${pref.notificationType} email notifications`}`.\n- Reference ProjectToolbar's ARIA patterns for consistency (it uses `aria-label` on all interactive elements).\n\n**2. Export menu Enter key** (`apps/web/src/components/ProjectToolbar.tsx`):\n- The export menu overlay (~lines 369-442) handles ArrowDown, ArrowUp, and Escape keys but does NOT handle Enter. Keyboard-only users can focus a menuitem but can't activate it.\n- In the `onKeyDown` handler (~lines 376-393), add an Enter key case: when Enter is pressed and a menuitem has focus (tracked via `activeIndex` or `document.activeElement`), call `.click()` on the focused element or directly invoke the corresponding export action.\n- Reference the NotificationCenter's Enter handling (~lines 123-126) for the pattern: `else if (e.key === 'Enter' && focusedIndex >= 0) { e.preventDefault(); ... }`.\n\n**3. Sidebar collapse notification prefs button** (`apps/web/src/pages/AppLayout.tsx`):\n- When the sidebar is collapsed (`!isExpanded`), only the notification bell button is shown (~lines 318-339). The notification preferences gear button is completely hidden (only rendered inside `{isExpanded && ...}` at ~line 265).\n- Add a gear/settings button in the collapsed sidebar section (near line 318-339) that opens `showNotifSettings`. Use a small icon button with `aria-label=\"Notification preferences\"`, styled consistently with the existing collapsed bell button.\n- The notification settings panel already handles collapsed positioning (`left-14` at ~line 466), so just adding the trigger button is sufficient.",
+      "acceptanceCriteria": [
+        "NotificationSettings: email toggle has role=switch, aria-checked, aria-label",
+        "NotificationSettings: all checkboxes have descriptive aria-labels",
+        "ProjectToolbar: Enter key activates focused export menuitem",
+        "AppLayout: notification preferences button visible when sidebar is collapsed",
+        "pnpm typecheck passes",
+        "pnpm lint passes"
+      ],
+      "startedAt": "2026-03-18T04:24:47.075Z",
+      "completedAt": "2026-03-18T04:26:42.701Z",
+      "reviewedAt": "2026-03-18T04:29:57.340Z"
+    },
+    {
+      "id": "task-003",
+      "title": "SSE deduplication + Badge/Card design system adoption",
+      "assignee": "worker-3",
+      "status": "merged",
+      "priority": 2,
+      "files": [
+        "apps/web/src/hooks/useEventSource.ts",
+        "apps/web/src/pages/ProjectDetail.tsx",
+        "apps/web/src/pages/AppLayout.tsx",
+        "apps/web/src/components/SlackSettings.tsx"
+      ],
+      "description": "Deduplicate the SSE connections and adopt Badge/Card components in remaining spots.\n\n**1. SSE deduplication** — Currently `AppLayout.tsx` (~line 168) and `ProjectDetail.tsx` (~line 85) each call `useEventSource()` independently, creating two concurrent connections to `/api/events`. Consolidate into a single connection:\n\n- Refactor `useEventSource` hook (`apps/web/src/hooks/useEventSource.ts`, 114 lines) to support multiple listeners. One approach: create an `SSEProvider` context that wraps the app in `AppLayout`, holds the single connection, and exposes a `useSSEListener(eventTypes, handler)` hook. The provider manages connect/reconnect/auth. Child components register handlers for specific event types.\n- Update `AppLayout.tsx` (~lines 168-173): instead of calling `useEventSource(handleSSEEvent)` directly, render the `<SSEProvider>` around the app content (wrapping `<Outlet />`). Use `useSSEListener` for the notification handler. Keep the `connected` status for the \"Live\" badge.\n- Update `ProjectDetail.tsx` (~lines 85-98): replace `useEventSource()` with `useSSEListener(['task.action_completed', 'task.action_plan_completed', 'task.updated'], handler)`. Remove the direct connection.\n- Result: one SSE connection per browser tab instead of two.\n\n**2. Badge adoption in SlackSettings** (`apps/web/src/components/SlackSettings.tsx`):\n- ~Lines 250-259: Replace the inline `bg-green-50 text-green-700` / `bg-slate-100 text-slate-500` toggle button with `<Badge variant={int.enabled ? 'success' : 'neutral'}>`. Keep it as a button wrapping the Badge or style the Badge as clickable.\n- ~Lines 275-283: Replace inline `bg-slate-100 text-slate-600` event tags with `<Badge size=\"sm\" variant=\"neutral\">`.\n\n**3. Card adoption in AppLayout** (`apps/web/src/pages/AppLayout.tsx`):\n- ~Lines 466-481: The notification settings panel uses inline card styling (`bg-white dark:bg-slate-800 rounded-lg shadow-lg border ...`). Replace with `<Card>` component. The Card default padding is `p-6` but this panel uses `p-4`, so pass `className` to override or use a `padding` prop if Card supports it.",
+      "acceptanceCriteria": [
+        "Only one SSE connection exists per browser tab (verify by checking network tab or adding a console.log in the connection setup)",
+        "AppLayout renders SSEProvider wrapping Outlet",
+        "ProjectDetail uses useSSEListener instead of useEventSource",
+        "AppLayout notification handler uses useSSEListener",
+        "SlackSettings status indicators use Badge component",
+        "SlackSettings event tags use Badge component",
+        "AppLayout notification settings panel uses Card component",
+        "pnpm typecheck passes",
+        "pnpm lint passes"
+      ],
+      "startedAt": "2026-03-18T04:24:36.689Z",
+      "completedAt": "2026-03-18T04:28:10.914Z",
+      "reviewedAt": "2026-03-18T04:31:11.630Z"
+    }
+  ]
+}
