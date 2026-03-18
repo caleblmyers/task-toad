@@ -1,6 +1,6 @@
 # Remaining Work
 
-All original work sets completed through Wave 29. Completed items are in `changelog.md`.
+All original work sets completed through Wave 30. Completed items are in `changelog.md`.
 
 ---
 
@@ -11,6 +11,15 @@ All original work sets completed through Wave 29. Completed items are in `change
 - **File structure:** Prisma: `prisma/schema/`, TypeDefs: `typedefs/`, Resolvers: `resolvers/` — all domain-split.
 
 ---
+
+## Wave 30 — Server-side Filtering + Workflow Transitions + Kanban Swimlanes — Completed (2026-03-18)
+
+- [x] Server-side task filtering — backend (task-001, worker-1)
+- [x] Server-side task filtering — frontend integration (task-002, worker-1)
+- [x] Workflow transition model — backend + dependency warning surfacing (task-003, worker-2)
+- [x] Workflow transition config UI + warning display (task-004, worker-2)
+- [x] dependsOn data migration + OrgSettings lint fix (task-005, worker-3)
+- [x] Kanban swimlanes — groupBy parameter (task-006, worker-3)
 
 ## Wave 29 — Dependency Graph + Metrics + Cleanup — Completed (2026-03-18)
 
@@ -43,7 +52,7 @@ All original work sets completed through Wave 29. Completed items are in `change
 - [x] Adopt `useFormState` hook in settings components (Wave 29, tasks 004-006)
 
 ### Lint Warnings
-- [ ] Fix lint warning in OrgSettings.tsx:136 — `linkInstallation` called in useEffect triggers setState-in-effect warning (introduced by useFormState refactor in Wave 29)
+- [x] Fix lint warning in OrgSettings.tsx:136 (Wave 30, task-005)
 
 ### Remaining Polish
 - [ ] Remaining ARIA audit — screen reader testing, focus management on modal open/close, skip nav landmark coverage
@@ -63,13 +72,13 @@ All original work sets completed through Wave 29. Completed items are in `change
 These block scaling, process enforcement, and basic team adoption.
 
 ### Task Lifecycle & Workflow
-- [ ] **Workflow transition model** — `WorkflowTransition { fromStatus, toStatus, condition?, postFunction?, allowedRoles? }`. Validate on `updateTask`. Backward-compatible: no transitions defined = all moves allowed.
-- [x] **Dependency graph** — Replace `dependsOn: String?` with `TaskDependency` join table. Link types: blocks, relates_to, duplicates. BFS cycle detection on write. Blocking validation on status transition. *(Wave 29 — backend in task-001, frontend in task-002)*
-- [ ] **Dependency blocking warning surfacing** — updateTask currently logs a server-side warning when moving tasks with incomplete blockers, but doesn't return it to the client. Add a `warnings: [String!]` field to updateTask response or use a GraphQL extension to surface blocking warnings in the UI.
-- [ ] **Data migration: dependsOn → TaskDependency** — Migrate existing `dependsOn` JSON string data to TaskDependency records, then drop the `dependsOn` column.
+- [x] **Workflow transition model** — WorkflowTransition model with CRUD, updateTask validation, backward-compatible (no rules = all moves). *(Wave 30, tasks 003-004)*
+- [x] **Dependency graph** — TaskDependency join table with cycle detection + blocking validation. *(Wave 29)*
+- [x] **Dependency blocking warning surfacing** — updateTask returns `UpdateTaskResult { task, warnings }`, frontend shows warning toasts. *(Wave 30, task-003)*
+- [x] **Data migration: dependsOn → TaskDependency** — SQL migration + column drop + all references removed. *(Wave 30, task-005)*
 
 ### Search & Filtering
-- [ ] **Server-side task filtering** — Add `TaskFilterInput` to `tasks` query. Translate to dynamic Prisma `where` clauses. Deprecate client-side `useTaskFiltering` for data filtering (keep for local UI state).
+- [x] **Server-side task filtering** — TaskFilterInput with status/priority/assignee/labels/search/sort. Dynamic Prisma WHERE. Frontend debounced re-fetch. *(Wave 30, tasks 001-002)*
 
 ### Collaboration
 - [x] **@mention notification routing** — Already implemented in `createComment` resolver (lines 267-285). Extracts @email mentions via regex, batch-looks up users, passes `mentionedUserIds` to notification listener. Stale todo — was done before Wave 28.
@@ -90,7 +99,7 @@ Expected by teams switching from Jira/Asana/Wrike.
 - [ ] **Release model** — `Release { releaseId, projectId, name, targetDate, status, description }` + `releaseId` FK on Task. Release burndown, release notes generation (via existing AI report system).
 
 ### Views & Visualization
-- [ ] **Kanban swimlanes** — `groupBy` parameter on KanbanBoard (assignee, priority, epic). Nested grouping within columns. Frontend-only change.
+- [x] **Kanban swimlanes** — `groupBy` parameter on KanbanBoard (assignee, priority, epic). Collapsible swimlane headers, localStorage persistence. *(Wave 30, task-006)*
 - [ ] **WIP limits** — `wipLimits` JSON field on Sprint. Visual warning on column header when exceeded. Optional hard enforcement on `updateTask`.
 - [ ] **Cumulative flow diagram** — Daily status counts computed from Activity table. Stacked area chart (reuse existing Recharts setup from velocity/burndown charts).
 

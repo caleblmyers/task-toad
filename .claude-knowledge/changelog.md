@@ -6,6 +6,36 @@ Summaries of work completed each session. Most recent first.
 
 ## 2026-03-18
 
+### Wave 30: Server-side Filtering + Workflow Transitions + Kanban Swimlanes (3 workers, 6 tasks)
+
+**Worker 1 — Server-side task filtering (P0):**
+- Added `TaskFilterInput` to `tasks` GraphQL query with status, priority, assigneeId, labelIds, search, showArchived, epicId, sprintId, dueDateFrom/To, sortBy/sortOrder
+- Dynamic Prisma WHERE clause builder with proper handling of unassigned filter, AND logic for labels, case-insensitive search
+- Frontend: refactored `useTaskFiltering` from client-side array filtering to server-side re-fetch with 300ms debounced search
+- Updated loadTasks to pass filter input, saved filters now trigger server-side queries
+
+**Worker 2 — Workflow transitions (P0) + dependency warning surfacing:**
+- New `WorkflowTransition` model (workflow.prisma) with CRUD resolvers + GraphQL types
+- Transition validation in `updateTask` — if transitions defined, validates (fromStatus, toStatus) pair; no transitions = all moves allowed (backward compatible)
+- `updateTask` now returns `UpdateTaskResult { task, warnings }` — dependency blocking warnings surfaced to client
+- New `WorkflowTab` in ProjectSettingsModal for configuring allowed transitions
+- Frontend: updateTask callers parse warnings and show warning toasts; invalid transitions show error toasts
+
+**Worker 3 — Data migration + kanban swimlanes:**
+- SQL migration: `dependsOn` JSON string data → `TaskDependency` records, then dropped `depends_on` column
+- Removed all `dependsOn` references from: Task model, shared-types, TASK_FIELDS, GraphQL typedefs, resolvers
+- Fixed OrgSettings lint warning (extracted callback handling to separate useEffect)
+- Kanban swimlanes: `groupBy` prop (assignee/priority/epic) with collapsible swimlane headers, consistent ordering, localStorage persistence
+
+**Process:** 2 rejections — task-002 (18 failing tests from client→server filtering refactor, worker fixed tests), task-005 (merge conflict with task-003's UpdateTaskResult type, worker rebased). All P0 Foundation items now complete.
+
+**Open follow-ups:**
+- `allowedRoles` on WorkflowTransition is stored but not enforced yet (deferred to permission scheme work)
+- Custom field filtering remains client-side (stretch goal was skipped — server-side custom field filters can be added later)
+- useTaskFiltering tests were rewritten for server-side model — verify coverage matches original
+
+---
+
 ### Wave 29: Dependency Graph + Metrics + Cleanup (3 workers, 6 tasks)
 
 **Worker 1 — Task dependency graph (P0 Foundation):**
