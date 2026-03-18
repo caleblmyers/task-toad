@@ -4,6 +4,40 @@ Summaries of work completed each session. Most recent first.
 
 ---
 
+## 2026-03-18
+
+### Wave 27: Dead Code Cleanup, Accessibility, SSE Dedup (3 workers, 3 tasks)
+
+**Worker 1 — Dead Code Cleanup:**
+- Deleted `CodePreviewModal.tsx` (602 lines) and `BatchCodeGenModal.tsx` (160 lines) — both unused since Auto-Complete replaced manual code gen
+- Removed dead handlers from `useAIGeneration.ts`: `handleGenerateCode`, `handleRegenerateFile`, `handleGenerateCodeFromChildTask`
+- Removed dead GraphQL mutation strings from `queries.ts`
+- Removed backend resolvers for `generateCodeFromTask`, `generateCodeFromSubtask`, `regenerateCodeFile`, `batchGenerateCode` from `resolvers/ai.ts`
+- Removed corresponding typedefs from `typedefs/ai.ts`
+- Removed `batchGenerateCode` from `aiService.ts`
+- Updated `routes/docs.ts` to remove references to deleted mutations
+
+**Worker 2 — Accessibility Fixes:**
+- NotificationSettings: added `role="switch"`, `aria-checked`, `aria-label` to email toggle; added descriptive `aria-label` to all In-App and Email checkboxes
+- ProjectToolbar: added Enter key handler for export menu — keyboard-only users can now activate focused menuitems
+- AppLayout: added notification preferences gear button in collapsed sidebar state
+
+**Worker 3 — SSE Dedup + Design System:**
+- Created `SSEProvider` context + `useSSEListener` hook — single SSE connection per browser tab instead of two
+- AppLayout wraps `<Outlet />` in `<SSEProvider>`, uses `useSSEListener` for notifications
+- ProjectDetail uses `useSSEListener` for action plan events instead of independent connection
+- SlackSettings: migrated inline status badges and event tags to `<Badge>` component
+- AppLayout: migrated notification settings panel to `<Card>` component
+
+**Process:** Zero rejections. AppLayout.tsx touched by workers 2 and 3 on different sections — Git auto-merged cleanly.
+
+**Open follow-ups:**
+- `BatchCodeGenerationSchema` and `buildBatchCodeGenerationPrompt` still exported from `aiTypes.ts` and `promptBuilder.ts` (dead after resolver removal)
+- Deprecated `useEventSource` hook still exported (replaced by `useSSEListener` but not deleted yet)
+- Lint warning in AppLayout.tsx:178 (pre-existing, not from this wave)
+
+---
+
 ## 2026-03-17 (cont.)
 
 ### Action Plan Pipeline: Review Step + Manual Code Gen Deprecation

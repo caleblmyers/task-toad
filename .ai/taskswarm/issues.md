@@ -275,3 +275,17 @@ Format:
 ### Reviewer — Positive
 **Observation:** Worker-2 completed fastest, letting reviewer merge it first, which meant worker-1's later merge had a clean auto-merge target.
 **Why it worked:** Task sizing was appropriate — responsive layout was more mechanical, focus trap extraction was more complex. Natural completion order matched ideal merge order.
+
+### Reviewer — Positive (Wave 27)
+**Observation:** All 3 tasks merged with zero rejections. Worker-2 and worker-3 both modified AppLayout.tsx but Git auto-merged cleanly — different sections (collapsed sidebar vs SSE/Card changes).
+**Why it worked:** Tasks touched different logical areas of the same file. Auto-merge handled non-overlapping changes. Workers all ran validation before marking complete.
+
+### Reviewer — task-001 (Wave 27, follow-up)
+**Issue:** Worker removed `batchGenerateCode` from aiService.ts and resolvers, but `BatchCodeGenerationSchema` and `buildBatchCodeGenerationPrompt` still exist in aiTypes.ts and promptBuilder.ts respectively. These are now dead exports.
+**Impact:** Minor — dead code remains in AI types and prompt builder. No runtime impact.
+**Suggestion:** When removing a feature's resolvers, task descriptions should include cleanup of the full chain: types, schemas, prompt builders, not just the service/resolver layer.
+
+### Reviewer — Observation (Wave 27, stash)
+**Issue:** Main repo had uncommitted wave setup changes (modified AI files, skill files, spawn scripts) that blocked the first merge attempt. Required stashing before merging.
+**Impact:** ~1 min delay for first merge. Stash pop after wave caused conflicts with task-001's deletions.
+**Suggestion:** Wave setup changes should be committed (or stashed) before workers start, so the main branch is clean for merging.

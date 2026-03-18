@@ -25,13 +25,14 @@ All original work sets completed through Wave 25. Waves 22-26 addressed UX audit
 - [ ] **Runner / autonomous execution** — AutonomousSprintPanel and sprintRunner were aspirational features never built. Excluded from beta. TaskToad is AI-assisted (not autonomous) project management.
 
 ### Accessibility
-- [ ] ARIA audit for NotificationSettings — checkboxes lack aria-labels; should match ProjectToolbar's ARIA patterns
-- [ ] Export menu Enter key — keyboard-only users need Enter support on focused menuitem
-- [ ] Sidebar collapse: notification preferences button hidden when collapsed; overlay doesn't show
+- [x] ARIA audit for NotificationSettings — checkboxes lack aria-labels; should match ProjectToolbar's ARIA patterns (Wave 27)
+- [x] Export menu Enter key — keyboard-only users need Enter support on focused menuitem (Wave 27)
+- [x] Sidebar collapse: notification preferences button hidden when collapsed; overlay doesn't show (Wave 27)
+- [ ] Remaining ARIA audit — screen reader testing, focus management on modal open/close, skip nav landmark coverage
 
 ### Design System
-- [ ] Card component — AppLayout notification panel still uses inline card div
-- [ ] Badge component — SlackSettings status indicators still inline
+- [x] Card component — AppLayout notification panel still uses inline card div (Wave 27)
+- [x] Badge component — SlackSettings status indicators still inline (Wave 27)
 
 ### API / Backend
 - [ ] Shared-types expansion — add Report type to `@tasktoad/shared-types` (Comment already exists)
@@ -40,8 +41,10 @@ All original work sets completed through Wave 25. Waves 22-26 addressed UX audit
 ### Architecture / DX
 - [ ] useAsyncData adoption — migrate other components with inline fetch-in-useEffect patterns
 - [ ] Task detail re-architecture (UX Audit Item 10) — collapsible sections, tabbed comments/activity
-- [ ] Dead code cleanup: remove `CodePreviewModal`, `BatchCodeGenModal`, manual code gen handlers from `useAIGeneration`/`useProjectData`, and `generateCodeFromTask`/`regenerateCodeFile` GraphQL mutations (backend). All superseded by action plan pipeline.
-- [ ] Deduplicate SSE connections — ProjectDetail creates a second SSE connection alongside AppLayout's. Consider a shared context or window event relay.
+- [x] Dead code cleanup: remove `CodePreviewModal`, `BatchCodeGenModal`, manual code gen handlers from `useAIGeneration`/`useProjectData`, and `generateCodeFromTask`/`regenerateCodeFile` GraphQL mutations (backend). All superseded by action plan pipeline. (Wave 27)
+- [x] Deduplicate SSE connections — ProjectDetail creates a second SSE connection alongside AppLayout's. Consider a shared context or window event relay. (Wave 27)
+- [ ] Remove deprecated `useEventSource` hook — still exported for backward compat but no longer used by any component. Can be deleted once confirmed unused.
+- [ ] Clean up `BatchCodeGenerationSchema` and `buildBatchCodeGenerationPrompt` from `aiTypes.ts` and `promptBuilder.ts` — the resolver was removed but the AI types/prompt builder still export them
 
 ### Process (non-code)
 - [ ] Task descriptions creating new workspace packages should note: point `types` to source not dist
