@@ -4,6 +4,31 @@ Summaries of work completed each session. Most recent first.
 
 ---
 
+## 2026-03-19
+
+### Session Summary
+
+Three swarm waves completed (28-30), plus codebase audit, swarm tooling improvements, and CI fixes.
+
+**Codebase audit** — Identified all cleanup opportunities across 27+ waves of rapid development. Documented in todos.md and decisions.md. No code changes, pure analysis.
+
+**Swarm tooling improvements:**
+- New `/task-release` skill — validates (incl. tests), pushes, monitors CI, verifies deploy
+- `merge-worker.sh --validate` now runs `pnpm test`
+- `validate-tasks.sh` checks `dependsOn` references for invalid/self-referencing IDs
+- Formal `dependsOn` field support across worker, reviewer, and swarm skills
+- `task-cleanup` hands off to `/task-release` instead of manual push
+- `spawn.sh` writes role to gitignored `.claude/swarm-role.md`
+- GitHub CLI auth configured for push from Claude Code
+
+**CI fixes:**
+- Removed duplicate pnpm version spec (action config vs packageManager field)
+- Added `prisma generate` step before typecheck
+- Added env vars (JWT_SECRET, ENCRYPTION_MASTER_KEY, DATABASE_URL) for unit test step
+- All CI green: lint → typecheck → unit tests → integration tests → build
+
+---
+
 ## 2026-03-18
 
 ### Wave 30: Server-side Filtering + Workflow Transitions + Kanban Swimlanes (3 workers, 6 tasks)
