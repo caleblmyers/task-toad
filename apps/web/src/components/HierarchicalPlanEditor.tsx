@@ -1,0 +1,527 @@
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import Badge from './shared/Badge';
+
+// ── Types ────────────────────────────────────────────────────────────────
+
+export interface DependencyRef {
+  title: string;
+  linkType: string;
+}
+
+export interface HierarchicalSubtaskPreview {
+  title: string;
+  description: string;
+  estimatedHours: number | null;
+  priority: string | null;
+  acceptanceCriteria: string | null;
+}
+
+export interface HierarchicalTaskPreview {
+  title: string;
+  description: string;
+  instructions: string | null;
+  estimatedHours: number | null;
+  priority: string | null;
+  acceptanceCriteria: string | null;
+  autoComplete: boolean | null;
+  dependsOn: DependencyRef[] | null;
+  subtasks: HierarchicalSubtaskPreview[] | null;
+}
+
+export interface HierarchicalEpicPreview {
+  title: string;
+  description: string;
+  instructions: string | null;
+  estimatedHours: number | null;
+  priority: string | null;
+  acceptanceCriteria: string | null;
+  autoComplete: boolean | null;
+  dependsOn: DependencyRef[] | null;
+  tasks: HierarchicalTaskPreview[] | null;
+}
+
+export interface HierarchicalPlanPreview {
+  epics: HierarchicalEpicPreview[];
+}
+
+// ── Internal mutable node type (union of all levels) ─────────────────────
+
+type NodeKey = string;
+
+function makeKey(
+  epicIdx: number,
+  taskIdx?: number,
+  subtaskIdx?: number,
+): NodeKey {
+  if (subtaskIdx !== undefined && taskIdx !== undefined)
+    return `subtask-${epicIdx}-${taskIdx}-${subtaskIdx}`;
+  if (taskIdx !== undefined) return `task-${epicIdx}-${taskIdx}`;
+  return `epic-${epicIdx}`;
+}
+
+// ── Priority mapping ─────────────────────────────────────────────────────
+
+function priorityVariant(
+  p: string | null,
+): 'danger' | 'warning' | 'info' | 'neutral' | 'success' {
+  switch (p) {
+    case 'critical':
+    case 'urgent':
+      return 'danger';
+    case 'high':
+      return 'warning';
+    case 'medium':
+      return 'info';
+    case 'low':
+      return 'success';
+    default:
+      return 'neutral';
+  }
+}
+
+const TYPE_STYLES: Record<string, { bg: string; text: string; label: string }> =
+  {
+    epic: {
+      bg: 'bg-amber-100 dark:bg-amber-900/30',
+      text: 'text-amber-700 dark:text-amber-400',
+      label: 'Epic',
+    },
+    task: {
+      bg: 'bg-blue-100 dark:bg-blue-900/30',
+      text: 'text-blue-700 dark:text-blue-400',
+      label: 'Task',
+    },
+    subtask: {
+      bg: 'bg-slate-100 dark:bg-slate-700',
+      text: 'text-slate-600 dark:text-slate-300',
+      label: 'Subtask',
+    },
+  };
+
+// ── Props ────────────────────────────────────────────────────────────────
+
+interface HierarchicalPlanEditorProps {
+  plan: HierarchicalPlanPreview;
+  onChange: (plan: HierarchicalPlanPreview) => void;
+}
+
+// ── Component ────────────────────────────────────────────────────────────
+
+export function HierarchicalPlanEditor({
+  plan,
+  onChange,
+}: HierarchicalPlanEditorProps) {
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
+    // Default: all epics expanded
+    const ids = new Set<string>();
+    plan.epics.forEach((_, i) => ids.add(makeKey(i)));
+    return ids;
+  });
+
+  // Reset expanded when plan changes (e.g. regenerate)
+  useEffect(() => {
+    const ids = new Set<string>();
+    plan.epics.forEach((_, i) => ids.add(makeKey(i)));
+    setExpandedIds(ids);
+  }, [plan.epics.length]);
+
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const editRef = useRef<HTMLInputElement>(null);
+
+  // Drag state
+  const draggedKey = useRef<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
+
+  const toggleExpand = useCallback((key: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  // ── Edit helpers ───────────────────────────────────────────────────────
+
+  const startEdit = useCallback((key: string, currentTitle: string) => {
+    setEditingKey(key);
+    setEditValue(currentTitle);
+    // Focus on next tick
+    setTimeout(() => editRef.current?.focus(), 0);
+  }, []);
+
+  const saveEdit = useCallback(() => {
+    if (!editingKey || !editValue.trim()) {
+      setEditingKey(null);
+      return;
+    }
+    const updated = structuredClone(plan);
+    const parts = editingKey.split('-');
+    if (parts[0] === 'epic') {
+      updated.epics[Number(parts[1])].title = editValue.trim();
+    } else if (parts[0] === 'task') {
+      const tasks = updated.epics[Number(parts[1])].tasks;
+      if (tasks) tasks[Number(parts[2])].title = editValue.trim();
+    } else if (parts[0] === 'subtask') {
+      const tasks = updated.epics[Number(parts[1])].tasks;
+      const subtasks = tasks?.[Number(parts[2])]?.subtasks;
+      if (subtasks) subtasks[Number(parts[3])].title = editValue.trim();
+    }
+    onChange(updated);
+    setEditingKey(null);
+  }, [editingKey, editValue, plan, onChange]);
+
+  const handleEditKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        saveEdit();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setEditingKey(null);
+      }
+    },
+    [saveEdit],
+  );
+
+  // ── Delete helpers ─────────────────────────────────────────────────────
+
+  const deleteNode = useCallback(
+    (key: string) => {
+      const updated = structuredClone(plan);
+      const parts = key.split('-');
+      if (parts[0] === 'epic') {
+        updated.epics.splice(Number(parts[1]), 1);
+      } else if (parts[0] === 'task') {
+        const tasks = updated.epics[Number(parts[1])].tasks;
+        if (tasks) tasks.splice(Number(parts[2]), 1);
+      } else if (parts[0] === 'subtask') {
+        const tasks = updated.epics[Number(parts[1])].tasks;
+        const subtasks = tasks?.[Number(parts[2])]?.subtasks;
+        if (subtasks) subtasks.splice(Number(parts[3]), 1);
+      }
+      onChange(updated);
+    },
+    [plan, onChange],
+  );
+
+  // ── AutoComplete toggle ────────────────────────────────────────────────
+
+  const toggleAutoComplete = useCallback(
+    (key: string) => {
+      const updated = structuredClone(plan);
+      const parts = key.split('-');
+      if (parts[0] === 'task') {
+        const tasks = updated.epics[Number(parts[1])].tasks;
+        if (tasks) {
+          const t = tasks[Number(parts[2])];
+          t.autoComplete = !(t.autoComplete ?? false);
+        }
+      }
+      onChange(updated);
+    },
+    [plan, onChange],
+  );
+
+  // ── Drag-to-reorder ────────────────────────────────────────────────────
+
+  const handleDragStart = useCallback((key: string) => {
+    draggedKey.current = key;
+  }, []);
+
+  const handleDragOver = useCallback(
+    (e: React.DragEvent, key: string) => {
+      e.preventDefault();
+      // Only allow drop at same level
+      const dragged = draggedKey.current;
+      if (!dragged) return;
+      const dragParts = dragged.split('-');
+      const dropParts = key.split('-');
+      if (dragParts[0] !== dropParts[0]) return;
+      // Same parent check for tasks/subtasks
+      if (dragParts[0] === 'task' && dragParts[1] !== dropParts[1]) return;
+      if (
+        dragParts[0] === 'subtask' &&
+        (dragParts[1] !== dropParts[1] || dragParts[2] !== dropParts[2])
+      )
+        return;
+      setDropTarget(key);
+    },
+    [],
+  );
+
+  const handleDragLeave = useCallback(() => {
+    setDropTarget(null);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent, targetKey: string) => {
+      e.preventDefault();
+      setDropTarget(null);
+      const sourceKey = draggedKey.current;
+      draggedKey.current = null;
+      if (!sourceKey || sourceKey === targetKey) return;
+
+      const sourceParts = sourceKey.split('-');
+      const targetParts = targetKey.split('-');
+      if (sourceParts[0] !== targetParts[0]) return;
+
+      const updated = structuredClone(plan);
+
+      if (sourceParts[0] === 'epic') {
+        const srcIdx = Number(sourceParts[1]);
+        const tgtIdx = Number(targetParts[1]);
+        const [moved] = updated.epics.splice(srcIdx, 1);
+        updated.epics.splice(tgtIdx, 0, moved);
+      } else if (sourceParts[0] === 'task') {
+        if (sourceParts[1] !== targetParts[1]) return;
+        const epicIdx = Number(sourceParts[1]);
+        const tasks = updated.epics[epicIdx].tasks;
+        if (!tasks) return;
+        const srcIdx = Number(sourceParts[2]);
+        const tgtIdx = Number(targetParts[2]);
+        const [moved] = tasks.splice(srcIdx, 1);
+        tasks.splice(tgtIdx, 0, moved);
+      } else if (sourceParts[0] === 'subtask') {
+        if (
+          sourceParts[1] !== targetParts[1] ||
+          sourceParts[2] !== targetParts[2]
+        )
+          return;
+        const epicIdx = Number(sourceParts[1]);
+        const taskIdx = Number(sourceParts[2]);
+        const subtasks = updated.epics[epicIdx].tasks?.[taskIdx]?.subtasks;
+        if (!subtasks) return;
+        const srcIdx = Number(sourceParts[3]);
+        const tgtIdx = Number(targetParts[3]);
+        const [moved] = subtasks.splice(srcIdx, 1);
+        subtasks.splice(tgtIdx, 0, moved);
+      }
+
+      onChange(updated);
+    },
+    [plan, onChange],
+  );
+
+  const handleDragEnd = useCallback(() => {
+    draggedKey.current = null;
+    setDropTarget(null);
+  }, []);
+
+  // ── Collect all node titles for dependency display ─────────────────────
+
+  const allTitles = new Set<string>();
+  for (const epic of plan.epics) {
+    allTitles.add(epic.title);
+    for (const task of epic.tasks ?? []) {
+      allTitles.add(task.title);
+    }
+  }
+
+  // ── Render a single node ──────────────────────────────────────────────
+
+  const renderNode = (
+    nodeType: 'epic' | 'task' | 'subtask',
+    title: string,
+    _description: string,
+    priority: string | null,
+    estimatedHours: number | null,
+    autoComplete: boolean | null,
+    dependsOn: DependencyRef[] | null,
+    hasChildren: boolean,
+    key: NodeKey,
+    depth: number,
+  ) => {
+    const isExpanded = expandedIds.has(key);
+    const isEditing = editingKey === key;
+    const style = TYPE_STYLES[nodeType];
+    const depCount = dependsOn?.length ?? 0;
+    const isDropTarget = dropTarget === key;
+
+    return (
+      <div
+        key={key}
+        className={`group flex items-center gap-2 px-3 py-2 rounded-lg border transition-all mb-1
+          ${isDropTarget ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}
+          bg-white dark:bg-slate-900`}
+        style={{ marginLeft: `${depth * 24}px` }}
+        draggable
+        onDragStart={() => handleDragStart(key)}
+        onDragOver={(e) => handleDragOver(e, key)}
+        onDragLeave={handleDragLeave}
+        onDrop={(e) => handleDrop(e, key)}
+        onDragEnd={handleDragEnd}
+      >
+        {/* Expand/Collapse */}
+        {hasChildren ? (
+          <button
+            onClick={() => toggleExpand(key)}
+            className="w-5 h-5 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex-shrink-0"
+          >
+            {isExpanded ? '▼' : '▶'}
+          </button>
+        ) : (
+          <span className="w-5 flex-shrink-0" />
+        )}
+
+        {/* Type badge */}
+        <span
+          className={`${style.bg} ${style.text} text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0`}
+        >
+          {style.label}
+        </span>
+
+        {/* Title (inline editable) */}
+        <div className="flex-1 min-w-0">
+          {isEditing ? (
+            <input
+              ref={editRef}
+              type="text"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={saveEdit}
+              onKeyDown={handleEditKeyDown}
+              className="w-full text-sm font-medium text-slate-800 dark:text-slate-100 border-b-2 border-blue-400 focus:outline-none bg-transparent"
+            />
+          ) : (
+            <span
+              className="text-sm font-medium text-slate-800 dark:text-slate-100 cursor-text hover:underline decoration-dashed truncate block"
+              onClick={() => startEdit(key, title)}
+              title="Click to edit"
+            >
+              {title}
+            </span>
+          )}
+        </div>
+
+        {/* Priority badge */}
+        {priority && (
+          <Badge variant={priorityVariant(priority)} size="sm">
+            {priority}
+          </Badge>
+        )}
+
+        {/* Estimated hours */}
+        {estimatedHours != null && (
+          <span className="text-[10px] text-slate-400 dark:text-slate-500 flex-shrink-0">
+            {estimatedHours}h
+          </span>
+        )}
+
+        {/* Auto-complete toggle (task nodes only, not epics or subtasks) */}
+        {nodeType === 'task' && (
+          <label className="flex items-center gap-1 flex-shrink-0 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoComplete ?? false}
+              onChange={() => toggleAutoComplete(key)}
+              className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-[10px] text-slate-500 dark:text-slate-400">
+              Auto
+            </span>
+          </label>
+        )}
+
+        {/* Dependency count badge */}
+        {depCount > 0 && (
+          <span
+            className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 flex-shrink-0 cursor-default"
+            title={dependsOn!.map((d) => `${d.linkType}: ${d.title}`).join(', ')}
+          >
+            {depCount} dep{depCount > 1 ? 's' : ''}
+          </span>
+        )}
+
+        {/* Delete button */}
+        <button
+          onClick={() => deleteNode(key)}
+          className="w-5 h-5 flex items-center justify-center text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+          title="Remove"
+        >
+          ×
+        </button>
+      </div>
+    );
+  };
+
+  // ── Render tree ────────────────────────────────────────────────────────
+
+  return (
+    <div className="space-y-0.5">
+      {plan.epics.length === 0 && (
+        <p className="text-sm text-slate-400 dark:text-slate-500 text-center py-8">
+          No epics in plan. Generate a plan to get started.
+        </p>
+      )}
+      {plan.epics.map((epic, epicIdx) => {
+        const epicKey = makeKey(epicIdx);
+        const epicExpanded = expandedIds.has(epicKey);
+        const tasks = epic.tasks ?? [];
+
+        return (
+          <React.Fragment key={epicKey}>
+            {renderNode(
+              'epic',
+              epic.title,
+              epic.description,
+              epic.priority,
+              epic.estimatedHours,
+              epic.autoComplete,
+              epic.dependsOn,
+              tasks.length > 0,
+              epicKey,
+              0,
+            )}
+
+            {epicExpanded &&
+              tasks.map((task, taskIdx) => {
+                const taskKey = makeKey(epicIdx, taskIdx);
+                const taskExpanded = expandedIds.has(taskKey);
+                const subtasks = task.subtasks ?? [];
+
+                return (
+                  <React.Fragment key={taskKey}>
+                    {renderNode(
+                      'task',
+                      task.title,
+                      task.description,
+                      task.priority,
+                      task.estimatedHours,
+                      task.autoComplete,
+                      task.dependsOn,
+                      subtasks.length > 0,
+                      taskKey,
+                      1,
+                    )}
+
+                    {taskExpanded &&
+                      subtasks.map((subtask, subtaskIdx) => {
+                        const subtaskKey = makeKey(
+                          epicIdx,
+                          taskIdx,
+                          subtaskIdx,
+                        );
+                        return renderNode(
+                          'subtask',
+                          subtask.title,
+                          subtask.description,
+                          subtask.priority,
+                          subtask.estimatedHours,
+                          null,
+                          null,
+                          false,
+                          subtaskKey,
+                          2,
+                        );
+                      })}
+                  </React.Fragment>
+                );
+              })}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
