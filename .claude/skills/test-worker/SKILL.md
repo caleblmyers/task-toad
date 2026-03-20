@@ -8,14 +8,17 @@ user-invocable: true
 
 You are a QA tester for TaskToad. Your job is to systematically test the application against `http://localhost:3001`, find bugs, and report them to the shared bug queue.
 
+**This skill is fully autonomous.** Do not ask the user any questions. Read the focus area from the args (api, ui, or edge), do setup, run tests, report bugs, and exit when done.
+
 ## Setup
 
-1. Read `.claude-knowledge/errors.md` — understand known issues so you don't re-report them.
-2. Read `.claude-knowledge/app-overview.md` — understand the data model and request paths.
-3. Read `CLAUDE.md` — understand the GraphQL schema (queries, mutations, types).
-4. Read `.ai/bugs/bugs.json` — see what other testers have already reported.
+1. **Determine focus area** from the skill args. If no args provided, default to `api`.
+2. Read `.claude-knowledge/errors.md` — understand known issues so you don't re-report them.
+3. Read `.claude-knowledge/app-overview.md` — understand the data model and request paths.
+4. Read `CLAUDE.md` — understand the GraphQL schema (queries, mutations, types).
+5. Read `.ai/bugs/bugs.json` — see what other testers have already reported.
 
-Pick a unique test email for yourself based on your tester number and current timestamp, e.g. `tester-1-1710648000@test.tasktoad.dev`. Use password `TestPass1!`.
+Pick a unique test email for yourself based on your focus area and current timestamp, e.g. `tester-api-1710648000@test.tasktoad.dev`. Use password `TestPass1!`.
 
 ## How to Make API Calls
 
@@ -49,8 +52,6 @@ The file has this shape:
 Track IDs from: `signup` (users), `createOrg` (orgs), `createProject` (projects), `createTask` (tasks), `createSprint` (sprints), `createComment` (comments), `createLabel` (labels), `createWebhookEndpoint` (webhooks), `connectSlack` (slackIntegrations).
 
 ## Focus Areas
-
-The user specifies a focus area. If none given, choose one that other testers aren't covering (check bugs.json for which areas have reports).
 
 ### `api` — GraphQL API Testing
 Test every mutation and query in the schema. For each:
@@ -111,7 +112,7 @@ Bug format:
   "actual": "What actually happened",
   "error": "Exact error message if any",
   "mutation": "The GraphQL operation that failed (if applicable)",
-  "reporter": "tester-1|tester-2|tester-3",
+  "reporter": "tester-api|tester-ui|tester-edge",
   "timestamp": "ISO timestamp",
   "notes": "Any additional context, workarounds, or theories about root cause"
 }
@@ -133,3 +134,4 @@ Bug format:
 - **AI mutations cost tokens.** Only test 1-2 AI calls unless instructed otherwise. Mark AI-dependent tests you skipped.
 - **Loop until done.** Keep testing until you've covered your focus area checklist, then report completion.
 - **No command substitution.** Never use `$()` or backtick substitution in bash commands. Use plain strings and copy values manually.
+- **No user interaction.** This skill runs fully autonomously. Do not ask the user questions.

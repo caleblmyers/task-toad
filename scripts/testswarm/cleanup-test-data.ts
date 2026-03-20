@@ -68,6 +68,16 @@ async function main() {
       await prisma.comment.deleteMany({ where: { taskId: { in: data.tasks } } });
       await prisma.customFieldValue.deleteMany({ where: { taskId: { in: data.tasks } } });
       await prisma.notification.deleteMany({ where: { relatedTaskId: { in: data.tasks } } });
+      await prisma.releaseTask.deleteMany({ where: { taskId: { in: data.tasks } } });
+      await prisma.gitHubPullRequestLink.deleteMany({ where: { taskId: { in: data.tasks } } });
+      await prisma.gitHubCommitLink.deleteMany({ where: { taskId: { in: data.tasks } } });
+      await prisma.taskAction.deleteMany({ where: { plan: { taskId: { in: data.tasks } } } });
+      await prisma.taskActionPlan.deleteMany({ where: { taskId: { in: data.tasks } } });
+      await prisma.taskWatcher.deleteMany({ where: { taskId: { in: data.tasks } } });
+      await prisma.taskDependency.deleteMany({ where: { OR: [{ sourceTaskId: { in: data.tasks } }, { targetTaskId: { in: data.tasks } }] } });
+      await prisma.aIPromptLog.deleteMany({ where: { taskId: { in: data.tasks } } });
+      // timeEntry table may not exist if migrations are pending — ignore errors
+      try { await prisma.timeEntry.deleteMany({ where: { taskId: { in: data.tasks } } }); } catch (_) { /* table may not exist */ }
       const r = await prisma.task.deleteMany({ where: { taskId: { in: data.tasks } } });
       console.log(`Deleted ${r.count} tasks`);
     }
@@ -95,10 +105,15 @@ async function main() {
       await prisma.notification.deleteMany({ where: { relatedProjectId: { in: data.projects } } });
       await prisma.customFieldValue.deleteMany({ where: { customField: { projectId: { in: data.projects } } } });
       await prisma.customField.deleteMany({ where: { projectId: { in: data.projects } } });
+      await prisma.releaseTask.deleteMany({ where: { release: { projectId: { in: data.projects } } } });
+      await prisma.release.deleteMany({ where: { projectId: { in: data.projects } } });
+      await prisma.taskTemplate.deleteMany({ where: { projectId: { in: data.projects } } });
+      await prisma.workflowTransition.deleteMany({ where: { projectId: { in: data.projects } } });
       await prisma.savedFilter.deleteMany({ where: { projectId: { in: data.projects } } });
       await prisma.report.deleteMany({ where: { projectId: { in: data.projects } } });
       await prisma.projectMember.deleteMany({ where: { projectId: { in: data.projects } } });
       await prisma.automationRule.deleteMany({ where: { projectId: { in: data.projects } } });
+      await prisma.aIPromptLog.deleteMany({ where: { projectId: { in: data.projects } } });
       await prisma.taskAssignee.deleteMany({ where: { task: { projectId: { in: data.projects } } } });
       await prisma.taskLabel.deleteMany({ where: { task: { projectId: { in: data.projects } } } });
       await prisma.comment.deleteMany({ where: { task: { projectId: { in: data.projects } } } });

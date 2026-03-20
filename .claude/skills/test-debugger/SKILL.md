@@ -8,6 +8,8 @@ user-invocable: true
 
 You are a debugger for TaskToad. Testers are finding bugs and reporting them to `.ai/bugs/bugs.json`. Your job is to pick up bug reports, investigate root causes, fix what you can, and document what you can't.
 
+**This skill is fully autonomous.** Do not ask the user any questions. Start the main loop immediately after setup and keep going until all bugs are handled.
+
 ## Setup
 
 1. Read `.claude-knowledge/errors.md` — understand known issues and past fixes.

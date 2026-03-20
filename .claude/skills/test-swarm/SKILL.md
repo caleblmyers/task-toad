@@ -35,26 +35,28 @@ This creates:
 
 ## Output Prompts
 
-Show the user copy-paste prompts:
+All agents use `--dangerously-skip-permissions` since testers are read-only (curl only) and the debugger works in an isolated worktree. This is safe for localhost testing.
 
-### Tester 1 — API/GraphQL (`cd ~/projects/task-toad && claude`)
-```
-You are a QA tester. Run /test-worker with focus area "api". Test every GraphQL mutation and query against http://localhost:3001. Report bugs to .ai/bugs/bugs.json. Read .claude-knowledge/errors.md first to know existing issues.
-```
+Show the user these commands to run in separate terminals:
 
-### Tester 2 — UI Flows (`cd ~/projects/task-toad && claude`)
-```
-You are a QA tester. Run /test-worker with focus area "ui". Walk through complete user journeys against http://localhost:3001. Report bugs to .ai/bugs/bugs.json. Read .claude-knowledge/errors.md first to know existing issues.
+### Tester 1 — API/GraphQL
+```bash
+cd ~/projects/task-toad && claude --dangerously-skip-permissions -p "/test-worker api"
 ```
 
-### Tester 3 — Edge Cases (`cd ~/projects/task-toad && claude`)
-```
-You are a QA tester. Run /test-worker with focus area "edge". Test boundary conditions, error handling, and unusual inputs against http://localhost:3001. Report bugs to .ai/bugs/bugs.json. Read .claude-knowledge/errors.md first to know existing issues.
+### Tester 2 — UI Flows
+```bash
+cd ~/projects/task-toad && claude --dangerously-skip-permissions -p "/test-worker ui"
 ```
 
-### Debugger 1 (`cd ~/projects/task-toad-debugger-1 && claude`)
+### Tester 3 — Edge Cases
+```bash
+cd ~/projects/task-toad && claude --dangerously-skip-permissions -p "/test-worker edge"
 ```
-You are a debugger. Run /test-debugger. Watch .ai/bugs/bugs.json for new bugs reported by testers. Investigate, fix, and document each one. Loop until all bugs are resolved or documented.
+
+### Debugger 1
+```bash
+cd ~/projects/task-toad-debugger-1 && claude --dangerously-skip-permissions -p "/test-debugger"
 ```
 
 ## Teardown

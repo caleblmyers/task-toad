@@ -41,6 +41,10 @@
       "Bash(node -e *)",
       "Bash(sleep *)",
       "Bash(ps aux *)",
+      "Bash(pnpm test*)",
+      "Bash(kill *)",
+      "Bash(gh *)",
+      "Bash(railway *)",
       "WebSearch"
     ],
     "deny": [
