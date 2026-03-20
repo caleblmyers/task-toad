@@ -15,11 +15,25 @@ interface ProjectSummary {
   statusDistribution: Array<{ label: string; count: number }>;
 }
 
+interface PortfolioRollup {
+  totalProjects: number;
+  totalTasks: number;
+  totalVelocity: number;
+  avgCycleTimeHours: number | null;
+  teamSprintProgress: { totalSprints: number; activeSprints: number; avgCompletionPercent: number };
+  aggregateStatusDistribution: Array<{ label: string; count: number }>;
+}
+
 const PORTFOLIO_QUERY = `query PortfolioOverview {
   portfolioOverview {
     projectId name totalTasks completedTasks overdueTasks
     completionPercent activeSprint healthScore
     statusDistribution { label count }
+  }
+  portfolioRollup {
+    totalProjects totalTasks totalVelocity avgCycleTimeHours
+    teamSprintProgress { totalSprints activeSprints avgCompletionPercent }
+    aggregateStatusDistribution { label count }
   }
 }`;
 
@@ -90,14 +104,25 @@ function StatusBar({ distribution, total }: { distribution: Array<{ label: strin
   );
 }
 
+function formatCycleTime(hours: number | null): string {
+  if (hours === null) return 'N/A';
+  if (hours < 1) return `${Math.round(hours * 60)}m`;
+  if (hours >= 24) return `${+(hours / 24).toFixed(1)}d`;
+  return `${hours.toFixed(1)}h`;
+}
+
 export default function Portfolio() {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
+  const [rollup, setRollup] = useState<PortfolioRollup | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    gql<{ portfolioOverview: ProjectSummary[] }>(PORTFOLIO_QUERY)
-      .then((data) => setProjects(data.portfolioOverview))
+    gql<{ portfolioOverview: ProjectSummary[]; portfolioRollup: PortfolioRollup }>(PORTFOLIO_QUERY)
+      .then((data) => {
+        setProjects(data.portfolioOverview);
+        setRollup(data.portfolioRollup);
+      })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load'))
       .finally(() => setLoading(false));
   }, []);
@@ -134,6 +159,57 @@ export default function Portfolio() {
         <h1 className="text-2xl font-semibold text-slate-800">Portfolio</h1>
         <span className="text-sm text-slate-500">{projects.length} projects</span>
       </div>
+
+      {/* Rollup metrics */}
+      {rollup && rollup.totalProjects > 0 && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
+            <div className="bg-white rounded-xl border border-slate-200 p-4">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Projects</p>
+              <p className="text-2xl font-bold text-slate-800 mt-1">{rollup.totalProjects}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 p-4">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Total Tasks</p>
+              <p className="text-2xl font-bold text-slate-800 mt-1">{rollup.totalTasks}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 p-4">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Velocity</p>
+              <p className="text-2xl font-bold text-slate-800 mt-1">{rollup.totalVelocity}<span className="text-sm font-normal text-slate-400 ml-1">pts</span></p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 p-4">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Avg Cycle Time</p>
+              <p className="text-2xl font-bold text-slate-800 mt-1">{formatCycleTime(rollup.avgCycleTimeHours)}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 p-4">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Active Sprints</p>
+              <p className="text-2xl font-bold text-slate-800 mt-1">
+                {rollup.teamSprintProgress.activeSprints}
+                <span className="text-sm font-normal text-slate-400 ml-1">/ {rollup.teamSprintProgress.totalSprints}</span>
+              </p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 p-4">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Sprint Progress</p>
+              <p className="text-2xl font-bold text-slate-800 mt-1">{Math.round(rollup.teamSprintProgress.avgCompletionPercent)}%</p>
+            </div>
+          </div>
+
+          {/* Aggregate status bar */}
+          {rollup.aggregateStatusDistribution.length > 0 && (
+            <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Org-wide Status Distribution</p>
+              <StatusBar distribution={rollup.aggregateStatusDistribution} total={rollup.totalTasks} />
+              <div className="flex gap-4 mt-2">
+                {rollup.aggregateStatusDistribution.map((entry) => (
+                  <span key={entry.label} className="flex items-center gap-1 text-[10px] text-slate-500">
+                    <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: STATUS_COLORS[entry.label] ?? '#94a3b8' }} />
+                    {entry.label.replace('_', ' ')}: {entry.count}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {projects.length === 0 ? (
         <p className="text-slate-500">No projects yet. <Link to="/app" className="underline">Create one.</Link></p>

@@ -67,6 +67,21 @@ export const projectTypeDefs = /* GraphQL */ `
     healthScore: Int
     statusDistribution: [CountEntry!]!
   }
+
+  type TeamSprintProgress {
+    totalSprints: Int!
+    activeSprints: Int!
+    avgCompletionPercent: Float!
+  }
+
+  type PortfolioRollup {
+    totalProjects: Int!
+    totalTasks: Int!
+    totalVelocity: Int!
+    avgCycleTimeHours: Float
+    teamSprintProgress: TeamSprintProgress!
+    aggregateStatusDistribution: [CountEntry!]!
+  }
 `;
 
 export const projectQueryFields = /* GraphQL */ `
@@ -80,6 +95,8 @@ export const projectQueryFields = /* GraphQL */ `
   portfolioOverview: [ProjectSummary!]!
   savedFilters(projectId: ID!): [SavedFilter!]!
   sharedViews(projectId: ID!): [SavedFilter!]!
+  """Get aggregate rollup metrics across all projects in the org."""
+  portfolioRollup: PortfolioRollup!
 `;
 
 export const projectMutationFields = /* GraphQL */ `

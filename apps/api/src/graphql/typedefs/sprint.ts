@@ -67,6 +67,21 @@ export const sprintTypeDefs = /* GraphQL */ `
     limit: Int
     exceeded: Boolean!
   }
+
+  type StatusCount {
+    status: String!
+    count: Int!
+  }
+
+  type CumulativeFlowDay {
+    date: String!
+    statusCounts: [StatusCount!]!
+  }
+
+  type CumulativeFlowData {
+    days: [CumulativeFlowDay!]!
+    statuses: [String!]!
+  }
 `;
 
 export const sprintQueryFields = /* GraphQL */ `
@@ -80,6 +95,8 @@ export const sprintQueryFields = /* GraphQL */ `
   cycleTimeMetrics(projectId: ID!, sprintId: ID, fromDate: String, toDate: String): ProjectCycleMetrics!
   """Get WIP status for each column in a sprint."""
   sprintWipStatus(sprintId: ID!): [WipStatus!]!
+  """Get cumulative flow diagram data for a project."""
+  cumulativeFlow(projectId: ID!, sprintId: ID, fromDate: String, toDate: String): CumulativeFlowData!
 `;
 
 export const sprintMutationFields = /* GraphQL */ `

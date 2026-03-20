@@ -109,6 +109,143 @@ export const projectQueries = {
     });
   },
 
+  portfolioRollup: async (_parent: unknown, _args: unknown, context: Context) => {
+    const user = requireOrg(context);
+
+    // Fetch all non-archived projects
+    const projects = await context.prisma.project.findMany({
+      where: { orgId: user.orgId, archived: false },
+      select: { projectId: true },
+    });
+    const projectIds = projects.map((p) => p.projectId);
+    const totalProjects = projectIds.length;
+
+    if (totalProjects === 0) {
+      return {
+        totalProjects: 0,
+        totalTasks: 0,
+        totalVelocity: 0,
+        avgCycleTimeHours: null,
+        teamSprintProgress: { totalSprints: 0, activeSprints: 0, avgCompletionPercent: 0 },
+        aggregateStatusDistribution: [],
+      };
+    }
+
+    // All tasks (non-epic, top-level)
+    const allTasks = await context.prisma.task.findMany({
+      where: {
+        projectId: { in: projectIds },
+        orgId: user.orgId,
+        archived: false,
+        taskType: { not: 'epic' },
+        OR: [{ parentTaskId: null }, { parentTask: { taskType: 'epic' } }],
+      },
+      select: { taskId: true, status: true, storyPoints: true, sprintId: true, createdAt: true },
+    });
+
+    const totalTasks = allTasks.length;
+
+    // Aggregate status distribution
+    const statusMap = new Map<string, number>();
+    for (const t of allTasks) {
+      statusMap.set(t.status, (statusMap.get(t.status) ?? 0) + 1);
+    }
+    const aggregateStatusDistribution = Array.from(statusMap, ([label, count]) => ({ label, count }));
+
+    // Total velocity: sum of story points for done tasks in active sprints
+    const activeSprints = await context.prisma.sprint.findMany({
+      where: { orgId: user.orgId, projectId: { in: projectIds }, isActive: true, closedAt: null },
+      select: { sprintId: true },
+    });
+    const activeSprintIds = new Set(activeSprints.map((s) => s.sprintId));
+    let totalVelocity = 0;
+    for (const t of allTasks) {
+      if (t.status === 'done' && t.sprintId && activeSprintIds.has(t.sprintId)) {
+        totalVelocity += t.storyPoints ?? 0;
+      }
+    }
+
+    // Average cycle time: completed tasks in the last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const recentDoneTasks = allTasks.filter((t) => t.status === 'done');
+    const recentDoneIds = recentDoneTasks.map((t) => t.taskId);
+
+    let avgCycleTimeHours: number | null = null;
+    if (recentDoneIds.length > 0) {
+      const statusActivities = await context.prisma.activity.findMany({
+        where: {
+          taskId: { in: recentDoneIds },
+          action: 'task.updated',
+          field: 'status',
+          createdAt: { gte: thirtyDaysAgo },
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      const actByTask = new Map<string, Array<{ newValue: string | null; createdAt: Date }>>();
+      for (const a of statusActivities) {
+        if (!a.taskId) continue;
+        const list = actByTask.get(a.taskId) ?? [];
+        list.push({ newValue: a.newValue, createdAt: a.createdAt });
+        actByTask.set(a.taskId, list);
+      }
+
+      const cycleTimes: number[] = [];
+      for (const taskId of recentDoneIds) {
+        const acts = actByTask.get(taskId) ?? [];
+        const firstInProgress = acts.find((a) => a.newValue === 'in_progress');
+        const firstDone = acts.find((a) => a.newValue === 'done');
+        if (firstInProgress && firstDone) {
+          const hours = (firstDone.createdAt.getTime() - firstInProgress.createdAt.getTime()) / (1000 * 60 * 60);
+          cycleTimes.push(hours);
+        }
+      }
+
+      if (cycleTimes.length > 0) {
+        avgCycleTimeHours = Math.round((cycleTimes.reduce((s, v) => s + v, 0) / cycleTimes.length) * 100) / 100;
+      }
+    }
+
+    // Team sprint progress
+    const allSprints = await context.prisma.sprint.findMany({
+      where: { orgId: user.orgId, projectId: { in: projectIds }, closedAt: null },
+      select: { sprintId: true, isActive: true },
+    });
+    const totalSprints = allSprints.length;
+    const activeSprintCount = allSprints.filter((s) => s.isActive).length;
+
+    // Avg completion % across active sprints
+    let avgCompletionPercent = 0;
+    if (activeSprintCount > 0) {
+      const activeSprintIdList = allSprints.filter((s) => s.isActive).map((s) => s.sprintId);
+      const sprintTasks = allTasks.filter((t) => t.sprintId && activeSprintIdList.includes(t.sprintId));
+      const bySprintId = new Map<string, { total: number; done: number }>();
+      for (const sid of activeSprintIdList) bySprintId.set(sid, { total: 0, done: 0 });
+      for (const t of sprintTasks) {
+        const entry = bySprintId.get(t.sprintId!);
+        if (entry) {
+          entry.total++;
+          if (t.status === 'done') entry.done++;
+        }
+      }
+      let sumPct = 0;
+      for (const entry of bySprintId.values()) {
+        sumPct += entry.total > 0 ? (entry.done / entry.total) * 100 : 0;
+      }
+      avgCompletionPercent = Math.round((sumPct / activeSprintCount) * 100) / 100;
+    }
+
+    return {
+      totalProjects,
+      totalTasks,
+      totalVelocity,
+      avgCycleTimeHours,
+      teamSprintProgress: { totalSprints, activeSprints: activeSprintCount, avgCompletionPercent },
+      aggregateStatusDistribution,
+    };
+  },
+
   savedFilters: async (_parent: unknown, args: { projectId: string }, context: Context) => {
     const user = requireAuth(context);
     await requireProjectAccess(context, args.projectId);

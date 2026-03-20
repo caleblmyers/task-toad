@@ -221,6 +221,150 @@ export const sprintQueries = {
     });
   },
 
+  cumulativeFlow: async (
+    _parent: unknown,
+    args: { projectId: string; sprintId?: string | null; fromDate?: string | null; toDate?: string | null },
+    context: Context
+  ) => {
+    const { user } = await requireProjectAccess(context, args.projectId);
+    const DEFAULT_STATUSES = ['todo', 'in_progress', 'in_review', 'done'];
+
+    // Build task filter
+    const taskWhere: Record<string, unknown> = {
+      projectId: args.projectId,
+      orgId: user.orgId,
+      taskType: { not: 'epic' },
+      OR: [{ parentTaskId: null }, { parentTask: { taskType: 'epic' } }],
+    };
+    if (args.sprintId) taskWhere.sprintId = args.sprintId;
+
+    const tasks = await context.prisma.task.findMany({ where: taskWhere, select: { taskId: true, status: true, createdAt: true } });
+    if (tasks.length === 0) {
+      return { days: [], statuses: DEFAULT_STATUSES };
+    }
+
+    const taskIds = tasks.map((t) => t.taskId);
+
+    // Determine date range
+    const earliest = tasks.reduce((min, t) => (t.createdAt < min ? t.createdAt : min), tasks[0].createdAt);
+    const fromDate = args.fromDate ? new Date(args.fromDate + 'T00:00:00') : earliest;
+    const toDate = args.toDate ? new Date(args.toDate + 'T23:59:59') : new Date();
+
+    // Get all status-change activities in range
+    const activities = await context.prisma.activity.findMany({
+      where: {
+        taskId: { in: taskIds },
+        action: 'task.updated',
+        field: 'status',
+        createdAt: { gte: fromDate, lte: toDate },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // Build initial status snapshot: count tasks that existed at fromDate
+    const statusCounts = new Map<string, number>();
+    for (const s of DEFAULT_STATUSES) statusCounts.set(s, 0);
+
+    for (const t of tasks) {
+      if (t.createdAt <= fromDate) {
+        statusCounts.set(t.status, (statusCounts.get(t.status) ?? 0) + 1);
+      }
+    }
+
+    // For tasks created before fromDate, we need to rewind their status to what it was at fromDate.
+    // The current status reflects all activities, so we need to "undo" activities after fromDate.
+    // Actually, the simpler approach: start from the task's current status and walk backward.
+    // Better: use the initial snapshot as tasks' status at creation time (todo) and replay all
+    // activities from the beginning up to fromDate to get accurate initial counts.
+
+    // Rebuild: start fresh — each task starts as 'todo' when created, then replay activities
+    for (const s of DEFAULT_STATUSES) statusCounts.set(s, 0);
+
+    // Get ALL status activities for these tasks (not just in range) to reconstruct state at fromDate
+    const allActivities = await context.prisma.activity.findMany({
+      where: {
+        taskId: { in: taskIds },
+        action: 'task.updated',
+        field: 'status',
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // Compute status of each task at fromDate
+    const taskStatusAtFromDate = new Map<string, string>();
+    for (const t of tasks) {
+      if (t.createdAt <= fromDate) {
+        taskStatusAtFromDate.set(t.taskId, 'todo'); // default creation status
+      }
+    }
+    for (const a of allActivities) {
+      if (a.createdAt <= fromDate && a.taskId && taskStatusAtFromDate.has(a.taskId) && a.newValue) {
+        taskStatusAtFromDate.set(a.taskId, a.newValue);
+      }
+    }
+
+    // Set initial counts from snapshot
+    for (const status of taskStatusAtFromDate.values()) {
+      statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
+    }
+
+    // Group in-range activities by day, and also track task creations by day
+    const dayActivities = new Map<string, Array<{ taskId: string | null; oldValue: string | null; newValue: string | null }>>();
+    const dayCreations = new Map<string, number>();
+
+    for (const a of activities) {
+      const dayStr = a.createdAt.toISOString().split('T')[0];
+      if (!dayActivities.has(dayStr)) dayActivities.set(dayStr, []);
+      dayActivities.get(dayStr)!.push({ taskId: a.taskId, oldValue: a.oldValue, newValue: a.newValue });
+    }
+
+    // Track tasks created after fromDate (they appear in 'todo')
+    for (const t of tasks) {
+      if (t.createdAt > fromDate && t.createdAt <= toDate) {
+        const dayStr = t.createdAt.toISOString().split('T')[0];
+        dayCreations.set(dayStr, (dayCreations.get(dayStr) ?? 0) + 1);
+      }
+    }
+
+    // Walk day-by-day from fromDate to toDate
+    const days: Array<{ date: string; statusCounts: Array<{ status: string; count: number }> }> = [];
+    const startDay = new Date(fromDate);
+    startDay.setHours(0, 0, 0, 0);
+    const endDay = new Date(toDate);
+    endDay.setHours(0, 0, 0, 0);
+
+    for (let d = new Date(startDay); d <= endDay; d.setDate(d.getDate() + 1)) {
+      const dayStr = d.toISOString().split('T')[0];
+
+      // Add newly created tasks for this day
+      const created = dayCreations.get(dayStr) ?? 0;
+      if (created > 0) {
+        statusCounts.set('todo', (statusCounts.get('todo') ?? 0) + created);
+      }
+
+      // Apply status transitions for this day
+      const acts = dayActivities.get(dayStr) ?? [];
+      for (const a of acts) {
+        if (a.oldValue) {
+          statusCounts.set(a.oldValue, Math.max(0, (statusCounts.get(a.oldValue) ?? 0) - 1));
+        }
+        if (a.newValue) {
+          statusCounts.set(a.newValue, (statusCounts.get(a.newValue) ?? 0) + 1);
+        }
+      }
+
+      days.push({
+        date: dayStr,
+        statusCounts: DEFAULT_STATUSES.map((s) => ({
+          status: s,
+          count: statusCounts.get(s) ?? 0,
+        })),
+      });
+    }
+
+    return { days, statuses: DEFAULT_STATUSES };
+  },
+
   sprintBurndown: async (_parent: unknown, args: { sprintId: string }, context: Context) => {
     const user = requireOrg(context);
     const sprint = await context.prisma.sprint.findUnique({ where: { sprintId: args.sprintId } });

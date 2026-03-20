@@ -249,6 +249,21 @@ export interface ProjectStats {
   completedEstimatedHours: number;
 }
 
+export interface TeamSprintProgress {
+  totalSprints: number;
+  activeSprints: number;
+  avgCompletionPercent: number;
+}
+
+export interface PortfolioRollup {
+  totalProjects: number;
+  totalTasks: number;
+  totalVelocity: number;
+  avgCycleTimeHours: number | null;
+  teamSprintProgress: TeamSprintProgress;
+  aggregateStatusDistribution: Array<{ label: string; count: number }>;
+}
+
 export interface TaskConnection {
   tasks: Task[];
   hasMore: boolean;
