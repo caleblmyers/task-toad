@@ -230,6 +230,43 @@ export const taskTypeDefs = /* GraphQL */ `
   type HierarchicalPlanPreview {
     epics: [HierarchicalEpicPreview!]!
   }
+
+  input DependencyRefInput {
+    title: String!
+    linkType: String!
+  }
+
+  input CommitHierarchicalSubtaskInput {
+    title: String!
+    description: String!
+    estimatedHours: Float
+    priority: String
+    acceptanceCriteria: String
+  }
+
+  input CommitHierarchicalTaskInput {
+    title: String!
+    description: String!
+    instructions: String
+    estimatedHours: Float
+    priority: String
+    acceptanceCriteria: String
+    autoComplete: Boolean
+    dependsOn: [DependencyRefInput!]
+    subtasks: [CommitHierarchicalSubtaskInput!]
+  }
+
+  input CommitHierarchicalEpicInput {
+    title: String!
+    description: String!
+    instructions: String
+    estimatedHours: Float
+    priority: String
+    acceptanceCriteria: String
+    autoComplete: Boolean
+    dependsOn: [DependencyRefInput!]
+    tasks: [CommitHierarchicalTaskInput!]
+  }
 `;
 
 export const taskFilterInputDef = /* GraphQL */ `
@@ -297,6 +334,7 @@ export const taskMutationFields = /* GraphQL */ `
   commitTaskPlan(projectId: ID!, tasks: [CommitTaskInput!]!, clearExisting: Boolean): [Task!]!
   expandTask(taskId: ID!, context: String): [Task!]!
   generateTaskInstructions(taskId: ID!): Task!
+  commitHierarchicalPlan(projectId: ID!, epics: [CommitHierarchicalEpicInput!]!, clearExisting: Boolean): [Task!]!
 
   createCustomField(projectId: ID!, name: String!, fieldType: String!, options: String, required: Boolean): CustomField!
   updateCustomField(customFieldId: ID!, name: String, options: String, required: Boolean, position: Int): CustomField!

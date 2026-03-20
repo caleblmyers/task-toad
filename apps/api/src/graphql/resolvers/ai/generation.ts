@@ -15,7 +15,9 @@ import {
 } from '../../../ai/index.js';
 import { NotFoundError, ValidationError } from '../../errors.js';
 import { requireOrg, requireApiKey } from '../auth.js';
+import { requirePermission, Permission } from '../../../auth/permissions.js';
 import { buildPromptLogContext, enforceBudget, ROOT_OR_EPIC_CHILD } from './helpers.js';
+import { batchDetectCycles } from '../../../utils/cyclicDependencyCheck.js';
 import { getProjectRepo, fetchProjectFileTree, fetchFileContent, getPullRequestDiff, resolveReviewContext } from '../../../github/index.js';
 import type { RelevantFile } from '../../../github/index.js';
 import { requireProject, sanitizeForPrompt } from '../../../utils/resolverHelpers.js';
@@ -323,6 +325,207 @@ export const generationMutations = {
     return context.prisma.task.findMany({
       where: { projectId: args.projectId, taskType: { not: 'epic' } },
       orderBy: { createdAt: 'asc' },
+    });
+  },
+
+  commitHierarchicalPlan: async (
+    _parent: unknown,
+    args: {
+      projectId: string;
+      epics: Array<{
+        title: string;
+        description: string;
+        instructions?: string | null;
+        estimatedHours?: number | null;
+        priority?: string | null;
+        acceptanceCriteria?: string | null;
+        autoComplete?: boolean | null;
+        dependsOn?: Array<{ title: string; linkType: string }> | null;
+        tasks?: Array<{
+          title: string;
+          description: string;
+          instructions?: string | null;
+          estimatedHours?: number | null;
+          priority?: string | null;
+          acceptanceCriteria?: string | null;
+          autoComplete?: boolean | null;
+          dependsOn?: Array<{ title: string; linkType: string }> | null;
+          subtasks?: Array<{
+            title: string;
+            description: string;
+            estimatedHours?: number | null;
+            priority?: string | null;
+            acceptanceCriteria?: string | null;
+          }> | null;
+        }> | null;
+      }>;
+      clearExisting?: boolean | null;
+    },
+    context: Context
+  ) => {
+    const { user } = await requireProject(context, args.projectId);
+    await requirePermission(context, args.projectId, Permission.CREATE_TASKS);
+
+    return context.prisma.$transaction(async (tx) => {
+      // Clear existing hierarchy if requested
+      if (args.clearExisting) {
+        // Delete subtasks first (tasks whose parent is also a child task)
+        await tx.task.deleteMany({
+          where: {
+            projectId: args.projectId,
+            parentTaskId: { not: null },
+            parentTask: { parentTaskId: { not: null } },
+          },
+        });
+        // Delete tasks (children of epics)
+        await tx.task.deleteMany({
+          where: { projectId: args.projectId, parentTaskId: { not: null } },
+        });
+        // Delete epics (root tasks)
+        await tx.task.deleteMany({
+          where: { projectId: args.projectId, parentTaskId: null },
+        });
+      }
+
+      // Calculate starting position
+      const lastTask = await tx.task.findFirst({
+        where: { projectId: args.projectId, parentTaskId: null },
+        orderBy: { position: 'desc' },
+        select: { position: true },
+      });
+      let nextPosition = (lastTask?.position ?? 0) + 1.0;
+
+      // Title → taskId map for dependency resolution
+      const titleToId = new Map<string, string>();
+      // Collect all created tasks
+      const allCreated: Array<{ taskId: string }> = [];
+      // Collect nodes with dependsOn for resolution
+      const nodesWithDeps: Array<{
+        taskId: string;
+        dependsOn: Array<{ title: string; linkType: string }>;
+      }> = [];
+
+      // Create epics
+      for (const epicInput of args.epics) {
+        const epic = await tx.task.create({
+          data: {
+            title: epicInput.title,
+            description: epicInput.description,
+            instructions: epicInput.instructions || null,
+            estimatedHours: epicInput.estimatedHours ?? null,
+            priority: epicInput.priority ?? 'medium',
+            acceptanceCriteria: epicInput.acceptanceCriteria || null,
+            autoComplete: epicInput.autoComplete ?? false,
+            status: 'todo',
+            taskType: 'epic',
+            position: nextPosition,
+            projectId: args.projectId,
+            orgId: user.orgId,
+          },
+        });
+        nextPosition += 1.0;
+        titleToId.set(epicInput.title, epic.taskId);
+        allCreated.push(epic);
+
+        if (epicInput.dependsOn && epicInput.dependsOn.length > 0) {
+          nodesWithDeps.push({ taskId: epic.taskId, dependsOn: epicInput.dependsOn });
+        }
+
+        // Create tasks under this epic
+        let taskPosition = 1.0;
+        for (const taskInput of epicInput.tasks ?? []) {
+          const task = await tx.task.create({
+            data: {
+              title: taskInput.title,
+              description: taskInput.description,
+              instructions: taskInput.instructions || null,
+              estimatedHours: taskInput.estimatedHours ?? null,
+              priority: taskInput.priority ?? 'medium',
+              acceptanceCriteria: taskInput.acceptanceCriteria || null,
+              autoComplete: taskInput.autoComplete ?? false,
+              status: 'todo',
+              taskType: 'task',
+              position: taskPosition,
+              parentTaskId: epic.taskId,
+              projectId: args.projectId,
+              orgId: user.orgId,
+            },
+          });
+          taskPosition += 1.0;
+          titleToId.set(taskInput.title, task.taskId);
+          allCreated.push(task);
+
+          if (taskInput.dependsOn && taskInput.dependsOn.length > 0) {
+            nodesWithDeps.push({ taskId: task.taskId, dependsOn: taskInput.dependsOn });
+          }
+
+          // Create subtasks under this task
+          let subtaskPosition = 1.0;
+          for (const subtaskInput of taskInput.subtasks ?? []) {
+            const subtask = await tx.task.create({
+              data: {
+                title: subtaskInput.title,
+                description: subtaskInput.description,
+                estimatedHours: subtaskInput.estimatedHours ?? null,
+                priority: subtaskInput.priority ?? 'medium',
+                acceptanceCriteria: subtaskInput.acceptanceCriteria || null,
+                status: 'todo',
+                taskType: 'task',
+                position: subtaskPosition,
+                parentTaskId: task.taskId,
+                projectId: args.projectId,
+                orgId: user.orgId,
+              },
+            });
+            subtaskPosition += 1.0;
+            titleToId.set(subtaskInput.title, subtask.taskId);
+            allCreated.push(subtask);
+          }
+        }
+      }
+
+      // Resolve dependencies and build proposed edges
+      const proposedEdges: Array<{ sourceTaskId: string; targetTaskId: string; linkType: string }> = [];
+      for (const node of nodesWithDeps) {
+        for (const dep of node.dependsOn) {
+          const targetId = titleToId.get(dep.title);
+          if (!targetId) continue; // Skip unresolvable references
+          proposedEdges.push({
+            sourceTaskId: targetId,
+            targetTaskId: node.taskId,
+            linkType: dep.linkType === 'informs' ? 'informs' : 'blocks',
+          });
+        }
+      }
+
+      // Batch cycle check
+      if (proposedEdges.length > 0) {
+        const violations = await batchDetectCycles(
+          tx as unknown as Parameters<typeof batchDetectCycles>[0],
+          proposedEdges
+        );
+        if (violations.length > 0) {
+          const details = violations.map((v) => v.error).join('; ');
+          throw new ValidationError(`Cycle detected in dependencies: ${details}`);
+        }
+
+        // Create TaskDependency records
+        for (const edge of proposedEdges) {
+          await tx.taskDependency.create({
+            data: {
+              sourceTaskId: edge.sourceTaskId,
+              targetTaskId: edge.targetTaskId,
+              linkType: edge.linkType,
+            },
+          });
+        }
+      }
+
+      // Return all created tasks
+      return tx.task.findMany({
+        where: { taskId: { in: allCreated.map((t) => t.taskId) } },
+        orderBy: { createdAt: 'asc' },
+      });
     });
   },
 
