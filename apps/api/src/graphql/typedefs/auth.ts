@@ -29,6 +29,8 @@ export const authQueryFields = /* GraphQL */ `
   me: User
   """List pending organization invites sent by the current user's org."""
   orgInvites: [OrgInvite!]!
+  """Return the current user's permissions for a specific project."""
+  myPermissions(projectId: ID!): [String!]!
 `;
 
 export const authMutationFields = /* GraphQL */ `

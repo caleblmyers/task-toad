@@ -2,6 +2,7 @@ import type { Context } from '../../context.js';
 import { NotFoundError, ValidationError, AuthorizationError } from '../../errors.js';
 import { requireAuth, requireOrg, requireProjectAccess } from '../auth.js';
 import { requireTask, requireProject, requireOrgUser, requireProjectField, validateStatus, parseInput, CreateTaskInput, UpdateTaskInput, CreateCommentInput } from '../../../utils/resolverHelpers.js';
+import { requirePermission, Permission } from '../../../auth/permissions.js';
 import { StringArraySchema } from '../../../utils/zodSchemas.js';
 import { createChildLogger } from '../../../utils/logger.js';
 import { reviewCode } from '../../../ai/aiService.js';
@@ -24,6 +25,7 @@ export const taskMutations = {
     context: Context
   ) => {
     parseInput(CreateTaskInput, { title: args.title });
+    await requirePermission(context, args.projectId, Permission.CREATE_TASKS);
     const { user, project } = await requireProject(context, args.projectId);
     const status = args.status ?? 'todo';
     const statusParse = StringArraySchema.safeParse(JSON.parse(project.statuses));
@@ -71,6 +73,7 @@ export const taskMutations = {
   ) => {
     parseInput(UpdateTaskInput, { title: args.title, description: args.description, instructions: args.instructions, acceptanceCriteria: args.acceptanceCriteria });
     const { user, task } = await requireTask(context, args.taskId);
+    await requirePermission(context, task.projectId, Permission.EDIT_TASKS);
     // Verify assignee belongs to same org
     if (args.assigneeId) {
       await requireOrgUser(context, args.assigneeId);
@@ -318,6 +321,7 @@ export const taskMutations = {
   createComment: async (_parent: unknown, args: { taskId: string; content: string; parentCommentId?: string | null }, context: Context) => {
     parseInput(CreateCommentInput, { content: args.content });
     const { user, task } = await requireTask(context, args.taskId);
+    await requirePermission(context, task.projectId, Permission.CREATE_COMMENTS);
     if (args.parentCommentId) {
       const parent = await context.prisma.comment.findUnique({ where: { commentId: args.parentCommentId } });
       if (!parent || parent.taskId !== args.taskId) {

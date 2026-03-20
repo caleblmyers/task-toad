@@ -6,6 +6,7 @@ import {
 import { NotFoundError, ValidationError } from '../errors.js';
 import { requireOrg, requireProjectAccess, requireApiKey } from './auth.js';
 import { requireProject } from '../../utils/resolverHelpers.js';
+import { requirePermission, Permission } from '../../auth/permissions.js';
 import { StringArraySchema } from '../../utils/zodSchemas.js';
 import { createChildLogger } from '../../utils/logger.js';
 import { getEventBus } from '../../infrastructure/eventbus/index.js';
@@ -444,6 +445,7 @@ export const sprintMutations = {
       throw new ValidationError('Name is required');
     }
     if (args.wipLimits) validateWipLimits(args.wipLimits);
+    await requirePermission(context, args.projectId, Permission.MANAGE_SPRINTS);
     const { user } = await requireProject(context, args.projectId);
     const sprint = await context.prisma.sprint.create({
       data: {
@@ -471,6 +473,7 @@ export const sprintMutations = {
     if (!sprint || sprint.orgId !== user.orgId) {
       throw new NotFoundError('Sprint not found');
     }
+    await requirePermission(context, sprint.projectId, Permission.MANAGE_SPRINTS);
     if (args.wipLimits) validateWipLimits(args.wipLimits);
     if (args.isActive === true) {
       await context.prisma.sprint.updateMany({
@@ -530,6 +533,7 @@ export const sprintMutations = {
     if (!sprint || sprint.orgId !== user.orgId) {
       throw new NotFoundError('Sprint not found');
     }
+    await requirePermission(context, sprint.projectId, Permission.CLOSE_SPRINTS);
 
     for (const item of args.incompleteTaskActions) {
       const task = await context.prisma.task.findUnique({ where: { taskId: item.taskId } });

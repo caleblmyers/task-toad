@@ -2,6 +2,7 @@ import type { Context } from '../context.js';
 import { NotFoundError, ValidationError } from '../errors.js';
 import { requireOrg } from './auth.js';
 import { requireTask } from '../../utils/resolverHelpers.js';
+import { requirePermission, Permission } from '../../auth/permissions.js';
 import { logActivity } from '../../utils/activity.js';
 
 // ── Helpers ──
@@ -170,6 +171,7 @@ export const timeEntryMutations = {
     context: Context,
   ) => {
     const { user, task } = await requireTask(context, args.taskId);
+    await requirePermission(context, task.projectId, Permission.LOG_TIME);
 
     if (args.durationMinutes <= 0) {
       throw new ValidationError('durationMinutes must be greater than 0');

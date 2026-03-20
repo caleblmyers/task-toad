@@ -21,6 +21,7 @@ import {
   ConflictError,
 } from '../errors.js';
 import { validatePassword } from '../../utils/passwordPolicy.js';
+import { getPermissionsForProject } from '../../auth/permissions.js';
 
 // ── Shared auth helpers (imported by other resolver modules) ──
 
@@ -69,6 +70,10 @@ export const authQueries = {
   me: async (_parent: unknown, _args: unknown, context: Context) => {
     if (!context.user) return null;
     return context.prisma.user.findUnique({ where: { userId: context.user.userId } });
+  },
+
+  myPermissions: async (_parent: unknown, args: { projectId: string }, context: Context) => {
+    return getPermissionsForProject(context, args.projectId);
   },
 };
 
