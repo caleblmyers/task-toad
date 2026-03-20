@@ -12,6 +12,12 @@ All original work sets completed through Wave 30. Competitive gap items ongoing.
 
 ---
 
+## Wave 35 — Critical Security Fixes — Completed (2026-03-20)
+
+- [x] C-1: Token revocation — tokenVersion on User, JWT tv claim, buildContext validation, logout mutation, resetPassword invalidation, frontend logout (task-001, worker-1)
+- [x] C-2 + C-4 + C-5: Multi-tenant isolation — orgId in export queries, aiPromptHistory access checks, automationRules orgId scoping (task-002, worker-2)
+- [x] C-3 + H-5 + H-7 + H-8: SSRF protection — URL validator with DNS resolution + private IP blocking, trust proxy, CSP frame-ancestors, SSE token fallback removed (task-003, worker-3)
+
 ## Wave 34 — Query Centralization + ARIA + Permissions — Completed (2026-03-20)
 
 - [x] Centralize inline GraphQL queries — settings & integration components (task-001, worker-1)
@@ -101,6 +107,7 @@ All original work sets completed through Wave 30. Competitive gap items ongoing.
 - [ ] useAsyncData adoption — migrate other components with inline fetch-in-useEffect patterns
 - [x] Task detail re-architecture — 4-tab layout (Details, Activity, Relations, Actions) with aria-labelledby sections. *(Wave 34, task-003)*
 - [ ] Release burndown chart — show task completion progress over time for a release (reuse existing chart patterns)
+- [ ] Unit tests for `urlValidator.ts` — test private IP ranges, DNS resolution mocking, protocol/port blocking, edge cases (IPv4-mapped IPv6, DNS rebinding)
 
 ### Beta Scope — Known Limitations (not planned)
 - Project-level access control — org-level read access for beta. Project-level RBAC deferred to post-beta.
@@ -116,11 +123,11 @@ Full report: `.claude-knowledge/security-audit.md` (2026-03-20, 39 findings)
 
 These are active vulnerabilities in the deployed production app.
 
-- [ ] **C-1: Token revocation + logout** — Add `tokenVersion` field to User model. Increment on password change, logout, or admin revocation. Check in `buildContext()`. Add `logout` mutation. *(Files: auth.prisma, context.ts, auth.ts resolvers)*
-- [ ] **C-2: Multi-tenant data leak in exports** — Export endpoints don't filter by `orgId`. Add `orgId` to all Prisma WHERE clauses in `routes/export.ts`. Validate `project.orgId === user.orgId` before any data fetch.
-- [ ] **C-3: SSRF via webhook URLs** — No CIDR validation on webhook URL registration. Validate resolved IPs against RFC 1918/5735 private ranges. Block localhost, 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16. *(File: webhookDispatcher.ts, webhook.ts resolver)*
-- [ ] **C-4: AI prompt history IDOR** — `aiPromptHistory` accepts taskId/projectId with no org validation. Validate IDs belong to user's org before returning data. *(File: resolvers/reports.ts)*
-- [ ] **C-5: Automation rules leak across tenants** — `automationRules` query lacks `orgId` scoping. Add orgId filtering. *(File: resolvers/projectrole.ts)*
+- [x] **C-1: Token revocation + logout** — ✅ Wave 35. Added tokenVersion to User, JWT tv claim, buildContext validation, logout mutation, resetPassword invalidation, frontend integration.
+- [x] **C-2: Multi-tenant data leak in exports** — ✅ Wave 35. Added `orgId` to all 4 Prisma WHERE clauses in export.ts.
+- [x] **C-3: SSRF via webhook URLs** — ✅ Wave 35. Added `urlValidator.ts` with DNS resolution, private IP blocking, protocol/port checks. Wired into webhook create/update/test.
+- [x] **C-4: AI prompt history IDOR** — ✅ Wave 35. Added requireProjectAccess validation for taskId and projectId filters.
+- [x] **C-5: Automation rules leak across tenants** — ✅ Wave 35. Added orgId to query WHERE clause and ownership checks in update/delete mutations.
 
 ### Phase 2 — High (Swarm Wave: Auth Hardening)
 
@@ -130,13 +137,13 @@ Dedicate a swarm wave to auth architecture changes + remaining High items.
 - [ ] **H-2: CSRF protection** — Require custom header (`X-Requested-With`) on all mutations, or implement CSRF tokens. *(File: app.ts)*
 - [ ] **H-3: Encrypt webhook secrets at rest** — Use existing `encryption.ts` AES-256-GCM for `WebhookEndpoint.secret`. *(File: webhook.prisma, webhook resolvers)*
 - [ ] **H-4: Encrypt Slack webhook URLs at rest** — Use existing encryption utility. *(File: slack.prisma, slack resolvers)*
-- [ ] **H-5: Trust proxy for rate limiting** — Set `app.set('trust proxy', 1)` to prevent X-Forwarded-For spoofing bypassing rate limits. *(File: app.ts)*
+- [x] **H-5: Trust proxy for rate limiting** — ✅ Wave 35. Set `app.set('trust proxy', 1)` in app.ts.
 - [ ] **H-6: Pagination caps on list queries** — Enforce `Math.min(args.limit ?? 50, 100)` on all list resolvers. *(Files: search.ts, notification.ts, webhook.ts, and others)*
-- [ ] **H-7: CSP frame-ancestors** — Add `frameAncestors: ["'none'"]` to Helmet CSP config. *(File: app.ts)*
-- [ ] **H-8: Remove SSE query string token fallback** — Require `Authorization: Bearer` header only. *(File: app.ts:162-187)*
+- [x] **H-7: CSP frame-ancestors** — ✅ Wave 35. Added `frameAncestors: ["'none'"]` to Helmet CSP config.
+- [x] **H-8: Remove SSE query string token fallback** — ✅ Wave 35. Removed `?token=` fallback from SSE endpoint.
 - [ ] **H-9: Hash invite tokens before storage** — Use same `hashToken()` pattern as password reset tokens. *(File: auth.ts resolvers)*
 - [ ] **H-10: Fix $queryRawUnsafe in advisory locks** — Switch to `prisma.$queryRaw` tagged template literals. *(File: advisoryLock.ts)*
-- [ ] **H-11: Password change invalidates sessions** — Increment `tokenVersion` on `resetPassword` (depends on C-1). *(File: auth.ts resolvers)*
+- [x] **H-11: Password change invalidates sessions** — ✅ Wave 35. Handled as part of C-1 (resetPassword increments tokenVersion).
 - [ ] **H-12: Re-authentication for sensitive operations** — Add `confirmPassword` argument to `setOrgApiKey` and other sensitive mutations. *(File: org.ts resolvers)*
 
 ### Phase 3 — Medium (Hardening Sprint)

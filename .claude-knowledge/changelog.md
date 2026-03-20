@@ -4,6 +4,41 @@ Summaries of work completed each session. Most recent first.
 
 ---
 
+## 2026-03-20 (security wave)
+
+### Wave 35: Critical Security Fixes (3 workers, 3 tasks)
+
+**Worker 1 — C-1: Token Revocation:**
+- Added `tokenVersion` field to User model (Prisma migration)
+- JWT payload now includes `tv` (tokenVersion) claim
+- `buildContext` validates tokenVersion — stale tokens rejected, backward compat for old tokens
+- New `logout` mutation increments tokenVersion, invalidating all sessions
+- `resetPassword` also increments tokenVersion (H-11)
+- Frontend logout calls mutation before clearing localStorage
+
+**Worker 2 — C-2 + C-4 + C-5: Multi-Tenant Isolation:**
+- Export endpoints: added `orgId` to all 4 Prisma WHERE clauses (defense-in-depth)
+- `aiPromptHistory`: validates projectId/taskId access via `requireProjectAccess`
+- `automationRules`: added orgId to query WHERE clause
+- `updateAutomationRule`/`deleteAutomationRule`: verify `rule.orgId === user.orgId`
+
+**Worker 3 — C-3 + H-5 + H-7 + H-8: SSRF + Quick Highs:**
+- New `urlValidator.ts` with DNS resolution, private IP blocking, protocol/port checks
+- Wired into webhook create/update/test endpoints
+- `app.set('trust proxy', 1)` for correct rate limiting behind Railway proxy
+- `frameAncestors: ["'none'"]` added to Helmet CSP
+- SSE `?token=` query string fallback removed
+
+**Process:** All 3 tasks merged cleanly. No rejections.
+
+**Security findings resolved:** C-1, C-2, C-3, C-4, C-5 (all Critical), H-5, H-7, H-8, H-11 (4 High). 9 of 39 findings fixed.
+
+**Open follow-ups:**
+- Unit tests for `urlValidator.ts` (added to Remaining Polish in todos.md)
+- Production DB needs `prisma migrate deploy` for tokenVersion migration
+
+---
+
 ## 2026-03-20 (night)
 
 ### Wave 34: Cleanup & Hardening (3 workers, 5 tasks)
