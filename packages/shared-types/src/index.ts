@@ -148,6 +148,7 @@ export interface Sprint {
   goal?: string | null;
   isActive: boolean;
   columns: string;
+  wipLimits?: string | null;
   startDate: string | null;
   endDate: string | null;
   createdAt: string;

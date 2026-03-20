@@ -12,6 +12,25 @@ import { getEventBus } from '../../infrastructure/eventbus/index.js';
 
 const log = createChildLogger('sprint');
 
+/** Validate wipLimits JSON: must be an object mapping column names to positive integers. */
+function validateWipLimits(raw: string): Record<string, number> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new ValidationError('wipLimits must be valid JSON');
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new ValidationError('wipLimits must be a JSON object');
+  }
+  for (const [key, val] of Object.entries(parsed as Record<string, unknown>)) {
+    if (typeof val !== 'number' || !Number.isInteger(val) || val < 1) {
+      throw new ValidationError(`wipLimits value for "${key}" must be a positive integer`);
+    }
+  }
+  return parsed as Record<string, number>;
+}
+
 // ── Sprint queries ──
 
 export const sprintQueries = {
@@ -172,6 +191,36 @@ export const sprintQueries = {
     };
   },
 
+  sprintWipStatus: async (_parent: unknown, args: { sprintId: string }, context: Context) => {
+    const user = requireOrg(context);
+    const sprint = await context.prisma.sprint.findUnique({ where: { sprintId: args.sprintId } });
+    if (!sprint || sprint.orgId !== user.orgId) {
+      throw new NotFoundError('Sprint not found');
+    }
+    const columns: string[] = JSON.parse(sprint.columns);
+    const wipLimits: Record<string, number> = sprint.wipLimits ? JSON.parse(sprint.wipLimits) : {};
+    const tasks = await context.prisma.task.findMany({
+      where: { sprintId: sprint.sprintId, archived: { not: true } },
+      select: { sprintColumn: true },
+    });
+    const counts = new Map<string, number>();
+    for (const col of columns) counts.set(col, 0);
+    for (const t of tasks) {
+      const col = t.sprintColumn ?? columns[0];
+      counts.set(col, (counts.get(col) ?? 0) + 1);
+    }
+    return columns.map((col) => {
+      const taskCount = counts.get(col) ?? 0;
+      const limit = wipLimits[col] ?? null;
+      return {
+        column: col,
+        taskCount,
+        limit,
+        exceeded: limit !== null && taskCount > limit,
+      };
+    });
+  },
+
   sprintBurndown: async (_parent: unknown, args: { sprintId: string }, context: Context) => {
     const user = requireOrg(context);
     const sprint = await context.prisma.sprint.findUnique({ where: { sprintId: args.sprintId } });
@@ -246,10 +295,11 @@ export const sprintQueries = {
 // ── Sprint mutations ──
 
 export const sprintMutations = {
-  createSprint: async (_parent: unknown, args: { projectId: string; name: string; goal?: string | null; columns?: string | null; startDate?: string | null; endDate?: string | null }, context: Context) => {
+  createSprint: async (_parent: unknown, args: { projectId: string; name: string; goal?: string | null; columns?: string | null; startDate?: string | null; endDate?: string | null; wipLimits?: string | null }, context: Context) => {
     if (!args.name.trim()) {
       throw new ValidationError('Name is required');
     }
+    if (args.wipLimits) validateWipLimits(args.wipLimits);
     const { user } = await requireProject(context, args.projectId);
     const sprint = await context.prisma.sprint.create({
       data: {
@@ -260,6 +310,7 @@ export const sprintMutations = {
         columns: args.columns ?? '["To Do","In Progress","In Review","Done"]',
         startDate: args.startDate ?? null,
         endDate: args.endDate ?? null,
+        wipLimits: args.wipLimits ?? null,
       },
     });
     getEventBus().emit('sprint.created', {
@@ -270,12 +321,13 @@ export const sprintMutations = {
     return sprint;
   },
 
-  updateSprint: async (_parent: unknown, args: { sprintId: string; name?: string | null; goal?: string | null; columns?: string | null; isActive?: boolean | null; startDate?: string | null; endDate?: string | null }, context: Context) => {
+  updateSprint: async (_parent: unknown, args: { sprintId: string; name?: string | null; goal?: string | null; columns?: string | null; isActive?: boolean | null; startDate?: string | null; endDate?: string | null; wipLimits?: string | null }, context: Context) => {
     const user = requireOrg(context);
     const sprint = await context.prisma.sprint.findUnique({ where: { sprintId: args.sprintId } });
     if (!sprint || sprint.orgId !== user.orgId) {
       throw new NotFoundError('Sprint not found');
     }
+    if (args.wipLimits) validateWipLimits(args.wipLimits);
     if (args.isActive === true) {
       await context.prisma.sprint.updateMany({
         where: { projectId: sprint.projectId },
@@ -291,6 +343,7 @@ export const sprintMutations = {
         ...(args.isActive !== undefined && args.isActive !== null ? { isActive: args.isActive } : {}),
         ...(args.startDate !== undefined ? { startDate: args.startDate } : {}),
         ...(args.endDate !== undefined ? { endDate: args.endDate } : {}),
+        ...(args.wipLimits !== undefined ? { wipLimits: args.wipLimits } : {}),
       },
     });
     getEventBus().emit('sprint.updated', {

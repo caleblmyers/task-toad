@@ -6,6 +6,7 @@ export const sprintTypeDefs = /* GraphQL */ `
     goal:      String
     isActive:  Boolean!
     columns:   String!
+    wipLimits: String
     startDate: String
     endDate:   String
     createdAt: String!
@@ -59,6 +60,13 @@ export const sprintTypeDefs = /* GraphQL */ `
     startDate: String!
     endDate: String!
   }
+
+  type WipStatus {
+    column: String!
+    taskCount: Int!
+    limit: Int
+    exceeded: Boolean!
+  }
 `;
 
 export const sprintQueryFields = /* GraphQL */ `
@@ -70,12 +78,14 @@ export const sprintQueryFields = /* GraphQL */ `
   sprintBurndown(sprintId: ID!): SprintBurndownData!
   """Get cycle time and lead time metrics for completed tasks in a project."""
   cycleTimeMetrics(projectId: ID!, sprintId: ID, fromDate: String, toDate: String): ProjectCycleMetrics!
+  """Get WIP status for each column in a sprint."""
+  sprintWipStatus(sprintId: ID!): [WipStatus!]!
 `;
 
 export const sprintMutationFields = /* GraphQL */ `
   """Create a new sprint in a project."""
-  createSprint(projectId: ID!, name: String!, goal: String, columns: String, startDate: String, endDate: String): Sprint!
-  updateSprint(sprintId: ID!, name: String, goal: String, columns: String, isActive: Boolean, startDate: String, endDate: String): Sprint!
+  createSprint(projectId: ID!, name: String!, goal: String, columns: String, startDate: String, endDate: String, wipLimits: String): Sprint!
+  updateSprint(sprintId: ID!, name: String, goal: String, columns: String, isActive: Boolean, startDate: String, endDate: String, wipLimits: String): Sprint!
   deleteSprint(sprintId: ID!): Boolean!
   closeSprint(sprintId: ID!, incompleteTaskActions: [IncompleteTaskAction!]!): CloseSprintResult!
 

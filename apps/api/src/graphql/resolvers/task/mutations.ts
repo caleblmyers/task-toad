@@ -131,6 +131,25 @@ export const taskMutations = {
         log.warn({ taskId: args.taskId, blockers: blockerNames }, 'Task has incomplete blocking dependencies');
       }
     }
+    // WIP limit warning: check if moving to a sprint column would exceed the limit
+    if (args.sprintColumn !== undefined && args.sprintColumn !== null) {
+      const targetSprintId = args.sprintId !== undefined ? args.sprintId : task.sprintId;
+      if (targetSprintId) {
+        const sprint = await context.prisma.sprint.findUnique({ where: { sprintId: targetSprintId } });
+        if (sprint?.wipLimits) {
+          const wipLimits: Record<string, number> = JSON.parse(sprint.wipLimits);
+          const limit = wipLimits[args.sprintColumn];
+          if (limit !== undefined) {
+            const count = await context.prisma.task.count({
+              where: { sprintId: targetSprintId, sprintColumn: args.sprintColumn, archived: { not: true }, taskId: { not: args.taskId } },
+            });
+            if (count >= limit) {
+              warnings.push(`Column "${args.sprintColumn}" WIP limit (${limit}) ${count >= limit ? 'exceeded' : 'reached'}`);
+            }
+          }
+        }
+      }
+    }
     const updated = await context.prisma.task.update({
       where: { taskId: args.taskId },
       data: {

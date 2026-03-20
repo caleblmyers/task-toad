@@ -66,6 +66,7 @@ interface KanbanBoardProps {
   epicMap?: Map<string, string>;
   groupBy?: GroupBy;
   orgUsers?: OrgUser[];
+  wipLimits?: Record<string, number>;
 }
 
 const SPECIAL_LAST_KEYS = new Set(['Unassigned', 'No Epic', 'none']);
@@ -100,7 +101,7 @@ function getGroupLabel(key: string, groupBy: NonNullable<GroupBy>, orgUsers?: Or
   return key;
 }
 
-export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, onSelectTask, onColumnChange, onReorderTask, epicMap, groupBy, orgUsers }: KanbanBoardProps) {
+export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, onSelectTask, onColumnChange, onReorderTask, epicMap, groupBy, orgUsers, wipLimits }: KanbanBoardProps) {
   const draggedId = useRef<string | null>(null);
   const [movingTaskId, setMovingTaskId] = useState<string | null>(null);
   const [moveAnnouncement, setMoveAnnouncement] = useState('');
@@ -349,10 +350,13 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
       {columns.map((col, idx) => {
         const style = COLUMN_ACCENTS[idx % COLUMN_ACCENTS.length];
         const colTasks = tasksByColumn.get(col) ?? [];
+        const wipLimit = wipLimits?.[col];
+        const wipExceeded = wipLimit !== undefined && colTasks.length > wipLimit;
+        const wipAtLimit = wipLimit !== undefined && colTasks.length === wipLimit;
         return (
           <div
             key={col}
-            className={`flex flex-col w-72 min-w-[18rem] flex-shrink-0 bg-slate-100 dark:bg-slate-800 rounded-xl border-t-4 ${style.accent}`}
+            className={`flex flex-col w-72 min-w-[18rem] flex-shrink-0 bg-slate-100 dark:bg-slate-800 rounded-xl border-t-4 ${style.accent} ${wipExceeded ? 'border-red-300 dark:border-red-500' : ''}`}
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => {
               e.preventDefault();
@@ -377,9 +381,25 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
             }}
           >
             <div className="flex items-center justify-between px-3 py-2.5">
-              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{col}</span>
-              <span className="text-xs font-medium bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-full px-2 py-0.5 shadow-sm">
-                {colTasks.length}
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{col}</span>
+                {wipExceeded && (
+                  <svg className="w-4 h-4 text-red-500" viewBox="0 0 20 20" fill="currentColor" aria-label="WIP limit exceeded">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                )}
+                {wipAtLimit && !wipExceeded && (
+                  <svg className="w-4 h-4 text-amber-500" viewBox="0 0 20 20" fill="currentColor" aria-label="WIP limit reached">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </div>
+              <span className={`text-xs font-medium rounded-full px-2 py-0.5 shadow-sm ${
+                wipExceeded ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300' :
+                wipAtLimit ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300' :
+                'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-300'
+              }`}>
+                {colTasks.length}{wipLimit !== undefined ? `/${wipLimit}` : ''}
               </span>
             </div>
 

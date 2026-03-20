@@ -8,6 +8,7 @@ model Sprint {
   columns   String    @default("[\"To Do\",\"In Progress\",\"In Review\",\"Done\"]")
   startDate String?   @map("start_date")
   endDate   String?   @map("end_date")
+  wipLimits String?   @map("wip_limits")
   createdAt DateTime  @default(now()) @map("created_at")
   closedAt  DateTime? @map("closed_at")
   org       Org       @relation(fields: [orgId], references: [orgId])

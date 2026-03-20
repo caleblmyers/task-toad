@@ -19,7 +19,7 @@ export const SUBTASKS_QUERY = `query Subtasks($projectId: ID!, $parentTaskId: ID
 }`;
 
 export const SPRINTS_QUERY = `query Sprints($projectId: ID!) {
-  sprints(projectId: $projectId) { sprintId projectId name goal isActive columns startDate endDate createdAt closedAt }
+  sprints(projectId: $projectId) { sprintId projectId name goal isActive columns wipLimits startDate endDate createdAt closedAt }
 }`;
 
 export const ORG_USERS_QUERY = `query OrgUsers { orgUsers { userId email role } }`;

@@ -24,6 +24,11 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
   const initialColumns = initialSprint ? parseColumns(initialSprint.columns) : DEFAULT_COLUMNS;
   const [columns, setColumns] = useState<string[]>(initialColumns);
   const [newCol, setNewCol] = useState('');
+  const initialWipLimits: Record<string, number> = (() => {
+    if (!initialSprint?.wipLimits) return {};
+    try { return JSON.parse(initialSprint.wipLimits); } catch { return {}; }
+  })();
+  const [wipLimits, setWipLimits] = useState<Record<string, number>>(initialWipLimits);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editingVal, setEditingVal] = useState('');
   const [loading, setLoading] = useState(false);
@@ -34,12 +39,13 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
     if (!name.trim()) return;
     setLoading(true);
     setErr(null);
+    const wipLimitsJson = Object.keys(wipLimits).length > 0 ? JSON.stringify(wipLimits) : null;
     try {
       if (isEdit && initialSprint) {
         const data = await gql<{ updateSprint: Sprint }>(
-          `mutation UpdateSprint($sprintId: ID!, $name: String, $goal: String, $columns: String, $startDate: String, $endDate: String) {
-            updateSprint(sprintId: $sprintId, name: $name, goal: $goal, columns: $columns, startDate: $startDate, endDate: $endDate) {
-              sprintId projectId name goal isActive columns startDate endDate createdAt closedAt
+          `mutation UpdateSprint($sprintId: ID!, $name: String, $goal: String, $columns: String, $startDate: String, $endDate: String, $wipLimits: String) {
+            updateSprint(sprintId: $sprintId, name: $name, goal: $goal, columns: $columns, startDate: $startDate, endDate: $endDate, wipLimits: $wipLimits) {
+              sprintId projectId name goal isActive columns wipLimits startDate endDate createdAt closedAt
             }
           }`,
           {
@@ -49,14 +55,15 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
             columns: JSON.stringify(columns),
             startDate: startDate || null,
             endDate: endDate || null,
+            wipLimits: wipLimitsJson,
           }
         );
         onUpdated?.(data.updateSprint);
       } else {
         const data = await gql<{ createSprint: Sprint }>(
-          `mutation CreateSprint($projectId: ID!, $name: String!, $goal: String, $columns: String, $startDate: String, $endDate: String) {
-            createSprint(projectId: $projectId, name: $name, goal: $goal, columns: $columns, startDate: $startDate, endDate: $endDate) {
-              sprintId projectId name goal isActive columns startDate endDate createdAt closedAt
+          `mutation CreateSprint($projectId: ID!, $name: String!, $goal: String, $columns: String, $startDate: String, $endDate: String, $wipLimits: String) {
+            createSprint(projectId: $projectId, name: $name, goal: $goal, columns: $columns, startDate: $startDate, endDate: $endDate, wipLimits: $wipLimits) {
+              sprintId projectId name goal isActive columns wipLimits startDate endDate createdAt closedAt
             }
           }`,
           {
@@ -66,6 +73,7 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
             columns: JSON.stringify(columns),
             startDate: startDate || null,
             endDate: endDate || null,
+            wipLimits: wipLimitsJson,
           }
         );
         onCreated(data.createSprint);
@@ -208,6 +216,36 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
               >
                 +
               </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">WIP Limits (optional)</label>
+            <div className="space-y-2">
+              {columns.map((col) => (
+                <div key={col} className="flex items-center gap-2">
+                  <span className="text-sm text-slate-600 dark:text-slate-300 w-32 truncate" title={col}>{col}</span>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="No limit"
+                    value={wipLimits[col] ?? ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setWipLimits((prev) => {
+                        const next = { ...prev };
+                        if (val === '' || val === '0') {
+                          delete next[col];
+                        } else {
+                          next[col] = parseInt(val, 10);
+                        }
+                        return next;
+                      });
+                    }}
+                    className="w-20 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green"
+                  />
+                </div>
+              ))}
             </div>
           </div>
 

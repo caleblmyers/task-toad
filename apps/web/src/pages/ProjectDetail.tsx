@@ -514,6 +514,7 @@ export default function ProjectDetail() {
                   epicMap={d.epicMap}
                   groupBy={groupBy}
                   orgUsers={d.orgUsers}
+                  wipLimits={d.activeSprint.wipLimits ? (() => { try { return JSON.parse(d.activeSprint.wipLimits!); } catch { return undefined; } })() : undefined}
                 />
               </div>
             </div>
