@@ -180,6 +180,8 @@ export const aiQueryFields = /* GraphQL */ `
   projectChat(projectId: ID!, question: String!): ProjectChatResponse!
   """Compare repo activity (commits, PRs) against task board to find drift."""
   analyzeRepoDrift(projectId: ID!): DriftAnalysis!
+  """Preview a hierarchical plan (epics → tasks → subtasks) before committing."""
+  previewHierarchicalPlan(projectId: ID!, prompt: String!): HierarchicalPlanPreview!
 `;
 
 export const aiMutationFields = /* GraphQL */ `

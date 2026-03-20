@@ -189,6 +189,47 @@ export const taskTypeDefs = /* GraphQL */ `
     tasks: [ChildTaskInput!]!
     acceptanceCriteria: String
   }
+
+  type DependencyRef {
+    title: String!
+    linkType: String!
+  }
+
+  type HierarchicalSubtaskPreview {
+    title: String!
+    description: String!
+    estimatedHours: Float
+    priority: String
+    acceptanceCriteria: String
+  }
+
+  type HierarchicalTaskPreview {
+    title: String!
+    description: String!
+    instructions: String
+    estimatedHours: Float
+    priority: String
+    acceptanceCriteria: String
+    autoComplete: Boolean
+    dependsOn: [DependencyRef!]
+    subtasks: [HierarchicalSubtaskPreview!]
+  }
+
+  type HierarchicalEpicPreview {
+    title: String!
+    description: String!
+    instructions: String
+    estimatedHours: Float
+    priority: String
+    acceptanceCriteria: String
+    autoComplete: Boolean
+    dependsOn: [DependencyRef!]
+    tasks: [HierarchicalTaskPreview!]
+  }
+
+  type HierarchicalPlanPreview {
+    epics: [HierarchicalEpicPreview!]!
+  }
 `;
 
 export const taskFilterInputDef = /* GraphQL */ `

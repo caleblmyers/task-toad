@@ -1,4 +1,4 @@
-import { generationMutations } from './generation.js';
+import { generationMutations, generationQueries } from './generation.js';
 import { analysisQueries } from './analysis.js';
 import { reportQueries } from './reports.js';
 import { helperMutations } from './helpers.js';
@@ -11,4 +11,5 @@ export const aiMutations = {
 export const aiQueries = {
   ...analysisQueries,
   ...reportQueries,
+  ...generationQueries,
 };

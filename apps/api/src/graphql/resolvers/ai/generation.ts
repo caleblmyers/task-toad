@@ -11,6 +11,7 @@ import {
   bootstrapFromRepo as aiBootstrapFromRepo,
   generateRepoProfile as aiGenerateRepoProfile,
   generateOnboardingQuestions as aiGenerateOnboardingQuestions,
+  generateHierarchicalPlan as aiGenerateHierarchicalPlan,
 } from '../../../ai/index.js';
 import { NotFoundError, ValidationError } from '../../errors.js';
 import { requireOrg, requireApiKey } from '../auth.js';
@@ -19,6 +20,7 @@ import { getProjectRepo, fetchProjectFileTree, fetchFileContent, getPullRequestD
 import type { RelevantFile } from '../../../github/index.js';
 import { requireProject, sanitizeForPrompt } from '../../../utils/resolverHelpers.js';
 import { EpicsInputSchema } from '../../../utils/zodSchemas.js';
+import { retrieveRelevantKnowledge } from '../../../ai/knowledgeRetrieval.js';
 
 export const generationMutations = {
   saveReport: async (
@@ -762,5 +764,44 @@ export const generationMutations = {
       )
     );
     return entries;
+  },
+};
+
+export const generationQueries = {
+  previewHierarchicalPlan: async (
+    _parent: unknown,
+    args: { projectId: string; prompt: string },
+    context: Context
+  ) => {
+    const { project } = await requireProject(context, args.projectId);
+    const apiKey = requireApiKey(context);
+    await enforceBudget(context);
+
+    const existingTasks = await context.prisma.task.findMany({
+      where: { projectId: args.projectId, archived: false },
+      select: { title: true },
+    });
+    const existingTitles = existingTasks.map((t: { title: string }) => t.title);
+
+    // Retrieve relevant knowledge base entries
+    const taskContext = `${project.name}: ${args.prompt}`;
+    let knowledgeBase: string | null = null;
+    try {
+      knowledgeBase = await retrieveRelevantKnowledge(context.prisma, args.projectId, taskContext, apiKey);
+    } catch {
+      // Fall back to project-level knowledge base
+      knowledgeBase = project.knowledgeBase ?? null;
+    }
+
+    const plc = await buildPromptLogContext(context);
+    return aiGenerateHierarchicalPlan(
+      apiKey,
+      project.name,
+      project.description ?? '',
+      args.prompt,
+      knowledgeBase,
+      existingTitles,
+      plc
+    );
   },
 };
