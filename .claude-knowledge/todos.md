@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-Production deployed at `https://tasktoad-api-production.up.railway.app`. 36 swarm waves completed. All P0 and most P1 competitive gap items done. All 5 Critical security findings fixed. Current phase: Auto-Complete Pipeline Redesign (Wave 36 done, Waves 37-41 planned).
+Production deployed at `https://tasktoad-api-production.up.railway.app`. 37 swarm waves completed. All P0 and most P1 competitive gap items done. All 5 Critical security findings fixed. Current phase: Auto-Complete Pipeline Redesign (Waves 36-37 done, Waves 38-41 planned).
 
 ---
 
@@ -202,10 +202,16 @@ Transforms Auto-Complete from isolated per-task execution into project-level orc
 - [x] **1-B: KB Retrieval Function** — `retrieveRelevantKnowledge()` (≤3 returns all, else AI picks top 5-8 by title)
 - [x] **1-C: autoComplete flag + informs link type** — `autoComplete` on Task, `informs` in DependencyLinkType
 
-### Wave 37 — Foundation: UI + Wiring
-- [ ] **2-A: KnowledgeBasePanel** — List entries with category badges, add/edit/delete, file upload (.txt/.md via FileReader). Migration button for old `project.knowledgeBase` text field → single entry. Replace existing KnowledgeBaseModal. *(Depends: 1-A)*
-- [ ] **2-B: Onboarding Interview** — `generateOnboardingQuestion`/`completeOnboarding` mutations. AI generates contextual questions (tech stack, conventions, architecture, deployment, testing, business domain). Multi-step wizard component, local state only. Saves Q&A as KnowledgeEntry(source='onboarding'). *(Depends: 1-A)*
-- [ ] **2-C: Inject KB Retrieval into Pipelines** — Add `knowledgeContext` to ActionContext. Call `retrieveRelevantKnowledge()` in actionExecutor before executing. Wire into generateCode + writeDocs executors + generation prompt builder. Fallback to `project.knowledgeBase` if no entries. *(Depends: 1-B)*
+### Wave 37 — Foundation: UI + Wiring (DONE)
+- [x] **2-A: KnowledgeBasePanel** — List entries with category badges, add/edit/delete, file upload (.txt/.md via FileReader). Migration button for old `project.knowledgeBase` text field → single entry. Replace existing KnowledgeBaseModal.
+- [x] **2-B: Onboarding Interview** — `generateOnboardingQuestions`/`saveOnboardingAnswers` mutations. AI generates contextual questions. Multi-step wizard component, local state only. Saves Q&A as KnowledgeEntry(source='onboarding'). Auto-opens after project creation.
+- [x] **2-C: Inject KB Retrieval into Pipelines** — `knowledgeContext` on ActionContext. `retrieveRelevantKnowledge()` in actionExecutor. Wired into generateCode + writeDocs executors + planning prompt builder. Fallback to `project.knowledgeBase`.
+
+**Wave 37 follow-ups** (out of scope, add to future waves):
+- [ ] "Refresh from repo" in KnowledgeBasePanel still writes to legacy `project.knowledgeBase` — update to create/update a KnowledgeEntry instead
+- [ ] Add "Run Interview" button inside KnowledgeBasePanel (currently only in ProjectToolbar overflow menu)
+- [ ] Onboarding wizard keyboard navigation (Enter to advance, Escape to close)
+- [ ] KB entry search/filter in KnowledgeBasePanel when entry count grows large
 
 ### Wave 38 — Intelligent Planning
 - [ ] **3-A: Hierarchical Plan Generation** — New prompt builder outputting epic→task→subtask hierarchy with dependency inference (`blocks`/`informs` using title references). Zod schema. `generateHierarchicalPlan` AI service function. `previewHierarchicalPlan` query.
@@ -284,5 +290,6 @@ Transforms Auto-Complete from isolated per-task execution into project-level orc
 | 34 | 2026-03-20 | Query centralization, ARIA/TaskDetail tabs, permission scheme |
 | 35 | 2026-03-20 | Critical security fixes (C-1 through C-5, H-5/H-7/H-8/H-11) |
 | 36 | 2026-03-20 | Auto-Complete Redesign — Foundation: KB schema, retrieval, autoComplete flag |
+| 37 | 2026-03-20 | Auto-Complete Redesign — Foundation: KB panel, onboarding interview, pipeline wiring |
 
 Full wave details in `changelog.md`.

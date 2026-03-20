@@ -6,6 +6,44 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ## 2026-03-20 (auto-complete redesign)
 
+### Wave 37: Auto-Complete Redesign — Foundation: UI + Wiring (3 workers, 6 tasks)
+
+**Worker 1 — 2-A: KnowledgeBasePanel:**
+- New `KnowledgeBasePanel.tsx` replaces old `KnowledgeBaseModal.tsx`
+- List view with color-coded category badges (standard/pattern/business/integration) and source badges (upload/onboarding/learned)
+- Full CRUD: add/edit/delete entries, file upload (.txt/.md via FileReader)
+- Migration banner: detects legacy `project.knowledgeBase` text field, one-click migration to KnowledgeEntry
+- "Refresh from repo" button preserved for GitHub-connected projects
+- GraphQL query for `knowledgeEntries` added to frontend queries
+
+**Worker 2 — 2-B: Onboarding Interview:**
+- Backend: `generateOnboardingQuestions` mutation (AI generates 3-6 contextual questions about tech stack, conventions, architecture, etc.)
+- Backend: `saveOnboardingAnswers` mutation (creates KnowledgeEntry per answer with `source: 'onboarding'`)
+- `OnboardingQuestionSchema` + `OnboardingQuestionsResponseSchema` Zod schemas
+- `buildOnboardingQuestionsPrompt` prompt builder with `userInput()` safety
+- `onboardingQuestion` added to AIFeature + FEATURE_CONFIG
+- Frontend: `OnboardingWizard.tsx` — 3-step modal wizard (welcome → question carousel → review/save)
+- Auto-opens after project creation via `location.state.showOnboarding`
+- Trigger in ProjectToolbar overflow menu
+
+**Worker 3 — 2-C: KB Pipeline Injection:**
+- `knowledgeContext: string | null` added to `ActionContext` interface
+- `actionExecutor.ts` calls `retrieveRelevantKnowledge()` before execution, with try/catch + fallback to `project.knowledgeBase`
+- `generateCode` executor updated to use `ctx.knowledgeContext` instead of `project.knowledgeBase`
+- `writeDocs` executor now includes KB context in documentation prompts (with `userInput()` + `truncate()`)
+- `buildPlanTaskActionsPrompt` accepts optional `knowledgeBase` parameter
+- Action plan resolver fetches KB context before planning
+
+**Process:** Worker-2 needed 3 rebase cycles (cross-worker file conflicts with KnowledgeBasePanel). Worker-3 merged first-attempt. Detailed task descriptions with exact file paths paid off.
+
+**Open follow-ups:**
+- "Refresh from repo" still writes to legacy `project.knowledgeBase` — update to create KnowledgeEntry instead
+- Add "Run Interview" button inside KnowledgeBasePanel (currently only in toolbar overflow)
+- KB entry search/filter for large entry counts
+- Onboarding wizard keyboard navigation
+
+---
+
 ### Wave 36: Auto-Complete Redesign — Foundation: Schema + Retrieval (3 tasks)
 
 **Task 1-A — Knowledge Base Schema + CRUD:**
