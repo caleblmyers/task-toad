@@ -116,7 +116,7 @@ router.get('/project/:projectId/json', requireAuth, async (req: AuthRequest, res
   }
 
   const tasks: TaskWithJsonRelations[] = await prisma.task.findMany({
-    where: { projectId },
+    where: { projectId, orgId: req.user!.orgId! },
     include: {
       labels: { include: { label: true } },
       comments: { include: { user: { select: { email: true } } }, orderBy: { createdAt: 'asc' } },
@@ -187,7 +187,7 @@ router.get('/project/:projectId/csv', requireAuth, async (req: AuthRequest, res:
   }
 
   const tasks: TaskWithCsvRelations[] = await prisma.task.findMany({
-    where: { projectId },
+    where: { projectId, orgId: req.user!.orgId! },
     include: {
       labels: { include: { label: true } },
       assignee: { select: { email: true } },
@@ -253,6 +253,7 @@ router.get('/project/:projectId/activity/json', requireAuth, async (req: AuthReq
   const activities: ActivityWithUser[] = await prisma.activity.findMany({
     where: {
       projectId,
+      orgId: req.user!.orgId!,
       ...(dateFilter ? { createdAt: dateFilter } : {}),
     },
     include: { user: { select: { email: true } } },
@@ -291,6 +292,7 @@ router.get('/project/:projectId/activity/csv', requireAuth, async (req: AuthRequ
   const activities: ActivityWithUser[] = await prisma.activity.findMany({
     where: {
       projectId,
+      orgId: req.user!.orgId!,
       ...(dateFilter ? { createdAt: dateFilter } : {}),
     },
     include: { user: { select: { email: true } } },

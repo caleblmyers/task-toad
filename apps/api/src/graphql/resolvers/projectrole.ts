@@ -59,9 +59,9 @@ export const projectRoleQueries = {
   },
 
   automationRules: async (_parent: unknown, args: { projectId: string }, context: Context) => {
-    await requireProjectAccess(context, args.projectId);
+    const { user } = await requireProjectAccess(context, args.projectId);
     const rules = await context.prisma.automationRule.findMany({
-      where: { projectId: args.projectId },
+      where: { projectId: args.projectId, orgId: user.orgId },
       orderBy: { createdAt: 'asc' },
     });
     return rules.map((r: typeof rules[number]) => ({
@@ -191,7 +191,10 @@ export const projectRoleMutations = {
   ) => {
     const rule = await context.prisma.automationRule.findUnique({ where: { id: args.ruleId } });
     if (!rule) throw new NotFoundError('Automation rule not found');
-    await requireProjectAdmin(context, rule.projectId);
+    const { user: updateUser } = await requireProjectAdmin(context, rule.projectId);
+    if (rule.orgId !== updateUser.orgId) {
+      throw new AuthorizationError('Rule does not belong to your organization');
+    }
 
     if (args.trigger !== undefined && args.trigger !== null) {
       const triggerResult = TriggerSchema.safeParse(safeParseJSON(args.trigger, 'trigger'));
@@ -225,7 +228,10 @@ export const projectRoleMutations = {
   ) => {
     const rule = await context.prisma.automationRule.findUnique({ where: { id: args.ruleId } });
     if (!rule) throw new NotFoundError('Automation rule not found');
-    await requireProjectAdmin(context, rule.projectId);
+    const { user: deleteUser } = await requireProjectAdmin(context, rule.projectId);
+    if (rule.orgId !== deleteUser.orgId) {
+      throw new AuthorizationError('Rule does not belong to your organization');
+    }
     await context.prisma.automationRule.delete({ where: { id: args.ruleId } });
     return true;
   },

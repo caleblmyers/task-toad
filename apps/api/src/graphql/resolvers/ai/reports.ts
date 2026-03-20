@@ -4,7 +4,7 @@ import {
   generateSprintReport as aiGenerateSprintReport,
 } from '../../../ai/index.js';
 import { NotFoundError } from '../../errors.js';
-import { requireOrg, requireApiKey } from '../auth.js';
+import { requireOrg, requireApiKey, requireProjectAccess } from '../auth.js';
 import { buildPromptLogContext, enforceBudget, ROOT_OR_EPIC_CHILD } from './helpers.js';
 import { requireProject } from '../../../utils/resolverHelpers.js';
 
@@ -38,8 +38,20 @@ export const reportQueries = {
   ) => {
     const user = requireOrg(context);
     const where: Record<string, unknown> = { orgId: user.orgId };
-    if (args.taskId) where.taskId = args.taskId;
-    if (args.projectId) where.projectId = args.projectId;
+    if (args.taskId) {
+      const task = await context.prisma.task.findUnique({
+        where: { taskId: args.taskId },
+        select: { projectId: true },
+      });
+      if (task) {
+        await requireProjectAccess(context, task.projectId);
+      }
+      where.taskId = args.taskId;
+    }
+    if (args.projectId) {
+      await requireProjectAccess(context, args.projectId);
+      where.projectId = args.projectId;
+    }
     const logs = await context.prisma.aIPromptLog.findMany({
       where,
       orderBy: { createdAt: 'desc' },
