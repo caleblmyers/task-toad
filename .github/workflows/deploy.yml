@@ -1,43 +1,24 @@
 name: Deploy
 on:
   workflow_dispatch:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
-    paths:
-      - 'apps/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
 
 jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Generate Prisma client
-        run: npx prisma generate
-        working-directory: apps/api
-      - run: pnpm build
-      - run: pnpm typecheck
-      - run: pnpm lint
-      - run: pnpm test
-
   deploy:
-    needs: build-and-test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && vars.RAILWAY_DEPLOY_ENABLED == 'true'
+    if: >-
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     steps:
       - name: Trigger Railway deploy
+        if: vars.RAILWAY_DEPLOY_ENABLED == 'true'
         run: curl -sf -X POST "${{ secrets.RAILWAY_DEPLOY_WEBHOOK }}"
 
   smoke-test:
-    needs: build-and-test
+    needs: deploy
     runs-on: ubuntu-latest
     services:
       postgres:
