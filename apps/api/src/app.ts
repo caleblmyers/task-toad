@@ -276,11 +276,21 @@ const yoga = createYoga({
   schema,
   context: buildContext,
   graphqlEndpoint: '/graphql',
+  maskedErrors: {
+    isDev: process.env.NODE_ENV !== 'production',
+  },
   plugins: [
     {
-      onParams({ params, setParams }: { params: { variables?: Record<string, unknown> }; setParams: (p: typeof params) => void }) {
+      onParams({ params, setParams }: { params: { query?: string; variables?: Record<string, unknown> }; setParams: (p: typeof params) => void }) {
+        const updates: Partial<typeof params> = {};
+        if (params.query && params.query.includes('\0')) {
+          updates.query = params.query.replace(/\0/g, '');
+        }
         if (params.variables) {
-          setParams({ ...params, variables: stripNullBytes(params.variables) as Record<string, unknown> });
+          updates.variables = stripNullBytes(params.variables) as Record<string, unknown>;
+        }
+        if (Object.keys(updates).length > 0) {
+          setParams({ ...params, ...updates });
         }
       },
     },

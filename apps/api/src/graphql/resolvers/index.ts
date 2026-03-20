@@ -73,6 +73,9 @@ export const resolvers = {
   Report: {
     createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
   },
+  TaskTemplate: {
+    createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
+  },
   TaskActionPlan: { ...taskActionFieldResolvers.TaskActionPlan },
   TaskAction: { ...taskActionFieldResolvers.TaskAction },
   Release: { ...releaseFieldResolvers.Release },

@@ -53,6 +53,7 @@ export interface DomainEventMap {
   };
   'task.bulk_updated': BaseEventPayload & {
     taskIds: string[];
+    changes?: Record<string, FieldChange>;
   };
   'task.assignee_added': BaseEventPayload & {
     taskId: string;

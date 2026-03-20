@@ -39,21 +39,23 @@ export const taskMutations = {
     if (!validTaskTypes.includes(taskType)) {
       throw new ValidationError(`Invalid taskType "${taskType}". Valid: ${validTaskTypes.join(', ')}`);
     }
-    const maxResult = await context.prisma.task.aggregate({
-      where: { projectId: args.projectId, sprintId: null, parentTaskId: null },
-      _max: { position: true },
-    });
-    const nextPosition = (maxResult._max.position ?? 0) + 1.0;
-    const task = await context.prisma.task.create({
-      data: {
-        title: args.title,
-        status,
-        taskType,
-        projectId: args.projectId,
-        orgId: user.orgId,
-        position: nextPosition,
-      },
-    });
+    const task = await context.prisma.$transaction(async (tx) => {
+      const maxResult = await tx.task.aggregate({
+        where: { projectId: args.projectId, sprintId: null, parentTaskId: null },
+        _max: { position: true },
+      });
+      const nextPosition = (maxResult._max.position ?? 0) + 1.0;
+      return tx.task.create({
+        data: {
+          title: args.title,
+          status,
+          taskType,
+          projectId: args.projectId,
+          orgId: user.orgId,
+          position: nextPosition,
+        },
+      });
+    }, { isolationLevel: 'Serializable' });
     // Auto-add creator as watcher
     await context.prisma.taskWatcher.create({
       data: { taskId: task.taskId, userId: user.userId },
@@ -77,6 +79,9 @@ export const taskMutations = {
     // Verify assignee belongs to same org
     if (args.assigneeId) {
       await requireOrgUser(context, args.assigneeId);
+    }
+    if (args.storyPoints !== undefined && args.storyPoints !== null && args.storyPoints < 0) {
+      throw new ValidationError('Story points must be non-negative');
     }
     const warnings: string[] = [];
     if (args.status !== undefined) {
@@ -270,10 +275,17 @@ export const taskMutations = {
     const updated = await context.prisma.task.findMany({
       where: { taskId: { in: args.taskIds } },
     });
+    // Build changes map for activity logging
+    const changes: Record<string, { old: string | null; new: string | null }> = {};
+    if (args.status !== undefined && args.status !== null) changes.status = { old: null, new: args.status };
+    if (args.assigneeId !== undefined) changes.assigneeId = { old: null, new: args.assigneeId };
+    if (args.sprintId !== undefined) changes.sprintId = { old: null, new: args.sprintId ?? null };
+    if (args.archived !== undefined && args.archived !== null) changes.archived = { old: null, new: String(args.archived) };
     getEventBus().emit('task.bulk_updated', {
       orgId: user.orgId, userId: user.userId, projectId: projectIds[0],
       timestamp: new Date().toISOString(),
       taskIds: args.taskIds,
+      changes: Object.keys(changes).length > 0 ? changes : undefined,
     });
     return updated;
   },
@@ -294,21 +306,23 @@ export const taskMutations = {
     if (!validTaskTypes.includes(taskType)) {
       throw new ValidationError(`Invalid taskType "${taskType}". Valid: ${validTaskTypes.join(', ')}`);
     }
-    const maxResult = await context.prisma.task.aggregate({
-      where: { parentTaskId: args.parentTaskId },
-      _max: { position: true },
-    });
-    const nextPosition = (maxResult._max.position ?? 0) + 1.0;
-    const task = await context.prisma.task.create({
-      data: {
-        title: args.title,
-        taskType,
-        projectId: parent.projectId,
-        orgId: parent.orgId,
-        parentTaskId: args.parentTaskId,
-        position: nextPosition,
-      },
-    });
+    const task = await context.prisma.$transaction(async (tx) => {
+      const maxResult = await tx.task.aggregate({
+        where: { parentTaskId: args.parentTaskId },
+        _max: { position: true },
+      });
+      const nextPosition = (maxResult._max.position ?? 0) + 1.0;
+      return tx.task.create({
+        data: {
+          title: args.title,
+          taskType,
+          projectId: parent.projectId,
+          orgId: parent.orgId,
+          parentTaskId: args.parentTaskId,
+          position: nextPosition,
+        },
+      });
+    }, { isolationLevel: 'Serializable' });
     getEventBus().emit('subtask.created', {
       orgId: user.orgId, userId: user.userId, projectId: parent.projectId,
       timestamp: new Date().toISOString(),
