@@ -7,6 +7,10 @@ import { checkBudget, type BudgetStatus } from '../../ai/aiUsageTracker.js';
 import { getProjectRepo } from '../../github/index.js';
 import { availableTypes } from '../../actions/index.js';
 import { getJobQueue } from '../../infrastructure/jobqueue/index.js';
+import { retrieveRelevantKnowledge } from '../../ai/knowledgeRetrieval.js';
+import { createChildLogger } from '../../utils/logger.js';
+
+const log = createChildLogger('taskaction-resolver');
 
 async function buildPromptLogContext(context: Context): Promise<PromptLogContext> {
   const user = requireOrg(context);
@@ -75,6 +79,19 @@ export const taskActionMutations = {
     const repo = await getProjectRepo(task.projectId);
     const plc = await buildPromptLogContext(context);
 
+    // Retrieve relevant KB context for the task
+    let knowledgeBase: string | null = null;
+    try {
+      const taskContext = `${task.title}. ${task.instructions || task.description || ''}`.slice(0, 500);
+      const kbResult = await retrieveRelevantKnowledge(context.prisma, task.projectId, taskContext, apiKey);
+      knowledgeBase = kbResult || null;
+    } catch (err) {
+      log.warn({ err, taskId: task.taskId }, 'KB retrieval failed for action plan, falling back to legacy');
+    }
+    if (!knowledgeBase && project.knowledgeBase) {
+      knowledgeBase = project.knowledgeBase;
+    }
+
     const result = await aiPlanTaskActions(
       apiKey,
       {
@@ -85,6 +102,7 @@ export const taskActionMutations = {
         suggestedTools: task.suggestedTools,
         projectName: project.name,
         projectDescription: project.description,
+        knowledgeBase,
         hasGitHubRepo: !!repo,
         availableActionTypes: availableTypes(),
       },

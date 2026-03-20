@@ -7,6 +7,7 @@ import { checkBudget } from '../../ai/aiUsageTracker.js';
 import { isRetryableAIError } from '../../ai/aiClient.js';
 import { getEventBus } from '../eventbus/index.js';
 import { getJobQueue } from '../jobqueue/index.js';
+import { retrieveRelevantKnowledge } from '../../ai/knowledgeRetrieval.js';
 
 const log = createChildLogger('action-executor');
 
@@ -102,10 +103,27 @@ export function createHandler(prisma: PrismaClient) {
       }
     }
 
+    // Retrieve relevant KB context for the task
+    let knowledgeContext: string | null = null;
+    if (apiKey) {
+      try {
+        const taskContext = `${task.title}. ${task.instructions || task.description || ''}`.slice(0, 500);
+        const kbResult = await retrieveRelevantKnowledge(prisma, task.projectId, taskContext, apiKey);
+        knowledgeContext = kbResult || null;
+      } catch (err) {
+        log.warn({ err, taskId: task.taskId }, 'KB retrieval failed, falling back to legacy knowledgeBase');
+      }
+    }
+    // Fall back to legacy field when KB entries return empty
+    if (!knowledgeContext && project.knowledgeBase) {
+      knowledgeContext = project.knowledgeBase;
+    }
+
     const ctx: ActionContext = {
       action: { id: action.id, actionType: action.actionType, config: action.config, label: action.label },
       task: { taskId: task.taskId, title: task.title, description: task.description, instructions: task.instructions, projectId: task.projectId },
       project: { projectId: project.projectId, name: project.name, description: project.description, knowledgeBase: project.knowledgeBase },
+      knowledgeContext,
       apiKey,
       orgId,
       userId,

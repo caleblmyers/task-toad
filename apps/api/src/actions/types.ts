@@ -6,6 +6,7 @@ export interface ActionContext {
   action: { id: string; actionType: string; config: string; label: string };
   task: { taskId: string; title: string; description: string | null; instructions: string | null; projectId: string };
   project: { projectId: string; name: string; description: string | null; knowledgeBase: string | null };
+  knowledgeContext: string | null;
   apiKey: string;
   orgId: string;
   userId: string;

@@ -5,6 +5,7 @@ import { callAI } from '../../ai/aiClient.js';
 import { parseJSON } from '../../ai/responseParser.js';
 import { SYSTEM_JSON } from '../../ai/aiConfig.js';
 import { userInput } from '../../ai/promptBuilder.js';
+import { truncate, MAX_KB_CHARS } from '../../ai/promptBuilders/utils.js';
 
 interface WriteDocsConfig {
   docType: 'readme' | 'api-docs' | 'changelog';
@@ -37,6 +38,7 @@ Description: ${userInput('description', task.description ?? '')}
 Instructions: ${userInput('instructions', task.instructions ?? '')}
 Project: ${userInput('project', project.name)}
 ${project.description ? `Project description: ${userInput('projectDescription', project.description)}` : ''}
+${ctx.knowledgeContext ? `\nKnowledge Base:\n${userInput('knowledge_base', truncate(ctx.knowledgeContext, MAX_KB_CHARS))}` : ''}
 
 Return JSON:
 {

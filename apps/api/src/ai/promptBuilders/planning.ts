@@ -263,6 +263,7 @@ export function buildPlanTaskActionsPrompt(data: {
   suggestedTools?: string | null;
   projectName: string;
   projectDescription?: string | null;
+  knowledgeBase?: string | null;
   hasGitHubRepo: boolean;
   availableActionTypes: string[];
 }): Prompt {
@@ -284,7 +285,8 @@ Task: ${userInput('title', data.taskTitle)}
 Description: ${userInput('description', truncate(data.taskDescription, 400))}
 Instructions: ${userInput('instructions', truncate(data.taskInstructions, 800))}${acLine}${toolsLine}
 Project: ${userInput('project', data.projectName)}
-${data.projectDescription ? `Project description: ${userInput('projectDescription', truncate(data.projectDescription, 400))}` : ''}${repoLine}
+${data.projectDescription ? `Project description: ${userInput('projectDescription', truncate(data.projectDescription, 400))}` : ''}
+${data.knowledgeBase ? `Knowledge Base:\n${userInput('knowledge_base', truncate(data.knowledgeBase, MAX_KB_CHARS))}` : ''}${repoLine}
 
 Available action types: ${data.availableActionTypes.join(', ')}
 

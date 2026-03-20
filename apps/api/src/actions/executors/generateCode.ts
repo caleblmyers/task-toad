@@ -34,7 +34,7 @@ export const generateCodeExecutor: ActionExecutor = {
       project.description ?? '',
       projectFiles,
       config.styleGuide ?? null,
-      project.knowledgeBase,
+      ctx.knowledgeContext ?? project.knowledgeBase,
     );
 
     return {

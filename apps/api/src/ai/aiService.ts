@@ -538,6 +538,7 @@ export async function planTaskActions(
     suggestedTools?: string | null;
     projectName: string;
     projectDescription?: string | null;
+    knowledgeBase?: string | null;
     hasGitHubRepo: boolean;
     availableActionTypes: string[];
   },
