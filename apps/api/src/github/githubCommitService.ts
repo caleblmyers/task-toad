@@ -86,45 +86,73 @@ async function getBranchOid(
 }
 
 /**
+ * Derive a URL-safe slug from a task title.
+ * Lowercase, alphanumeric + hyphens, max 30 chars.
+ */
+function slugify(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 30);
+}
+
+/**
  * Create a branch from the repository's default branch.
  *
- * Branch name format: task-{taskId}-ai
+ * Branch name format: task-{taskId}-{slug}
+ * If the branch already exists and taskTitle is provided, retries once
+ * with a random 4-char suffix to avoid conflicts.
  */
 export async function createBranch(
   repo: GitHubRepoLink,
-  taskId: string
+  taskId: string,
+  taskTitle?: string
 ): Promise<{ branchName: string; baseOid: string }> {
   const token = await getInstallationToken(repo.installationId);
-  const branchName = `task-${taskId}-ai`;
+  const slug = taskTitle ? slugify(taskTitle) : 'ai';
+  const baseBranchName = `task-${taskId}-${slug}`;
   const qualifiedRef = `refs/heads/${repo.defaultBranch}`;
 
   const baseOid = await getBranchOid(token, repo.repositoryOwner, repo.repositoryName, qualifiedRef);
 
-  try {
-    await githubRequest<CreateRefResponse>(token, CREATE_REF, {
-      repositoryId: repo.repositoryId,
-      name: `refs/heads/${branchName}`,
-      oid: baseOid,
-    });
-    logBranchCreation(repo.repositoryOwner, repo.repositoryName, branchName);
-  } catch (error) {
-    // Branch may already exist — check if it's a name conflict
-    const msg = error instanceof Error ? error.message : '';
-    if (msg.includes('already exists')) {
-      // Branch exists — use it. Get its current OID.
-      const existingOid = await getBranchOid(
-        token,
-        repo.repositoryOwner,
-        repo.repositoryName,
-        `refs/heads/${branchName}`
-      );
-      return { branchName, baseOid: existingOid };
+  // Try creating with the base name, then retry with random suffix on conflict
+  const candidates = [baseBranchName];
+
+  for (const branchName of candidates) {
+    try {
+      await githubRequest<CreateRefResponse>(token, CREATE_REF, {
+        repositoryId: repo.repositoryId,
+        name: `refs/heads/${branchName}`,
+        oid: baseOid,
+      });
+      logBranchCreation(repo.repositoryOwner, repo.repositoryName, branchName);
+      return { branchName, baseOid };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : '';
+      if (msg.includes('already exists')) {
+        // If this was our first attempt, retry with a random suffix
+        if (branchName === baseBranchName) {
+          const suffix = Math.random().toString(36).slice(2, 6);
+          candidates.push(`${baseBranchName}-${suffix}`);
+          continue;
+        }
+        // Second attempt also exists — use the existing branch
+        const existingOid = await getBranchOid(
+          token,
+          repo.repositoryOwner,
+          repo.repositoryName,
+          `refs/heads/${branchName}`
+        );
+        return { branchName, baseOid: existingOid };
+      }
+      logApiError('createBranch', error, { branchName });
+      throw error;
     }
-    logApiError('createBranch', error, { branchName });
-    throw error;
   }
 
-  return { branchName, baseOid };
+  // Unreachable, but satisfy TS
+  return { branchName: baseBranchName, baseOid };
 }
 
 /**

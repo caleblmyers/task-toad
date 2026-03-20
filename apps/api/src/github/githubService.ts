@@ -81,8 +81,8 @@ export async function createPullRequestFromTask(
   }
 
   try {
-    // 2. Create branch
-    const { branchName, baseOid } = await createBranch(repo, taskId);
+    // 2. Create branch (slug derived from task title for descriptive names)
+    const { branchName, baseOid } = await createBranch(repo, taskId, task.title);
 
     // 3. Commit files — use AI-generated message if API key available
     let commitMessage = `AI: implement task ${task.title}`;
