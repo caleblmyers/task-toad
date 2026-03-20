@@ -1,6 +1,6 @@
 # Remaining Work
 
-All original work sets completed through Wave 30. Completed items are in `changelog.md`.
+All original work sets completed through Wave 30. Competitive gap items ongoing. Completed items are in `changelog.md`.
 
 ---
 
@@ -11,6 +11,15 @@ All original work sets completed through Wave 30. Completed items are in `change
 - **File structure:** Prisma: `prisma/schema/`, TypeDefs: `typedefs/`, Resolvers: `resolvers/` — all domain-split.
 
 ---
+
+## Wave 31 — Task Watchers + WIP Limits + Release Model — Completed (2026-03-19)
+
+- [x] Task watchers — backend: Prisma model, GraphQL CRUD, DataLoader, auto-watch, notifications (task-001, worker-1)
+- [x] Task watchers — frontend: UI, hooks, Watch/Unwatch toggle (task-002, worker-1)
+- [x] WIP limits — full stack: Sprint model, KanbanBoard warnings, SprintCreateModal UI, soft enforcement (task-003, worker-2)
+- [x] Cycle time date range filter UI — date pickers, presets, validation (task-004, worker-2)
+- [x] Release model — backend: Prisma schema, GraphQL CRUD, task association, AI release notes (task-005, worker-3)
+- [x] Release model — frontend: list panel, detail panel, modal, Releases tab (task-006, worker-3)
 
 ## Wave 30 — Server-side Filtering + Workflow Transitions + Kanban Swimlanes — Completed (2026-03-18)
 
@@ -60,6 +69,7 @@ All original work sets completed through Wave 30. Completed items are in `change
 - [ ] S3 multipart upload — current 10MB limit uses single PUT; implement multipart for larger files
 - [ ] useAsyncData adoption — migrate other components with inline fetch-in-useEffect patterns
 - [ ] Task detail re-architecture (UX Audit Item 10) — collapsible sections, tabbed comments/activity
+- [ ] Release burndown chart — show task completion progress over time for a release (reuse existing chart patterns)
 
 ### Beta Scope — Known Limitations (not planned)
 - Project-level access control — org-level read access for beta. Project-level RBAC deferred to post-beta.
@@ -91,16 +101,16 @@ Expected by teams switching from Jira/Asana/Wrike.
 
 ### Task Lifecycle & Workflow
 - [x] **Cycle time / lead time metrics** — Computed query over existing Activity table. Lead time = created→done. Cycle time = first in_progress→done. Aggregate per sprint/time window. No schema changes. *(Wave 29)*
-- [ ] **Cycle time date range filter UI** — The `cycleTimeMetrics` query accepts `fromDate`/`toDate` params but the CycleTimePanel frontend doesn't expose date range pickers yet. Add date inputs to filter metrics by time window.
+- [x] **Cycle time date range filter UI** — Date pickers with presets (7d/30d/90d/This Sprint), validation, clear button. *(Wave 31, task-004)*
 - [ ] **SLA tracking** — `SLAPolicy { projectId, name, targetMinutes, businessHoursCalendar?, pauseOnStatuses? }` and `SLATimer { taskId, policyId, startedAt, pausedMinutes, breachedAt? }`. Evaluate on status transitions.
 
 ### Planning & Estimation
 - [ ] **User capacity model** — `UserCapacity { userId, weeklyHours }` and `UserTimeOff { userId, startDate, endDate }`. Sprint planning calculates available hours vs committed work. Feed into AI sprint planner as context.
-- [ ] **Release model** — `Release { releaseId, projectId, name, targetDate, status, description }` + `releaseId` FK on Task. Release burndown, release notes generation (via existing AI report system).
+- [x] **Release model** — Release + ReleaseTask models, CRUD, task association, AI release notes generation, frontend list/detail/modal + Releases tab. *(Wave 31, tasks 005-006)*
 
 ### Views & Visualization
 - [x] **Kanban swimlanes** — `groupBy` parameter on KanbanBoard (assignee, priority, epic). Collapsible swimlane headers, localStorage persistence. *(Wave 30, task-006)*
-- [ ] **WIP limits** — `wipLimits` JSON field on Sprint. Visual warning on column header when exceeded. Optional hard enforcement on `updateTask`.
+- [x] **WIP limits** — `wipLimits` JSON field on Sprint, KanbanBoard column header warnings (red/amber), SprintCreateModal per-column inputs, soft enforcement via UpdateTaskResult warnings. *(Wave 31, task-003)*
 - [ ] **Cumulative flow diagram** — Daily status counts computed from Activity table. Stacked area chart (reuse existing Recharts setup from velocity/burndown charts).
 
 ### Search & Filtering
@@ -108,7 +118,7 @@ Expected by teams switching from Jira/Asana/Wrike.
 - [ ] **Saved views** — Extend `SavedFilter` to include viewType, sortBy, groupBy, visibleColumns. Rename model to `SavedView`.
 
 ### Collaboration
-- [ ] **Task watchers** — `TaskWatcher { taskId, userId }` join table. Auto-add on creation (creator), assignment, @mention. Notify all watchers on task updates. Watch/unwatch mutations.
+- [x] **Task watchers** — TaskWatcher join table, auto-watch on create/assign/mention, watcher notifications, Watch/Unwatch UI toggle, DataLoader. *(Wave 31, tasks 001-002)*
 
 ### Automation
 - [ ] **Multi-action automation rules** — Change `action` field from single JSON to array. Execute sequentially. Add action types: `send_webhook`, `add_label`, `add_comment`, `set_due_date`.

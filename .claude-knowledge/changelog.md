@@ -4,6 +4,41 @@ Summaries of work completed each session. Most recent first.
 
 ---
 
+## 2026-03-19 (evening)
+
+### Wave 31: Task Watchers + WIP Limits + Release Model (3 workers, 6 tasks)
+
+**Worker 1 — Task Watchers (P1 Collaboration):**
+- New `TaskWatcher` model (join table) in task.prisma with DataLoader for N+1 prevention
+- `addTaskWatcher`/`removeTaskWatcher` mutations following TaskAssignee pattern
+- Auto-watch: creator on task create, assignee on assign, mentioned users on @mention
+- Event bus integration: `task.watcher_added`/`task.watcher_removed` events
+- Notification listener: notifies all watchers on task updates (excluding actor)
+- Frontend: Watchers section in TaskFieldsPanel with gray pills, Watch/Unwatch toggle, user picker
+
+**Worker 2 — WIP Limits + Cycle Time Date Filter (P1 Views & Workflow):**
+- `wipLimits` JSON field on Sprint model, accepted in create/update mutations with validation
+- `sprintWipStatus` query returns per-column task count vs limit
+- KanbanBoard: red warning when WIP exceeded, amber when at limit (count badge + column border)
+- SprintCreateModal: per-column WIP limit numeric inputs
+- Soft enforcement: updateTask returns warning when move would exceed WIP limit
+- CycleTimePanel: From/To date inputs, preset buttons (7d/30d/90d/This Sprint), validation, clear button
+
+**Worker 3 — Release Model (P1 Planning):**
+- New `Release` + `ReleaseTask` models in release.prisma with full CRUD resolvers
+- Cursor-paginated `releases` query, single `release` query
+- `addTaskToRelease`/`removeTaskFromRelease` mutations with project/org verification
+- AI release notes generation: Zod schema, prompt builder, stores in `releaseNotes` field
+- Frontend: ReleaseListPanel (grouped by status), ReleaseDetailPanel (editable fields + task list + AI notes), ReleaseModal (create/edit), Releases tab in project detail
+
+**Process:** All 6 tasks merged. No major issues logged this wave.
+
+**Open follow-ups:**
+- Release burndown chart not implemented (listed in original todo but deferred — release task count/completion is shown inline)
+- Release model uses ReleaseTask join table (not direct FK on Task) — no `releaseId` column on Task
+
+---
+
 ## 2026-03-19
 
 ### Session Summary
