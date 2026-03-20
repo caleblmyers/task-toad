@@ -3,6 +3,7 @@ import type { Context } from '../context.js';
 import { requireOrg } from './auth.js';
 import { ValidationError, NotFoundError, AuthorizationError } from '../errors.js';
 import { isValidWebhookEvent, replayDelivery } from '../../utils/webhookDispatcher.js';
+import { validateWebhookUrl } from '../../utils/urlValidator.js';
 
 function requireAdmin(context: Context) {
   const user = requireOrg(context);
@@ -96,12 +97,8 @@ export const webhookMutations = {
   ) => {
     const user = requireAdmin(context);
 
-    // Validate URL
-    try {
-      new URL(args.url);
-    } catch {
-      throw new ValidationError('Invalid URL format');
-    }
+    // Validate URL (SSRF protection)
+    await validateWebhookUrl(args.url);
 
     // Validate events
     for (const event of args.events) {
@@ -148,11 +145,7 @@ export const webhookMutations = {
     }
 
     if (args.url !== undefined && args.url !== null) {
-      try {
-        new URL(args.url);
-      } catch {
-        throw new ValidationError('Invalid URL format');
-      }
+      await validateWebhookUrl(args.url);
     }
 
     if (args.events !== undefined && args.events !== null) {
@@ -207,6 +200,9 @@ export const webhookMutations = {
     if (!endpoint || endpoint.orgId !== user.orgId) {
       throw new NotFoundError('Webhook endpoint not found');
     }
+
+    // Re-validate URL in case it was updated to a malicious target
+    await validateWebhookUrl(endpoint.url);
 
     const payload = {
       event: 'test',

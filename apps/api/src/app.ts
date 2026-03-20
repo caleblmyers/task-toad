@@ -46,6 +46,9 @@ if (!envResult.success) {
 
 const app: express.Express = express();
 
+// Trust first proxy hop (Railway LB) so req.ip returns real client IP for rate limiting
+app.set('trust proxy', 1);
+
 // Security headers with explicit CSP
 app.use(helmet({
   contentSecurityPolicy: {
@@ -55,6 +58,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "https:"],
       connectSrc: ["'self'"],
+      frameAncestors: ["'none'"],
     },
   },
 }));
@@ -161,7 +165,7 @@ app.use(express.json({ limit: '1mb' }));
 
 // SSE endpoint for real-time events — reads token from Authorization header
 app.get(['/events', '/api/events'], async (req, res) => {
-  const token = req.headers.authorization?.replace('Bearer ', '') ?? (req.query.token as string);
+  const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token) { res.status(401).json({ error: 'No token' }); return; }
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
