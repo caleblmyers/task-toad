@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import Badge from './shared/Badge';
+import PlanDependencyEditor from './PlanDependencyEditor';
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -128,6 +129,7 @@ export function HierarchicalPlanEditor({
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const editRef = useRef<HTMLInputElement>(null);
+  const [editingDepsKey, setEditingDepsKey] = useState<string | null>(null);
 
   // Drag state
   const draggedKey = useRef<string | null>(null);
@@ -218,6 +220,23 @@ export function HierarchicalPlanEditor({
           const t = tasks[Number(parts[2])];
           t.autoComplete = !(t.autoComplete ?? false);
         }
+      }
+      onChange(updated);
+    },
+    [plan, onChange],
+  );
+
+  // ── Update node dependencies ─────────────────────────────────────────
+
+  const updateNodeDeps = useCallback(
+    (key: string, newDeps: DependencyRef[]) => {
+      const updated = structuredClone(plan);
+      const parts = key.split('-');
+      if (parts[0] === 'epic') {
+        updated.epics[Number(parts[1])].dependsOn = newDeps;
+      } else if (parts[0] === 'task') {
+        const tasks = updated.epics[Number(parts[1])].tasks;
+        if (tasks) tasks[Number(parts[2])].dependsOn = newDeps;
       }
       onChange(updated);
     },
@@ -340,8 +359,8 @@ export function HierarchicalPlanEditor({
     const isDropTarget = dropTarget === key;
 
     return (
+      <React.Fragment key={key}>
       <div
-        key={key}
         className={`group flex items-center gap-2 px-3 py-2 rounded-lg border transition-all mb-1
           ${isDropTarget ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}
           bg-white dark:bg-slate-900`}
@@ -425,12 +444,25 @@ export function HierarchicalPlanEditor({
         )}
 
         {/* Dependency count badge */}
-        {depCount > 0 && (
+        {(nodeType === 'epic' || nodeType === 'task') && (
           <span
-            className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 flex-shrink-0 cursor-default"
-            title={dependsOn!.map((d) => `${d.linkType}: ${d.title}`).join(', ')}
+            className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 cursor-pointer ${
+              depCount > 0
+                ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                : 'bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500'
+            }`}
+            title={
+              depCount > 0
+                ? dependsOn!.map((d) => `${d.linkType}: ${d.title}`).join(', ')
+                : 'Add dependencies'
+            }
+            onClick={() =>
+              setEditingDepsKey(editingDepsKey === key ? null : key)
+            }
           >
-            {depCount} dep{depCount > 1 ? 's' : ''}
+            {depCount > 0
+              ? `${depCount} dep${depCount > 1 ? 's' : ''}`
+              : '+ dep'}
           </span>
         )}
 
@@ -443,6 +475,18 @@ export function HierarchicalPlanEditor({
           ×
         </button>
       </div>
+      {/* Inline dependency editor */}
+      {editingDepsKey === key && (nodeType === 'epic' || nodeType === 'task') && (
+        <div style={{ marginLeft: `${depth * 24 + 20}px` }} className="mb-1">
+          <PlanDependencyEditor
+            dependsOn={dependsOn ?? []}
+            allTitles={Array.from(allTitles)}
+            nodeTitle={title}
+            onChange={(newDeps) => updateNodeDeps(key, newDeps)}
+          />
+        </div>
+      )}
+      </React.Fragment>
     );
   };
 

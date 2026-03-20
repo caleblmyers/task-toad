@@ -35,6 +35,7 @@ export default function HierarchicalPlanDialog({
   const [generating, setGenerating] = useState(false);
   const [committing, setCommitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   const handleGenerate = async () => {
     const text = state === 'prompt' ? prompt : `${prompt}\n\nFeedback: ${feedback}`;
@@ -51,6 +52,7 @@ export default function HierarchicalPlanDialog({
       setPlan(data.previewHierarchicalPlan);
       setState('editing');
       setFeedback('');
+      setShowFeedback(false);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Failed to generate plan',
@@ -118,7 +120,7 @@ export default function HierarchicalPlanDialog({
   };
 
   const handleRegenerate = () => {
-    setState('prompt');
+    setShowFeedback(true);
   };
 
   const loading = generating || committing;
@@ -185,6 +187,28 @@ export default function HierarchicalPlanDialog({
               </p>
             </div>
             <HierarchicalPlanEditor plan={plan} onChange={setPlan} />
+
+            {showFeedback && (
+              <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                <textarea
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  placeholder="What would you like to change?"
+                  rows={3}
+                  className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded-lg resize-y focus:outline-none focus:ring-1 focus:ring-brand-green"
+                  disabled={loading}
+                  autoFocus
+                />
+                <Button
+                  size="sm"
+                  onClick={handleGenerate}
+                  disabled={loading || !feedback.trim()}
+                  className="rounded-lg"
+                >
+                  {generating ? 'Regenerating...' : 'Regenerate with Feedback'}
+                </Button>
+              </div>
+            )}
           </>
         )}
 
