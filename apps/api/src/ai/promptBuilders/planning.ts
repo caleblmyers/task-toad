@@ -11,13 +11,23 @@ import {
 // Sprint & task planning prompts
 // ---------------------------------------------------------------------------
 
+export interface MemberCapacityInput {
+  userId: string;
+  userEmail: string;
+  hoursPerWeek: number;
+  availableHours: number;
+}
+
 export function buildPlanSprintsPrompt(
   projectName: string,
   tasks: { title: string; estimatedHours: number | null; priority: string }[],
   sprintLengthWeeks: number,
-  teamSize: number
+  teamSize: number,
+  teamCapacity?: MemberCapacityInput[],
 ): Prompt {
-  const capacityPerSprint = Math.round(sprintLengthWeeks * teamSize * 40 * 0.7);
+  const capacityPerSprint = teamCapacity
+    ? Math.round(teamCapacity.reduce((sum, m) => sum + m.availableHours, 0) * 0.7)
+    : Math.round(sprintLengthWeeks * teamSize * 40 * 0.7);
 
   const taskLines = tasks
     .map((t, i) => {
@@ -25,6 +35,10 @@ export function buildPlanSprintsPrompt(
       return `[${i}] "${t.title}" (${hours}h, priority: ${t.priority})`;
     })
     .join('\n');
+
+  const teamLines = teamCapacity
+    ? `\nPer-member capacity (accounting for time off):\n${teamCapacity.map((m) => `- ${m.userEmail}: ${m.hoursPerWeek}h/week, ${m.availableHours}h available this sprint`).join('\n')}\n`
+    : '';
 
   return {
     systemPrompt: SYSTEM_JSON,
@@ -34,7 +48,7 @@ Project: ${userInput('name', projectName)}
 Sprint length: ${sprintLengthWeeks} week(s)
 Team size: ${teamSize} developer(s)
 Capacity per sprint: ~${capacityPerSprint} hours (assumes 70% efficiency)
-
+${teamLines}
 Backlog tasks to assign (index, title, estimate, priority):
 ${taskLines}
 
@@ -43,7 +57,7 @@ Rules:
 2. Higher priority tasks (critical > high > medium > low) should appear in earlier sprints.
 3. Group related tasks together when sensible.
 4. Tasks without an estimate should be treated as 2 hours.
-5. Every task must appear in exactly one sprint. Do not omit any tasks.
+5. Every task must appear in exactly one sprint. Do not omit any tasks.${teamCapacity ? '\n6. Distribute tasks considering individual member availability shown above.' : ''}
 
 Return a JSON array of sprint plans. Name each sprint descriptively based on the work it contains (e.g. "Sprint 1 – Core Auth", "Sprint 2 – Dashboard UI"):
 [{ "name": string, "taskIndices": number[], "totalHours": number }]`,

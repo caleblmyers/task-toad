@@ -339,3 +339,35 @@ export interface FilterGroup {
   conditions?: FilterCondition[];
   groups?: FilterGroup[];
 }
+
+export interface UserCapacity {
+  userCapacityId: string;
+  userId: string;
+  userEmail: string;
+  hoursPerWeek: number;
+  createdAt: string;
+}
+
+export interface UserTimeOff {
+  userTimeOffId: string;
+  userId: string;
+  userEmail: string;
+  startDate: string;
+  endDate: string;
+  description: string | null;
+  createdAt: string;
+}
+
+export interface MemberCapacity {
+  userId: string;
+  userEmail: string;
+  hoursPerWeek: number;
+  timeOff: UserTimeOff[];
+  availableHours: number;
+}
+
+export interface TeamCapacitySummary {
+  members: MemberCapacity[];
+  totalHoursPerWeek: number;
+  availableHoursInRange: number;
+}

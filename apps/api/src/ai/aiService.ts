@@ -39,6 +39,7 @@ import {
   buildExpandTaskPrompt,
   buildSummarizeProjectPrompt,
   buildPlanSprintsPrompt,
+  type MemberCapacityInput,
   buildGenerateTaskInstructionsPrompt,
   buildGenerateCodePrompt,
   buildRegenerateFilePrompt,
@@ -220,9 +221,10 @@ export async function planSprints(
   tasks: { title: string; estimatedHours: number | null; priority: string }[],
   sprintLengthWeeks: number,
   teamSize: number,
-  promptLogContext?: PromptLogContext
+  promptLogContext?: PromptLogContext,
+  teamCapacity?: MemberCapacityInput[],
 ): Promise<SprintPlan[]> {
-  const p = buildPlanSprintsPrompt(projectName, tasks, sprintLengthWeeks, teamSize);
+  const p = buildPlanSprintsPrompt(projectName, tasks, sprintLengthWeeks, teamSize, teamCapacity);
   const plans = await callAndParse(apiKey, 'planSprints', p, z.array(SprintPlanSchema), promptLogContext);
   if (plans.length === 0) {
     throw new GraphQLError('Failed to parse AI sprint plan');

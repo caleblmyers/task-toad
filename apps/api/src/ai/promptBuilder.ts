@@ -23,7 +23,7 @@ export {
   buildRepoDriftPrompt,
   buildTrendAnalysisPrompt,
   buildSummarizeProjectPrompt,
-  buildPlanSprintsPrompt,
+  buildPlanSprintsPrompt, type MemberCapacityInput,
   buildStandupPrompt,
   buildSprintReportPrompt,
   buildSprintTransitionPrompt,

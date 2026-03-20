@@ -588,7 +588,7 @@ export const sprintMutations = {
     args: { projectId: string; sprintLengthWeeks: number; teamSize: number },
     context: Context
   ) => {
-    const { project } = await requireProject(context, args.projectId);
+    const { user, project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
     const backlogTasks = await context.prisma.task.findMany({
       where: { projectId: args.projectId, sprintId: null, taskType: { not: 'epic' }, OR: [{ parentTaskId: null }, { parentTask: { taskType: 'epic' } }] },
@@ -597,6 +597,34 @@ export const sprintMutations = {
     if (backlogTasks.length === 0) {
       throw new ValidationError('No backlog tasks to plan. All tasks are already assigned to sprints.');
     }
+
+    // Fetch team capacity data for per-member distribution
+    let teamCapacity: { userId: string; userEmail: string; hoursPerWeek: number; availableHours: number }[] | undefined;
+    const members = await context.prisma.projectMember.findMany({
+      where: { projectId: args.projectId },
+      include: { user: { select: { userId: true, email: true } } },
+    });
+    if (members.length > 0) {
+      const memberUserIds = members.map((m: typeof members[number]) => m.userId);
+      const capacities = await context.prisma.userCapacity.findMany({
+        where: { orgId: user.orgId, userId: { in: memberUserIds } },
+      });
+      const capacityMap = new Map(capacities.map((c: typeof capacities[number]) => [c.userId, c.hoursPerWeek]));
+
+      // Only include capacity if at least one member has a record
+      if (capacities.length > 0) {
+        teamCapacity = members.map((m: typeof members[number]) => {
+          const hoursPerWeek = capacityMap.get(m.userId) ?? 40;
+          return {
+            userId: m.userId,
+            userEmail: m.user.email,
+            hoursPerWeek,
+            availableHours: hoursPerWeek * args.sprintLengthWeeks,
+          };
+        });
+      }
+    }
+
     const plans = await aiPlanSprints(
       apiKey,
       project.name,
@@ -606,7 +634,9 @@ export const sprintMutations = {
         priority: t.priority,
       })),
       args.sprintLengthWeeks,
-      args.teamSize
+      args.teamSize,
+      undefined,
+      teamCapacity,
     );
     return plans.map((p) => ({
       name: p.name,

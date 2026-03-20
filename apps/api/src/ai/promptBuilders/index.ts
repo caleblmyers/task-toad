@@ -29,7 +29,7 @@ export {
 } from './analysis.js';
 
 export {
-  buildPlanSprintsPrompt,
+  buildPlanSprintsPrompt, type MemberCapacityInput,
   buildStandupPrompt,
   buildSprintReportPrompt,
   buildSprintTransitionPrompt,

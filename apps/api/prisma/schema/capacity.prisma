@@ -1,0 +1,33 @@
+model UserCapacity {
+  userCapacityId String   @id @default(uuid()) @map("user_capacity_id")
+  orgId          String   @map("org_id")
+  userId         String   @map("user_id")
+  hoursPerWeek   Int      @default(40) @map("hours_per_week")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  org  Org  @relation(fields: [orgId], references: [orgId])
+  user User @relation(fields: [userId], references: [userId])
+
+  @@unique([orgId, userId])
+  @@index([orgId])
+  @@index([userId])
+  @@map("user_capacities")
+}
+
+model UserTimeOff {
+  userTimeOffId String   @id @default(uuid()) @map("user_time_off_id")
+  orgId         String   @map("org_id")
+  userId        String   @map("user_id")
+  startDate     String   @map("start_date")
+  endDate       String   @map("end_date")
+  description   String?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  org  Org  @relation(fields: [orgId], references: [orgId])
+  user User @relation(fields: [userId], references: [userId])
+
+  @@index([userId, startDate])
+  @@index([orgId])
+  @@map("user_time_off")
+}

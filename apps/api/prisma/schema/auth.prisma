@@ -29,6 +29,8 @@ model User {
   attachments       Attachment[]   @relation("UserAttachments")
   releases          Release[]      @relation("UserReleases")
   timeEntries       TimeEntry[]    @relation("UserTimeEntries")
+  userCapacities    UserCapacity[]
+  userTimeOffs      UserTimeOff[]
 
   @@index([orgId])
   @@map("users")
