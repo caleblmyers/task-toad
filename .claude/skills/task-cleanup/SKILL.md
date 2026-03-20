@@ -68,12 +68,23 @@ Should only show the main worktree.
 - Update the Parallelism Matrix if set relationships changed
 - Update `.claude-knowledge/changelog.md` if it exists — add a summary of what was done, including an "Open follow-ups" section listing items that need future work
 
-## 6. Commit
+## 6. Update App Docs (if wave changed the data model, auth, or file structure)
+
+Check if this wave added/changed Prisma models, auth flow, API endpoints, or major file structure. If so:
+
+- **`README.md`** — Update the env vars table, setup instructions, usage steps, or security section if any changed. This is the human-facing doc.
+- **`.claude-knowledge/app-overview.md`** — Update the data model list, auth flow, request path, GraphQL operations, or file map if any changed. This is the AI-facing reference doc.
+
+Skip this step if the wave was purely frontend, cleanup, or documentation changes.
+
+## 7. Commit
 
 Stage and commit the documentation updates:
 ```bash
 git add .claude-knowledge/todos.md .claude-knowledge/changelog.md .ai/taskswarm/issues.md
 ```
+
+Also stage `README.md` and `app-overview.md` if they were updated in step 6.
 
 Use Conventional Commits format:
 ```
@@ -85,7 +96,7 @@ chore(docs): update todos and changelog after Wave N completion
 Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 ```
 
-## 7. Report
+## 8. Report
 
 Show the user:
 - Number of commits ahead of origin (`git log --oneline origin/main..HEAD`)

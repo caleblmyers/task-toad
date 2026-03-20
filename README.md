@@ -81,7 +81,7 @@ cp apps/api/.env.example apps/api/.env
 | `JWT_SECRET` | Secret for HMAC JWT signing (any random string) |
 | `ENCRYPTION_MASTER_KEY` | 32-byte hex key for AES-256-GCM (org API key encryption) |
 | `CORS_ORIGINS` | Comma-separated allowed origins, e.g. `http://localhost:5173` |
-| `ANTHROPIC_API_KEY` | Anthropic API key (required for AI features) |
+| `SENTRY_DSN` | Sentry error tracking DSN (optional) |
 | `SMTP_HOST` | SMTP server host (optional — if unset, email links are printed to the console) |
 | `SMTP_PORT` | SMTP port (default `587`) |
 | `SMTP_USER` | SMTP username |
