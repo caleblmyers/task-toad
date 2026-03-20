@@ -4,6 +4,47 @@ Summaries of work completed each session. Most recent first.
 
 ---
 
+## 2026-03-20
+
+### Wave 32: Cumulative Flow + Time Tracking + Saved Views (3 workers, 6 tasks)
+
+**Worker 1 — Charts & Portfolio Metrics (P1 Views + Reporting):**
+- `cumulativeFlow` query: computes daily status snapshots from Activity table with date range + sprint filtering
+- Hand-coded SVG stacked area chart (CumulativeFlowChart.tsx) with per-status colors, hover tooltips, responsive ResizeObserver
+- Integrated into ProjectDashboard with toggle
+- `portfolioRollup` query: aggregate totalVelocity, avgCycleTimeHours, teamSprintProgress, aggregateStatusDistribution
+- Portfolio page: rollup stat cards above project grid with aggregate StatusBar
+
+**Worker 2 — Time Tracking (P1 Time Tracking):**
+- New `TimeEntry` model in timeentry.prisma with CRUD resolvers
+- `logTime`, `updateTimeEntry`, `deleteTimeEntry` mutations with ownership enforcement
+- `timeEntries`, `taskTimeSummary`, `sprintTimeSummary` queries with per-user breakdowns
+- Activity logged on time entry creation
+- Frontend: Time Tracking section in TaskFieldsPanel (total logged vs estimated, log form, entry list)
+- TimeEntryList component with inline edit and delete
+- Sprint time summary in SprintReportPanel
+
+**Worker 3 — Saved Views (P1 Search & Filtering):**
+- Extended SavedFilter model with viewType, sortBy, sortOrder, groupBy, visibleColumns, isShared fields
+- `sharedViews` query returns views visible to all org members
+- SavedViewPicker dropdown component with personal/shared view sections
+- Save view dialog with type, sort, group, and share options
+- Load view applies filters + switches view type
+- ProjectToolbar wired with all FilterBar props
+
+**Process:** All 6 tasks merged. 2 new lint warnings in SavedViewPicker (setState-in-effect pattern).
+
+**Other changes this session:**
+- fix(web): Moved SSEProvider above AppLayout to fix context error
+- chore: Removed stale ANTHROPIC_API_KEY env var and startup warning (bring-your-own-key pattern)
+
+**Open follow-ups:**
+- SavedViewPicker has 2 lint warnings (setState in effect) — cosmetic, not functional
+- SavedFilter model not renamed to SavedView (backward-compatible field additions only, rename deferred)
+- Auto-tracking from status transitions (TimeEntry with autoTracked flag) remains in P2 backlog
+
+---
+
 ## 2026-03-19 (evening)
 
 ### Wave 31: Task Watchers + WIP Limits + Release Model (3 workers, 6 tasks)

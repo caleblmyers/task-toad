@@ -46,9 +46,6 @@ async function main() {
     if (!process.env.SMTP_HOST) {
       logger.warn('SMTP_HOST is not set — email notifications will not be sent');
     }
-    if (!process.env.ANTHROPIC_API_KEY) {
-      logger.warn('ANTHROPIC_API_KEY is not set — AI features will be unavailable');
-    }
     if (
       !process.env.ENCRYPTION_MASTER_KEY ||
       process.env.ENCRYPTION_MASTER_KEY === 'change-me-to-a-64-char-hex-string'

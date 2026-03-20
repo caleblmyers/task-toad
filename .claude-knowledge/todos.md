@@ -12,6 +12,15 @@ All original work sets completed through Wave 30. Competitive gap items ongoing.
 
 ---
 
+## Wave 32 — Cumulative Flow + Time Tracking + Saved Views — Completed (2026-03-20)
+
+- [x] Cumulative flow diagram — backend query + SVG stacked area chart (task-001, worker-1)
+- [x] Cross-project rollup metrics — portfolioRollup query + Portfolio page stat cards (task-002, worker-1)
+- [x] Time tracking — backend: TimeEntry model, CRUD, task/sprint aggregates (task-003, worker-2)
+- [x] Time tracking — frontend: time log UI in task detail, sprint time summary (task-004, worker-2)
+- [x] Saved views — backend: extend SavedFilter with viewType/sortBy/groupBy/visibleColumns/isShared (task-005, worker-3)
+- [x] Saved views — frontend: SavedViewPicker, save/load/share UI, ProjectToolbar integration (task-006, worker-3)
+
 ## Wave 31 — Task Watchers + WIP Limits + Release Model — Completed (2026-03-19)
 
 - [x] Task watchers — backend: Prisma model, GraphQL CRUD, DataLoader, auto-watch, notifications (task-001, worker-1)
@@ -111,11 +120,11 @@ Expected by teams switching from Jira/Asana/Wrike.
 ### Views & Visualization
 - [x] **Kanban swimlanes** — `groupBy` parameter on KanbanBoard (assignee, priority, epic). Collapsible swimlane headers, localStorage persistence. *(Wave 30, task-006)*
 - [x] **WIP limits** — `wipLimits` JSON field on Sprint, KanbanBoard column header warnings (red/amber), SprintCreateModal per-column inputs, soft enforcement via UpdateTaskResult warnings. *(Wave 31, task-003)*
-- [ ] **Cumulative flow diagram** — Daily status counts computed from Activity table. Stacked area chart (reuse existing Recharts setup from velocity/burndown charts).
+- [x] **Cumulative flow diagram** — `cumulativeFlow` query computing daily status snapshots from Activity table. Hand-coded SVG stacked area chart with hover tooltips. *(Wave 32, task-001)*
 
 ### Search & Filtering
 - [ ] **Compound filter expressions** — `FilterGroup { operator: AND|OR, conditions: [...] }` structure. Recursive Prisma clause translation. Shared with automation engine conditions.
-- [ ] **Saved views** — Extend `SavedFilter` to include viewType, sortBy, groupBy, visibleColumns. Rename model to `SavedView`.
+- [x] **Saved views** — Extended SavedFilter with viewType, sortBy, sortOrder, groupBy, visibleColumns, isShared. SavedViewPicker UI with shared views support. *(Wave 32, tasks 005-006)*
 
 ### Collaboration
 - [x] **Task watchers** — TaskWatcher join table, auto-watch on create/assign/mention, watcher notifications, Watch/Unwatch UI toggle, DataLoader. *(Wave 31, tasks 001-002)*
@@ -125,14 +134,14 @@ Expected by teams switching from Jira/Asana/Wrike.
 - [ ] **Compound automation conditions** — Reuse `FilterGroup` from search. Support operators: `>`, `<`, `contains`, `is_empty`, `changed_to`, `changed_from`.
 
 ### Reporting
-- [ ] **Cross-project rollup metrics** — Extend `portfolioOverview` with aggregate velocity, cycle time percentiles, team-wide sprint progress.
+- [x] **Cross-project rollup metrics** — `portfolioRollup` query with totalVelocity, avgCycleTimeHours, teamSprintProgress, aggregateStatusDistribution. Portfolio page stat cards. *(Wave 32, task-002)*
 - [ ] **Scheduled report delivery** — `ReportSchedule { reportType, projectId, cronExpression, recipientUserIds }`. Reuse existing AI report generators. Deliver via email or Slack webhook.
 
 ### Hierarchy
 - [ ] **Multi-level hierarchy UI** — Schema already supports arbitrary nesting via `parentTaskId`. Add recursive rendering in EpicsView/TaskDetailPanel, breadcrumb navigation, `taskType: 'initiative'`.
 
 ### Time Tracking
-- [ ] **TimeEntry model** — `TimeEntry { taskId, userId, minutes, description, loggedDate, billable }`. Log/update/delete mutations. Show logged vs estimated in task detail and sprint reports.
+- [x] **TimeEntry model** — TimeEntry with CRUD, task/sprint time summaries, per-user breakdowns. Frontend: time log UI in task detail, sprint time summary. *(Wave 32, tasks 003-004)*
 
 ### Permissions
 - [ ] **Permission scheme** — Define `Permission` enum (VIEW_TASKS, CREATE_TASKS, EDIT_TASKS, TRANSITION_TASKS, MANAGE_SPRINTS, etc.). Map roles→permissions. Check in resolvers via `requirePermission()`. Initially hardcoded mapping, later configurable.
