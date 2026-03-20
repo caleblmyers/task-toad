@@ -265,3 +265,18 @@ export interface SprintPlanItem {
   taskIds: string[];
   totalHours: number;
 }
+
+export interface SavedFilter {
+  savedFilterId: string;
+  projectId: string;
+  name: string;
+  filters: string;
+  viewType?: string | null;
+  sortBy?: string | null;
+  sortOrder?: string | null;
+  groupBy?: string | null;
+  visibleColumns?: string | null;
+  isShared: boolean;
+  isDefault: boolean;
+  createdAt: string;
+}

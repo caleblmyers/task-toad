@@ -18,6 +18,12 @@ export const projectTypeDefs = /* GraphQL */ `
     projectId: ID!
     name: String!
     filters: String!
+    viewType: String
+    sortBy: String
+    sortOrder: String
+    groupBy: String
+    visibleColumns: String
+    isShared: Boolean!
     isDefault: Boolean!
     createdAt: String!
   }
@@ -73,6 +79,7 @@ export const projectQueryFields = /* GraphQL */ `
   """Get a summary of all projects for the portfolio dashboard."""
   portfolioOverview: [ProjectSummary!]!
   savedFilters(projectId: ID!): [SavedFilter!]!
+  sharedViews(projectId: ID!): [SavedFilter!]!
 `;
 
 export const projectMutationFields = /* GraphQL */ `
@@ -83,7 +90,7 @@ export const projectMutationFields = /* GraphQL */ `
   archiveProject(projectId: ID!, archived: Boolean!): Project!
   generateProjectOptions(prompt: String!): [ProjectOption!]!
   createProjectFromOption(prompt: String!, title: String!, description: String!): Project!
-  saveFilter(projectId: ID!, name: String!, filters: String!): SavedFilter!
-  updateFilter(savedFilterId: ID!, name: String, filters: String): SavedFilter!
+  saveFilter(projectId: ID!, name: String!, filters: String!, viewType: String, sortBy: String, sortOrder: String, groupBy: String, visibleColumns: String, isShared: Boolean): SavedFilter!
+  updateFilter(savedFilterId: ID!, name: String, filters: String, viewType: String, sortBy: String, sortOrder: String, groupBy: String, visibleColumns: String, isShared: Boolean): SavedFilter!
   deleteFilter(savedFilterId: ID!): Boolean!
 `;

@@ -119,6 +119,16 @@ export const projectQueries = {
     return filters.map((f: typeof filters[number]) => ({ ...f, createdAt: f.createdAt.toISOString() }));
   },
 
+  sharedViews: async (_parent: unknown, args: { projectId: string }, context: Context) => {
+    requireAuth(context);
+    await requireProjectAccess(context, args.projectId);
+    const filters = await context.prisma.savedFilter.findMany({
+      where: { projectId: args.projectId, isShared: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    return filters.map((f: typeof filters[number]) => ({ ...f, createdAt: f.createdAt.toISOString() }));
+  },
+
   projectStats: async (_parent: unknown, args: { projectId: string }, context: Context) => {
     await requireProjectAccess(context, args.projectId);
     const tasks = await context.prisma.task.findMany({
@@ -227,25 +237,48 @@ export const projectMutations = {
     return updated;
   },
 
-  saveFilter: async (_parent: unknown, args: { projectId: string; name: string; filters: string }, context: Context) => {
+  saveFilter: async (_parent: unknown, args: { projectId: string; name: string; filters: string; viewType?: string | null; sortBy?: string | null; sortOrder?: string | null; groupBy?: string | null; visibleColumns?: string | null; isShared?: boolean | null }, context: Context) => {
     const user = requireAuth(context);
     await requireProjectAccess(context, args.projectId);
     if (!args.name.trim()) throw new ValidationError('Filter name is required');
+    if (args.viewType != null && !['list', 'board', 'table'].includes(args.viewType)) {
+      throw new ValidationError('viewType must be one of: list, board, table');
+    }
     const filter = await context.prisma.savedFilter.create({
-      data: { projectId: args.projectId, userId: user.userId, name: args.name.trim(), filters: args.filters },
+      data: {
+        projectId: args.projectId,
+        userId: user.userId,
+        name: args.name.trim(),
+        filters: args.filters,
+        ...(args.viewType !== undefined ? { viewType: args.viewType } : {}),
+        ...(args.sortBy !== undefined ? { sortBy: args.sortBy } : {}),
+        ...(args.sortOrder !== undefined ? { sortOrder: args.sortOrder } : {}),
+        ...(args.groupBy !== undefined ? { groupBy: args.groupBy } : {}),
+        ...(args.visibleColumns !== undefined ? { visibleColumns: args.visibleColumns } : {}),
+        ...(args.isShared != null ? { isShared: args.isShared } : {}),
+      },
     });
     return { ...filter, createdAt: filter.createdAt.toISOString() };
   },
 
-  updateFilter: async (_parent: unknown, args: { savedFilterId: string; name?: string | null; filters?: string | null }, context: Context) => {
+  updateFilter: async (_parent: unknown, args: { savedFilterId: string; name?: string | null; filters?: string | null; viewType?: string | null; sortBy?: string | null; sortOrder?: string | null; groupBy?: string | null; visibleColumns?: string | null; isShared?: boolean | null }, context: Context) => {
     const user = requireAuth(context);
     const filter = await context.prisma.savedFilter.findUnique({ where: { savedFilterId: args.savedFilterId } });
     if (!filter || filter.userId !== user.userId) throw new NotFoundError('Saved filter not found');
+    if (args.viewType != null && !['list', 'board', 'table'].includes(args.viewType)) {
+      throw new ValidationError('viewType must be one of: list, board, table');
+    }
     const updated = await context.prisma.savedFilter.update({
       where: { savedFilterId: args.savedFilterId },
       data: {
         ...(args.name !== undefined && args.name !== null ? { name: args.name.trim() } : {}),
         ...(args.filters !== undefined && args.filters !== null ? { filters: args.filters } : {}),
+        ...(args.viewType !== undefined ? { viewType: args.viewType } : {}),
+        ...(args.sortBy !== undefined ? { sortBy: args.sortBy } : {}),
+        ...(args.sortOrder !== undefined ? { sortOrder: args.sortOrder } : {}),
+        ...(args.groupBy !== undefined ? { groupBy: args.groupBy } : {}),
+        ...(args.visibleColumns !== undefined ? { visibleColumns: args.visibleColumns } : {}),
+        ...(args.isShared !== undefined ? { isShared: args.isShared ?? false } : {}),
       },
     });
     return { ...updated, createdAt: updated.createdAt.toISOString() };
