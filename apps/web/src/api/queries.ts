@@ -105,6 +105,16 @@ export const REMOVE_TASK_ASSIGNEE_MUTATION = `mutation RemoveTaskAssignee($taskI
   removeTaskAssignee(taskId: $taskId, userId: $userId)
 }`;
 
+// ── Watcher Mutations ──
+
+export const ADD_TASK_WATCHER_MUTATION = `mutation AddTaskWatcher($taskId: ID!, $userId: ID!) {
+  addTaskWatcher(taskId: $taskId, userId: $userId) { id user { userId email } watchedAt }
+}`;
+
+export const REMOVE_TASK_WATCHER_MUTATION = `mutation RemoveTaskWatcher($taskId: ID!, $userId: ID!) {
+  removeTaskWatcher(taskId: $taskId, userId: $userId)
+}`;
+
 // ── Comment Mutations ──
 
 export const CREATE_COMMENT_MUTATION = `mutation CreateComment($taskId: ID!, $content: String!, $parentCommentId: ID) {

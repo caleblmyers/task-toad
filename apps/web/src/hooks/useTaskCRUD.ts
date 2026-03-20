@@ -59,6 +59,7 @@ export function useTaskCRUD({ projectId, userId, sprints }: UseTaskCRUDOptions) 
     handleCreateLabel: relations.handleCreateLabel, handleDeleteLabel: relations.handleDeleteLabel,
     handleAddTaskLabel: relations.handleAddTaskLabel, handleRemoveTaskLabel: relations.handleRemoveTaskLabel,
     handleAddAssignee: relations.handleAddAssignee, handleRemoveAssignee: relations.handleRemoveAssignee,
+    handleAddWatcher: relations.handleAddWatcher, handleRemoveWatcher: relations.handleRemoveWatcher,
     handleCreateComment: relations.handleCreateComment, handleUpdateComment: relations.handleUpdateComment,
     handleDeleteComment: relations.handleDeleteComment,
     handleReviewPR: relations.handleReviewPR,

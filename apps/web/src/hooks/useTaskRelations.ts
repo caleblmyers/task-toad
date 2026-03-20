@@ -5,8 +5,9 @@ import {
   DELETE_COMMENT_MUTATION, CREATE_LABEL_MUTATION, DELETE_LABEL_MUTATION,
   ADD_TASK_LABEL_MUTATION, REMOVE_TASK_LABEL_MUTATION, LABELS_QUERY,
   ADD_TASK_ASSIGNEE_MUTATION, REMOVE_TASK_ASSIGNEE_MUTATION,
+  ADD_TASK_WATCHER_MUTATION, REMOVE_TASK_WATCHER_MUTATION,
 } from '../api/queries';
-import type { Task, Comment, Activity, Label, TaskAssignee, CodeReview } from '../types';
+import type { Task, Comment, Activity, Label, TaskAssignee, TaskWatcher, CodeReview } from '../types';
 
 interface UseTaskRelationsOptions {
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
@@ -126,6 +127,33 @@ export function useTaskRelations({ setTasks, setSelectedTask, selectedTask, setE
     }
   }, [loadTasks, setTasks, setSelectedTask]);
 
+  // ── Watchers ──
+
+  const handleAddWatcher = useCallback(async (taskId: string, userId: string) => {
+    try {
+      const data = await gql<{ addTaskWatcher: TaskWatcher }>(ADD_TASK_WATCHER_MUTATION, { taskId, userId });
+      const newWatcher = data.addTaskWatcher;
+      setTasks((prev) => prev.map((t) =>
+        t.taskId === taskId ? { ...t, watchers: [...(t.watchers ?? []), newWatcher] } : t
+      ));
+      setSelectedTask((t) => t?.taskId === taskId ? { ...t, watchers: [...(t.watchers ?? []), newWatcher] } : t);
+    } catch {
+      loadTasks();
+    }
+  }, [loadTasks, setTasks, setSelectedTask]);
+
+  const handleRemoveWatcher = useCallback(async (taskId: string, userId: string) => {
+    setTasks((prev) => prev.map((t) =>
+      t.taskId === taskId ? { ...t, watchers: (t.watchers ?? []).filter((w) => w.user.userId !== userId) } : t
+    ));
+    setSelectedTask((t) => t?.taskId === taskId ? { ...t, watchers: (t.watchers ?? []).filter((w) => w.user.userId !== userId) } : t);
+    try {
+      await gql<{ removeTaskWatcher: boolean }>(REMOVE_TASK_WATCHER_MUTATION, { taskId, userId });
+    } catch {
+      loadTasks();
+    }
+  }, [loadTasks, setTasks, setSelectedTask]);
+
   // ── AI Review ──
 
   const handleReviewPR = useCallback(async (taskId: string, prNumber: number): Promise<CodeReview | null> => {
@@ -194,6 +222,8 @@ export function useTaskRelations({ setTasks, setSelectedTask, selectedTask, setE
     handleCreateLabel, handleDeleteLabel, handleAddTaskLabel, handleRemoveTaskLabel,
     // Assignees
     handleAddAssignee, handleRemoveAssignee,
+    // Watchers
+    handleAddWatcher, handleRemoveWatcher,
     // Comments
     handleCreateComment, handleUpdateComment, handleDeleteComment,
     // AI Review

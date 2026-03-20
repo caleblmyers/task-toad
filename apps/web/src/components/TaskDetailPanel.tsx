@@ -70,6 +70,8 @@ export interface TaskDetailPanelProps {
   onAddTaskLabel?: (taskId: string, labelId: string) => Promise<void>;
   onRemoveTaskLabel?: (taskId: string, labelId: string) => Promise<void>;
   onCreateLabel?: (name: string, color: string) => Promise<Label | null>;
+  onAddWatcher?: (taskId: string, userId: string) => Promise<void>;
+  onRemoveWatcher?: (taskId: string, userId: string) => Promise<void>;
   onCreateSubtask?: (parentTaskId: string, title: string) => Promise<void>;
   onReviewPR?: (taskId: string, prNumber: number) => Promise<CodeReview | null>;
   reviewResult?: CodeReview | null;
@@ -94,6 +96,7 @@ function PanelContent({
   onStatusChange, onSubtaskStatusChange, onGenerateInstructions,
   onAssignSprint, onAssignUser, onDueDateChange, onAddDependency, onRemoveDependency,
   onCreateComment, onUpdateComment, onDeleteComment, onUpdateTask, onArchiveTask,
+  onAddWatcher, onRemoveWatcher,
   onCreateSubtask,
   onReviewPR, reviewResult, reviewLoading,
   onAutoComplete, autoCompleteLoading,
@@ -164,6 +167,7 @@ function PanelContent({
         statuses={statuses}
         labels={labels}
         disabled={disabled}
+        currentUserId={currentUserId}
         onStatusChange={onStatusChange}
         onAssignSprint={onAssignSprint}
         onAssignUser={onAssignUser}
@@ -172,6 +176,8 @@ function PanelContent({
         onAddTaskLabel={onAddTaskLabel}
         onRemoveTaskLabel={onRemoveTaskLabel}
         onCreateLabel={onCreateLabel}
+        onAddWatcher={onAddWatcher}
+        onRemoveWatcher={onRemoveWatcher}
       />
 
       {/* Recurrence */}

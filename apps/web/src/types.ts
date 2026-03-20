@@ -9,6 +9,7 @@ export type {
   Label,
   Attachment,
   TaskAssignee,
+  TaskWatcher,
   TaskDependency,
   TaskPullRequest,
   TaskCommit,

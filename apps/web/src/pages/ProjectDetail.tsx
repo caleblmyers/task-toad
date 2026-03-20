@@ -302,6 +302,8 @@ export default function ProjectDetail() {
     onAddTaskLabel: d.handleAddTaskLabel,
     onRemoveTaskLabel: d.handleRemoveTaskLabel,
     onCreateLabel: d.handleCreateLabel,
+    onAddWatcher: d.handleAddWatcher,
+    onRemoveWatcher: d.handleRemoveWatcher,
     onArchiveTask: async (taskId: string, archived: boolean) => {
       await d.handleArchiveTask(taskId, archived);
       addToast('success', archived ? 'Task archived' : 'Task unarchived');

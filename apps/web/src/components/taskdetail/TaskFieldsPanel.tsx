@@ -11,6 +11,7 @@ interface TaskFieldsPanelProps {
   statuses: string[];
   labels?: Label[];
   disabled?: boolean;
+  currentUserId?: string;
   onStatusChange: (taskId: string, status: string) => void;
   onAssignSprint: (taskId: string, sprintId: string | null) => void;
   onAssignUser: (taskId: string, assigneeId: string | null) => void;
@@ -21,6 +22,8 @@ interface TaskFieldsPanelProps {
   onCreateLabel?: (name: string, color: string) => Promise<Label | null>;
   onAddAssignee?: (taskId: string, userId: string) => Promise<void>;
   onRemoveAssignee?: (taskId: string, userId: string) => Promise<void>;
+  onAddWatcher?: (taskId: string, userId: string) => Promise<void>;
+  onRemoveWatcher?: (taskId: string, userId: string) => Promise<void>;
 }
 
 function priorityVariant(p: string): 'danger' | 'warning' | 'info' | 'neutral' {
@@ -43,6 +46,7 @@ export default function TaskFieldsPanel({
   statuses,
   labels,
   disabled,
+  currentUserId,
   onStatusChange,
   onAssignSprint,
   onAssignUser,
@@ -53,8 +57,11 @@ export default function TaskFieldsPanel({
   onCreateLabel,
   onAddAssignee,
   onRemoveAssignee,
+  onAddWatcher,
+  onRemoveWatcher,
 }: TaskFieldsPanelProps) {
   const [showAssigneePicker, setShowAssigneePicker] = useState(false);
+  const [showWatcherPicker, setShowWatcherPicker] = useState(false);
   const [showLabelPicker, setShowLabelPicker] = useState(false);
   const [newLabelName, setNewLabelName] = useState('');
   const [newLabelColor, setNewLabelColor] = useState('#6b7280');
@@ -172,6 +179,89 @@ export default function TaskFieldsPanel({
           </select>
         )}
       </div>
+
+      {/* Watchers */}
+      {onAddWatcher && onRemoveWatcher && (
+        <div className="mb-4">
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+            Watchers {(task.watchers ?? []).length > 0 && <span className="text-slate-400">({(task.watchers ?? []).length})</span>}
+          </p>
+          <div className="flex flex-wrap gap-1.5 mb-1">
+            {(task.watchers ?? []).map((w) => (
+              <span
+                key={w.id}
+                className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-slate-50 text-slate-700 border border-slate-200"
+              >
+                {w.user.email}
+                <button
+                  onClick={() => onRemoveWatcher(task.taskId, w.user.userId)}
+                  className="ml-0.5 hover:opacity-70"
+                  disabled={disabled}
+                  aria-label={`Remove watcher ${w.user.email}`}
+                >
+                  ✕
+                </button>
+              </span>
+            ))}
+            {(task.watchers ?? []).length === 0 && (
+              <span className="text-xs text-slate-400">No watchers</span>
+            )}
+          </div>
+          {/* Watch/Unwatch toggle for current user */}
+          {currentUserId && (
+            (task.watchers ?? []).some((w) => w.user.userId === currentUserId) ? (
+              <button
+                onClick={() => onRemoveWatcher(task.taskId, currentUserId)}
+                className="text-xs text-slate-500 hover:text-slate-700 mr-2"
+                disabled={disabled}
+              >
+                Unwatch
+              </button>
+            ) : (
+              <button
+                onClick={() => onAddWatcher(task.taskId, currentUserId)}
+                className="text-xs text-slate-500 hover:text-slate-700 mr-2"
+                disabled={disabled}
+              >
+                Watch
+              </button>
+            )
+          )}
+          {showWatcherPicker ? (
+            <div className="mt-1">
+              <div className="max-h-32 overflow-y-auto border border-slate-200 rounded mb-1">
+                {orgUsers
+                  .filter((u) => !(task.watchers ?? []).some((w) => w.user.userId === u.userId))
+                  .map((u) => (
+                    <button
+                      key={u.userId}
+                      onClick={() => {
+                        onAddWatcher(task.taskId, u.userId);
+                        setShowWatcherPicker(false);
+                      }}
+                      className="w-full text-left px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                      disabled={disabled}
+                    >
+                      {u.email}
+                    </button>
+                  ))}
+                {orgUsers.filter((u) => !(task.watchers ?? []).some((w) => w.user.userId === u.userId)).length === 0 && (
+                  <p className="text-xs text-slate-400 px-2 py-1">All users watching</p>
+                )}
+              </div>
+              <button onClick={() => setShowWatcherPicker(false)} className="text-xs text-slate-400 hover:text-slate-600">Cancel</button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowWatcherPicker(true)}
+              className="text-xs text-slate-500 hover:text-slate-700"
+              disabled={disabled}
+            >
+              + Add watcher
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Due Date */}
       <div className="mb-4">

@@ -89,6 +89,8 @@ export interface ProjectData {
   handleDeleteLabel: (labelId: string) => Promise<void>;
   handleAddTaskLabel: (taskId: string, labelId: string) => Promise<void>;
   handleRemoveTaskLabel: (taskId: string, labelId: string) => Promise<void>;
+  handleAddWatcher: (taskId: string, userId: string) => Promise<void>;
+  handleRemoveWatcher: (taskId: string, userId: string) => Promise<void>;
   handleCreateComment: (taskId: string, content: string, parentCommentId?: string) => Promise<void>;
   handleUpdateComment: (commentId: string, content: string) => Promise<void>;
   handleDeleteComment: (commentId: string, taskId: string) => Promise<void>;
@@ -277,6 +279,7 @@ export function useProjectData(): ProjectData {
     handleCreateSubtask: taskCrud.handleCreateSubtask,
     handleCreateLabel: taskCrud.handleCreateLabel, handleDeleteLabel: taskCrud.handleDeleteLabel,
     handleAddTaskLabel: taskCrud.handleAddTaskLabel, handleRemoveTaskLabel: taskCrud.handleRemoveTaskLabel,
+    handleAddWatcher: taskCrud.handleAddWatcher, handleRemoveWatcher: taskCrud.handleRemoveWatcher,
     handleCreateComment: taskCrud.handleCreateComment, handleUpdateComment: taskCrud.handleUpdateComment,
     handleDeleteComment: taskCrud.handleDeleteComment,
     handleParseBugReport: ai.handleParseBugReport, handlePreviewPRD: ai.handlePreviewPRD,
