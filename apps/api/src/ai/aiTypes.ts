@@ -250,6 +250,47 @@ export const TrendAnalysisSchema = z.object({
 
 export type TrendAnalysis = z.infer<typeof TrendAnalysisSchema>;
 
+export const HierarchicalSubtaskSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  estimatedHours: z.number().optional().default(1),
+  priority: z.enum(['low', 'medium', 'high', 'critical']).optional().default('medium'),
+  acceptanceCriteria: z.string().optional().default(''),
+});
+
+export const HierarchicalTaskSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  estimatedHours: z.number().optional().default(1),
+  priority: z.enum(['low', 'medium', 'high', 'critical']).optional().default('medium'),
+  acceptanceCriteria: z.string().optional().default(''),
+  instructions: z.string().optional().default(''),
+  autoComplete: z.boolean().optional().default(false),
+  dependsOn: z.array(z.object({ title: z.string(), linkType: z.enum(['blocks', 'informs']) })).optional().default([]),
+  subtasks: z.array(HierarchicalSubtaskSchema).optional().default([]),
+});
+
+export const HierarchicalEpicSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  estimatedHours: z.number().optional().default(1),
+  priority: z.enum(['low', 'medium', 'high', 'critical']).optional().default('medium'),
+  acceptanceCriteria: z.string().optional().default(''),
+  instructions: z.string().optional().default(''),
+  autoComplete: z.boolean().optional().default(false),
+  dependsOn: z.array(z.object({ title: z.string(), linkType: z.enum(['blocks', 'informs']) })).optional().default([]),
+  tasks: z.array(HierarchicalTaskSchema).optional().default([]),
+});
+
+export const HierarchicalPlanResponseSchema = z.object({
+  epics: z.array(HierarchicalEpicSchema).min(1).max(10),
+});
+
+export type HierarchicalSubtask = z.infer<typeof HierarchicalSubtaskSchema>;
+export type HierarchicalTask = z.infer<typeof HierarchicalTaskSchema>;
+export type HierarchicalEpic = z.infer<typeof HierarchicalEpicSchema>;
+export type HierarchicalPlanResponse = z.infer<typeof HierarchicalPlanResponseSchema>;
+
 export const ActionPlanItemSchema = z.object({
   actionType: z.enum(['generate_code', 'create_pr', 'review_pr', 'write_docs', 'manual_step']),
   label: z.string(),
@@ -305,7 +346,8 @@ export type AIFeature =
   | 'analyzeRepoDrift'
   | 'batchGenerateCode'
   | 'knowledgeRetrieval'
-  | 'onboardingQuestion';
+  | 'onboardingQuestion'
+  | 'generateHierarchicalPlan';
 
 export const ProjectChatResponseSchema = z.object({
   answer: z.string(),

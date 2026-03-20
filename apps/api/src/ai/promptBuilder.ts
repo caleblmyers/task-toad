@@ -31,4 +31,5 @@ export {
   buildPlanTaskActionsPrompt,
   buildReleaseNotesPrompt,
   buildOnboardingQuestionsPrompt,
+  buildHierarchicalPlanPrompt,
 } from './promptBuilders/index.js';

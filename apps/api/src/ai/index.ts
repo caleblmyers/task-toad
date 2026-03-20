@@ -29,6 +29,7 @@ export {
   generateRepoProfile,
   generateReleaseNotes,
   generateOnboardingQuestions,
+  generateHierarchicalPlan,
 } from './aiService.js';
 
 export { logUsageToDB, checkBudget, type BudgetStatus } from './aiUsageTracker.js';
@@ -65,4 +66,8 @@ export type {
   ReleaseNotes,
   OnboardingQuestion,
   OnboardingQuestionsResponse,
+  HierarchicalSubtask,
+  HierarchicalTask,
+  HierarchicalEpic,
+  HierarchicalPlanResponse,
 } from './aiTypes.js';

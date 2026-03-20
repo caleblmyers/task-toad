@@ -40,3 +40,5 @@ export {
 } from './planning.js';
 
 export { buildOnboardingQuestionsPrompt } from './onboarding.js';
+
+export { buildHierarchicalPlanPrompt } from './hierarchicalPlan.js';

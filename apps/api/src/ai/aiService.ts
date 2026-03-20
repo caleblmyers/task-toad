@@ -6,6 +6,7 @@ import { createChildLogger } from '../utils/logger.js';
 
 const log = createChildLogger('ai');
 import {
+  HierarchicalPlanResponseSchema,
   OnboardingQuestionsResponseSchema,
   ActionPlanResponseSchema,
   ProjectOptionSchema,
@@ -30,7 +31,7 @@ import {
   TrendAnalysisSchema,
   ReleaseNotesSchema,
 } from './aiTypes.js';
-import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse, DriftAnalysis, TrendAnalysis, ActionPlanResponse, ReleaseNotes, OnboardingQuestionsResponse } from './aiTypes.js';
+import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse, DriftAnalysis, TrendAnalysis, ActionPlanResponse, ReleaseNotes, OnboardingQuestionsResponse, HierarchicalPlanResponse } from './aiTypes.js';
 import { FEATURE_CONFIG } from './aiConfig.js';
 import { callAI, type PromptLogContext } from './aiClient.js';
 import { parseJSON } from './responseParser.js';
@@ -64,6 +65,7 @@ import {
   buildRepoProfilePrompt,
   buildReleaseNotesPrompt,
   buildOnboardingQuestionsPrompt,
+  buildHierarchicalPlanPrompt,
 } from './promptBuilder.js';
 
 // ---------------------------------------------------------------------------
@@ -599,4 +601,17 @@ export async function generateOnboardingQuestions(
 ): Promise<OnboardingQuestionsResponse> {
   const p = buildOnboardingQuestionsPrompt({ projectName, projectDescription, existingTopics });
   return callAndParse(apiKey, 'onboardingQuestion', p, OnboardingQuestionsResponseSchema, promptLogContext);
+}
+
+export async function generateHierarchicalPlan(
+  apiKey: string,
+  projectName: string,
+  projectDescription: string,
+  prompt: string,
+  knowledgeBase?: string | null,
+  existingTaskTitles?: string[],
+  promptLogContext?: PromptLogContext
+): Promise<HierarchicalPlanResponse> {
+  const p = buildHierarchicalPlanPrompt({ projectName, projectDescription, prompt, knowledgeBase, existingTaskTitles });
+  return callAndParse(apiKey, 'generateHierarchicalPlan', p, HierarchicalPlanResponseSchema, promptLogContext);
 }
