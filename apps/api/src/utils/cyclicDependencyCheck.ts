@@ -50,3 +50,134 @@ export async function detectCycle(
 
   return false;
 }
+
+/**
+ * Validates a batch of proposed dependency edges against the existing graph
+ * AND against each other, before any are committed to the database.
+ *
+ * Only blocking edges (blocks, is_blocked_by) are checked — informational
+ * link types (informs, relates_to, duplicates) cannot create cycles.
+ *
+ * Returns an array of violations (empty = all valid).
+ */
+export async function batchDetectCycles(
+  prisma: PrismaClient,
+  proposedEdges: Array<{
+    sourceTaskId: string;
+    targetTaskId: string;
+    linkType: string;
+  }>
+): Promise<Array<{ sourceTaskId: string; targetTaskId: string; error: string }>> {
+  const BLOCKING_TYPES = new Set(['blocks', 'is_blocked_by']);
+  const violations: Array<{
+    sourceTaskId: string;
+    targetTaskId: string;
+    error: string;
+  }> = [];
+
+  // 1. Filter to only blocking edges
+  const blockingEdges = proposedEdges.filter((e) =>
+    BLOCKING_TYPES.has(e.linkType)
+  );
+
+  if (blockingEdges.length === 0) return violations;
+
+  // 2. Normalize direction: convert is_blocked_by to blocks (swap source/target)
+  const normalizedProposed = blockingEdges.map((e) => {
+    if (e.linkType === 'is_blocked_by') {
+      return {
+        source: e.targetTaskId,
+        target: e.sourceTaskId,
+        originalSource: e.sourceTaskId,
+        originalTarget: e.targetTaskId,
+      };
+    }
+    return {
+      source: e.sourceTaskId,
+      target: e.targetTaskId,
+      originalSource: e.sourceTaskId,
+      originalTarget: e.targetTaskId,
+    };
+  });
+
+  // 3. Check self-loops
+  for (const edge of normalizedProposed) {
+    if (edge.source === edge.target) {
+      violations.push({
+        sourceTaskId: edge.originalSource,
+        targetTaskId: edge.originalTarget,
+        error: `Self-loop: task "${edge.source}" cannot depend on itself`,
+      });
+    }
+  }
+
+  // 4. Fetch ALL existing blocking edges from the database
+  const existingEdges = await prisma.taskDependency.findMany({
+    where: { linkType: { in: ['blocks', 'is_blocked_by'] } },
+    select: { sourceTaskId: true, targetTaskId: true, linkType: true },
+  });
+
+  // 5. Build adjacency list combining existing + proposed edges
+  const adj = new Map<string, Set<string>>();
+  const addEdge = (from: string, to: string) => {
+    let neighbors = adj.get(from);
+    if (!neighbors) {
+      neighbors = new Set<string>();
+      adj.set(from, neighbors);
+    }
+    neighbors.add(to);
+  };
+
+  // Add existing edges (normalized to blocks direction)
+  for (const e of existingEdges) {
+    if (e.linkType === 'blocks') {
+      addEdge(e.sourceTaskId, e.targetTaskId);
+    } else {
+      // is_blocked_by: swap direction
+      addEdge(e.targetTaskId, e.sourceTaskId);
+    }
+  }
+
+  // Add all proposed edges
+  for (const e of normalizedProposed) {
+    if (e.source !== e.target) {
+      addEdge(e.source, e.target);
+    }
+  }
+
+  // 6. For each proposed edge, check if target can reach source (cycle detection via BFS)
+  for (const edge of normalizedProposed) {
+    if (edge.source === edge.target) continue; // Already reported as self-loop
+
+    const visited = new Set<string>();
+    const queue: string[] = [edge.target];
+    let hasCycle = false;
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (current === edge.source) {
+        hasCycle = true;
+        break;
+      }
+      if (visited.has(current)) continue;
+      visited.add(current);
+
+      const neighbors = adj.get(current);
+      if (neighbors) {
+        for (const neighbor of neighbors) {
+          if (!visited.has(neighbor)) queue.push(neighbor);
+        }
+      }
+    }
+
+    if (hasCycle) {
+      violations.push({
+        sourceTaskId: edge.originalSource,
+        targetTaskId: edge.originalTarget,
+        error: `Cycle detected: adding "${edge.originalSource}" → "${edge.originalTarget}" would create a circular dependency`,
+      });
+    }
+  }
+
+  return violations;
+}
