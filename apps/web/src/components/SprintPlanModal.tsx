@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { gql } from '../api/client';
-import type { Task, Sprint, SprintPlanItem } from '../types';
+import type { Task, Sprint, SprintPlanItem, TeamCapacitySummary } from '../types';
+import { TEAM_CAPACITY_SUMMARY_QUERY } from '../api/queries';
 import Modal from './shared/Modal';
 import Button from './shared/Button';
 
@@ -18,6 +19,16 @@ function formatHours(h: number): string {
   return `${h}h`;
 }
 
+function getSprintDateRange(lengthWeeks: number): { startDate: string; endDate: string } {
+  const start = new Date();
+  const end = new Date();
+  end.setDate(end.getDate() + lengthWeeks * 7);
+  return {
+    startDate: start.toISOString().split('T')[0],
+    endDate: end.toISOString().split('T')[0],
+  };
+}
+
 export default function SprintPlanModal({
   projectId,
   tasks,
@@ -31,10 +42,42 @@ export default function SprintPlanModal({
   const [loading, setLoading] = useState(false);
   const [committing, setCommitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [capacitySummary, setCapacitySummary] = useState<TeamCapacitySummary | null>(null);
+  const [capacityLoading, setCapacityLoading] = useState(true);
 
   const backlogTasks = tasks.filter((t) => !t.sprintId);
   const taskMap = Object.fromEntries(tasks.map((t) => [t.taskId, t]));
-  const capacity = Math.round(sprintLengthWeeks * teamSize * 40 * 0.7);
+
+  const hasCapacityData = capacitySummary !== null && capacitySummary.members.length > 0;
+  const capacity = hasCapacityData
+    ? Math.round(capacitySummary.availableHoursInRange * 0.7)
+    : Math.round(sprintLengthWeeks * teamSize * 40 * 0.7);
+
+  const fetchCapacity = useCallback(async () => {
+    setCapacityLoading(true);
+    try {
+      const { startDate, endDate } = getSprintDateRange(sprintLengthWeeks);
+      const data = await gql<{ teamCapacitySummary: TeamCapacitySummary }>(
+        TEAM_CAPACITY_SUMMARY_QUERY,
+        { projectId, startDate, endDate },
+      );
+      // Only set if there are actual capacity records
+      if (data.teamCapacitySummary.members.length > 0) {
+        setCapacitySummary(data.teamCapacitySummary);
+      } else {
+        setCapacitySummary(null);
+      }
+    } catch {
+      // Non-critical — fall back to manual calculation
+      setCapacitySummary(null);
+    } finally {
+      setCapacityLoading(false);
+    }
+  }, [projectId, sprintLengthWeeks]);
+
+  useEffect(() => {
+    void fetchCapacity();
+  }, [fetchCapacity]);
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -135,6 +178,25 @@ export default function SprintPlanModal({
           </div>
         </div>
       </div>
+
+      {/* Capacity info */}
+      {!capacityLoading && !hasCapacityData && (
+        <div className="px-6 py-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-100 dark:border-amber-800 flex-shrink-0">
+          Configure team capacity in Settings → Capacity for more accurate planning
+        </div>
+      )}
+      {hasCapacityData && (
+        <div className="px-6 py-2 border-b border-slate-100 dark:border-slate-700 flex-shrink-0">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Per-member available hours:</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            {capacitySummary.members.map((m) => (
+              <span key={m.userId} className="text-xs text-slate-600 dark:text-slate-300">
+                {m.userEmail.split('@')[0]}: <span className="font-medium">{m.availableHours}h</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Plan preview */}
       {plan && (

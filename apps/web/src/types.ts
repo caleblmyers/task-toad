@@ -25,6 +25,10 @@ export type {
   CloseSprintResult,
   SprintPlanItem,
   Release,
+  UserCapacity,
+  UserTimeOff,
+  MemberCapacity,
+  TeamCapacitySummary,
 } from '@tasktoad/shared-types';
 
 export interface Epic {

@@ -352,3 +352,41 @@ export const UPDATE_TIME_ENTRY_MUTATION = `mutation UpdateTimeEntry($timeEntryId
 export const DELETE_TIME_ENTRY_MUTATION = `mutation DeleteTimeEntry($timeEntryId: ID!) {
   deleteTimeEntry(timeEntryId: $timeEntryId)
 }`;
+
+// ── Capacity Queries & Mutations ──
+
+export const TEAM_CAPACITY_QUERY = `query TeamCapacity($projectId: ID!) {
+  teamCapacity(projectId: $projectId) {
+    userCapacityId userId userEmail hoursPerWeek createdAt
+  }
+}`;
+
+export const TEAM_CAPACITY_SUMMARY_QUERY = `query TeamCapacitySummary($projectId: ID!, $startDate: String!, $endDate: String!) {
+  teamCapacitySummary(projectId: $projectId, startDate: $startDate, endDate: $endDate) {
+    members { userId userEmail hoursPerWeek timeOff { userTimeOffId userId userEmail startDate endDate description createdAt } availableHours }
+    totalHoursPerWeek
+    availableHoursInRange
+  }
+}`;
+
+export const USER_TIME_OFFS_QUERY = `query UserTimeOffs($userId: ID) {
+  userTimeOffs(userId: $userId) {
+    userTimeOffId userId userEmail startDate endDate description createdAt
+  }
+}`;
+
+export const SET_USER_CAPACITY_MUTATION = `mutation SetUserCapacity($userId: ID!, $hoursPerWeek: Int!) {
+  setUserCapacity(userId: $userId, hoursPerWeek: $hoursPerWeek) {
+    userCapacityId userId userEmail hoursPerWeek createdAt
+  }
+}`;
+
+export const ADD_TIME_OFF_MUTATION = `mutation AddTimeOff($userId: ID!, $startDate: String!, $endDate: String!, $description: String) {
+  addTimeOff(userId: $userId, startDate: $startDate, endDate: $endDate, description: $description) {
+    userTimeOffId userId userEmail startDate endDate description createdAt
+  }
+}`;
+
+export const REMOVE_TIME_OFF_MUTATION = `mutation RemoveTimeOff($userTimeOffId: ID!) {
+  removeTimeOff(userTimeOffId: $userTimeOffId)
+}`;

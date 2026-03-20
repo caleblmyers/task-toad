@@ -8,6 +8,7 @@ import AIUsageDashboard from '../components/AIUsageDashboard';
 import UserAvatar from '../components/shared/UserAvatar';
 import WebhookSettings from '../components/WebhookSettings';
 import SlackSettings from '../components/SlackSettings';
+import TeamCapacityPanel from '../components/TeamCapacityPanel';
 import Tabs from '../components/shared/Tabs';
 import Card from '../components/shared/Card';
 import SectionHeader from '../components/shared/SectionHeader';
@@ -374,6 +375,20 @@ export default function OrgSettings() {
             content: (
               <Card className="space-y-6">
                 <WebhookSettings />
+              </Card>
+            ),
+          },
+          {
+            id: 'capacity',
+            label: 'Capacity',
+            content: (
+              <Card className="space-y-6">
+                <SectionHeader>Team Capacity</SectionHeader>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Set default working hours per week for each team member and manage time-off entries.
+                  This data is used by AI sprint planning for more accurate task distribution.
+                </p>
+                <TeamCapacityPanel orgUsers={orgUsers} />
               </Card>
             ),
           },
