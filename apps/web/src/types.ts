@@ -24,6 +24,7 @@ export type {
   TaskConnection,
   CloseSprintResult,
   SprintPlanItem,
+  Release,
 } from '@tasktoad/shared-types';
 
 export interface Epic {

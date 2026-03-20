@@ -6,8 +6,9 @@ import { useTaskCRUD } from './useTaskCRUD';
 import { useSprintManagement } from './useSprintManagement';
 import { useAIGeneration } from './useAIGeneration';
 import { useProjectState } from './useProjectState';
+import { useReleaseManagement } from './useReleaseManagement';
 import { useProjectEffects } from './useProjectEffects';
-import type { Task, TaskPlanPreview, Sprint, OrgUser, CloseSprintResult, Project, Comment, Activity, ProjectStats, Label, Epic, ActionPlanPreview, TaskActionPlan } from '../types';
+import type { Task, TaskPlanPreview, Sprint, OrgUser, CloseSprintResult, Project, Comment, Activity, ProjectStats, Label, Epic, ActionPlanPreview, TaskActionPlan, Release } from '../types';
 import type { TaskFilterInput } from './useTaskFiltering';
 
 export interface ProjectData {
@@ -33,7 +34,7 @@ export interface ProjectData {
   isGenerating: boolean;
   epics: Epic[];
   epicMap: Map<string, string>;
-  view: 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar' | 'epics';
+  view: 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar' | 'epics' | 'releases';
   editingTitle: boolean;
   editTitleValue: string;
   showAddForm: boolean;
@@ -76,7 +77,7 @@ export interface ProjectData {
   startEditTitle: (task: Task) => void;
   handleTitleSave: () => Promise<void>;
   handleUpdateTask: (taskId: string, updates: { description?: string; instructions?: string; acceptanceCriteria?: string; storyPoints?: number | null }) => Promise<void>;
-  switchView: (v: 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar' | 'epics') => void;
+  switchView: (v: 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar' | 'epics' | 'releases') => void;
   handleUpdateProject: (data: { name?: string; description?: string; prompt?: string; knowledgeBase?: string; statuses?: string }) => Promise<void>;
   handleRefreshRepoProfile: () => Promise<void>;
   handleAddDependency: (sourceTaskId: string, targetTaskId: string, linkType: string) => Promise<void>;
@@ -113,6 +114,21 @@ export interface ProjectData {
   setShowSprintPlanModal: React.Dispatch<React.SetStateAction<boolean>>;
   setCloseSprintId: React.Dispatch<React.SetStateAction<string | null>>;
   setSelectedTaskIds: React.Dispatch<React.SetStateAction<Set<string>>>;
+
+  // Releases
+  releases: Release[];
+  selectedRelease: Release | null;
+  showReleaseCreateModal: boolean;
+  releasesLoading: boolean;
+  loadReleases: () => Promise<void>;
+  createRelease: (args: { name: string; version: string; description?: string; releaseDate?: string }) => Promise<void>;
+  updateRelease: (releaseId: string, updates: Partial<Pick<Release, 'name' | 'version' | 'description' | 'status' | 'releaseDate' | 'releaseNotes'>>) => Promise<void>;
+  deleteRelease: (releaseId: string) => Promise<void>;
+  addTaskToRelease: (releaseId: string, task: Task) => Promise<void>;
+  removeTaskFromRelease: (releaseId: string, taskId: string) => Promise<void>;
+  generateReleaseNotes: (releaseId: string) => Promise<void>;
+  setSelectedRelease: React.Dispatch<React.SetStateAction<Release | null>>;
+  setShowReleaseCreateModal: React.Dispatch<React.SetStateAction<boolean>>;
 
   // Action plan
   actionPlanPreview: ActionPlanPreview | null;
@@ -167,6 +183,11 @@ export function useProjectData(): ProjectData {
     setErr: (e) => taskCrud.setErr(e),
   });
 
+  const releaseMgmt = useReleaseManagement({
+    projectId,
+    setErr: (e) => taskCrud.setErr(e),
+  });
+
   const ai = useAIGeneration({
     projectId,
     setTasks: taskCrud.setTasks,
@@ -182,6 +203,7 @@ export function useProjectData(): ProjectData {
     const results = await Promise.all([
       projectState.loadProject(), taskCrud.loadTasks(), sprintMgmt.loadSprints(),
       projectState.loadOrgUsers(), taskCrud.loadLabels(), projectState.loadEpics(),
+      releaseMgmt.loadReleases(),
     ]);
     return results[1]; // loadTasks result
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -294,6 +316,21 @@ export function useProjectData(): ProjectData {
     setShowSprintModal: sprintMgmt.setShowSprintModal, setEditingSprint: sprintMgmt.setEditingSprint,
     setShowSprintPlanModal: sprintMgmt.setShowSprintPlanModal, setCloseSprintId: sprintMgmt.setCloseSprintId,
     setSelectedTaskIds: taskCrud.setSelectedTaskIds,
+
+    // Releases
+    releases: releaseMgmt.releases,
+    selectedRelease: releaseMgmt.selectedRelease,
+    showReleaseCreateModal: releaseMgmt.showCreateModal,
+    releasesLoading: releaseMgmt.loading,
+    loadReleases: releaseMgmt.loadReleases,
+    createRelease: releaseMgmt.createRelease,
+    updateRelease: releaseMgmt.updateRelease,
+    deleteRelease: releaseMgmt.deleteRelease,
+    addTaskToRelease: releaseMgmt.addTaskToRelease,
+    removeTaskFromRelease: releaseMgmt.removeTaskFromRelease,
+    generateReleaseNotes: releaseMgmt.generateReleaseNotes,
+    setSelectedRelease: releaseMgmt.setSelectedRelease,
+    setShowReleaseCreateModal: releaseMgmt.setShowCreateModal,
 
     // Action plan
     actionPlanPreview: ai.actionPlanPreview, actionPlanPreviewLoading: ai.actionPlanPreviewLoading,

@@ -38,6 +38,8 @@ const BugReportModal = lazyWithRetry(() => import('../components/BugReportModal'
 const PRDBreakdownModal = lazyWithRetry(() => import('../components/PRDBreakdownModal'));
 const SprintTransitionModal = lazyWithRetry(() => import('../components/SprintTransitionModal'));
 const ActionPlanDialog = lazyWithRetry(() => import('../components/ActionPlanDialog'));
+const ReleaseListPanel = lazyWithRetry(() => import('../components/ReleaseListPanel'));
+const ReleaseModal = lazyWithRetry(() => import('../components/ReleaseModal'));
 import { TaskListSkeleton, KanbanBoardSkeleton } from '../components/Skeleton';
 import ToastContainer from '../components/shared/ToastContainer';
 import KeyboardShortcutHelp from '../components/shared/KeyboardShortcutHelp';
@@ -434,6 +436,22 @@ export default function ProjectDetail() {
               selectedTask={d.selectedTask}
               onSelectTask={d.selectTask}
             />
+          ) : d.view === 'releases' ? (
+            <Suspense fallback={lazyFallback}>
+              <ReleaseListPanel
+                releases={d.releases}
+                selectedRelease={d.selectedRelease}
+                projectTasks={d.tasks}
+                loading={d.releasesLoading}
+                onSelectRelease={d.setSelectedRelease}
+                onCreateRelease={() => d.setShowReleaseCreateModal(true)}
+                onUpdateRelease={d.updateRelease}
+                onDeleteRelease={d.deleteRelease}
+                onAddTask={d.addTaskToRelease}
+                onRemoveTask={d.removeTaskFromRelease}
+                onGenerateNotes={d.generateReleaseNotes}
+              />
+            </Suspense>
           ) : d.loading ? (
             d.view === 'board' ? <KanbanBoardSkeleton /> : <TaskListSkeleton count={6} />
           ) : d.view === 'backlog' ? (
@@ -796,6 +814,16 @@ export default function ProjectDetail() {
               }
             }}
             onClose={() => d.setActionPlanPreview(null)}
+          />
+        </Suspense>
+      )}
+
+      {/* Release create modal */}
+      {d.showReleaseCreateModal && (
+        <Suspense fallback={lazyFallback}>
+          <ReleaseModal
+            onSubmit={d.createRelease}
+            onClose={() => d.setShowReleaseCreateModal(false)}
           />
         </Suspense>
       )}

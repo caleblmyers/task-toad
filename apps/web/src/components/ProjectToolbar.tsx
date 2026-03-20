@@ -191,6 +191,12 @@ export default function ProjectToolbar({
           <span className="hidden sm:inline">Epics</span>
         </span>
       </button>
+      <button onClick={() => { d.switchView('releases'); setTimelineView(false); }} className={d.view === 'releases' && !timelineView ? activeClass : inactiveClass} disabled={d.isGenerating} title="Releases">
+        <span className="flex items-center gap-1">
+          <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 3h10v10H3z" /><path d="M3 7h10M7 3v10" /></svg>
+          <span className="hidden sm:inline">Releases</span>
+        </span>
+      </button>
       <button onClick={() => { d.switchView('dashboard'); setTimelineView(false); onLoadProjectActivities(); }} className={d.view === 'dashboard' && !timelineView ? activeClass : inactiveClass} disabled={d.isGenerating} title="Dashboard">
         <span className="flex items-center gap-1">📊<span className="hidden sm:inline">Dashboard</span></span>
       </button>

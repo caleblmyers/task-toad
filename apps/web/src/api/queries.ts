@@ -250,6 +250,52 @@ export const TASK_ACTION_PLAN_QUERY = `query TaskActionPlan($taskId: ID!) {
   }
 }`;
 
+// ── Release Queries ──
+
+export const RELEASES_QUERY = `query Releases($projectId: ID!, $status: String, $limit: Int, $cursor: String) {
+  releases(projectId: $projectId, status: $status, limit: $limit, cursor: $cursor) {
+    releases { releaseId name version status releaseDate releaseNotes createdAt updatedAt tasks { taskId title status } }
+    hasMore nextCursor
+  }
+}`;
+
+export const RELEASE_QUERY = `query Release($releaseId: ID!) {
+  release(releaseId: $releaseId) {
+    releaseId projectId name description version status releaseDate releaseNotes createdBy createdAt updatedAt
+    tasks { taskId title status priority description }
+  }
+}`;
+
+export const CREATE_RELEASE_MUTATION = `mutation CreateRelease($projectId: ID!, $name: String!, $version: String!, $description: String, $releaseDate: String) {
+  createRelease(projectId: $projectId, name: $name, version: $version, description: $description, releaseDate: $releaseDate) {
+    releaseId name version status releaseDate releaseNotes createdAt updatedAt tasks { taskId title status }
+  }
+}`;
+
+export const UPDATE_RELEASE_MUTATION = `mutation UpdateRelease($releaseId: ID!, $name: String, $version: String, $description: String, $status: String, $releaseDate: String, $releaseNotes: String) {
+  updateRelease(releaseId: $releaseId, name: $name, version: $version, description: $description, status: $status, releaseDate: $releaseDate, releaseNotes: $releaseNotes) {
+    releaseId name version status description releaseDate releaseNotes createdAt updatedAt tasks { taskId title status }
+  }
+}`;
+
+export const DELETE_RELEASE_MUTATION = `mutation DeleteRelease($releaseId: ID!) {
+  deleteRelease(releaseId: $releaseId)
+}`;
+
+export const ADD_TASK_TO_RELEASE_MUTATION = `mutation AddTaskToRelease($releaseId: ID!, $taskId: ID!) {
+  addTaskToRelease(releaseId: $releaseId, taskId: $taskId)
+}`;
+
+export const REMOVE_TASK_FROM_RELEASE_MUTATION = `mutation RemoveTaskFromRelease($releaseId: ID!, $taskId: ID!) {
+  removeTaskFromRelease(releaseId: $releaseId, taskId: $taskId)
+}`;
+
+export const GENERATE_RELEASE_NOTES_MUTATION = `mutation GenerateReleaseNotes($releaseId: ID!) {
+  generateReleaseNotes(releaseId: $releaseId) {
+    releaseId name version status description releaseDate releaseNotes createdAt updatedAt tasks { taskId title status }
+  }
+}`;
+
 export const REPLAY_WEBHOOK_DELIVERY_MUTATION = `mutation ReplayWebhookDelivery($deliveryId: ID!) {
   replayWebhookDelivery(deliveryId: $deliveryId) {
     id endpointId event status statusCode attemptCount nextRetryAt createdAt completedAt

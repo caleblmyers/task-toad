@@ -6,7 +6,7 @@ import type { OrgUser, Project, ProjectStats, Epic } from '../types';
 
 const VIEW_KEY = 'task-toad-view';
 
-type ViewType = 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar' | 'epics';
+type ViewType = 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar' | 'epics' | 'releases';
 
 interface UseProjectStateOptions {
   projectId: string | undefined;
@@ -20,7 +20,7 @@ export function useProjectState({ projectId, setErr }: UseProjectStateOptions) {
   const [epics, setEpics] = useState<Epic[]>([]);
 
   const stored = localStorage.getItem(VIEW_KEY);
-  const validViews = ['backlog', 'board', 'dashboard', 'table', 'calendar', 'epics'];
+  const validViews = ['backlog', 'board', 'dashboard', 'table', 'calendar', 'epics', 'releases'];
   const [view, setView] = useState<ViewType>(
     validViews.includes(stored ?? '') ? (stored as ViewType) : 'backlog'
   );
