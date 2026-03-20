@@ -28,6 +28,7 @@ model User {
   taskWatches       TaskWatcher[]  @relation("TaskWatchers")
   attachments       Attachment[]   @relation("UserAttachments")
   releases          Release[]      @relation("UserReleases")
+  timeEntries       TimeEntry[]    @relation("UserTimeEntries")
 
   @@index([orgId])
   @@map("users")

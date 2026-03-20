@@ -295,3 +295,35 @@ export interface SavedFilter {
   isDefault: boolean;
   createdAt: string;
 }
+
+export interface TimeEntry {
+  timeEntryId: string;
+  taskId: string;
+  userId: string;
+  userEmail: string;
+  durationMinutes: number;
+  description: string | null;
+  loggedDate: string;
+  billable: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TaskTimeSummary {
+  taskId: string;
+  totalMinutes: number;
+  estimatedHours: number | null;
+  entries: TimeEntry[];
+}
+
+export interface UserTimeSummary {
+  userId: string;
+  userEmail: string;
+  totalMinutes: number;
+}
+
+export interface SprintTimeSummary {
+  sprintId: string;
+  totalMinutes: number;
+  byUser: UserTimeSummary[];
+}

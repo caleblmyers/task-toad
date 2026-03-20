@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { Task, Sprint, OrgUser, Comment, Activity, Label, CodeReview, Attachment, TaskActionPlan } from '../types';
+import type { TaskTimeSummary } from '@tasktoad/shared-types';
 import ActionProgressPanel from './ActionProgressPanel';
 import { gql, TOKEN_KEY } from '../api/client';
 import CommentSection from './CommentSection';
@@ -85,6 +86,9 @@ export interface TaskDetailPanelProps {
   onSkipAction?: (actionId: string) => Promise<void>;
   onRetryAction?: (actionId: string) => Promise<void>;
   onCancelActionPlan?: (planId: string) => Promise<void>;
+  timeSummary?: TaskTimeSummary | null;
+  onLogTime?: (taskId: string, durationMinutes: number, loggedDate: string, description?: string, billable?: boolean) => Promise<unknown>;
+  onDeleteTimeEntry?: (timeEntryId: string, taskId: string) => Promise<void>;
 }
 
 function PanelContent({
@@ -101,6 +105,7 @@ function PanelContent({
   onReviewPR, reviewResult, reviewLoading,
   onAutoComplete, autoCompleteLoading,
   actionPlan, onCompleteManualAction, onSkipAction, onRetryAction, onCancelActionPlan,
+  timeSummary, onLogTime, onDeleteTimeEntry,
 }: Omit<TaskDetailPanelProps, 'onClose' | 'isDrawer'>) {
   const tools = parseTools(task.suggestedTools);
   const [editingDescription, setEditingDescription] = useState(false);
@@ -178,6 +183,9 @@ function PanelContent({
         onCreateLabel={onCreateLabel}
         onAddWatcher={onAddWatcher}
         onRemoveWatcher={onRemoveWatcher}
+        timeSummary={timeSummary}
+        onLogTime={onLogTime}
+        onDeleteTimeEntry={onDeleteTimeEntry}
       />
 
       {/* Recurrence */}

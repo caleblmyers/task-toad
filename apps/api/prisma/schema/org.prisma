@@ -22,6 +22,7 @@ model Org {
   customFields    CustomField[]
   taskTemplates   TaskTemplate[]
   releases        Release[]
+  timeEntries     TimeEntry[]
 
   @@map("orgs")
 }

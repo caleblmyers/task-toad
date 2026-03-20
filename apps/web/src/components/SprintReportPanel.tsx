@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
+import { SPRINT_TIME_SUMMARY_QUERY } from '../api/queries';
 import { IconClose } from './shared/Icons';
 import Modal from './shared/Modal';
+import type { SprintTimeSummary } from '@tasktoad/shared-types';
 
 interface SprintReport {
   summary: string;
@@ -43,10 +45,19 @@ export default function SprintReportPanel({ projectId, sprintId, sprintName, onC
     }
   };
 
+  const [timeSummary, setTimeSummary] = useState<SprintTimeSummary | null>(null);
+
   // Auto-generate on mount
   if (!report && !loading && !error) {
     generate();
   }
+
+  // Load sprint time summary
+  useEffect(() => {
+    gql<{ sprintTimeSummary: SprintTimeSummary }>(SPRINT_TIME_SUMMARY_QUERY, { sprintId })
+      .then((data) => setTimeSummary(data.sprintTimeSummary))
+      .catch(() => { /* non-critical */ });
+  }, [sprintId]);
 
   const rateColor = (rate: number) => {
     if (rate >= 80) return 'text-emerald-600 bg-emerald-50';
@@ -108,6 +119,26 @@ export default function SprintReportPanel({ projectId, sprintId, sprintName, onC
                 </span>
               </div>
             </div>
+
+            {/* Time Tracked */}
+            {timeSummary && timeSummary.totalMinutes > 0 && (
+              <div>
+                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Time Tracked</h3>
+                <p className="text-sm text-slate-700 mb-2">
+                  Total: <span className="font-semibold">{Math.floor(timeSummary.totalMinutes / 60)}h {timeSummary.totalMinutes % 60}m</span>
+                </p>
+                {timeSummary.byUser.length > 0 && (
+                  <div className="space-y-1">
+                    {timeSummary.byUser.map((u) => (
+                      <div key={u.userId} className="flex items-center justify-between text-xs text-slate-600">
+                        <span>{u.userEmail}</span>
+                        <span className="font-medium">{Math.floor(u.totalMinutes / 60)}h {u.totalMinutes % 60}m</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Highlights */}
             {report.highlights.length > 0 && (

@@ -301,3 +301,44 @@ export const REPLAY_WEBHOOK_DELIVERY_MUTATION = `mutation ReplayWebhookDelivery(
     id endpointId event status statusCode attemptCount nextRetryAt createdAt completedAt
   }
 }`;
+
+// ── Time Tracking Queries ──
+
+export const TIME_ENTRIES_QUERY = `query TimeEntries($taskId: ID!, $limit: Int, $cursor: String) {
+  timeEntries(taskId: $taskId, limit: $limit, cursor: $cursor) {
+    entries { timeEntryId taskId userId userEmail durationMinutes description loggedDate billable createdAt updatedAt }
+    totalMinutes
+  }
+}`;
+
+export const TASK_TIME_SUMMARY_QUERY = `query TaskTimeSummary($taskId: ID!) {
+  taskTimeSummary(taskId: $taskId) {
+    taskId totalMinutes estimatedHours
+    entries { timeEntryId taskId userId userEmail durationMinutes description loggedDate billable createdAt updatedAt }
+  }
+}`;
+
+export const SPRINT_TIME_SUMMARY_QUERY = `query SprintTimeSummary($sprintId: ID!) {
+  sprintTimeSummary(sprintId: $sprintId) {
+    sprintId totalMinutes
+    byUser { userId userEmail totalMinutes }
+  }
+}`;
+
+// ── Time Tracking Mutations ──
+
+export const LOG_TIME_MUTATION = `mutation LogTime($taskId: ID!, $durationMinutes: Int!, $loggedDate: String!, $description: String, $billable: Boolean) {
+  logTime(taskId: $taskId, durationMinutes: $durationMinutes, loggedDate: $loggedDate, description: $description, billable: $billable) {
+    timeEntryId taskId userId userEmail durationMinutes description loggedDate billable createdAt updatedAt
+  }
+}`;
+
+export const UPDATE_TIME_ENTRY_MUTATION = `mutation UpdateTimeEntry($timeEntryId: ID!, $durationMinutes: Int, $description: String, $billable: Boolean) {
+  updateTimeEntry(timeEntryId: $timeEntryId, durationMinutes: $durationMinutes, description: $description, billable: $billable) {
+    timeEntryId taskId userId userEmail durationMinutes description loggedDate billable createdAt updatedAt
+  }
+}`;
+
+export const DELETE_TIME_ENTRY_MUTATION = `mutation DeleteTimeEntry($timeEntryId: ID!) {
+  deleteTimeEntry(timeEntryId: $timeEntryId)
+}`;

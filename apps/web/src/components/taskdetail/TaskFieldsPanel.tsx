@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import type { Task, Sprint, OrgUser, Label } from '../../types';
+import type { TaskTimeSummary } from '@tasktoad/shared-types';
 import { statusLabel } from '../../utils/taskHelpers';
 import Badge from '../shared/Badge';
 import TaskCustomFieldsSection from './TaskCustomFieldsSection';
+import TimeEntryList from './TimeEntryList';
 
 interface TaskFieldsPanelProps {
   task: Task;
@@ -24,6 +26,9 @@ interface TaskFieldsPanelProps {
   onRemoveAssignee?: (taskId: string, userId: string) => Promise<void>;
   onAddWatcher?: (taskId: string, userId: string) => Promise<void>;
   onRemoveWatcher?: (taskId: string, userId: string) => Promise<void>;
+  timeSummary?: TaskTimeSummary | null;
+  onLogTime?: (taskId: string, durationMinutes: number, loggedDate: string, description?: string, billable?: boolean) => Promise<unknown>;
+  onDeleteTimeEntry?: (timeEntryId: string, taskId: string) => Promise<void>;
 }
 
 function priorityVariant(p: string): 'danger' | 'warning' | 'info' | 'neutral' {
@@ -37,6 +42,14 @@ function formatHours(h: number): string {
   if (h < 1) return `${Math.round(h * 60)}m`;
   if (h >= 8) return `${+(h / 8).toFixed(1)}d`;
   return `${h}h`;
+}
+
+function formatDuration(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
 }
 
 export default function TaskFieldsPanel({
@@ -59,12 +72,22 @@ export default function TaskFieldsPanel({
   onRemoveAssignee,
   onAddWatcher,
   onRemoveWatcher,
+  timeSummary,
+  onLogTime,
+  onDeleteTimeEntry,
 }: TaskFieldsPanelProps) {
   const [showAssigneePicker, setShowAssigneePicker] = useState(false);
   const [showWatcherPicker, setShowWatcherPicker] = useState(false);
   const [showLabelPicker, setShowLabelPicker] = useState(false);
   const [newLabelName, setNewLabelName] = useState('');
   const [newLabelColor, setNewLabelColor] = useState('#6b7280');
+  const [showLogTime, setShowLogTime] = useState(false);
+  const [logHours, setLogHours] = useState('');
+  const [logMinutes, setLogMinutes] = useState('');
+  const [logDate, setLogDate] = useState(new Date().toISOString().slice(0, 10));
+  const [logDescription, setLogDescription] = useState('');
+  const [logBillable, setLogBillable] = useState(false);
+  const [logSubmitting, setLogSubmitting] = useState(false);
 
   return (
     <>
@@ -308,6 +331,119 @@ export default function TaskFieldsPanel({
           disabled={disabled}
         />
       </div>
+
+      {/* Time Tracking */}
+      {onLogTime && (
+        <div className="mb-4">
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Time Tracking</p>
+          {timeSummary && (
+            <p className="text-sm text-slate-700 mb-2">
+              <span className="font-medium">{formatDuration(timeSummary.totalMinutes)}</span>
+              {timeSummary.estimatedHours != null && (
+                <span className="text-slate-400"> / {formatHours(timeSummary.estimatedHours)} estimated</span>
+              )}
+            </p>
+          )}
+          {showLogTime ? (
+            <div className="space-y-2 p-2 bg-slate-50 rounded border border-slate-200">
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  max={23}
+                  value={logHours}
+                  onChange={(e) => setLogHours(e.target.value)}
+                  placeholder="0h"
+                  className="w-14 text-xs border border-slate-300 rounded px-2 py-1"
+                  aria-label="Hours"
+                />
+                <input
+                  type="number"
+                  min={0}
+                  max={59}
+                  value={logMinutes}
+                  onChange={(e) => setLogMinutes(e.target.value)}
+                  placeholder="0m"
+                  className="w-14 text-xs border border-slate-300 rounded px-2 py-1"
+                  aria-label="Minutes"
+                />
+                <input
+                  type="date"
+                  value={logDate}
+                  onChange={(e) => setLogDate(e.target.value)}
+                  className="flex-1 text-xs border border-slate-300 rounded px-2 py-1"
+                  aria-label="Date"
+                />
+              </div>
+              <input
+                type="text"
+                value={logDescription}
+                onChange={(e) => setLogDescription(e.target.value)}
+                placeholder="Description (optional)"
+                className="w-full text-xs border border-slate-300 rounded px-2 py-1"
+                aria-label="Description"
+              />
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-1 text-xs text-slate-600 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={logBillable}
+                    onChange={(e) => setLogBillable(e.target.checked)}
+                    className="rounded border-slate-300"
+                  />
+                  Billable
+                </label>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setShowLogTime(false)}
+                    className="text-xs text-slate-400 hover:text-slate-600 px-2 py-0.5"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    disabled={logSubmitting || ((!logHours || logHours === '0') && (!logMinutes || logMinutes === '0'))}
+                    onClick={async () => {
+                      const totalMin = (parseInt(logHours || '0', 10) * 60) + parseInt(logMinutes || '0', 10);
+                      if (totalMin <= 0) return;
+                      setLogSubmitting(true);
+                      try {
+                        await onLogTime(task.taskId, totalMin, logDate, logDescription || undefined, logBillable);
+                        setLogHours('');
+                        setLogMinutes('');
+                        setLogDescription('');
+                        setLogBillable(false);
+                        setShowLogTime(false);
+                      } finally {
+                        setLogSubmitting(false);
+                      }
+                    }}
+                    className="text-xs bg-brand-green text-white px-3 py-0.5 rounded hover:bg-emerald-600 disabled:opacity-50"
+                  >
+                    {logSubmitting ? 'Saving…' : 'Log'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowLogTime(true)}
+              className="text-xs text-slate-500 hover:text-slate-700"
+              disabled={disabled}
+            >
+              + Log Time
+            </button>
+          )}
+          {timeSummary && timeSummary.entries.length > 0 && (
+            <div className="mt-2">
+              <TimeEntryList
+                entries={timeSummary.entries}
+                currentUserId={currentUserId}
+                onDelete={(id) => onDeleteTimeEntry?.(id, task.taskId)}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Custom Fields */}
       <TaskCustomFieldsSection

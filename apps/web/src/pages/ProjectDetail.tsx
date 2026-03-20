@@ -4,6 +4,7 @@ import { useProjectData } from '../hooks/useProjectData';
 import { useTaskFiltering } from '../hooks/useTaskFiltering';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useToast } from '../hooks/useToast';
+import { useTimeTracking } from '../hooks/useTimeTracking';
 import { useAuth } from '../auth/context';
 import { gql } from '../api/client';
 import { useSSEListener } from '../hooks/useEventSource';
@@ -58,7 +59,16 @@ export default function ProjectDetail() {
   const filtering = useTaskFiltering(d.rootTasks);
   const { toasts, addToast, removeToast } = useToast();
   const { user } = useAuth();
+  const { timeSummary, loadTimeSummary, logTime, deleteTimeEntry } = useTimeTracking();
   const searchRef = useRef<HTMLInputElement>(null);
+
+  // Load time summary when task is selected
+  const selectedTaskId = d.selectedTask?.taskId;
+  useEffect(() => {
+    if (selectedTaskId) {
+      void loadTimeSummary(selectedTaskId);
+    }
+  }, [selectedTaskId, loadTimeSummary]);
 
   // Re-fetch tasks when server-side filter changes
   const filterInput = filtering.filterInput;
@@ -317,6 +327,9 @@ export default function ProjectDetail() {
     onSkipAction: d.handleSkipAction,
     onRetryAction: d.handleRetryAction,
     onCancelActionPlan: d.handleCancelActionPlan,
+    timeSummary,
+    onLogTime: logTime,
+    onDeleteTimeEntry: deleteTimeEntry,
   };
 
   return (

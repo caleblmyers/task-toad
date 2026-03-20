@@ -14,6 +14,7 @@ import { templateQueries, templateMutations } from './template.js';
 import { taskActionQueries, taskActionMutations, taskActionFieldResolvers } from './taskaction.js';
 import { workflowQueries, workflowMutations } from './workflow.js';
 import { releaseQueries, releaseMutations, releaseFieldResolvers } from './release.js';
+import { timeEntryQueries, timeEntryMutations } from './timeentry.js';
 
 export const resolvers = {
   Query: {
@@ -33,6 +34,7 @@ export const resolvers = {
     ...taskActionQueries,
     ...workflowQueries,
     ...releaseQueries,
+    ...timeEntryQueries,
   },
   Mutation: {
     ...authMutations,
@@ -51,6 +53,7 @@ export const resolvers = {
     ...taskActionMutations,
     ...workflowMutations,
     ...releaseMutations,
+    ...timeEntryMutations,
   },
   // Field resolvers
   User: { ...authFieldResolvers.User },

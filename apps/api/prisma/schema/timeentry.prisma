@@ -1,0 +1,21 @@
+model TimeEntry {
+  timeEntryId     String   @id @default(uuid()) @map("time_entry_id")
+  orgId           String   @map("org_id")
+  taskId          String   @map("task_id")
+  userId          String   @map("user_id")
+  durationMinutes Int      @map("duration_minutes")
+  description     String?
+  loggedDate      String   @map("logged_date")
+  billable        Boolean  @default(false)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  org  Org  @relation(fields: [orgId], references: [orgId])
+  task Task @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
+  user User @relation("UserTimeEntries", fields: [userId], references: [userId])
+
+  @@index([taskId])
+  @@index([userId, loggedDate])
+  @@index([orgId])
+  @@map("time_entries")
+}
