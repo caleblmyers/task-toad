@@ -3,6 +3,7 @@ import type { OrgUser } from '../../types';
 import { statusLabel } from '../../utils/taskHelpers';
 import { parseOptions } from '../../utils/jsonHelpers';
 import { gql } from '../../api/client';
+import FilterBuilder, { type FilterGroupInput } from './FilterBuilder';
 
 export interface SavedFilter {
   savedFilterId: string;
@@ -47,6 +48,8 @@ interface FilterBarProps {
   customFields?: CustomFieldDef[];
   customFieldFilters?: Record<string, string>;
   onCustomFieldFilterChange?: (fieldId: string, value: string) => void;
+  filterGroup?: FilterGroupInput | null;
+  onFilterGroupChange?: (g: FilterGroupInput | null) => void;
 }
 
 const pillBase = 'text-xs px-2.5 py-1 rounded-full border transition-colors cursor-pointer';
@@ -60,17 +63,20 @@ export default function FilterBar({
   onClear, hasActiveFilters, className = '',
   projectId, savedFilters, onSavedFiltersChange, onLoadFilter,
   customFields, customFieldFilters, onCustomFieldFilterChange,
+  filterGroup, onFilterGroupChange,
 }: FilterBarProps) {
   const statusOptions = statuses ?? ['todo', 'in_progress', 'done'];
   const [saveName, setSaveName] = useState('');
   const [showSaveInput, setShowSaveInput] = useState(false);
   const [filterError, setFilterError] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const handleSaveFilter = async () => {
     if (!projectId || !saveName.trim()) return;
     const filtersJson = JSON.stringify({
       statusFilter, priorityFilter, assigneeFilter, labelFilter: labelFilter ?? [],
       customFieldFilters: customFieldFilters ?? {},
+      ...(filterGroup ? { filterGroup } : {}),
     });
     try {
       setFilterError(null);
@@ -295,6 +301,17 @@ export default function FilterBar({
           </button>
         )}
 
+        {/* Advanced filter toggle */}
+        {onFilterGroupChange && (
+          <button
+            type="button"
+            onClick={() => setShowAdvanced((v) => !v)}
+            className={`${pillBase} ${showAdvanced || filterGroup ? pillActive : pillInactive}`}
+          >
+            Advanced{filterGroup ? ' *' : ''}
+          </button>
+        )}
+
         {/* Save filter button */}
         {projectId && onSavedFiltersChange && hasActiveFilters && (
           showSaveInput ? (
@@ -330,6 +347,17 @@ export default function FilterBar({
           )
         )}
       </div>
+
+      {/* Advanced filter builder */}
+      {showAdvanced && onFilterGroupChange && (
+        <FilterBuilder
+          value={filterGroup ?? null}
+          onChange={onFilterGroupChange}
+          statuses={statusOptions}
+          labels={labels ?? []}
+          orgUsers={orgUsers}
+        />
+      )}
     </div>
   );
 }

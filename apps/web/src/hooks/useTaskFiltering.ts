@@ -1,5 +1,8 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Task } from '../types';
+import type { FilterGroupInput } from '../components/shared/FilterBuilder';
+
+export type { FilterGroupInput };
 
 export interface TaskFilterInput {
   status?: string[];
@@ -14,6 +17,7 @@ export interface TaskFilterInput {
   dueDateTo?: string;
   sortBy?: string;
   sortOrder?: string;
+  filterGroup?: FilterGroupInput | null;
 }
 
 export interface ViewConfig {
@@ -33,6 +37,9 @@ export interface TaskFiltering {
   customFieldFilters: Record<string, string>;
   filteredTasks: Task[];
   filterInput: TaskFilterInput;
+  filterGroup: FilterGroupInput | null;
+  setFilterGroup: (g: FilterGroupInput | null) => void;
+  clearFilterGroup: () => void;
   setSearchQuery: (q: string) => void;
   setStatusFilter: (s: string) => void;
   setPriorityFilter: (p: string) => void;
@@ -66,6 +73,7 @@ export function useTaskFiltering(tasks: Task[]): TaskFiltering {
   const [labelFilter, setLabelFilter] = useState<string[]>([]);
   const [showArchived, setShowArchived] = useState(false);
   const [customFieldFilters, setCustomFieldFilters] = useState<Record<string, string>>({});
+  const [filterGroup, setFilterGroup] = useState<FilterGroupInput | null>(null);
   const viewConfigCallbackRef = useRef<((config: ViewConfig) => void) | undefined>();
 
   const setOnViewConfigApplied = useCallback((cb: ((config: ViewConfig) => void) | undefined) => {
@@ -82,7 +90,7 @@ export function useTaskFiltering(tasks: Task[]): TaskFiltering {
   }, [searchQuery]);
 
   const hasCustomFieldFilters = Object.values(customFieldFilters).some((v) => v !== '');
-  const hasActiveFilters = searchQuery !== '' || statusFilter !== 'all' || priorityFilter !== 'all' || assigneeFilter !== 'all' || labelFilter.length > 0 || showArchived || hasCustomFieldFilters;
+  const hasActiveFilters = searchQuery !== '' || statusFilter !== 'all' || priorityFilter !== 'all' || assigneeFilter !== 'all' || labelFilter.length > 0 || showArchived || hasCustomFieldFilters || filterGroup !== null;
 
   const setCustomFieldFilter = useCallback((fieldId: string, value: string) => {
     setCustomFieldFilters((prev) => ({ ...prev, [fieldId]: value }));
@@ -116,12 +124,18 @@ export function useTaskFiltering(tasks: Task[]): TaskFiltering {
       filter.showArchived = true;
     }
 
+    if (filterGroup) {
+      filter.filterGroup = filterGroup;
+    }
+
     return filter;
-  }, [statusFilter, priorityFilter, assigneeFilter, labelFilter, debouncedSearch, showArchived]);
+  }, [statusFilter, priorityFilter, assigneeFilter, labelFilter, debouncedSearch, showArchived, filterGroup]);
 
   // Pass through tasks as-is — server-side filtering is applied via filterInput
   // when callers pass filterInput to loadTasks
   const filteredTasks = tasks;
+
+  const clearFilterGroup = useCallback(() => setFilterGroup(null), []);
 
   const clearFilters = () => {
     setSearchQuery('');
@@ -131,6 +145,7 @@ export function useTaskFiltering(tasks: Task[]): TaskFiltering {
     setAssigneeFilter('all');
     setLabelFilter([]);
     setCustomFieldFilters({});
+    setFilterGroup(null);
   };
 
   const loadSavedFilter = useCallback((filtersJson: string, viewConfig?: ViewConfig) => {
@@ -141,12 +156,14 @@ export function useTaskFiltering(tasks: Task[]): TaskFiltering {
         assigneeFilter?: string;
         labelFilter?: string[];
         customFieldFilters?: Record<string, string>;
+        filterGroup?: FilterGroupInput | null;
       };
       if (parsed.statusFilter) setStatusFilter(parsed.statusFilter);
       if (parsed.priorityFilter) setPriorityFilter(parsed.priorityFilter);
       if (parsed.assigneeFilter) setAssigneeFilter(parsed.assigneeFilter);
       if (parsed.labelFilter) setLabelFilter(parsed.labelFilter);
       if (parsed.customFieldFilters) setCustomFieldFilters(parsed.customFieldFilters);
+      setFilterGroup(parsed.filterGroup ?? null);
     } catch { /* ignore invalid JSON */ }
     if (viewConfig && viewConfigCallbackRef.current) {
       viewConfigCallbackRef.current(viewConfig);
@@ -155,7 +172,8 @@ export function useTaskFiltering(tasks: Task[]): TaskFiltering {
 
   return {
     searchQuery, statusFilter, priorityFilter, assigneeFilter, labelFilter,
-    customFieldFilters, filteredTasks, filterInput, setSearchQuery, setStatusFilter,
+    customFieldFilters, filteredTasks, filterInput, filterGroup, setFilterGroup,
+    clearFilterGroup, setSearchQuery, setStatusFilter,
     setPriorityFilter, setAssigneeFilter, setLabelFilter, showArchived, setShowArchived,
     setCustomFieldFilter, clearFilters, hasActiveFilters, loadSavedFilter,
     onViewConfigApplied: viewConfigCallbackRef.current, setOnViewConfigApplied,

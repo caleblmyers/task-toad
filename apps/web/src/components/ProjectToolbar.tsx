@@ -541,6 +541,8 @@ export default function ProjectToolbar({
             savedFilters={savedFilters}
             onSavedFiltersChange={setSavedFilters}
             onLoadFilter={(filtersJson) => filtering.loadSavedFilter(filtersJson)}
+            filterGroup={filtering.filterGroup}
+            onFilterGroupChange={filtering.setFilterGroup}
           />
         </div>
       )}
