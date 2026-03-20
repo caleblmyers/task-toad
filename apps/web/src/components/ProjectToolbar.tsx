@@ -359,6 +359,7 @@ export default function ProjectToolbar({
               { label: 'Import/Export', onClick: () => { previousFocusRef.current = document.activeElement as HTMLElement; setShowExportMenu((v) => !v); setShowTemplateMenu(false); } },
               { label: 'Project Settings', onClick: () => onOpenModal('project-settings'), disabled: !d.can('MANAGE_PROJECT_SETTINGS') },
               { label: 'Knowledge Base', onClick: () => onOpenModal('knowledge-base') },
+              { label: 'Onboarding Interview', icon: <IconSparkle className="w-3.5 h-3.5" />, onClick: () => onOpenModal('onboarding') },
               { label: gitHubRepo ? `GitHub: ${gitHubRepo.repositoryOwner}/${gitHubRepo.repositoryName}` : 'Connect GitHub', icon: <IconGitHub className="w-3.5 h-3.5" />, onClick: () => onOpenModal('github') },
               { label: 'Keyboard Shortcuts', icon: <IconKeyboard className="w-3.5 h-3.5" />, onClick: () => onOpenModal('shortcut-help') },
             ] satisfies DropdownMenuItem[]}

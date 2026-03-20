@@ -46,6 +46,7 @@ export const FEATURE_CONFIG: Record<AIFeature, FeatureConfig> = {
   analyzeRepoDrift:         { maxTokens: 4096, cacheTTLMs: 0,       retryOnValidationFailure: true },
   batchGenerateCode:        { maxTokens: 8192, cacheTTLMs: 0,       retryOnValidationFailure: true },
   knowledgeRetrieval:       { maxTokens: 512,  cacheTTLMs: 0,       retryOnValidationFailure: false },
+  onboardingQuestion:       { maxTokens: 1024, cacheTTLMs: 0,       retryOnValidationFailure: true },
 };
 
 // ---------------------------------------------------------------------------

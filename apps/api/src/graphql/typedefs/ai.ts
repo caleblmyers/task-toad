@@ -145,6 +145,18 @@ export const aiTypeDefs = /* GraphQL */ `
     createdAt: String!
   }
 
+  type OnboardingQuestion {
+    question: String!
+    context: String!
+    category: String!
+  }
+
+  input OnboardingAnswerInput {
+    question: String!
+    answer: String!
+    category: String!
+  }
+
   type TrendAnalysis {
     period: String!
     completionTrend: String!
@@ -182,4 +194,8 @@ export const aiMutationFields = /* GraphQL */ `
   bootstrapProjectFromRepo(projectId: ID!): [Task!]!
   """Refresh the repo profile (knowledge base) from the linked GitHub repository."""
   refreshRepoProfile(projectId: ID!): Project!
+  """Generate contextual onboarding questions for a project."""
+  generateOnboardingQuestions(projectId: ID!): [OnboardingQuestion!]!
+  """Save onboarding interview answers as knowledge entries."""
+  saveOnboardingAnswers(projectId: ID!, answers: [OnboardingAnswerInput!]!): [KnowledgeEntry!]!
 `;

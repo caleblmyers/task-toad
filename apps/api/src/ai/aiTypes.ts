@@ -304,7 +304,8 @@ export type AIFeature =
   | 'projectChat'
   | 'analyzeRepoDrift'
   | 'batchGenerateCode'
-  | 'knowledgeRetrieval';
+  | 'knowledgeRetrieval'
+  | 'onboardingQuestion';
 
 export const ProjectChatResponseSchema = z.object({
   answer: z.string(),
@@ -331,6 +332,19 @@ export const KnowledgeRetrievalResponseSchema = z.object({
 });
 
 export type KnowledgeRetrievalResponse = z.infer<typeof KnowledgeRetrievalResponseSchema>;
+
+export const OnboardingQuestionSchema = z.object({
+  question: z.string(),
+  context: z.string(),
+  category: z.enum(['standard', 'pattern', 'business', 'integration']),
+});
+
+export const OnboardingQuestionsResponseSchema = z.object({
+  questions: z.array(OnboardingQuestionSchema).min(3).max(6),
+});
+
+export type OnboardingQuestion = z.infer<typeof OnboardingQuestionSchema>;
+export type OnboardingQuestionsResponse = z.infer<typeof OnboardingQuestionsResponseSchema>;
 
 export interface AIUsage {
   inputTokens: number;

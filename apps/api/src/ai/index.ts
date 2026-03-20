@@ -28,6 +28,7 @@ export {
   planTaskActions,
   generateRepoProfile,
   generateReleaseNotes,
+  generateOnboardingQuestions,
 } from './aiService.js';
 
 export { logUsageToDB, checkBudget, type BudgetStatus } from './aiUsageTracker.js';
@@ -62,4 +63,6 @@ export type {
   ActionPlanItem,
   AIFeature,
   ReleaseNotes,
+  OnboardingQuestion,
+  OnboardingQuestionsResponse,
 } from './aiTypes.js';

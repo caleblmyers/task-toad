@@ -6,6 +6,7 @@ import { createChildLogger } from '../utils/logger.js';
 
 const log = createChildLogger('ai');
 import {
+  OnboardingQuestionsResponseSchema,
   ActionPlanResponseSchema,
   ProjectOptionSchema,
   TaskPlanSchema,
@@ -29,7 +30,7 @@ import {
   TrendAnalysisSchema,
   ReleaseNotesSchema,
 } from './aiTypes.js';
-import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse, DriftAnalysis, TrendAnalysis, ActionPlanResponse, ReleaseNotes } from './aiTypes.js';
+import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse, DriftAnalysis, TrendAnalysis, ActionPlanResponse, ReleaseNotes, OnboardingQuestionsResponse } from './aiTypes.js';
 import { FEATURE_CONFIG } from './aiConfig.js';
 import { callAI, type PromptLogContext } from './aiClient.js';
 import { parseJSON } from './responseParser.js';
@@ -62,6 +63,7 @@ import {
   buildPlanTaskActionsPrompt,
   buildRepoProfilePrompt,
   buildReleaseNotesPrompt,
+  buildOnboardingQuestionsPrompt,
 } from './promptBuilder.js';
 
 // ---------------------------------------------------------------------------
@@ -586,4 +588,15 @@ export async function generateReleaseNotes(
 ): Promise<ReleaseNotes> {
   const p = buildReleaseNotesPrompt(data);
   return callAndParse(apiKey, 'generateReleaseNotes', p, ReleaseNotesSchema, promptLogContext);
+}
+
+export async function generateOnboardingQuestions(
+  apiKey: string,
+  projectName: string,
+  projectDescription: string,
+  existingTopics: string[],
+  promptLogContext?: PromptLogContext
+): Promise<OnboardingQuestionsResponse> {
+  const p = buildOnboardingQuestionsPrompt({ projectName, projectDescription, existingTopics });
+  return callAndParse(apiKey, 'onboardingQuestion', p, OnboardingQuestionsResponseSchema, promptLogContext);
 }

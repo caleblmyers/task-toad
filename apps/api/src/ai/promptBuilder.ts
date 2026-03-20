@@ -30,4 +30,5 @@ export {
   buildProjectChatPrompt,
   buildPlanTaskActionsPrompt,
   buildReleaseNotesPrompt,
+  buildOnboardingQuestionsPrompt,
 } from './promptBuilders/index.js';

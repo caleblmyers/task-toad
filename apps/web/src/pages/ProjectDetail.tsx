@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, Suspense, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { useProjectData } from '../hooks/useProjectData';
 import { useTaskFiltering } from '../hooks/useTaskFiltering';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
@@ -37,6 +37,7 @@ const TrendAnalysisPanel = lazyWithRetry(() => import('../components/TrendAnalys
 const MeetingNotesDialog = lazyWithRetry(() => import('../components/MeetingNotesDialog'));
 const CSVImportModal = lazyWithRetry(() => import('../components/CSVImportModal'));
 const KnowledgeBasePanel = lazyWithRetry(() => import('../components/KnowledgeBasePanel'));
+const OnboardingWizard = lazyWithRetry(() => import('../components/OnboardingWizard'));
 const BugReportModal = lazyWithRetry(() => import('../components/BugReportModal'));
 const PRDBreakdownModal = lazyWithRetry(() => import('../components/PRDBreakdownModal'));
 const SprintTransitionModal = lazyWithRetry(() => import('../components/SprintTransitionModal'));
@@ -63,6 +64,16 @@ export default function ProjectDetail() {
   const { user } = useAuth();
   const { timeSummary, loadTimeSummary, logTime, deleteTimeEntry } = useTimeTracking();
   const searchRef = useRef<HTMLInputElement>(null);
+  const location = useLocation();
+
+  // Auto-open onboarding wizard after project creation
+  useEffect(() => {
+    if ((location.state as Record<string, unknown> | null)?.showOnboarding) {
+      setActiveModal('onboarding');
+      // Clear state so it doesn't re-trigger on navigation
+      window.history.replaceState({}, '');
+    }
+  }, [location.state]);
 
   // Load time summary when task is selected
   const selectedTaskId = d.selectedTask?.taskId;
@@ -807,6 +818,17 @@ export default function ProjectDetail() {
             knowledgeBase={d.project?.knowledgeBase ?? null}
             onRefreshFromRepo={d.handleRefreshRepoProfile}
             hasGitHubRepo={!!(d.project?.githubRepositoryName)}
+          />
+        </Suspense>
+      )}
+
+      {/* Onboarding interview wizard */}
+      {activeModal === 'onboarding' && d.projectId && (
+        <Suspense fallback={lazyFallback}>
+          <OnboardingWizard
+            isOpen
+            onClose={() => setActiveModal(null)}
+            projectId={d.projectId}
           />
         </Suspense>
       )}

@@ -38,3 +38,5 @@ export {
   buildProjectChatPrompt,
   buildPlanTaskActionsPrompt,
 } from './planning.js';
+
+export { buildOnboardingQuestionsPrompt } from './onboarding.js';

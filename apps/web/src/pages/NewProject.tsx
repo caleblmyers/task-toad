@@ -88,7 +88,7 @@ export default function NewProject() {
       );
       sessionStorage.removeItem(SESSION_KEY);
       navigate(`/app/projects/${data.createProjectFromOption.projectId}`, {
-        state: { autoPreview: true },
+        state: { autoPreview: true, showOnboarding: true },
       });
     } catch (error) {
       setErr(error instanceof Error ? error.message : 'Failed to create project');
