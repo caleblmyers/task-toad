@@ -4,6 +4,8 @@ import { createPRExecutor } from './executors/createPR.js';
 import { reviewPRExecutor } from './executors/reviewPR.js';
 import { writeDocsExecutor } from './executors/writeDocs.js';
 import { manualStepExecutor } from './executors/manualStep.js';
+import { monitorCIExecutor } from './executors/monitorCI.js';
+import { fixCIExecutor } from './executors/fixCI.js';
 
 export function registerExecutors(): void {
   register(generateCodeExecutor);
@@ -11,6 +13,8 @@ export function registerExecutors(): void {
   register(reviewPRExecutor);
   register(writeDocsExecutor);
   register(manualStepExecutor);
+  register(monitorCIExecutor);
+  register(fixCIExecutor);
 }
 
 export { get as getExecutor, has as hasExecutor, availableTypes } from './registry.js';
