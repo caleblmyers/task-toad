@@ -33,4 +33,5 @@ export {
   buildOnboardingQuestionsPrompt,
   buildHierarchicalPlanPrompt,
   buildGenerateTaskInsightsPrompt,
+  buildManualTaskSpecPrompt,
 } from './promptBuilders/index.js';

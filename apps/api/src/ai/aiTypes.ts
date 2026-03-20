@@ -361,7 +361,8 @@ export type AIFeature =
   | 'knowledgeRetrieval'
   | 'onboardingQuestion'
   | 'generateHierarchicalPlan'
-  | 'generateTaskInsights';
+  | 'generateTaskInsights'
+  | 'generateManualTaskSpec';
 
 export const ProjectChatResponseSchema = z.object({
   answer: z.string(),
@@ -401,6 +402,28 @@ export const OnboardingQuestionsResponseSchema = z.object({
 
 export type OnboardingQuestion = z.infer<typeof OnboardingQuestionSchema>;
 export type OnboardingQuestionsResponse = z.infer<typeof OnboardingQuestionsResponseSchema>;
+
+export const ManualTaskSpecFileSchema = z.object({
+  path: z.string(),
+  action: z.enum(['create', 'modify', 'delete']),
+  description: z.string(),
+});
+
+export const ManualTaskSpecSchema = z.object({
+  filesToChange: z.array(ManualTaskSpecFileSchema).max(10),
+  approach: z.array(z.string()).min(1).max(8),
+  codeSnippets: z.array(z.object({
+    file: z.string(),
+    language: z.string(),
+    code: z.string(),
+    explanation: z.string(),
+  })).max(5),
+  testingNotes: z.string(),
+  dependencies: z.array(z.string()).optional().default([]),
+});
+
+export type ManualTaskSpecFile = z.infer<typeof ManualTaskSpecFileSchema>;
+export type ManualTaskSpec = z.infer<typeof ManualTaskSpecSchema>;
 
 export interface AIUsage {
   inputTokens: number;

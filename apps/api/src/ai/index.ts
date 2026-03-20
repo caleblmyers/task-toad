@@ -30,6 +30,7 @@ export {
   generateReleaseNotes,
   generateOnboardingQuestions,
   generateHierarchicalPlan,
+  generateManualTaskSpec,
 } from './aiService.js';
 
 export { logUsageToDB, checkBudget, type BudgetStatus } from './aiUsageTracker.js';
@@ -70,4 +71,6 @@ export type {
   HierarchicalTask,
   HierarchicalEpic,
   HierarchicalPlanResponse,
+  ManualTaskSpec,
+  ManualTaskSpecFile,
 } from './aiTypes.js';

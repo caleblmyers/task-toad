@@ -31,8 +31,9 @@ import {
   TrendAnalysisSchema,
   ReleaseNotesSchema,
   TaskInsightsResponseSchema,
+  ManualTaskSpecSchema,
 } from './aiTypes.js';
-import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse, DriftAnalysis, TrendAnalysis, ActionPlanResponse, ReleaseNotes, OnboardingQuestionsResponse, HierarchicalPlanResponse, TaskInsightsResponse } from './aiTypes.js';
+import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse, DriftAnalysis, TrendAnalysis, ActionPlanResponse, ReleaseNotes, OnboardingQuestionsResponse, HierarchicalPlanResponse, TaskInsightsResponse, ManualTaskSpec } from './aiTypes.js';
 import { FEATURE_CONFIG } from './aiConfig.js';
 import { callAI, type PromptLogContext } from './aiClient.js';
 import { parseJSON } from './responseParser.js';
@@ -68,6 +69,7 @@ import {
   buildOnboardingQuestionsPrompt,
   buildHierarchicalPlanPrompt,
   buildGenerateTaskInsightsPrompt,
+  buildManualTaskSpecPrompt,
 } from './promptBuilder.js';
 
 // ---------------------------------------------------------------------------
@@ -645,4 +647,23 @@ export async function generateTaskInsights(
     siblingTaskTitles, projectName, knowledgeBase,
   });
   return callAndParse(apiKey, 'generateTaskInsights', p, TaskInsightsResponseSchema, promptLogContext);
+}
+
+export async function generateManualTaskSpec(
+  apiKey: string,
+  taskTitle: string,
+  taskDescription: string,
+  taskInstructions: string,
+  projectName: string,
+  projectDescription: string,
+  knowledgeBase?: string | null,
+  repoFiles?: Array<{ path: string; language: string }>,
+  acceptanceCriteria?: string | null,
+  promptLogContext?: PromptLogContext
+): Promise<ManualTaskSpec> {
+  const p = buildManualTaskSpecPrompt({
+    taskTitle, taskDescription, taskInstructions,
+    projectName, projectDescription, knowledgeBase, repoFiles, acceptanceCriteria,
+  });
+  return callAndParse(apiKey, 'generateManualTaskSpec', p, ManualTaskSpecSchema, promptLogContext);
 }

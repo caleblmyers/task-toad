@@ -231,6 +231,27 @@ export const taskTypeDefs = /* GraphQL */ `
     epics: [HierarchicalEpicPreview!]!
   }
 
+  type ManualTaskSpecFile {
+    path: String!
+    action: String!
+    description: String!
+  }
+
+  type ManualTaskSpecSnippet {
+    file: String!
+    language: String!
+    code: String!
+    explanation: String!
+  }
+
+  type ManualTaskSpec {
+    filesToChange: [ManualTaskSpecFile!]!
+    approach: [String!]!
+    codeSnippets: [ManualTaskSpecSnippet!]!
+    testingNotes: String!
+    dependencies: [String!]!
+  }
+
   input DependencyRefInput {
     title: String!
     linkType: String!
@@ -353,4 +374,7 @@ export const taskMutationFields = /* GraphQL */ `
 
   addTaskDependency(sourceTaskId: ID!, targetTaskId: ID!, linkType: DependencyLinkType!): TaskDependency!
   removeTaskDependency(taskDependencyId: ID!): Boolean!
+
+  """Generate a rich implementation specification for a manual task."""
+  generateManualTaskSpec(taskId: ID!): ManualTaskSpec!
 `;

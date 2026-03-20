@@ -12,6 +12,7 @@ import {
   generateRepoProfile as aiGenerateRepoProfile,
   generateOnboardingQuestions as aiGenerateOnboardingQuestions,
   generateHierarchicalPlan as aiGenerateHierarchicalPlan,
+  generateManualTaskSpec as aiGenerateManualTaskSpec,
 } from '../../../ai/index.js';
 import { NotFoundError, ValidationError } from '../../errors.js';
 import { requireOrg, requireApiKey } from '../auth.js';
@@ -967,6 +968,55 @@ export const generationMutations = {
       )
     );
     return entries;
+  },
+
+  generateManualTaskSpec: async (
+    _parent: unknown,
+    args: { taskId: string },
+    context: Context
+  ) => {
+    const user = requireOrg(context);
+    const apiKey = requireApiKey(context);
+    await enforceBudget(context);
+    const task = await context.loaders.taskById.load(args.taskId);
+    if (!task || task.orgId !== user.orgId) {
+      throw new NotFoundError('Task not found');
+    }
+    const project = await context.loaders.projectById.load(task.projectId);
+    if (!project) throw new NotFoundError('Project not found');
+
+    // Retrieve relevant knowledge base entries
+    const taskContext = `${task.title}: ${task.description ?? ''}`;
+    let knowledgeBase: string | null = null;
+    try {
+      knowledgeBase = await retrieveRelevantKnowledge(context.prisma, task.projectId, taskContext, apiKey);
+    } catch {
+      knowledgeBase = project.knowledgeBase ?? null;
+    }
+
+    // Load repo file tree if GitHub connected
+    let repoFiles: Array<{ path: string; language: string }> | undefined;
+    const repo = await getProjectRepo(task.projectId);
+    if (repo) {
+      const fileTree = await fetchProjectFileTree(repo).catch(() => []);
+      repoFiles = fileTree
+        .filter((f: { language?: string | null }) => f.language)
+        .map((f: { path: string; language?: string | null }) => ({ path: f.path, language: f.language! }));
+    }
+
+    const plc = await buildPromptLogContext(context);
+    return aiGenerateManualTaskSpec(
+      apiKey,
+      task.title,
+      task.description ?? '',
+      task.instructions ?? '',
+      project.name,
+      project.description ?? '',
+      knowledgeBase,
+      repoFiles,
+      (task as Record<string, unknown>).acceptanceCriteria as string | undefined,
+      plc
+    );
   },
 };
 

@@ -446,6 +446,63 @@ export const projectMutations = {
     });
     return result;
   },
+
+  autoStartProject: async (_parent: unknown, args: { projectId: string }, context: Context) => {
+    const { user, project } = await requireProject(context, args.projectId);
+
+    // If no GitHub repo exists, create one (requires a GitHub installation)
+    if (!project.githubRepositoryName) {
+      const installation = project.githubInstallationId
+        ? await context.prisma.gitHubInstallation.findUnique({
+            where: { installationId: project.githubInstallationId },
+          })
+        : null;
+      if (!installation) {
+        throw new ValidationError('Project has no linked GitHub installation. Connect GitHub first.');
+      }
+      const { createRepoForProject } = await import('../../github/index.js');
+      await createRepoForProject(
+        args.projectId,
+        installation.installationId,
+        installation.accountLogin
+      );
+    }
+
+    // Trigger the orchestrator for all autoComplete tasks in todo status
+    const autoCompleteTasks = await context.prisma.task.findMany({
+      where: {
+        projectId: args.projectId,
+        autoComplete: true,
+        status: 'todo',
+        archived: false,
+      },
+      select: { taskId: true, title: true, status: true, taskType: true, orgId: true },
+    });
+
+    const bus = getEventBus();
+    for (const task of autoCompleteTasks) {
+      bus.emit('task.updated', {
+        orgId: user.orgId,
+        userId: user.userId,
+        projectId: args.projectId,
+        timestamp: new Date().toISOString(),
+        task: {
+          taskId: task.taskId,
+          title: task.title,
+          status: task.status,
+          projectId: args.projectId,
+          orgId: task.orgId,
+          taskType: task.taskType,
+        },
+        changes: { autoComplete: { old: 'true', new: 'true' } },
+      });
+    }
+
+    // Reload and return the updated project
+    return context.prisma.project.findUniqueOrThrow({
+      where: { projectId: args.projectId },
+    });
+  },
 };
 
 // ── Project field resolvers ──
