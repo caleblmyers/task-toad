@@ -7,29 +7,52 @@ Multi-tenant SaaS project management MVP. Users belong to orgs; orgs own project
 ## Auth Flow
 
 1. User calls `signup(email, password)` or `login(email, password)` mutation
-2. API returns a JWT signed with `JWT_SECRET` (HS256 via `jose`)
-3. Web stores token in `localStorage` under key `task-toad-id-token` (exported as `TOKEN_KEY`)
+2. API returns JWT signed with `JWT_SECRET` (HS256 via `jose`), payload includes `sub`, `email`, `tv` (tokenVersion)
+3. Web stores token in `localStorage` under key `task-toad-id-token`
 4. Subsequent requests include `Authorization: Bearer <token>`
-5. `apps/api/src/graphql/context.ts` verifies token, loads user from Postgres via Prisma
+5. `context.ts` verifies token, loads user, checks `tokenVersion` matches JWT `tv` claim
+6. `logout` mutation increments `tokenVersion`, invalidating all existing sessions
 
 ## Data Model (Prisma)
 
+Domain-split schema files in `apps/api/prisma/schema/`. Key models:
+
 ```
-User              — id, email, passwordHash, orgId, role
-Org               — id, name, anthropicApiKeyEncrypted
-Project           — id, name, description, prompt, orgId, statuses?, customFields
-Sprint            — id, name, orgId, projectId, isActive, columns (JSON string[]), startDate?, endDate?, closedAt?
-Task              — id, title, status, projectId, orgId, parentTaskId?, sprintId?, sprintColumn?, assigneeId?
-                    priority, estimatedHours, storyPoints, description, instructions, suggestedTools, dependsOn
-TaskAssignee      — id, taskId, userId, assignedAt (join table for multiple assignees)
-SlackUserMapping  — id, slackUserId, slackTeamId, userId, orgId (maps Slack users to TaskToad users)
-WebhookEndpoint   — id, orgId, url, secret, events, isActive
-WebhookDelivery   — id, endpointId, event, payload, status, statusCode, attemptCount, nextRetryAt
+User              — id, email, passwordHash, orgId, role, tokenVersion, emailVerifiedAt
+Org               — id, name, anthropicApiKeyEncrypted, monthlyBudgetCentsUSD
+Project           — id, name, description, orgId, statuses? (JSON)
+Sprint            — id, name, orgId, projectId, isActive, columns (JSON), wipLimits (JSON), startDate?, endDate?
+Task              — id, title, status, projectId, orgId, parentTaskId?, sprintId?, sprintColumn?, taskType
+                    priority, estimatedHours, storyPoints, description, instructions
+TaskAssignee      — taskId, userId (join table, multiple assignees)
+TaskWatcher       — taskId, userId (join table, auto-added on create/assign/mention)
+TaskDependency    — sourceTaskId, targetTaskId, linkType (blocks/relates_to/duplicates)
+Label             — id, name, color, projectId
+Comment           — id, taskId, userId, content, parentCommentId? (threaded)
+Activity          — id, taskId?, projectId?, userId, action, field?, oldValue?, newValue?
+Notification      — id, userId, type, title, body?, linkUrl?, read
+Report            — id, type, projectId, data (JSON)
+Release           — id, name, version, status, projectId, releaseDate?, releaseNotes?
+ReleaseTask       — releaseId, taskId (join table)
+TimeEntry         — id, taskId, userId, durationMinutes, loggedDate, billable, description?
+UserCapacity      — id, orgId, userId, hoursPerWeek
+UserTimeOff       — id, orgId, userId, startDate, endDate, description?
+SavedFilter       — id, projectId, userId, name, filters (JSON), viewType?, sortBy?, groupBy?, isShared
+WorkflowTransition — id, projectId, fromStatus, toStatus
+AutomationRule    — id, projectId, orgId, name, trigger (JSON), action (JSON), enabled
+ProjectMember     — projectId, userId, role (viewer/editor/admin)
+CustomField       — id, projectId, name, fieldType, options?
+ActionPlan        — id, taskId, status, actions (ordered)
+GitHubInstallation, GitHubCommitLink, GitHubPullRequestLink
+WebhookEndpoint   — id, orgId, url, secret (encrypted), events, isActive
+WebhookDelivery   — id, endpointId, event, payload, status, attemptCount
+SlackIntegration, SlackUserMapping
+AIPromptLog       — id, orgId, feature, model, tokenCount, cost, prompt (redacted)
 ```
 
-User roles tracked via a string field (e.g. `org:admin`). Only `org:admin` can `createProject`.
+**Roles:** User has `role` (org:admin/org:member). ProjectMember has `role` (viewer/editor/admin). Permission scheme maps roles → 22 granular permissions via `requirePermission()`.
 
-**Sprints:** A project can have multiple sprints; at most one is `isActive` at a time (enforced by `updateSprint` resolver). Tasks are assigned to a sprint via `sprintId` (null = backlog). `sprintColumn` tracks which kanban column the task is in within the sprint. `columns` on Sprint is a JSON array of column name strings, configurable per sprint.
+**Sprints:** Multiple per project, at most one `isActive`. Dynamic columns as JSON array. WIP limits as JSON object. Tasks assigned via `sprintId` (null = backlog).
 
 ## Request Path (dev)
 
