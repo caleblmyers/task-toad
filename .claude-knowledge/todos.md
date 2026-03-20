@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-Production deployed at `https://tasktoad-api-production.up.railway.app`. 38 swarm waves completed. All P0 and most P1 competitive gap items done. All 5 Critical security findings fixed. Current phase: Auto-Complete Pipeline Redesign (Waves 36-38 done, Waves 39-41 planned).
+Production deployed at `https://tasktoad-api-production.up.railway.app`. 39 swarm waves completed. All P0 and most P1 competitive gap items done. All 5 Critical security findings fixed. Current phase: Auto-Complete Pipeline Redesign (Waves 36-39 done, Waves 40-41 planned).
 
 ---
 
@@ -209,7 +209,7 @@ Transforms Auto-Complete from isolated per-task execution into project-level orc
 
 **Wave 37 follow-ups** (out of scope, add to future waves):
 - [ ] "Refresh from repo" in KnowledgeBasePanel still writes to legacy `project.knowledgeBase` — update to create/update a KnowledgeEntry instead
-- [ ] Add "Run Interview" button inside KnowledgeBasePanel (currently only in ProjectToolbar overflow menu)
+- [x] Add "Run Interview" button inside KnowledgeBasePanel *(Wave 39)*
 - [ ] Onboarding wizard keyboard navigation (Enter to advance, Escape to close)
 - [ ] KB entry search/filter in KnowledgeBasePanel when entry count grows large
 
@@ -219,17 +219,25 @@ Transforms Auto-Complete from isolated per-task execution into project-level orc
 - [x] **3-C: Plan Editor UI** — Tree view with editable nodes, autoComplete toggles, dependency badges, drag-to-reorder, commit button. `PlanDependencyEditor` for inline dependency picker. *(Depends: 3-A)*
 
 **Wave 38 follow-ups** (out of scope, add to future waves):
-- [ ] HierarchicalPlanDialog: add feedback textarea in editing state for "Regenerate with feedback" flow (currently just goes back to prompt input)
-- [ ] HierarchicalPlanEditor: fix exhaustive-deps lint warning (useEffect depends on `plan.epics.length` but uses `plan.epics`)
-- [ ] HierarchicalPlanEditor: add aria-labels to expand/collapse buttons and delete buttons for accessibility
+- [x] HierarchicalPlanDialog: add feedback textarea in editing state for "Regenerate with feedback" flow *(Wave 39)*
+- [x] HierarchicalPlanEditor: fix exhaustive-deps lint warning *(Wave 39)*
+- [x] HierarchicalPlanEditor: add aria-labels to expand/collapse buttons and delete buttons *(Wave 39)*
 - [ ] Add integration tests for `previewHierarchicalPlan` and `commitHierarchicalPlan` resolvers
 - [ ] Add unit tests for `batchDetectCycles` utility
-- [ ] PlanDependencyEditor is not wired into HierarchicalPlanEditor's node rendering (dependency badges show count but clicking them doesn't open the editor)
+- [x] PlanDependencyEditor wired into HierarchicalPlanEditor's node rendering *(Wave 39)*
 
-### Wave 39 — Execution Pipeline
-- [ ] **4-A: Project-Level Orchestrator** — Event-driven: listens to `task.action_plan_completed` + `task.updated(status→done)`. Finds auto-eligible tasks with all blockers completed. Generates action plan if none, then executes. Advisory lock per project. Concurrency limit (default 3).
-- [ ] **4-B: Parallel Execution + Branch Naming** — Orchestrator enqueues ALL eligible tasks. Branch naming: `task-{taskId}-{slug}` (kebab-case first 30 chars). Handle concurrent branch creation (retry on conflict). *(Depends: 4-A)*
-- [ ] **4-C: PR Description Generation** — AI-enriched PR descriptions (what changed, why, task/epic context, testing notes). Verify KB context flows through full pipeline.
+### Wave 39 — Execution Pipeline ✅
+- [x] **4-A: Project-Level Orchestrator** — Event-driven orchestrator with advisory lock + concurrency limit
+- [x] **4-B: Parallel Execution + Branch Naming** — Parallel enqueue, `task-{taskId}-{slug}` branches, conflict retry
+- [x] **4-C: PR Description Generation** — AI-enriched PRs with KB, acceptance criteria, parent task context
+- [x] **4-D: PlanDependencyEditor wiring** — Inline dependency editing in plan editor
+- [x] **4-E: Accessibility + KnowledgeBase UX** — Aria labels, Run Interview button
+
+**Wave 39 follow-ups** (out of scope, add to future waves):
+- [ ] Fix flaky `export.integration.test.ts` — fails in full suite (401 instead of expected statuses) but passes individually. Likely test isolation issue with JWT/DB state leaking between concurrent test files.
+- [ ] HierarchicalPlanEditor: the `setExpandedIds` in useEffect still triggers `react-hooks/set-state-in-effect` warning — consider using `useMemo` or `useState` initializer instead
+- [ ] Orchestrator: add metrics/observability for auto-complete task processing (count of tasks auto-enqueued, failures, concurrency limit hits)
+- [ ] PlanDependencyEditor: subtask-level dependencies not supported (editor only renders for epics and tasks)
 
 ### Wave 40 — Orchestration
 - [ ] **5-A: Status-Driven Events** — Orchestrator handles failure (block dependents, attach error context). New events: `task.blocked`, `task.unblocked`. Notification creation for blocked chains.
@@ -300,5 +308,6 @@ Transforms Auto-Complete from isolated per-task execution into project-level orc
 | 36 | 2026-03-20 | Auto-Complete Redesign — Foundation: KB schema, retrieval, autoComplete flag |
 | 37 | 2026-03-20 | Auto-Complete Redesign — Foundation: KB panel, onboarding interview, pipeline wiring |
 | 38 | 2026-03-20 | Auto-Complete Redesign — Intelligent Planning: hierarchical plans, batch cycle detection, plan editor |
+| 39 | 2026-03-20 | Auto-Complete Redesign — Execution Pipeline: orchestrator, parallel execution, PR descriptions, follow-ups |
 
 Full wave details in `changelog.md`.

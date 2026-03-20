@@ -85,6 +85,7 @@ Browser → Vite dev server (localhost:5173)
 | Action plan registry | `apps/api/src/actions/registry.ts` + `index.ts` |
 | Job executor (action pipeline) | `apps/api/src/infrastructure/jobs/actionExecutor.ts` |
 | Event bus (typed domain events) | `apps/api/src/infrastructure/eventbus/` |
+| Auto-complete orchestrator listener | `apps/api/src/infrastructure/listeners/orchestratorListener.ts` |
 | Auth context (JWT verify) | `apps/api/src/graphql/context.ts` |
 | DataLoaders (N+1 prevention) | `apps/api/src/graphql/loaders.ts` |
 | AES-256-GCM encryption util | `apps/api/src/utils/encryption.ts` |

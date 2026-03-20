@@ -6,6 +6,42 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ## 2026-03-20 (auto-complete redesign)
 
+### Wave 39: Auto-Complete Redesign — Execution Pipeline + Follow-ups (3 workers, 5 tasks)
+
+**Worker 1 — 4-A + 4-B: Project Orchestrator + Parallel Execution:**
+- New `orchestratorListener.ts` — registers on `task.action_plan_completed` and `task.updated` events
+- Finds auto-eligible tasks (`autoComplete=true`, `status=todo`, all blockers `done`), generates action plans, enqueues first action
+- Advisory lock per project (`PROJECT_ORCHESTRATOR` in LOCK_IDS) prevents concurrent orchestration
+- Concurrency limit of 3 executing plans per project
+- Enqueues ALL eligible tasks up to remaining concurrency slots (parallel, not sequential)
+- Branch naming changed from `task-{taskId}-ai` to `task-{taskId}-{slug}` (title-derived, lowercase, max 30 chars)
+- Branch conflict retry with random 4-char suffix on 422
+- `registerListeners` updated to accept `prisma` param for orchestrator
+
+**Worker 2 — 4-C: AI-Enriched PR Descriptions:**
+- `buildEnrichPRDescriptionPrompt` expanded: project name/description, KB entries, parent task/epic context, acceptance criteria, code summary
+- `enrichPRDescription` AI service function accepts new optional context params
+- `createPR` executor passes full ActionContext (knowledgeContext, project info, codeSummary from generate_code result, parent task title)
+- `createPullRequestFromTask` in githubService accepts `enrichContext` with all new fields
+- PR sections: Summary, Changes, Context (task/epic rationale), Testing (from acceptance criteria)
+
+**Worker 3 — Follow-ups from Waves 37-38:**
+- PlanDependencyEditor wired into HierarchicalPlanEditor — clicking dep badge toggles inline editor below node, `updateNodeDeps` callback updates plan state immutably
+- HierarchicalPlanDialog: regenerate button now reveals feedback textarea in editing state instead of returning to prompt
+- Aria labels on expand/collapse (`aria-expanded`) and delete buttons (`aria-label="Delete epic '...'"`)
+- Exhaustive-deps lint warning fixed (reduced warnings 5→4)
+- "Run Interview" button added to KnowledgeBasePanel header, wired to onboarding modal in ProjectDetail
+
+**Process:** Zero code quality rejections. Worker-1 sequential tasks merged as single branch (same issue as Wave 38). Pre-existing test isolation issue in `export.integration.test.ts` blocked merge validation script.
+
+**Open follow-ups:**
+- Fix flaky `export.integration.test.ts` (401s in full suite, passes individually)
+- `setExpandedIds` in useEffect still triggers `react-hooks/set-state-in-effect` warning
+- Orchestrator observability/metrics not yet added
+- PlanDependencyEditor doesn't render for subtask-level nodes
+
+---
+
 ### Wave 38: Auto-Complete Redesign — Intelligent Planning (3 workers, 6 tasks)
 
 **Worker 1 — 3-A: Hierarchical Plan Generation:**
