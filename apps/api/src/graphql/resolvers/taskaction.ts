@@ -202,8 +202,16 @@ export const taskActionMutations = {
     });
 
     if (!plan || plan.orgId !== user.orgId) throw new NotFoundError('Action plan not found');
-    if (plan.status !== 'approved') {
+    if (plan.status !== 'approved' && plan.status !== 'failed') {
       throw new ValidationError(`Cannot execute plan in '${plan.status}' status`);
+    }
+
+    // When retrying a failed plan, reset failed actions to pending
+    if (plan.status === 'failed') {
+      await context.prisma.taskAction.updateMany({
+        where: { planId: args.planId, status: 'failed' },
+        data: { status: 'pending', errorMessage: null, startedAt: null, completedAt: null },
+      });
     }
 
     // Update status
@@ -212,8 +220,14 @@ export const taskActionMutations = {
       data: { status: 'executing' },
     });
 
+    // Re-fetch actions after potential reset
+    const freshPlan = await context.prisma.taskActionPlan.findUnique({
+      where: { id: args.planId },
+      include: { actions: { orderBy: { position: 'asc' } } },
+    });
+
     // Enqueue the first pending action
-    const firstAction = plan.actions.find((a) => a.status === 'pending');
+    const firstAction = freshPlan!.actions.find((a) => a.status === 'pending');
     if (firstAction) {
       const queue = getJobQueue();
       queue.enqueue('action-execute', {

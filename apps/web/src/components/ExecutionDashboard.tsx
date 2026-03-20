@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { gql } from '../api/client';
-import { PROJECT_ACTION_PLANS_QUERY } from '../api/queries';
+import { PROJECT_ACTION_PLANS_QUERY, EXECUTE_ACTION_PLAN_MUTATION, CANCEL_ACTION_PLAN_MUTATION } from '../api/queries';
+import { useSSEListener } from '../hooks/useEventSource';
 import type { TaskActionPlan, TaskActionType } from '../types';
 
 interface ActionPlanWithTask extends TaskActionPlan {
@@ -41,6 +42,14 @@ const PLAN_STATUS_BADGE: Record<string, string> = {
 
 type FilterStatus = 'all' | 'executing' | 'completed' | 'failed';
 
+const SSE_REFRESH_EVENTS = [
+  'task.action_completed',
+  'task.action_plan_completed',
+  'task.action_plan_failed',
+  'task.blocked',
+  'task.unblocked',
+] as const;
+
 function formatElapsed(startedAt: string, completedAt?: string | null): string {
   const start = new Date(startedAt).getTime();
   const end = completedAt ? new Date(completedAt).getTime() : Date.now();
@@ -74,8 +83,13 @@ function ActionStep({ action }: { action: TaskActionType }) {
   );
 }
 
-function PlanCard({ plan }: { plan: ActionPlanWithTask }) {
+function PlanCard({ plan, onRetry, onCancel }: {
+  plan: ActionPlanWithTask;
+  onRetry: (planId: string) => Promise<void>;
+  onCancel: (planId: string) => Promise<void>;
+}) {
   const [expanded, setExpanded] = useState(false);
+  const [acting, setActing] = useState(false);
   const completedCount = plan.actions.filter((a) => a.status === 'completed').length;
   const totalCount = plan.actions.length;
   const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
@@ -84,6 +98,18 @@ function PlanCard({ plan }: { plan: ActionPlanWithTask }) {
   const lastActionCompleted = plan.status === 'completed'
     ? plan.actions.filter((a) => a.completedAt).sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime())[0]?.completedAt
     : null;
+
+  const isFailed = plan.status === 'failed';
+  const isExecuting = plan.status === 'executing';
+
+  const handleRetry = async () => {
+    setActing(true);
+    try { await onRetry(plan.id); } finally { setActing(false); }
+  };
+  const handleCancel = async () => {
+    setActing(true);
+    try { await onCancel(plan.id); } finally { setActing(false); }
+  };
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
@@ -119,13 +145,34 @@ function PlanCard({ plan }: { plan: ActionPlanWithTask }) {
         </div>
       </div>
 
-      {/* Expand/collapse actions */}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="mt-2 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-      >
-        {expanded ? 'Hide steps' : 'Show steps'}
-      </button>
+      {/* Controls row */}
+      <div className="mt-2 flex items-center gap-2">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+        >
+          {expanded ? 'Hide steps' : 'Show steps'}
+        </button>
+        <div className="flex-1" />
+        {isFailed && (
+          <button
+            onClick={handleRetry}
+            disabled={acting}
+            className="text-xs px-2.5 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 disabled:opacity-50"
+          >
+            Retry
+          </button>
+        )}
+        {isExecuting && (
+          <button
+            onClick={handleCancel}
+            disabled={acting}
+            className="text-xs px-2.5 py-1 border border-red-200 text-red-600 rounded hover:bg-red-50 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+        )}
+      </div>
 
       {expanded && (
         <div className="mt-2 space-y-0.5 border-t border-slate-100 dark:border-slate-800 pt-2">
@@ -168,6 +215,30 @@ export default function ExecutionDashboard({ projectId, onClose }: ExecutionDash
     fetchPlans();
   }, [fetchPlans]);
 
+  // SSE: auto-refresh on action plan events
+  useSSEListener(SSE_REFRESH_EVENTS, useCallback(() => {
+    void fetchPlans();
+  }, [fetchPlans]));
+
+  const handleRetry = useCallback(async (planId: string) => {
+    await gql<{ executeActionPlan: TaskActionPlan }>(
+      EXECUTE_ACTION_PLAN_MUTATION,
+      { planId },
+    );
+    void fetchPlans();
+  }, [fetchPlans]);
+
+  const handleCancel = useCallback(async (planId: string) => {
+    await gql<{ cancelActionPlan: TaskActionPlan }>(
+      CANCEL_ACTION_PLAN_MUTATION,
+      { planId },
+    );
+    void fetchPlans();
+  }, [fetchPlans]);
+
+  // Counts are computed from the full list (filter='all'), but when a filter is active
+  // the plans array is already filtered by the backend. For stat cards, we always show
+  // counts from the currently-loaded plans.
   const executingCount = plans.filter((p) => p.status === 'executing').length;
   const queuedCount = plans.filter((p) => p.status === 'approved' || p.status === 'draft').length;
   const completedCount = plans.filter((p) => p.status === 'completed').length;
@@ -181,7 +252,7 @@ export default function ExecutionDashboard({ projectId, onClose }: ExecutionDash
   ];
 
   return (
-    <div className="max-w-4xl mx-auto py-6 px-4">
+    <div className="max-w-4xl mx-auto py-6 px-4 overflow-y-auto">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Execution Dashboard</h2>
         <button
@@ -229,7 +300,7 @@ export default function ExecutionDashboard({ projectId, onClose }: ExecutionDash
       ) : (
         <div className="space-y-3">
           {plans.map((plan) => (
-            <PlanCard key={plan.id} plan={plan} />
+            <PlanCard key={plan.id} plan={plan} onRetry={handleRetry} onCancel={handleCancel} />
           ))}
         </div>
       )}

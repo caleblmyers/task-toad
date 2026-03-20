@@ -45,6 +45,7 @@ const SprintTransitionModal = lazyWithRetry(() => import('../components/SprintTr
 const ActionPlanDialog = lazyWithRetry(() => import('../components/ActionPlanDialog'));
 const ReleaseListPanel = lazyWithRetry(() => import('../components/ReleaseListPanel'));
 const ReleaseModal = lazyWithRetry(() => import('../components/ReleaseModal'));
+const ExecutionDashboard = lazyWithRetry(() => import('../components/ExecutionDashboard'));
 import { TaskListSkeleton, KanbanBoardSkeleton } from '../components/Skeleton';
 import ToastContainer from '../components/shared/ToastContainer';
 import KeyboardShortcutHelp from '../components/shared/KeyboardShortcutHelp';
@@ -96,7 +97,7 @@ export default function ProjectDetail() {
   // Consolidated modal state — replaces 8+ individual booleans
   const [activeModal, setActiveModal] = useState<string | null>(null);
   // View panels that replace the main content (not modal overlays)
-  const [activePanel, setActivePanel] = useState<'standup' | 'health' | 'trends' | 'cycle-time' | null>(null);
+  const [activePanel, setActivePanel] = useState<'standup' | 'health' | 'trends' | 'cycle-time' | 'execution-dashboard' | null>(null);
   // Kanban swimlane grouping
   const [groupBy, setGroupBy] = useState<'assignee' | 'priority' | 'epic' | null>(() => {
     const saved = localStorage.getItem('kanban-groupBy');
@@ -206,6 +207,11 @@ export default function ProjectDetail() {
     }
     if (modal === 'cycle-time') {
       setActivePanel('cycle-time');
+      d.setSummary(null);
+      return;
+    }
+    if (modal === 'execution-dashboard') {
+      setActivePanel('execution-dashboard');
       d.setSummary(null);
       return;
     }
@@ -427,6 +433,13 @@ export default function ProjectDetail() {
                 projectId={d.projectId}
                 sprints={d.sprints}
                 disabled={d.isGenerating}
+                onClose={() => setActivePanel(null)}
+              />
+            </Suspense>
+          ) : activePanel === 'execution-dashboard' && d.projectId ? (
+            <Suspense fallback={lazyFallback}>
+              <ExecutionDashboard
+                projectId={d.projectId}
                 onClose={() => setActivePanel(null)}
               />
             </Suspense>

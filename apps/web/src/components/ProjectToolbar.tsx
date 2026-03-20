@@ -329,6 +329,7 @@ export default function ProjectToolbar({
               { label: 'Bug Report', onClick: () => onOpenModal('bug-report'), disabled: d.isGenerating },
               { label: 'PRD Breakdown', onClick: () => onOpenModal('prd-breakdown'), disabled: d.isGenerating },
               { label: 'Hierarchical Plan', onClick: () => onOpenModal('hierarchical-plan'), disabled: d.isGenerating },
+              { label: 'Execution Dashboard', onClick: () => onOpenModal('execution-dashboard') },
               ...(gitHubRepo && d.rootTasks.length < 5 ? [{
                 label: bootstrapping ? 'Bootstrapping…' : 'Bootstrap from Repo',
                 onClick: async () => {
