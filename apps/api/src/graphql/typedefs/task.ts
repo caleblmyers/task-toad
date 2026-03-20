@@ -190,6 +190,18 @@ export const taskTypeDefs = /* GraphQL */ `
 `;
 
 export const taskFilterInputDef = /* GraphQL */ `
+  input FilterConditionInput {
+    field: String!
+    operator: String!
+    value: String
+  }
+
+  input FilterGroupInput {
+    operator: String!
+    conditions: [FilterConditionInput!]
+    groups: [FilterGroupInput!]
+  }
+
   input TaskFilterInput {
     status: [String!]
     priority: [String!]
@@ -203,6 +215,7 @@ export const taskFilterInputDef = /* GraphQL */ `
     dueDateTo: String
     sortBy: String
     sortOrder: String
+    filterGroup: FilterGroupInput
   }
 `;
 

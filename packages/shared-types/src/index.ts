@@ -327,3 +327,15 @@ export interface SprintTimeSummary {
   totalMinutes: number;
   byUser: UserTimeSummary[];
 }
+
+export interface FilterCondition {
+  field: string;
+  operator: string;
+  value?: string | null;
+}
+
+export interface FilterGroup {
+  operator: 'AND' | 'OR';
+  conditions?: FilterCondition[];
+  groups?: FilterGroup[];
+}
