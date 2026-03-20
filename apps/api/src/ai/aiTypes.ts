@@ -291,6 +291,19 @@ export type HierarchicalTask = z.infer<typeof HierarchicalTaskSchema>;
 export type HierarchicalEpic = z.infer<typeof HierarchicalEpicSchema>;
 export type HierarchicalPlanResponse = z.infer<typeof HierarchicalPlanResponseSchema>;
 
+export const TaskInsightItemSchema = z.object({
+  targetTaskTitle: z.string().optional(),
+  type: z.enum(['discovery', 'warning', 'pattern']),
+  content: z.string(),
+});
+
+export const TaskInsightsResponseSchema = z.object({
+  insights: z.array(TaskInsightItemSchema).max(10),
+});
+
+export type TaskInsightItem = z.infer<typeof TaskInsightItemSchema>;
+export type TaskInsightsResponse = z.infer<typeof TaskInsightsResponseSchema>;
+
 export const ActionPlanItemSchema = z.object({
   actionType: z.enum(['generate_code', 'create_pr', 'review_pr', 'write_docs', 'manual_step']),
   label: z.string(),
@@ -347,7 +360,8 @@ export type AIFeature =
   | 'batchGenerateCode'
   | 'knowledgeRetrieval'
   | 'onboardingQuestion'
-  | 'generateHierarchicalPlan';
+  | 'generateHierarchicalPlan'
+  | 'generateTaskInsights';
 
 export const ProjectChatResponseSchema = z.object({
   answer: z.string(),

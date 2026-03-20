@@ -25,6 +25,7 @@ model Project {
   transitions           WorkflowTransition[]
   releases              Release[]
   knowledgeEntries      KnowledgeEntry[]
+  taskInsights          TaskInsight[]
 
   @@index([orgId])
   @@map("projects")

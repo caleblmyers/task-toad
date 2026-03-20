@@ -30,8 +30,9 @@ import {
   DriftAnalysisSchema,
   TrendAnalysisSchema,
   ReleaseNotesSchema,
+  TaskInsightsResponseSchema,
 } from './aiTypes.js';
-import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse, DriftAnalysis, TrendAnalysis, ActionPlanResponse, ReleaseNotes, OnboardingQuestionsResponse, HierarchicalPlanResponse } from './aiTypes.js';
+import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse, DriftAnalysis, TrendAnalysis, ActionPlanResponse, ReleaseNotes, OnboardingQuestionsResponse, HierarchicalPlanResponse, TaskInsightsResponse } from './aiTypes.js';
 import { FEATURE_CONFIG } from './aiConfig.js';
 import { callAI, type PromptLogContext } from './aiClient.js';
 import { parseJSON } from './responseParser.js';
@@ -66,6 +67,7 @@ import {
   buildReleaseNotesPrompt,
   buildOnboardingQuestionsPrompt,
   buildHierarchicalPlanPrompt,
+  buildGenerateTaskInsightsPrompt,
 } from './promptBuilder.js';
 
 // ---------------------------------------------------------------------------
@@ -625,4 +627,22 @@ export async function generateHierarchicalPlan(
 ): Promise<HierarchicalPlanResponse> {
   const p = buildHierarchicalPlanPrompt({ projectName, projectDescription, prompt, knowledgeBase, existingTaskTitles });
   return callAndParse(apiKey, 'generateHierarchicalPlan', p, HierarchicalPlanResponseSchema, promptLogContext);
+}
+
+export async function generateTaskInsights(
+  apiKey: string,
+  taskTitle: string,
+  taskInstructions: string,
+  generatedFiles: Array<{ path: string; language?: string }>,
+  codeSummary: string,
+  siblingTaskTitles: string[],
+  projectName: string,
+  knowledgeBase?: string | null,
+  promptLogContext?: PromptLogContext
+): Promise<TaskInsightsResponse> {
+  const p = buildGenerateTaskInsightsPrompt({
+    taskTitle, taskInstructions, generatedFiles, codeSummary,
+    siblingTaskTitles, projectName, knowledgeBase,
+  });
+  return callAndParse(apiKey, 'generateTaskInsights', p, TaskInsightsResponseSchema, promptLogContext);
 }

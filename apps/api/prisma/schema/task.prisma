@@ -46,6 +46,8 @@ model Task {
   dependenciesAsTarget TaskDependency[] @relation("TaskDependenciesTarget")
   releases             ReleaseTask[]
   timeEntries          TimeEntry[]
+  insightsAsSource     TaskInsight[] @relation("InsightSource")
+  insightsAsTarget     TaskInsight[] @relation("InsightTarget")
 
   @@index([projectId])
   @@index([parentTaskId])

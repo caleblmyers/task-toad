@@ -42,3 +42,5 @@ export {
 export { buildOnboardingQuestionsPrompt } from './onboarding.js';
 
 export { buildHierarchicalPlanPrompt } from './hierarchicalPlan.js';
+
+export { buildGenerateTaskInsightsPrompt } from './insights.js';

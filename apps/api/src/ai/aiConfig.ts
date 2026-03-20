@@ -48,6 +48,7 @@ export const FEATURE_CONFIG: Record<AIFeature, FeatureConfig> = {
   knowledgeRetrieval:       { maxTokens: 512,  cacheTTLMs: 0,       retryOnValidationFailure: false },
   onboardingQuestion:       { maxTokens: 1024, cacheTTLMs: 0,       retryOnValidationFailure: true },
   generateHierarchicalPlan: { maxTokens: 32768, cacheTTLMs: 86_400_000, retryOnValidationFailure: true },
+  generateTaskInsights:     { maxTokens: 2048, cacheTTLMs: 0,          retryOnValidationFailure: true },
 };
 
 // ---------------------------------------------------------------------------
