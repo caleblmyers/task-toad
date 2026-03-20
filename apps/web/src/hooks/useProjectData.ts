@@ -8,6 +8,7 @@ import { useAIGeneration } from './useAIGeneration';
 import { useProjectState } from './useProjectState';
 import { useReleaseManagement } from './useReleaseManagement';
 import { useProjectEffects } from './useProjectEffects';
+import { usePermissions } from './usePermissions';
 import type { Task, TaskPlanPreview, Sprint, OrgUser, CloseSprintResult, Project, Comment, Activity, ProjectStats, Label, Epic, ActionPlanPreview, TaskActionPlan, Release } from '../types';
 import type { TaskFilterInput } from './useTaskFiltering';
 
@@ -149,6 +150,11 @@ export interface ProjectData {
   activeSprint: Sprint | undefined;
   rootTasks: Task[];
 
+  // Permissions
+  permissions: string[];
+  can: (permission: string) => boolean;
+  permissionsLoading: boolean;
+
   // Refs
   titleEditRef: React.RefObject<HTMLInputElement>;
   abortRef: React.MutableRefObject<AbortController | null>;
@@ -182,6 +188,8 @@ export function useProjectData(): ProjectData {
     projectId,
     setErr: (e) => taskCrud.setErr(e),
   });
+
+  const permissionData = usePermissions(projectId);
 
   const releaseMgmt = useReleaseManagement({
     projectId,
@@ -342,6 +350,11 @@ export function useProjectData(): ProjectData {
     handleSkipAction: ai.handleSkipAction, handleRetryAction: ai.handleRetryAction,
     handleCancelActionPlan: ai.handleCancelActionPlan, loadActionPlan: ai.loadActionPlan,
     setActionPlanPreview: ai.setActionPlanPreview, setActionPlan: ai.setActionPlan,
+
+    // Permissions
+    permissions: permissionData.permissions,
+    can: permissionData.can,
+    permissionsLoading: permissionData.loading,
 
     // Computed
     activeSprint: sprintMgmt.activeSprint, rootTasks: taskCrud.rootTasks,

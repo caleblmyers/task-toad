@@ -3,6 +3,7 @@ import { List } from 'react-window';
 import type { Task, Sprint, OrgUser } from '../types';
 import SprintReportPanel from './SprintReportPanel';
 import SprintSection, { TaskRow } from './SprintSection';
+import { useCan } from '../hooks/PermissionContext';
 
 const ROW_HEIGHT = 52;
 const MAX_LIST_HEIGHT = 600;
@@ -172,6 +173,7 @@ export default function BacklogView({
   onCreateSprint, onEditSprint, onDeleteSprint, onActivateSprint, onCloseSprint,
   onAssignSprint, onPlanSprints, onReorderTask, hasMore, onLoadMore, showArchived, onToggleShowArchived, epicMap,
 }: BacklogViewProps) {
+  const can = useCan();
   const openSprints = sprints.filter((s) => !s.closedAt);
   const bySprint: Record<string, Task[]> = Object.fromEntries(
     openSprints.map((s) => [s.sprintId, sortTasks(tasks.filter((t) => t.sprintId === s.sprintId))])
@@ -240,7 +242,7 @@ export default function BacklogView({
             <button type="button" onClick={onPlanSprints} className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 px-3 py-1 border border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50">
               ✦ AI Plan Sprints
             </button>
-            <button type="button" onClick={onCreateSprint} className="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-200 px-3 py-1 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800">
+            <button type="button" onClick={onCreateSprint} disabled={!can('MANAGE_SPRINTS')} title={!can('MANAGE_SPRINTS') ? "You don't have permission to manage sprints" : undefined} className="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-200 px-3 py-1 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50">
               + Create Sprint
             </button>
           </div>

@@ -1,5 +1,11 @@
 import { TASK_FIELDS } from '../utils/taskHelpers';
 
+// ── Auth Queries ──
+
+export const MY_PERMISSIONS_QUERY = `query MyPermissions($projectId: ID!) {
+  myPermissions(projectId: $projectId)
+}`;
+
 // ── Project Queries ──
 
 export const PROJECT_QUERY = `query Project($projectId: ID!) {

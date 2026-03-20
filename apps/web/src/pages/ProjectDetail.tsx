@@ -9,6 +9,7 @@ import { useAuth } from '../auth/context';
 import { gql } from '../api/client';
 import { GITHUB_PROJECT_REPO_QUERY, GITHUB_INSTALLATIONS_QUERY, PROJECT_ACTIVITIES_QUERY, SAVE_AS_TEMPLATE_MUTATION } from '../api/queries';
 import { useSSEListener } from '../hooks/useEventSource';
+import { PermissionProvider } from '../hooks/PermissionContext';
 import type { Activity, GitHubRepoLink, GitHubInstallation } from '../types';
 import KanbanBoard from '../components/KanbanBoard';
 import TaskDetailPanel from '../components/TaskDetailPanel';
@@ -285,6 +286,7 @@ export default function ProjectDetail() {
     activities: d.selectedTask ? (d.taskActivities[d.selectedTask.taskId] ?? []) : [],
     currentUserId: user?.userId ?? '',
     isAdmin: user?.role === 'org:admin',
+    can: d.can,
     disabled: d.isGenerating,
     onStartEditTitle: d.startEditTitle,
     onTitleChange: d.setEditTitleValue,
@@ -333,6 +335,7 @@ export default function ProjectDetail() {
   };
 
   return (
+    <PermissionProvider can={d.can}>
     <div className="flex flex-col h-full -m-6">
       {/* Toolbar + status editor + filter bar */}
       <ProjectToolbar
@@ -558,7 +561,9 @@ export default function ProjectDetail() {
                 <button
                   type="button"
                   onClick={() => d.setShowSprintModal(true)}
-                  className="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-200 px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800"
+                  disabled={!d.can('MANAGE_SPRINTS')}
+                  title={!d.can('MANAGE_SPRINTS') ? "You don't have permission to manage sprints" : undefined}
+                  className="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-200 px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
                 >
                   + Create Sprint
                 </button>
@@ -850,5 +855,6 @@ export default function ProjectDetail() {
       {/* Confirm dialog for nav-away during AI generation */}
       <d.ConfirmDialogPortal />
     </div>
+    </PermissionProvider>
   );
 }

@@ -7,6 +7,7 @@ import {
   UPDATE_PROJECT_MEMBER_ROLE_MUTATION,
 } from '../../api/queries';
 import { useFormState } from '../../hooks/useFormState';
+import { useCan } from '../../hooks/PermissionContext';
 import type { OrgUser } from '../../types';
 import Button from '../shared/Button';
 
@@ -24,6 +25,8 @@ interface Props {
 }
 
 export default function MembersTab({ projectId, orgUsers }: Props) {
+  const can = useCan();
+  const canManageMembers = can('MANAGE_PROJECT_SETTINGS');
   const [members, setMembers] = useState<ProjectMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -96,23 +99,29 @@ export default function MembersTab({ projectId, orgUsers }: Props) {
           <li key={m.id} className="py-2 flex items-center justify-between text-sm">
             <span className="text-slate-800">{m.email}</span>
             <div className="flex items-center gap-2">
-              <select
-                value={m.role}
-                onChange={(e) => handleUpdateRole(m.userId, e.target.value)}
-                className="text-xs border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-1.5 py-0.5"
-              >
-                <option value="viewer">Viewer</option>
-                <option value="editor">Editor</option>
-                <option value="admin">Admin</option>
-              </select>
-              <button onClick={() => handleRemoveMember(m.userId)} className="text-red-500 hover:text-red-700 text-xs">Remove</button>
+              {canManageMembers ? (
+                <>
+                  <select
+                    value={m.role}
+                    onChange={(e) => handleUpdateRole(m.userId, e.target.value)}
+                    className="text-xs border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-1.5 py-0.5"
+                  >
+                    <option value="viewer">Viewer</option>
+                    <option value="editor">Editor</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                  <button onClick={() => handleRemoveMember(m.userId)} className="text-red-500 hover:text-red-700 text-xs">Remove</button>
+                </>
+              ) : (
+                <span className="text-xs text-slate-500 capitalize">{m.role}</span>
+              )}
             </div>
           </li>
         ))}
         {members.length === 0 && <li className="py-2 text-sm text-slate-500 dark:text-slate-400">No project members yet.</li>}
       </ul>
 
-      <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+      {canManageMembers && <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700">
         <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Add member</p>
         {addMemberForm.error && <p className="text-sm text-red-600 mb-2">{addMemberForm.error}</p>}
         <div className="flex items-center gap-2">
@@ -139,7 +148,7 @@ export default function MembersTab({ projectId, orgUsers }: Props) {
             {addMemberForm.loading ? 'Adding...' : 'Add'}
           </Button>
         </div>
-      </div>
+      </div>}
     </>
   );
 }

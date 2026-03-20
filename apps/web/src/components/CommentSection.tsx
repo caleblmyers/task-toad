@@ -24,6 +24,7 @@ interface CommentSectionProps {
   onCreateComment: (content: string, parentCommentId?: string) => Promise<void>;
   onUpdateComment: (commentId: string, content: string) => Promise<void>;
   onDeleteComment: (commentId: string) => Promise<void>;
+  disabled?: boolean;
 }
 
 const CommentItem = memo(function CommentItem({
@@ -114,6 +115,7 @@ export default function CommentSection({
   onCreateComment,
   onUpdateComment,
   onDeleteComment,
+  disabled: commentDisabled,
 }: CommentSectionProps) {
   const [newComment, setNewComment] = useState('');
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -210,9 +212,10 @@ export default function CommentSection({
           ref={newCommentRef}
           value={newComment}
           onChange={handleCommentInput}
-          placeholder="Add a comment... (use @ to mention)"
-          className="flex-1 text-sm border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-green resize-none dark:bg-slate-700 dark:text-slate-200"
+          placeholder={commentDisabled ? "You don't have permission to comment" : "Add a comment... (use @ to mention)"}
+          className="flex-1 text-sm border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-green resize-none dark:bg-slate-700 dark:text-slate-200 disabled:opacity-50"
           rows={2}
+          disabled={commentDisabled}
           onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit(); }}
         />
         {mentionQuery !== null && (
@@ -225,7 +228,7 @@ export default function CommentSection({
         )}
         <button
           onClick={handleSubmit}
-          disabled={!newComment.trim() || submitting}
+          disabled={!newComment.trim() || submitting || commentDisabled}
           className="self-end px-3 py-1.5 text-sm bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50"
         >
           Post

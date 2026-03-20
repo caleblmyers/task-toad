@@ -56,6 +56,7 @@ export interface TaskDetailPanelProps {
   activities: Activity[];
   currentUserId: string;
   isAdmin: boolean;
+  can?: (permission: string) => boolean;
   disabled?: boolean;
   projectHasRepo?: boolean;
   onSyncToGitHub?: (taskId: string) => Promise<void>;
@@ -104,6 +105,7 @@ export interface TaskDetailPanelProps {
 function PanelContent({
   task, subtasks, editingTitle, editTitleValue, titleEditRef, generatingInstructions,
   sprints, orgUsers, statuses, allTasks, comments, activities, currentUserId, isAdmin,
+  can: canDo,
   labels, onAddTaskLabel, onRemoveTaskLabel, onCreateLabel,
   disabled, projectHasRepo, onSyncToGitHub,
   onStartEditTitle, onTitleChange, onTitleSave, onTitleKeyDown,
@@ -198,7 +200,7 @@ function PanelContent({
         onAddWatcher={onAddWatcher}
         onRemoveWatcher={onRemoveWatcher}
         timeSummary={timeSummary}
-        onLogTime={onLogTime}
+        onLogTime={canDo && !canDo('LOG_TIME') ? undefined : onLogTime}
         onDeleteTimeEntry={onDeleteTimeEntry}
       />
 
@@ -372,6 +374,7 @@ function PanelContent({
           onCreateComment={onCreateComment}
           onUpdateComment={onUpdateComment}
           onDeleteComment={onDeleteComment}
+          disabled={canDo ? !canDo('CREATE_COMMENTS') : false}
         />
       </div>
 
@@ -513,7 +516,8 @@ function PanelContent({
           <button
             type="button"
             onClick={() => onArchiveTask(task.taskId, !task.archived)}
-            disabled={disabled}
+            disabled={disabled || (canDo ? !canDo('DELETE_TASKS') : false)}
+            title={canDo && !canDo('DELETE_TASKS') ? "You don't have permission to archive tasks" : undefined}
             className={`text-sm px-3 py-1.5 rounded border ${
               task.archived
                 ? 'text-slate-600 border-slate-300 hover:bg-slate-50'

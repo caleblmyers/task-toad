@@ -304,7 +304,7 @@ export default function ProjectToolbar({
           )}
         </div>
         <div className="relative flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => d.setShowAddForm(!d.showAddForm)} disabled={d.isGenerating}>
+          <Button variant="ghost" size="sm" onClick={() => d.setShowAddForm(!d.showAddForm)} disabled={d.isGenerating || !d.can('CREATE_TASKS')} title={!d.can('CREATE_TASKS') ? "You don't have permission to create tasks" : undefined}>
             {d.showAddForm ? <><IconClose className="w-3.5 h-3.5" /> Cancel</> : <><IconPlus className="w-3.5 h-3.5" /> Add task</>}
           </Button>
 
@@ -357,7 +357,7 @@ export default function ProjectToolbar({
             items={[
               { label: 'Template', onClick: () => { previousFocusRef.current = document.activeElement as HTMLElement; setShowTemplateMenu((v) => { if (!v) loadTemplates(); return !v; }); setShowExportMenu(false); }, disabled: d.isGenerating },
               { label: 'Import/Export', onClick: () => { previousFocusRef.current = document.activeElement as HTMLElement; setShowExportMenu((v) => !v); setShowTemplateMenu(false); } },
-              { label: 'Project Settings', onClick: () => onOpenModal('project-settings') },
+              { label: 'Project Settings', onClick: () => onOpenModal('project-settings'), disabled: !d.can('MANAGE_PROJECT_SETTINGS') },
               { label: 'Knowledge Base', onClick: () => onOpenModal('knowledge-base') },
               { label: gitHubRepo ? `GitHub: ${gitHubRepo.repositoryOwner}/${gitHubRepo.repositoryName}` : 'Connect GitHub', icon: <IconGitHub className="w-3.5 h-3.5" />, onClick: () => onOpenModal('github') },
               { label: 'Keyboard Shortcuts', icon: <IconKeyboard className="w-3.5 h-3.5" />, onClick: () => onOpenModal('shortcut-help') },
