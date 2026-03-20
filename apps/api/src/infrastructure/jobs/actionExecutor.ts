@@ -8,6 +8,7 @@ import { isRetryableAIError } from '../../ai/aiClient.js';
 import { getEventBus } from '../eventbus/index.js';
 import { getJobQueue } from '../jobqueue/index.js';
 import { retrieveRelevantKnowledge } from '../../ai/knowledgeRetrieval.js';
+import { generateTaskInsights } from '../../ai/aiService.js';
 
 const log = createChildLogger('action-executor');
 
@@ -192,6 +193,54 @@ export function createHandler(prisma: PrismaClient) {
           errorMessage: (result.data.error as string) || 'Action failed',
         });
         return;
+      }
+
+      // Generate insights after successful generate_code action
+      if (actionType === 'generate_code' && apiKey) {
+        try {
+          const codeResult = result.data as { files?: Array<{ path: string; language?: string }>; summary?: string };
+          const siblingTasks = task.parentTaskId
+            ? await prisma.task.findMany({
+                where: { parentTaskId: task.parentTaskId, taskId: { not: task.taskId }, archived: false },
+                select: { taskId: true, title: true },
+              })
+            : [];
+          const siblingTitles = siblingTasks.map((t) => t.title);
+
+          if (codeResult.files && codeResult.files.length > 0 && siblingTitles.length > 0) {
+            const insightsResponse = await generateTaskInsights(
+              apiKey,
+              task.title,
+              task.instructions || '',
+              codeResult.files,
+              codeResult.summary || '',
+              siblingTitles,
+              project.name,
+              knowledgeContext,
+            );
+
+            for (const insight of insightsResponse.insights) {
+              let targetTaskId: string | null = null;
+              if (insight.targetTaskTitle) {
+                const target = siblingTasks.find((t) => t.title === insight.targetTaskTitle);
+                if (target) targetTaskId = target.taskId;
+              }
+              await prisma.taskInsight.create({
+                data: {
+                  sourceTaskId: task.taskId,
+                  targetTaskId,
+                  projectId: task.projectId,
+                  orgId,
+                  type: insight.type,
+                  content: insight.content,
+                },
+              });
+            }
+            log.info({ taskId: task.taskId, insightCount: insightsResponse.insights.length }, 'Generated task insights');
+          }
+        } catch (insightErr) {
+          log.warn({ err: insightErr, taskId: task.taskId }, 'Task insight generation failed (non-blocking)');
+        }
       }
 
       // Check if there's a next action to enqueue

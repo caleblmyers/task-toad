@@ -17,6 +17,7 @@ import { releaseQueries, releaseMutations, releaseFieldResolvers } from './relea
 import { timeEntryQueries, timeEntryMutations } from './timeentry.js';
 import { capacityQueries, capacityMutations } from './capacity.js';
 import { knowledgeBaseQueries, knowledgeBaseMutations, knowledgeBaseFieldResolvers } from './knowledgebase.js';
+import { taskInsightQueries, taskInsightMutations, taskInsightFieldResolvers } from './taskinsight.js';
 
 export const resolvers = {
   Query: {
@@ -39,6 +40,7 @@ export const resolvers = {
     ...timeEntryQueries,
     ...capacityQueries,
     ...knowledgeBaseQueries,
+    ...taskInsightQueries,
   },
   Mutation: {
     ...authMutations,
@@ -60,6 +62,7 @@ export const resolvers = {
     ...timeEntryMutations,
     ...capacityMutations,
     ...knowledgeBaseMutations,
+    ...taskInsightMutations,
   },
   // Field resolvers
   User: { ...authFieldResolvers.User },
@@ -83,4 +86,5 @@ export const resolvers = {
   TaskAction: { ...taskActionFieldResolvers.TaskAction },
   Release: { ...releaseFieldResolvers.Release },
   KnowledgeEntry: { ...knowledgeBaseFieldResolvers.KnowledgeEntry },
+  TaskInsight: { ...taskInsightFieldResolvers.TaskInsight },
 };
