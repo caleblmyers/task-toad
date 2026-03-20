@@ -108,6 +108,67 @@ All original work sets completed through Wave 30. Competitive gap items ongoing.
 
 ---
 
+## Security Audit — Action Items
+
+Full report: `.claude-knowledge/security-audit.md` (2026-03-20, 39 findings)
+
+### Phase 1 — Critical (Fix Immediately)
+
+These are active vulnerabilities in the deployed production app.
+
+- [ ] **C-1: Token revocation + logout** — Add `tokenVersion` field to User model. Increment on password change, logout, or admin revocation. Check in `buildContext()`. Add `logout` mutation. *(Files: auth.prisma, context.ts, auth.ts resolvers)*
+- [ ] **C-2: Multi-tenant data leak in exports** — Export endpoints don't filter by `orgId`. Add `orgId` to all Prisma WHERE clauses in `routes/export.ts`. Validate `project.orgId === user.orgId` before any data fetch.
+- [ ] **C-3: SSRF via webhook URLs** — No CIDR validation on webhook URL registration. Validate resolved IPs against RFC 1918/5735 private ranges. Block localhost, 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16. *(File: webhookDispatcher.ts, webhook.ts resolver)*
+- [ ] **C-4: AI prompt history IDOR** — `aiPromptHistory` accepts taskId/projectId with no org validation. Validate IDs belong to user's org before returning data. *(File: resolvers/reports.ts)*
+- [ ] **C-5: Automation rules leak across tenants** — `automationRules` query lacks `orgId` scoping. Add orgId filtering. *(File: resolvers/projectrole.ts)*
+
+### Phase 2 — High (Swarm Wave: Auth Hardening)
+
+Dedicate a swarm wave to auth architecture changes + remaining High items.
+
+- [ ] **H-1: JWT in localStorage → HttpOnly cookies** — Migrate to `HttpOnly`, `Secure`, `SameSite=Strict` cookies. Short-lived access tokens (15-30 min) + refresh token rotation. *(Full auth rework: client.ts, context.ts, auth.ts, App.tsx)*
+- [ ] **H-2: CSRF protection** — Require custom header (`X-Requested-With`) on all mutations, or implement CSRF tokens. *(File: app.ts)*
+- [ ] **H-3: Encrypt webhook secrets at rest** — Use existing `encryption.ts` AES-256-GCM for `WebhookEndpoint.secret`. *(File: webhook.prisma, webhook resolvers)*
+- [ ] **H-4: Encrypt Slack webhook URLs at rest** — Use existing encryption utility. *(File: slack.prisma, slack resolvers)*
+- [ ] **H-5: Trust proxy for rate limiting** — Set `app.set('trust proxy', 1)` to prevent X-Forwarded-For spoofing bypassing rate limits. *(File: app.ts)*
+- [ ] **H-6: Pagination caps on list queries** — Enforce `Math.min(args.limit ?? 50, 100)` on all list resolvers. *(Files: search.ts, notification.ts, webhook.ts, and others)*
+- [ ] **H-7: CSP frame-ancestors** — Add `frameAncestors: ["'none'"]` to Helmet CSP config. *(File: app.ts)*
+- [ ] **H-8: Remove SSE query string token fallback** — Require `Authorization: Bearer` header only. *(File: app.ts:162-187)*
+- [ ] **H-9: Hash invite tokens before storage** — Use same `hashToken()` pattern as password reset tokens. *(File: auth.ts resolvers)*
+- [ ] **H-10: Fix $queryRawUnsafe in advisory locks** — Switch to `prisma.$queryRaw` tagged template literals. *(File: advisoryLock.ts)*
+- [ ] **H-11: Password change invalidates sessions** — Increment `tokenVersion` on `resetPassword` (depends on C-1). *(File: auth.ts resolvers)*
+- [ ] **H-12: Re-authentication for sensitive operations** — Add `confirmPassword` argument to `setOrgApiKey` and other sensitive mutations. *(File: org.ts resolvers)*
+
+### Phase 3 — Medium (Hardening Sprint)
+
+- [ ] **M-1: Disable GraphQL introspection in production** — Check `NODE_ENV` in schema.ts. *(File: schema.ts)*
+- [ ] **M-2: Per-org AI rate limiting** — Add per-org throttle (e.g., 5 AI requests/hour) beyond global rate limit. *(Files: ai resolvers)*
+- [ ] **M-3: Content-Disposition header injection** — Use RFC 5987 encoding or `content-disposition` library for export filenames. *(File: export.ts)*
+- [ ] **M-4: File upload magic byte validation** — Use `file-type` library instead of trusting client MIME type. *(File: upload.ts)*
+- [ ] **M-5: Scope DataLoaders by orgId** — Add orgId parameter to DataLoader keys for tenant isolation. *(File: loaders.ts)*
+- [ ] **M-6: Audit logging for sensitive operations** — Log `setOrgApiKey`, `createWebhookEndpoint`, `connectSlack`, `linkGitHubInstallation` with actor + timestamp. *(Various resolvers)*
+- [ ] **M-7: Redact emails in exports by default** — Add `includeEmails` opt-in parameter to export endpoints. *(File: export.ts)*
+- [ ] **M-8: Saved filter mutations skip orgId validation** — Validate filter's project belongs to user's org before update/delete. *(File: resolvers/project.ts)*
+- [ ] **M-9: Input length validation on text fields** — Add Zod `.max()` constraints: title (200), description (10000). *(File: task/mutations.ts)*
+- [ ] **M-10: Webhook replay prevention** — Add unique `X-Webhook-Delivery-ID` header to dispatched webhooks. *(File: webhookDispatcher.ts)*
+
+### Phase 4 — Low (Individual Items)
+
+- [ ] **L-1: Reduce JWT expiry to 1-2 hours + refresh tokens** — Depends on H-1 cookie migration. *(File: auth.ts)*
+- [ ] **L-2: Email enumeration on signup** — Accept trade-off (common UX) or switch to silent success with confirmation email. *(File: auth.ts)*
+- [ ] **L-3: URL-encode GitHub file paths** — Apply `encodeURIComponent(path)` in GitHub API calls. *(File: githubFileService.ts)*
+- [ ] **L-4: Remove console.error in production ErrorBoundary** — Wrap with NODE_ENV check, route to Sentry. *(Files: ErrorBoundary.tsx, RouteErrorBoundary.tsx)*
+- [ ] **L-5: Concurrent session limit** — Track sessions, allow user to view/terminate. *(Depends on C-1 tokenVersion)*
+- [ ] **L-6: Unicode homograph attack in filenames** — NFKD normalize + ASCII-only whitelist. *(File: upload.ts)*
+- [ ] **L-7: Bulk mutation item count limit** — Cap `bulkUpdateTasks` at 100 items. *(File: task/mutations.ts)*
+- [ ] **L-8: Reduce GraphQL depth limit** — Lower from 10 to 6-7 after profiling legitimate queries. *(File: app.ts)*
+- [ ] **L-9: SameSite cookie attribute** — Set `SameSite=Strict` when implementing cookie auth (depends on H-1). *(Future)*
+- [ ] **L-10: Cap Retry-After parsing** — Max 1 hour wait to prevent self-DoS. *(File: githubAppClient.ts)*
+- [ ] **L-11: Null byte stripping on REST endpoints** — Apply globally via Express middleware, not just GraphQL. *(File: app.ts)*
+- [ ] **L-12: Test database credentials in CI/CD** — Require `TEST_DATABASE_URL` env var in CI. *(File: setup.integration.ts)*
+
+---
+
 ## Deployment & Ops — Pre-Launch Checklist
 
 ### Infrastructure (Railway)
