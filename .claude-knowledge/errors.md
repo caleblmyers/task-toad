@@ -66,3 +66,16 @@ Running log of errors encountered and their resolutions.
 **Cause:** Frontend defines `PLAN_CODE_MUTATION` and `GENERATE_PLANNED_FILE_MUTATION` in `queries.ts` (lines 149-161), with handlers in `useAIGeneration.ts` (lines 196-312). But neither mutation was ever added to the API typedefs or resolvers.
 **Workaround:** The simpler `generateCodeFromTask` mutation works for single-call code generation.
 **Fix needed:** Either implement the two mutations in the API (typedefs/ai.ts + resolvers/ai.ts + new AI service functions), or remove the dead frontend code and the "Plan & Generate Code" button. Implementation requires: new AI prompts for architecture planning, file-by-file generation with export context threading, and new GraphQL types (CodePlan, CodePlanFile).
+
+---
+
+### 2026-03-20 — Unapplied migrations break time tracking, saved filters, and capacity features
+**Context:** QA testing discovered multiple features failing with Prisma errors
+**Error:** `The table public.time_entries does not exist` / `The column is_shared does not exist`
+**Cause:** Three migrations were added but never applied to the running database:
+- `20260320000000_add_time_entries` — creates `time_entries` table
+- `20260320010000_extend_saved_filter_to_view` — adds `is_shared`, `view_type`, `sort_by`, `sort_order`, `group_by`, `visible_columns`, `is_default` columns to `saved_filters`
+- `20260320020000_add_user_capacity` — creates `user_capacities` and `user_time_off` tables
+Additionally, 3 orphaned DB-only migrations exist from a prior GitHub integration session.
+**Fix:** Run `cd apps/api && npx prisma migrate deploy` to apply pending migrations. For the orphaned migrations, may need `prisma migrate resolve` to mark them as applied/rolled-back.
+**Rule:** After adding new Prisma schema models/fields and generating migrations, always apply them to the dev DB before testing.
