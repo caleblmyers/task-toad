@@ -80,6 +80,9 @@ export const taskMutations = {
     if (args.assigneeId) {
       await requireOrgUser(context, args.assigneeId);
     }
+    if (args.storyPoints !== undefined && args.storyPoints !== null && args.storyPoints < 0) {
+      throw new ValidationError('Story points must be non-negative');
+    }
     const warnings: string[] = [];
     if (args.status !== undefined) {
       const statusParse = StringArraySchema.safeParse(JSON.parse(task.project.statuses));
