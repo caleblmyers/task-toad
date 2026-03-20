@@ -27,6 +27,9 @@ interface ProjectCycleMetrics {
 interface Sprint {
   sprintId: string;
   name: string;
+  isActive?: boolean;
+  startDate?: string | null;
+  endDate?: string | null;
 }
 
 interface Props {
@@ -50,16 +53,20 @@ export default function CycleTimePanel({ projectId, sprints, disabled, onClose }
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sprintFilter, setSprintFilter] = useState<string>('');
+  const [fromDate, setFromDate] = useState<string>('');
+  const [toDate, setToDate] = useState<string>('');
   const [sortField, setSortField] = useState<SortField>('leadTimeHours');
   const [sortAsc, setSortAsc] = useState(true);
 
-  const load = async (sprintId?: string) => {
+  const dateError = fromDate && toDate && fromDate > toDate ? 'From date must be before To date' : null;
+
+  const load = async (sprintId?: string, from?: string, to?: string) => {
     setLoading(true);
     setError(null);
     try {
       const data = await gql<{ cycleTimeMetrics: ProjectCycleMetrics }>(
         CYCLE_TIME_METRICS_QUERY,
-        { projectId, sprintId: sprintId || undefined }
+        { projectId, sprintId: sprintId || undefined, fromDate: from || undefined, toDate: to || undefined }
       );
       setMetrics(data.cycleTimeMetrics);
     } catch (err) {
@@ -70,9 +77,25 @@ export default function CycleTimePanel({ projectId, sprints, disabled, onClose }
   };
 
   useEffect(() => {
-    if (!disabled) load(sprintFilter || undefined);
+    if (!disabled && !dateError) load(sprintFilter || undefined, fromDate, toDate);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, sprintFilter]);
+  }, [projectId, sprintFilter, fromDate, toDate]);
+
+  const activeSprint = sprints?.find((s) => s.isActive);
+
+  const setPresetRange = (days: number) => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - days);
+    setFromDate(start.toISOString().split('T')[0]);
+    setToDate(end.toISOString().split('T')[0]);
+  };
+
+  const setThisSprint = () => {
+    if (activeSprint?.startDate) setFromDate(activeSprint.startDate);
+    if (activeSprint?.endDate) setToDate(activeSprint.endDate);
+    else setToDate(new Date().toISOString().split('T')[0]);
+  };
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -125,6 +148,50 @@ export default function CycleTimePanel({ projectId, sprints, disabled, onClose }
             </select>
           </div>
         )}
+
+        {/* Date range filter */}
+        <div className="mb-4 space-y-2">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <label htmlFor="cycle-from" className="text-xs text-slate-500 dark:text-slate-400">From</label>
+              <input
+                id="cycle-from"
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="text-sm border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 rounded px-2 py-1.5"
+              />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <label htmlFor="cycle-to" className="text-xs text-slate-500 dark:text-slate-400">To</label>
+              <input
+                id="cycle-to"
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="text-sm border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 rounded px-2 py-1.5"
+              />
+            </div>
+            {(fromDate || toDate) && (
+              <button
+                type="button"
+                onClick={() => { setFromDate(''); setToDate(''); }}
+                className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 underline"
+              >
+                Clear dates
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setPresetRange(7)} className="text-xs px-2 py-1 rounded border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">Last 7 days</button>
+            <button type="button" onClick={() => setPresetRange(30)} className="text-xs px-2 py-1 rounded border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">Last 30 days</button>
+            <button type="button" onClick={() => setPresetRange(90)} className="text-xs px-2 py-1 rounded border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">Last 90 days</button>
+            {activeSprint?.startDate && (
+              <button type="button" onClick={setThisSprint} className="text-xs px-2 py-1 rounded border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">This Sprint</button>
+            )}
+          </div>
+          {dateError && <p className="text-xs text-red-600">{dateError}</p>}
+        </div>
 
         {loading && (
           <div className="space-y-3">
