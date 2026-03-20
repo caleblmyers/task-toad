@@ -39,21 +39,23 @@ export const taskMutations = {
     if (!validTaskTypes.includes(taskType)) {
       throw new ValidationError(`Invalid taskType "${taskType}". Valid: ${validTaskTypes.join(', ')}`);
     }
-    const maxResult = await context.prisma.task.aggregate({
-      where: { projectId: args.projectId, sprintId: null, parentTaskId: null },
-      _max: { position: true },
-    });
-    const nextPosition = (maxResult._max.position ?? 0) + 1.0;
-    const task = await context.prisma.task.create({
-      data: {
-        title: args.title,
-        status,
-        taskType,
-        projectId: args.projectId,
-        orgId: user.orgId,
-        position: nextPosition,
-      },
-    });
+    const task = await context.prisma.$transaction(async (tx) => {
+      const maxResult = await tx.task.aggregate({
+        where: { projectId: args.projectId, sprintId: null, parentTaskId: null },
+        _max: { position: true },
+      });
+      const nextPosition = (maxResult._max.position ?? 0) + 1.0;
+      return tx.task.create({
+        data: {
+          title: args.title,
+          status,
+          taskType,
+          projectId: args.projectId,
+          orgId: user.orgId,
+          position: nextPosition,
+        },
+      });
+    }, { isolationLevel: 'Serializable' });
     // Auto-add creator as watcher
     await context.prisma.taskWatcher.create({
       data: { taskId: task.taskId, userId: user.userId },
@@ -294,21 +296,23 @@ export const taskMutations = {
     if (!validTaskTypes.includes(taskType)) {
       throw new ValidationError(`Invalid taskType "${taskType}". Valid: ${validTaskTypes.join(', ')}`);
     }
-    const maxResult = await context.prisma.task.aggregate({
-      where: { parentTaskId: args.parentTaskId },
-      _max: { position: true },
-    });
-    const nextPosition = (maxResult._max.position ?? 0) + 1.0;
-    const task = await context.prisma.task.create({
-      data: {
-        title: args.title,
-        taskType,
-        projectId: parent.projectId,
-        orgId: parent.orgId,
-        parentTaskId: args.parentTaskId,
-        position: nextPosition,
-      },
-    });
+    const task = await context.prisma.$transaction(async (tx) => {
+      const maxResult = await tx.task.aggregate({
+        where: { parentTaskId: args.parentTaskId },
+        _max: { position: true },
+      });
+      const nextPosition = (maxResult._max.position ?? 0) + 1.0;
+      return tx.task.create({
+        data: {
+          title: args.title,
+          taskType,
+          projectId: parent.projectId,
+          orgId: parent.orgId,
+          parentTaskId: args.parentTaskId,
+          position: nextPosition,
+        },
+      });
+    }, { isolationLevel: 'Serializable' });
     getEventBus().emit('subtask.created', {
       orgId: user.orgId, userId: user.userId, projectId: parent.projectId,
       timestamp: new Date().toISOString(),
