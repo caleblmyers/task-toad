@@ -226,7 +226,33 @@ export function buildEnrichPRDescriptionPrompt(data: {
   taskDescription: string;
   taskInstructions: string;
   files: Array<{ path: string; language: string }>;
+  projectName?: string;
+  projectDescription?: string | null;
+  knowledgeBase?: string | null;
+  parentTaskTitle?: string | null;
+  acceptanceCriteria?: string | null;
+  codeSummary?: string | null;
 }): Prompt {
+  const projectLine = data.projectName
+    ? `\nProject: ${userInput('project', data.projectName)}${data.projectDescription ? ` — ${userInput('projectDescription', truncate(data.projectDescription, MAX_PROJECT_DESCRIPTION_CHARS))}` : ''}`
+    : '';
+
+  const acLine = data.acceptanceCriteria
+    ? `\nAcceptance Criteria:\n${userInput('acceptance_criteria', truncate(data.acceptanceCriteria, 400))}`
+    : '';
+
+  const kbLine = data.knowledgeBase
+    ? `\nProject Knowledge Base:\n${userInput('knowledge_base', truncate(data.knowledgeBase, MAX_KB_CHARS))}`
+    : '';
+
+  const parentLine = data.parentTaskTitle
+    ? `\nParent task/epic: ${userInput('parent_task', data.parentTaskTitle)}`
+    : '';
+
+  const codeSummaryLine = data.codeSummary
+    ? `\nCode generation summary: ${userInput('code_summary', truncate(data.codeSummary, 600))}`
+    : '';
+
   return {
     systemPrompt: SYSTEM_PROSE,
     userPrompt: `Generate a pull request description in markdown for this task.
@@ -234,9 +260,15 @@ export function buildEnrichPRDescriptionPrompt(data: {
 Task: ${userInput('title', data.taskTitle)}
 Description: ${userInput('description', truncate(data.taskDescription, MAX_PROJECT_DESCRIPTION_CHARS))}
 Instructions: ${userInput('instructions', truncate(data.taskInstructions, 800))}
-Files: ${data.files.map((f) => f.path).join(', ')}
+Files: ${data.files.map((f) => f.path).join(', ')}${projectLine}${acLine}${parentLine}${codeSummaryLine}${kbLine}
 
-Include: ## Summary (2-3 sentences), ## Changes (bullet list), ## Testing (how to verify). Return ONLY the markdown.`,
+Generate the PR description with these sections:
+## Summary — 2-3 sentences explaining what this PR does and why
+## Changes — bullet list of files changed with brief description of each
+## Context — why this change is needed, referencing the task/epic context
+## Testing — how to verify the changes, using acceptance criteria if available
+
+Return ONLY the markdown.`,
   };
 }
 

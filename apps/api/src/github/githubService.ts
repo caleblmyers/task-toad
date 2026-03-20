@@ -45,7 +45,7 @@ function buildDefaultPRBody(
 export async function createPullRequestFromTask(
   input: CreatePullRequestFromTaskInput
 ): Promise<PullRequestResult> {
-  const { projectId, taskId, files, apiKey } = input;
+  const { projectId, taskId, files, apiKey, enrichContext } = input;
 
   // Load task details for PR metadata
   const task = await prisma.task.findUniqueOrThrow({
@@ -112,7 +112,16 @@ export async function createPullRequestFromTask(
           task.title,
           task.description ?? '',
           task.instructions ?? '',
-          files.map((f) => ({ path: f.path, language: '' }))
+          files.map((f) => ({ path: f.path, language: '' })),
+          undefined, // promptLogContext
+          enrichContext ? {
+            projectName: enrichContext.projectName,
+            projectDescription: enrichContext.projectDescription,
+            knowledgeBase: enrichContext.knowledgeContext,
+            parentTaskTitle: enrichContext.parentTaskTitle,
+            acceptanceCriteria: enrichContext.acceptanceCriteria,
+            codeSummary: enrichContext.codeSummary,
+          } : undefined
         );
       } catch {
         prBody = buildDefaultPRBody(task, files);

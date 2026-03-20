@@ -424,9 +424,20 @@ export async function enrichPRDescription(
   taskDescription: string,
   taskInstructions: string,
   files: Array<{ path: string; language: string }>,
-  promptLogContext?: PromptLogContext
+  promptLogContext?: PromptLogContext,
+  enrichContext?: {
+    projectName?: string;
+    projectDescription?: string | null;
+    knowledgeBase?: string | null;
+    parentTaskTitle?: string | null;
+    acceptanceCriteria?: string | null;
+    codeSummary?: string | null;
+  }
 ): Promise<string> {
-  const p = buildEnrichPRDescriptionPrompt({ taskTitle, taskDescription, taskInstructions, files });
+  const p = buildEnrichPRDescriptionPrompt({
+    taskTitle, taskDescription, taskInstructions, files,
+    ...enrichContext,
+  });
   const config = FEATURE_CONFIG.enrichPRDescription;
   const result = await callAI({
     apiKey,

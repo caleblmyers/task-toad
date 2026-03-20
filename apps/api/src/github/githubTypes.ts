@@ -46,11 +46,21 @@ export interface PullRequestResult {
   title: string;
 }
 
+export interface PREnrichContext {
+  knowledgeContext?: string | null;
+  projectName?: string;
+  projectDescription?: string | null;
+  parentTaskTitle?: string | null;
+  acceptanceCriteria?: string | null;
+  codeSummary?: string | null;
+}
+
 export interface CreatePullRequestFromTaskInput {
   projectId: string;
   taskId: string;
   files: FileChange[];
   apiKey?: string;
+  enrichContext?: PREnrichContext;
 }
 
 export interface GitHubWebhookEvent {
