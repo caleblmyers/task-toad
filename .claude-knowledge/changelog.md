@@ -6,6 +6,37 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ## 2026-03-20 (auto-complete redesign)
 
+### Wave 38: Auto-Complete Redesign — Intelligent Planning (3 workers, 6 tasks)
+
+**Worker 1 — 3-A: Hierarchical Plan Generation:**
+- `HierarchicalPlanResponseSchema` Zod schema: 3-level structure (epics→tasks→subtasks) with `dependsOn: Array<{title, linkType}>` for typed dependency inference
+- `buildHierarchicalPlanPrompt` prompt builder with `userInput()` safety, deduplication, KB context
+- `generateHierarchicalPlan` AI service function + `generateHierarchicalPlan` AIFeature + FEATURE_CONFIG (32K tokens, 24h cache)
+- `previewHierarchicalPlan` GraphQL query — loads project, fetches KB via `retrieveRelevantKnowledge`, calls AI, returns preview
+- `HierarchicalEpicPreview`, `HierarchicalTaskPreview`, `HierarchicalSubtaskPreview`, `DependencyRef` GraphQL types
+
+**Worker 2 — 3-B: Plan Commit + Batch Cycle Detection:**
+- `batchDetectCycles()` in `cyclicDependencyCheck.ts` — validates all proposed edges against existing graph + each other in-memory, normalizes `is_blocked_by` to `blocks` direction, skips non-blocking types
+- `commitHierarchicalPlan` mutation — creates 3-level hierarchy in `prisma.$transaction`, resolves `dependsOn` titles to IDs, calls `batchDetectCycles` before creating `TaskDependency` records, respects `autoComplete` toggles
+- `CommitHierarchicalEpicInput`, `CommitHierarchicalTaskInput`, `CommitHierarchicalSubtaskInput`, `DependencyRefInput` GraphQL input types
+
+**Worker 3 — 3-C: Plan Editor UI:**
+- `HierarchicalPlanEditor.tsx` — recursive tree view with depth-based indentation, expand/collapse, inline title editing (click→input→blur/Enter/Escape), autoComplete toggle checkboxes, priority badges, dependency count badges, delete buttons, HTML5 drag-to-reorder within same level
+- `HierarchicalPlanDialog.tsx` — 3-state modal (prompt input → editing → committing), Generate/Regenerate/Commit flow
+- `PlanDependencyEditor.tsx` — inline dependency picker with search, link type dropdown (blocks/informs)
+- GraphQL queries added to `queries.ts`, triggered from ProjectToolbar overflow menu
+
+**Process:** One rebase needed (task-004 conflicted with task-002 in typedefs). Zero code quality rejections. Worker-3 defined local TypeScript interfaces to avoid backend dependency — merged independently.
+
+**Open follow-ups:**
+- PlanDependencyEditor not wired into node rendering (badges show count but don't open editor on click)
+- HierarchicalPlanDialog missing feedback textarea for "Regenerate with feedback"
+- Exhaustive-deps lint warning in HierarchicalPlanEditor useEffect
+- Missing aria-labels on expand/collapse and delete buttons
+- No integration tests for preview/commit resolvers or unit tests for batchDetectCycles
+
+---
+
 ### Wave 37: Auto-Complete Redesign — Foundation: UI + Wiring (3 workers, 6 tasks)
 
 **Worker 1 — 2-A: KnowledgeBasePanel:**

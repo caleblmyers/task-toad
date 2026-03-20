@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-Production deployed at `https://tasktoad-api-production.up.railway.app`. 37 swarm waves completed. All P0 and most P1 competitive gap items done. All 5 Critical security findings fixed. Current phase: Auto-Complete Pipeline Redesign (Waves 36-37 done, Waves 38-41 planned).
+Production deployed at `https://tasktoad-api-production.up.railway.app`. 38 swarm waves completed. All P0 and most P1 competitive gap items done. All 5 Critical security findings fixed. Current phase: Auto-Complete Pipeline Redesign (Waves 36-38 done, Waves 39-41 planned).
 
 ---
 
@@ -214,9 +214,17 @@ Transforms Auto-Complete from isolated per-task execution into project-level orc
 - [ ] KB entry search/filter in KnowledgeBasePanel when entry count grows large
 
 ### Wave 38 — Intelligent Planning
-- [ ] **3-A: Hierarchical Plan Generation** — New prompt builder outputting epic→task→subtask hierarchy with dependency inference (`blocks`/`informs` using title references). Zod schema. `generateHierarchicalPlan` AI service function. `previewHierarchicalPlan` query.
-- [ ] **3-B: Plan Commit with Hierarchy + Dependencies** — `commitHierarchicalPlan` mutation. Creates epics→tasks→subtasks via parentTaskId, TaskDependency records, autoComplete toggles. Batch cycle detection. `prisma.$transaction`. *(Depends: 3-A)*
-- [ ] **3-C: Plan Editor UI** — Tree view with editable nodes, autoComplete toggles, dependency badges, drag-to-reorder, commit button. `PlanDependencyEditor` for inline dependency picker. *(Depends: 3-A)*
+- [x] **3-A: Hierarchical Plan Generation** — New prompt builder outputting epic→task→subtask hierarchy with dependency inference (`blocks`/`informs` using title references). Zod schema. `generateHierarchicalPlan` AI service function. `previewHierarchicalPlan` query.
+- [x] **3-B: Plan Commit with Hierarchy + Dependencies** — `commitHierarchicalPlan` mutation. Creates epics→tasks→subtasks via parentTaskId, TaskDependency records, autoComplete toggles. Batch cycle detection. `prisma.$transaction`. *(Depends: 3-A)*
+- [x] **3-C: Plan Editor UI** — Tree view with editable nodes, autoComplete toggles, dependency badges, drag-to-reorder, commit button. `PlanDependencyEditor` for inline dependency picker. *(Depends: 3-A)*
+
+**Wave 38 follow-ups** (out of scope, add to future waves):
+- [ ] HierarchicalPlanDialog: add feedback textarea in editing state for "Regenerate with feedback" flow (currently just goes back to prompt input)
+- [ ] HierarchicalPlanEditor: fix exhaustive-deps lint warning (useEffect depends on `plan.epics.length` but uses `plan.epics`)
+- [ ] HierarchicalPlanEditor: add aria-labels to expand/collapse buttons and delete buttons for accessibility
+- [ ] Add integration tests for `previewHierarchicalPlan` and `commitHierarchicalPlan` resolvers
+- [ ] Add unit tests for `batchDetectCycles` utility
+- [ ] PlanDependencyEditor is not wired into HierarchicalPlanEditor's node rendering (dependency badges show count but clicking them doesn't open the editor)
 
 ### Wave 39 — Execution Pipeline
 - [ ] **4-A: Project-Level Orchestrator** — Event-driven: listens to `task.action_plan_completed` + `task.updated(status→done)`. Finds auto-eligible tasks with all blockers completed. Generates action plan if none, then executes. Advisory lock per project. Concurrency limit (default 3).
@@ -291,5 +299,6 @@ Transforms Auto-Complete from isolated per-task execution into project-level orc
 | 35 | 2026-03-20 | Critical security fixes (C-1 through C-5, H-5/H-7/H-8/H-11) |
 | 36 | 2026-03-20 | Auto-Complete Redesign — Foundation: KB schema, retrieval, autoComplete flag |
 | 37 | 2026-03-20 | Auto-Complete Redesign — Foundation: KB panel, onboarding interview, pipeline wiring |
+| 38 | 2026-03-20 | Auto-Complete Redesign — Intelligent Planning: hierarchical plans, batch cycle detection, plan editor |
 
 Full wave details in `changelog.md`.
