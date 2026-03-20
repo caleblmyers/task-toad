@@ -108,6 +108,118 @@ All original work sets completed through Wave 30. Competitive gap items ongoing.
 
 ---
 
+## Deployment & Ops — Pre-Launch Checklist
+
+### Infrastructure (Railway)
+- [x] Railway project created (`blissful-insight`)
+- [x] Postgres addon running (internal network: `postgres.railway.internal:5432`)
+- [x] API service (`tasktoad-api`) deployed from GitHub repo, auto-deploys on push
+- [x] Env vars configured: `DATABASE_URL`, `JWT_SECRET`, `ENCRYPTION_MASTER_KEY`, `CORS_ORIGINS`, `NODE_ENV=production`
+- [x] GitHub App credentials configured: `GITHUB_APP_ID`, `GITHUB_PRIVATE_KEY`, `GITHUB_WEBHOOK_SECRET`
+- [x] Railway public domain: `tasktoad-api-production.up.railway.app`
+- [x] Frontend served as static files from API service (Express serves `web/dist` in production)
+- [x] Health check passing: `/api/health` returns `status: ok, db: ok`
+- [ ] Railway health check configured in service settings (auto-restart on failure)
+- [ ] Custom domain configured (optional — Railway domain works for beta)
+
+### Observability
+- [x] Sentry DSN set on production (`SENTRY_DSN` env var added 2026-03-20)
+- [ ] Verify Sentry receives errors in production (trigger a test error or wait for first real one)
+- [ ] UptimeRobot monitor configured: HTTP check on production `/api/health` every 5 min
+
+### Database
+- [x] Prisma migrations applied (auto-run on deploy via build command)
+- [ ] Verify all Wave 31-34 migration tables exist in production DB
+
+### Email (optional for beta)
+- [ ] SMTP provider configured (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`)
+- [ ] Email verification and password reset flows tested
+
+### Security Review
+- [x] `JWT_SECRET` is strong random hex (not `dev-secret`)
+- [x] `ENCRYPTION_MASTER_KEY` is random 64-char hex (not placeholder)
+- [x] `CORS_ORIGINS` set to production domain only
+- [x] No secrets committed to git
+
+---
+
+## Post-Deployment — Manual Testing Plan
+
+Test against production: `https://tasktoad-api-production.up.railway.app`
+
+### Test 1: Onboarding Flow
+- [ ] Sign up with real email — verify error is graceful if SMTP not configured (no crash)
+- [ ] Sign up, log in, create an org
+- [ ] Set Anthropic API key in org settings — verify it saves, hint shows last 4 chars
+
+### Test 2: Project Creation
+- [ ] Create a project manually (name + description)
+- [ ] "Generate Project Options" with AI — returns 3 options, pick one, preview task plan, commit
+- [ ] Tasks appear in Backlog tab with correct statuses
+
+### Test 3: Task Lifecycle
+- [ ] Create task manually, edit title/description/priority/status
+- [ ] Assign yourself, add due date, add story points
+- [ ] Change status on Board tab (drag or dropdown) — verify status↔column sync
+- [ ] Add comment with @mention — notification appears
+- [ ] Add/remove label
+- [ ] Archive task, verify hidden, toggle "show archived" to see it
+
+### Test 4: Sprint Workflow
+- [ ] Create sprint with custom columns and WIP limits
+- [ ] Drag tasks from backlog into sprint
+- [ ] Activate sprint — Board tab shows it
+- [ ] Move tasks between columns — WIP limit warnings appear (red/amber)
+- [ ] Close sprint — test "move incomplete tasks" options
+
+### Test 5: Hierarchy
+- [ ] Create initiative → epic → story → task chain
+- [ ] EpicsView tree renders with expand/collapse
+- [ ] Click nested task — breadcrumbs show full chain
+- [ ] Progress bars aggregate correctly up hierarchy
+
+### Test 6: Time Tracking
+- [ ] Open task, log time (30 min, today)
+- [ ] Log more time — total accumulates
+- [ ] "Logged vs estimated" display when task has estimated hours
+- [ ] Delete a time entry
+
+### Test 7: Saved Views & Filters
+- [ ] Apply filters (status + priority), save as view
+- [ ] Clear filters, reload saved view — restores correctly
+- [ ] Share view — appears under "Shared Views"
+- [ ] Advanced filter builder — create OR group, apply, verify results
+
+### Test 8: Permissions
+- [ ] In Members tab, change role to "viewer" on a project
+- [ ] Verify buttons disabled (can't create/edit tasks)
+- [ ] Change role to "editor" — can create/edit again
+
+### Test 9: Charts & Analytics
+- [ ] Dashboard tab — velocity, burndown, cumulative flow charts render
+- [ ] Cycle Time panel — date range presets work
+- [ ] Portfolio page — rollup stat cards show aggregate data
+
+### Test 10: Releases
+- [ ] Create release (name + version)
+- [ ] Add tasks to release
+- [ ] Generate release notes (requires Anthropic key)
+- [ ] Change release status (draft → scheduled → released)
+
+### Test 11: Responsive & Edge Cases
+- [ ] Phone-width viewport — sidebar collapses, navigation works
+- [ ] Very long task title/description — layout doesn't break
+- [ ] Rapid task switching — no stale data or race conditions
+- [ ] Two tabs, edit same task — no data loss
+- [ ] Log out → access /app — redirects to login
+
+### Test 12: Real-Time (SSE)
+- [ ] Two browser tabs on same project
+- [ ] Create task in tab 1 — appears in tab 2 without refresh
+- [ ] Change task status in tab 1 — tab 2 updates
+
+---
+
 ## Competitive Gap — P0 (Foundation)
 
 These block scaling, process enforcement, and basic team adoption.
