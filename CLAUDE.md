@@ -109,7 +109,7 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 - **Task:** `tasks(projectId)`, `epics`, `labels`, `customFields`
 - **Sprint:** `sprints(projectId)`, `sprintVelocity`, `sprintBurndown`
 - **Comment:** `comments`, `activities`
-- **AI:** `aiUsage`, `aiPromptHistory`, `analyzeTrends`, `analyzeSprintTransition`, `projectChat`, `analyzeRepoDrift`, `previewHierarchicalPlan`
+- **AI:** `aiUsage`, `aiPromptHistory`, `analyzeTrends`, `analyzeSprintTransition`, `projectChat`, `analyzeRepoDrift`, `previewHierarchicalPlan`, `taskInsights`
 - **Notification:** `notifications`, `unreadNotificationCount`, `notificationPreferences`
 - **GitHub:** `githubInstallations`, `githubInstallationRepos`, `githubProjectRepo`, `fetchRepoFileContent`
 - **KnowledgeBase:** `knowledgeEntries(projectId)`
@@ -126,7 +126,7 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 - **Task:** `createTask`, `updateTask`, `createSubtask`, `bulkUpdateTasks`, `createLabel`, `deleteLabel`, `addTaskLabel`, `removeTaskLabel`, `generateTaskPlan`, `previewTaskPlan`, `commitTaskPlan`, `expandTask`, `generateTaskInstructions`, `createCustomField`, `updateCustomField`, `deleteCustomField`, `setCustomFieldValue`, `addTaskAssignee`, `removeTaskAssignee`
 - **Sprint:** `createSprint`, `updateSprint`, `deleteSprint`, `closeSprint`, `previewSprintPlan`, `commitSprintPlan`
 - **Comment:** `createComment`, `updateComment`, `deleteComment`
-- **AI:** `generateCodeFromTask`, `regenerateCodeFile`, `reviewPullRequest`, `parseBugReport`, `previewPRDBreakdown`, `commitPRDBreakdown`, `bootstrapProjectFromRepo`, `batchGenerateCode`, `generateOnboardingQuestions`, `saveOnboardingAnswers`, `commitHierarchicalPlan`
+- **AI:** `generateCodeFromTask`, `regenerateCodeFile`, `reviewPullRequest`, `parseBugReport`, `previewPRDBreakdown`, `commitPRDBreakdown`, `bootstrapProjectFromRepo`, `batchGenerateCode`, `generateOnboardingQuestions`, `saveOnboardingAnswers`, `commitHierarchicalPlan`, `dismissInsight`
 - **Notification:** `markNotificationRead`, `markAllNotificationsRead`, `updateNotificationPreference`
 - **GitHub:** `linkGitHubInstallation`, `connectGitHubRepo`, `disconnectGitHubRepo`, `createGitHubRepo`, `createPullRequestFromTask`, `syncTaskToGitHub`, `decomposeGitHubIssue`, `generateFixFromReview`
 - **Report:** `saveReport`, `deleteReport`, `summarizeProject`

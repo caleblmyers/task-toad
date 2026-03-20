@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-Production deployed at `https://tasktoad-api-production.up.railway.app`. 39 swarm waves completed. All P0 and most P1 competitive gap items done. All 5 Critical security findings fixed. Current phase: Auto-Complete Pipeline Redesign (Waves 36-39 done, Waves 40-41 planned).
+Production deployed at `https://tasktoad-api-production.up.railway.app`. 40 swarm waves completed. All P0 and most P1 competitive gap items done. All 5 Critical security findings fixed. Current phase: Auto-Complete Pipeline Redesign (Waves 36-40 done, Wave 41 planned).
 
 ---
 
@@ -234,15 +234,22 @@ Transforms Auto-Complete from isolated per-task execution into project-level orc
 - [x] **4-E: Accessibility + KnowledgeBase UX** — Aria labels, Run Interview button
 
 **Wave 39 follow-ups** (out of scope, add to future waves):
-- [ ] Fix flaky `export.integration.test.ts` — fails in full suite (401 instead of expected statuses) but passes individually. Likely test isolation issue with JWT/DB state leaking between concurrent test files.
+- [x] Fix flaky `export.integration.test.ts` — fixed by setting DATABASE_URL in vitest config to isolate test DB (Wave 40)
 - [ ] HierarchicalPlanEditor: the `setExpandedIds` in useEffect still triggers `react-hooks/set-state-in-effect` warning — consider using `useMemo` or `useState` initializer instead
 - [ ] Orchestrator: add metrics/observability for auto-complete task processing (count of tasks auto-enqueued, failures, concurrency limit hits)
 - [ ] PlanDependencyEditor: subtask-level dependencies not supported (editor only renders for epics and tasks)
 
-### Wave 40 — Orchestration
-- [ ] **5-A: Status-Driven Events** — Orchestrator handles failure (block dependents, attach error context). New events: `task.blocked`, `task.unblocked`. Notification creation for blocked chains.
-- [ ] **5-B: TaskInsight Model + Generation** — `TaskInsight` model (sourceTaskId, targetTaskId, type: discovery/warning/pattern, content, autoApplied). Typedefs, resolvers, prompt builder. Call insight extraction after generate_code completes. Migration.
-- [ ] **5-C: CI Monitor + Auto-Fix** — `monitor_ci` executor (polls GitHub Actions, re-enqueues with delay, max 30 min). `fix_ci` executor (fetch CI logs → AI fix → commit to same branch, one retry). Update ActionType union, registry, action plan prompt.
+### Wave 40 — Orchestration (Done)
+- [x] **5-A: Status-Driven Events** — Orchestrator handles failure (block dependents, attach error context). New events: `task.blocked`, `task.unblocked`. Notification creation for blocked chains. SSE broadcasts.
+- [x] **5-B: TaskInsight Model + Generation** — `TaskInsight` model (sourceTaskId, targetTaskId, type: discovery/warning/pattern, content, autoApplied). Typedefs, resolvers, prompt builder. Call insight extraction after generate_code completes. Migration.
+- [x] **5-C: CI Monitor + Auto-Fix** — `monitor_ci` executor (polls GitHub Actions with in-process sleep, max 30 min). `fix_ci` executor (fetch CI annotations → AI fix → commit to same branch, one retry). ActionType union, registry, action plan prompt updated.
+
+**Wave 40 follow-ups** (out of scope, add to future waves):
+- [ ] monitor_ci: Make polling resilient to process restarts by using job queue re-enqueue with attempt tracking persisted in action config (currently uses in-process sleep loop)
+- [ ] TaskInsight: Add DataLoader for sourceTask/targetTask field resolvers to avoid N+1 queries
+- [ ] TaskInsight: Consider adding tests for the insight generation hook in actionExecutor
+- [ ] Planning prompt: Add validation that monitor_ci/fix_ci actions reference valid source action IDs in the action plan schema
+- [ ] merge-worker.sh: Fix script treating lint warnings (exit 0 with warnings) as failures, causing manual merge fallback
 
 ### Wave 41 — Polish
 - [ ] **6-A: Execution Dashboard** — Frontend view of all auto-completing tasks (executing/queued/completed/failed), dependency visualization, retry/cancel controls. `useExecutionDashboard` hook.
@@ -309,5 +316,6 @@ Transforms Auto-Complete from isolated per-task execution into project-level orc
 | 37 | 2026-03-20 | Auto-Complete Redesign — Foundation: KB panel, onboarding interview, pipeline wiring |
 | 38 | 2026-03-20 | Auto-Complete Redesign — Intelligent Planning: hierarchical plans, batch cycle detection, plan editor |
 | 39 | 2026-03-20 | Auto-Complete Redesign — Execution Pipeline: orchestrator, parallel execution, PR descriptions, follow-ups |
+| 40 | 2026-03-20 | Auto-Complete Redesign — Orchestration: failure events, task insights, CI monitor/fix, test fix |
 
 Full wave details in `changelog.md`.

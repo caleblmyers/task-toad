@@ -6,6 +6,41 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ## 2026-03-20 (auto-complete redesign)
 
+### Wave 40: Auto-Complete Redesign — Orchestration + CI Fix (3 workers, 6 tasks)
+
+**Worker 1 — 5-A: Status-Driven Events:**
+- New event types: `task.action_plan_failed`, `task.blocked`, `task.unblocked` in eventbus types
+- `actionExecutor.ts` emits `task.action_plan_failed` when plan status set to 'failed'
+- Orchestrator listener handles `task.action_plan_failed` — finds dependents via TaskDependency, emits `task.blocked` for autoComplete=true tasks
+- Notification listener creates `action_plan_failed` and `task_blocked` notifications for task assignees
+- SSE listener broadcasts all three new events for real-time frontend updates
+
+**Worker 2 — 5-B: TaskInsight Model + Generation:**
+- New `TaskInsight` Prisma model (`taskinsight.prisma`): sourceTaskId, targetTaskId, type (discovery/warning/pattern), content, autoApplied
+- Migration: `add_task_insights`
+- `TaskInsightItemSchema` + `TaskInsightsResponseSchema` Zod schemas, `generateTaskInsights` AIFeature + FEATURE_CONFIG
+- `buildGenerateTaskInsightsPrompt` prompt builder — analyzes generated code for discoveries, warnings, patterns targeting sibling tasks
+- `generateTaskInsights` AI service function
+- GraphQL: `taskInsights(projectId, taskId?)` query, `dismissInsight` mutation, field resolvers
+- ActionExecutor hook: after successful `generate_code`, loads sibling tasks, generates insights, creates records (wrapped in try/catch — never blocks pipeline)
+
+**Worker 3 — 5-C: CI Monitor + Auto-Fix + Test Fix:**
+- Fixed flaky `export.integration.test.ts` — root cause was missing DATABASE_URL in vitest config (not token version as suspected)
+- `monitor_ci` executor: polls GitHub check runs via REST API with in-process sleep loop (30s intervals, max 30 min)
+- `fix_ci` executor: fetches CI error annotations, calls AI to generate fix, commits to same branch (one retry limit)
+- `monitor_ci` and `fix_ci` added to ActionType union + registered in actions/index.ts
+- Planning prompt updated with new action types and sequencing rules
+
+**Process:** Zero code quality rejections. Reviewer noted task-005 (test fix) was over-prescribed — debugging tasks should describe symptoms and let workers investigate. monitor_ci uses in-process sleep vs job queue re-enqueue (follow-up).
+
+**Open follow-ups:**
+- monitor_ci: make resilient to process restarts via job queue re-enqueue
+- TaskInsight: add DataLoader for sourceTask/targetTask field resolvers
+- Planning prompt: validate monitor_ci/fix_ci source action IDs in schema
+- merge-worker.sh: fix script treating lint warnings as failures
+
+---
+
 ### Wave 39: Auto-Complete Redesign — Execution Pipeline + Follow-ups (3 workers, 5 tasks)
 
 **Worker 1 — 4-A + 4-B: Project Orchestrator + Parallel Execution:**
