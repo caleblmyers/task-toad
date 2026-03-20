@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-Production deployed at `https://tasktoad-api-production.up.railway.app`. 40 swarm waves completed. All P0 and most P1 competitive gap items done. All 5 Critical security findings fixed. Current phase: Auto-Complete Pipeline Redesign (Waves 36-40 done, Wave 41 planned).
+Production deployed at `https://tasktoad-api-production.up.railway.app`. 41 swarm waves completed. All P0 and most P1 competitive gap items done. All 5 Critical security findings fixed. Auto-Complete Pipeline Redesign complete (Waves 36-41).
 
 ---
 
@@ -251,10 +251,17 @@ Transforms Auto-Complete from isolated per-task execution into project-level orc
 - [ ] Planning prompt: Add validation that monitor_ci/fix_ci actions reference valid source action IDs in the action plan schema
 - [ ] merge-worker.sh: Fix script treating lint warnings (exit 0 with warnings) as failures, causing manual merge fallback
 
-### Wave 41 — Polish
-- [ ] **6-A: Execution Dashboard** — Frontend view of all auto-completing tasks (executing/queued/completed/failed), dependency visualization, retry/cancel controls. `useExecutionDashboard` hook.
-- [ ] **6-B: Insight Review UI + Notifications** — `InsightPanel` (apply/dismiss insights). Execution notification toasts. Wire into TaskDetailPanel + useEventSource.
-- [ ] **6-C: Manual Task Specs + Auto-Start** — Rich spec generation for manual tasks (files to change, approach, code snippets, KB entries, acceptance criteria). Bootstrap mode: create repo if needed before execution. `autoStartProject` mutation.
+### Wave 41 — Polish (DONE)
+- [x] **6-A: Execution Dashboard** — projectActionPlans query, ExecutionDashboard component with stat cards, status filters, progress bars, expandable action steps, SSE auto-refresh, retry/cancel controls. Wired into ProjectDetail as panel via ProjectToolbar.
+- [x] **6-B: Insight Review UI + Notifications** — InsightPanel with type badges, dismiss/apply actions. Insights tab in TaskDetailPanel with count badge. Toast notifications for plan_completed, plan_failed, blocked events. SSE events: action_plan_failed, blocked, unblocked.
+- [x] **6-C: Manual Task Specs + Auto-Start** — ManualTaskSpecSchema, buildManualTaskSpecPrompt, generateManualTaskSpec mutation with KB retrieval and repo file context. ManualTaskSpecView component with collapsible code snippets. autoStartProject mutation creates GitHub repo + triggers orchestrator. Auto-Start button in ProjectToolbar.
+
+**Wave 41 follow-ups** (out of scope, add to future waves):
+- [ ] ExecutionDashboard stat cards show counts from filtered list when a filter is active — consider separate `all` query for stats
+- [ ] ManualTaskSpec: `(task as Record<string, unknown>).acceptanceCriteria` cast in resolver — DataLoader type should include acceptanceCriteria for cleaner access
+- [ ] ExecutionDashboard: no dependency visualization yet (mentioned in original spec) — show blocked-by relationships between plans
+- [ ] cancelActionPlan mutation: verify it interrupts actively executing actions (currently only updates plan status to 'cancelled')
+- [ ] Insights tab count badge fetches insights separately from InsightPanel itself — could deduplicate with shared state or a count-only query
 
 ### Verification Checklist (per wave)
 - `pnpm typecheck && pnpm lint && pnpm build && pnpm test` all pass
@@ -317,5 +324,6 @@ Transforms Auto-Complete from isolated per-task execution into project-level orc
 | 38 | 2026-03-20 | Auto-Complete Redesign — Intelligent Planning: hierarchical plans, batch cycle detection, plan editor |
 | 39 | 2026-03-20 | Auto-Complete Redesign — Execution Pipeline: orchestrator, parallel execution, PR descriptions, follow-ups |
 | 40 | 2026-03-20 | Auto-Complete Redesign — Orchestration: failure events, task insights, CI monitor/fix, test fix |
+| 41 | 2026-03-20 | Auto-Complete Redesign — Polish: execution dashboard, insight panel, manual specs, auto-start |
 
 Full wave details in `changelog.md`.

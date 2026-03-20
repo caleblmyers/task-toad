@@ -6,6 +6,44 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ## 2026-03-20 (auto-complete redesign)
 
+### Wave 41: Auto-Complete Redesign — Polish / Final Wave (3 workers, 6 tasks)
+
+**Worker 1 — 6-A: Execution Dashboard:**
+- `projectActionPlans(projectId, status?)` backend query with task context and action details
+- `ExecutionDashboard.tsx` component: stat cards (executing/queued/completed/failed), plan list with status badges + progress bars, expandable action steps with status icons, status filter buttons
+- Wired into ProjectDetail as lazy-loaded panel via ProjectToolbar overflow menu
+- SSE real-time: added `task.action_plan_failed`, `task.blocked`, `task.unblocked` to SSE_EVENTS, auto-refetch on any execution event
+- Retry button on failed plans, Cancel button on executing plans (new `cancelActionPlan` mutation)
+
+**Worker 2 — 6-B: Insight Review UI + Notifications:**
+- `InsightPanel.tsx` component in taskdetail: fetches insights for task, type badges (discovery=blue, warning=amber, pattern=purple), dismiss/apply actions, source/target context, relative timestamps
+- Insights tab in TaskDetailPanel with count badge, auto-shown for autoComplete tasks
+- Apply insight appends content to task instructions
+- Toast notifications for execution events: plan_completed (success), plan_failed (error), blocked (info)
+- ToastContainer wired into ProjectDetail SSE listener
+
+**Worker 3 — 6-C: Manual Task Specs + Auto-Start:**
+- `ManualTaskSpecSchema` Zod schema: filesToChange (path/action/description), approach (steps), codeSnippets (file/language/code/explanation), testingNotes, dependencies
+- `buildManualTaskSpecPrompt` prompt builder with KB + repo file context
+- `generateManualTaskSpec` mutation — loads task+project, KB retrieval, repo files, returns rich spec
+- `ManualTaskSpecView.tsx` component: collapsible code snippets in dark blocks, file action badges, numbered approach steps, dependency pills
+- `autoStartProject` mutation — creates GitHub repo if needed, triggers orchestrator for all autoComplete=true tasks
+- Auto-Start button in ProjectToolbar (only shown with GitHub installation)
+
+**Process:** 1 rebase needed (task-006 conflicted with task-004 in TaskDetailPanel.tsx). Zero code quality rejections. Clean independent merges for all first-tasks.
+
+**Open follow-ups:**
+- ExecutionDashboard stats count from filtered list (should use separate all-plans query)
+- ManualTaskSpec: DataLoader type missing acceptanceCriteria (uses cast workaround)
+- No dependency visualization between plans in dashboard
+- cancelActionPlan doesn't interrupt actively executing actions
+- Insights tab count badge duplicates InsightPanel fetch
+
+**AUTO-COMPLETE PIPELINE REDESIGN COMPLETE (Waves 36-41)**
+Full pipeline: KB context → onboarding interview → hierarchical planning → parallel auto-execution → CI monitoring → failure handling → insights generation → execution dashboard → manual task specs → auto-start.
+
+---
+
 ### Wave 40: Auto-Complete Redesign — Orchestration + CI Fix (3 workers, 6 tasks)
 
 **Worker 1 — 5-A: Status-Driven Events:**
