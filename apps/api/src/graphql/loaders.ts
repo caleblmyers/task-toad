@@ -103,17 +103,39 @@ export function createLoaders(prisma: PrismaClient): Loaders {
     }),
 
     taskProgress: new DataLoader(async (taskIds) => {
-      const children = await prisma.task.findMany({
-        where: { parentTaskId: { in: [...taskIds] }, archived: false },
-        select: { parentTaskId: true, status: true },
-      });
+      // Recursively count ALL descendants (not just direct children)
+      // using iterative breadth-first traversal
       const map = new Map<string, { total: number; completed: number }>();
-      for (const c of children) {
-        if (!map.has(c.parentTaskId!)) map.set(c.parentTaskId!, { total: 0, completed: 0 });
-        const p = map.get(c.parentTaskId!)!;
-        p.total++;
-        if (c.status === 'done') p.completed++;
+
+      // Start with direct children of the requested taskIds
+      let currentParentIds = [...taskIds] as string[];
+      // Track which root taskId each descendant belongs to
+      const rootMap = new Map<string, string>(); // childId -> rootTaskId
+      for (const id of taskIds) rootMap.set(id, id);
+
+      while (currentParentIds.length > 0) {
+        const children = await prisma.task.findMany({
+          where: { parentTaskId: { in: currentParentIds }, archived: false },
+          select: { taskId: true, parentTaskId: true, status: true },
+        });
+        if (children.length === 0) break;
+
+        const nextParentIds: string[] = [];
+        for (const c of children) {
+          // Determine which root this child belongs to
+          const rootId = rootMap.get(c.parentTaskId!) ?? c.parentTaskId!;
+          rootMap.set(c.taskId, rootId);
+
+          if (!map.has(rootId)) map.set(rootId, { total: 0, completed: 0 });
+          const p = map.get(rootId)!;
+          p.total++;
+          if (c.status === 'done') p.completed++;
+
+          nextParentIds.push(c.taskId);
+        }
+        currentParentIds = nextParentIds;
       }
+
       return taskIds.map(id => map.get(id) ?? null);
     }),
 

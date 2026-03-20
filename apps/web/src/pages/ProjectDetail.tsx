@@ -330,6 +330,7 @@ export default function ProjectDetail() {
     timeSummary,
     onLogTime: logTime,
     onDeleteTimeEntry: deleteTimeEntry,
+    onSelectTask: d.selectTask,
   };
 
   return (

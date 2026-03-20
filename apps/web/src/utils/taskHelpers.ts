@@ -11,6 +11,15 @@ export const TASK_FIELDS = `
   taskId title description instructions acceptanceCriteria suggestedTools estimatedHours storyPoints priority status taskType projectId parentTaskId createdAt sprintId sprintColumn assigneeId archived position dueDate recurrenceRule recurrenceParentId labels { labelId name color } customFieldValues { customFieldValueId field { customFieldId name fieldType options required position } value } attachments { attachmentId taskId fileName fileKey mimeType sizeBytes uploadedById createdAt } assignees { id user { userId email } assignedAt } watchers { id user { userId email } watchedAt } githubIssueNumber githubIssueUrl pullRequests { id prNumber prUrl prTitle state } commits { id sha message author url createdAt } dependencies { taskDependencyId sourceTaskId targetTaskId linkType targetTask { taskId title status } } dependents { taskDependencyId sourceTaskId targetTaskId linkType sourceTask { taskId title status } }
 `;
 
+export const TASK_TREE_FIELDS = `
+  taskId title status taskType
+  progress { total completed percentage }
+  children {
+    taskId title status taskType
+    progress { total completed percentage }
+  }
+`;
+
 export function columnToStatus(column: string): Task['status'] | null {
   const lower = column.toLowerCase().replace(/[^a-z]/g, '');
   if (lower === 'todo' || lower === 'backlog') return 'todo';

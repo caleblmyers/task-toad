@@ -1,8 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { Task, Sprint, OrgUser, Comment, Activity, Label, CodeReview, Attachment, TaskActionPlan } from '../types';
 import type { TaskTimeSummary } from '@tasktoad/shared-types';
 import ActionProgressPanel from './ActionProgressPanel';
 import { gql, TOKEN_KEY } from '../api/client';
+import { TASK_ANCESTORS_QUERY } from '../api/queries';
 import CommentSection from './CommentSection';
 import ActivityFeed from './ActivityFeed';
 import MarkdownRenderer from './shared/MarkdownRenderer';
@@ -15,6 +16,13 @@ import TaskSubtasksSection from './taskdetail/TaskSubtasksSection';
 import TaskAIHistory from './taskdetail/TaskAIHistory';
 import TaskAIReviewSection from './taskdetail/TaskAIReviewSection';
 import Badge from './shared/Badge';
+
+interface TaskAncestor {
+  taskId: string;
+  title: string;
+  status: string;
+  taskType: string;
+}
 
 function parseTools(raw?: string | null): Array<{ name: string; category: string; reason?: string }> {
   if (!raw) return [];
@@ -89,6 +97,7 @@ export interface TaskDetailPanelProps {
   timeSummary?: TaskTimeSummary | null;
   onLogTime?: (taskId: string, durationMinutes: number, loggedDate: string, description?: string, billable?: boolean) => Promise<unknown>;
   onDeleteTimeEntry?: (timeEntryId: string, taskId: string) => Promise<void>;
+  onSelectTask?: (task: Task) => void;
 }
 
 function PanelContent({
@@ -106,8 +115,23 @@ function PanelContent({
   onAutoComplete, autoCompleteLoading,
   actionPlan, onCompleteManualAction, onSkipAction, onRetryAction, onCancelActionPlan,
   timeSummary, onLogTime, onDeleteTimeEntry,
+  onSelectTask,
 }: Omit<TaskDetailPanelProps, 'onClose' | 'isDrawer'>) {
   const tools = parseTools(task.suggestedTools);
+  const [ancestors, setAncestors] = useState<TaskAncestor[]>([]);
+
+  useEffect(() => {
+    if (!task.parentTaskId) {
+      setAncestors([]);
+      return;
+    }
+    let cancelled = false;
+    gql<{ taskAncestors: TaskAncestor[] }>(TASK_ANCESTORS_QUERY, { taskId: task.taskId })
+      .then((data) => { if (!cancelled) setAncestors(data.taskAncestors); })
+      .catch(() => { if (!cancelled) setAncestors([]); });
+    return () => { cancelled = true; };
+  }, [task.taskId, task.parentTaskId]);
+
   const [editingDescription, setEditingDescription] = useState(false);
   const [editDescValue, setEditDescValue] = useState('');
   const [editingInstructions, setEditingInstructions] = useState(false);
@@ -152,6 +176,24 @@ function PanelContent({
 
   return (
     <div className="p-6 max-w-2xl">
+      {ancestors.length > 0 && onSelectTask && (
+        <nav className="mb-2 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
+          {ancestors.map((ancestor, i) => (
+            <span key={ancestor.taskId} className="flex items-center gap-1">
+              {i > 0 && <span className="text-slate-300 dark:text-slate-600">›</span>}
+              <button
+                type="button"
+                onClick={() => onSelectTask({ taskId: ancestor.taskId, title: ancestor.title, status: ancestor.status, taskType: ancestor.taskType } as unknown as Task)}
+                className="hover:text-slate-700 dark:hover:text-slate-200 hover:underline truncate max-w-[150px]"
+              >
+                {ancestor.title}
+              </button>
+            </span>
+          ))}
+          <span className="text-slate-300 dark:text-slate-600">›</span>
+          <span className="text-slate-700 dark:text-slate-200 font-medium truncate max-w-[150px]">{task.title}</span>
+        </nav>
+      )}
       <TaskTitleEditor
         task={task}
         editingTitle={editingTitle}

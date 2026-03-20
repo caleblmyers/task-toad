@@ -194,8 +194,18 @@ export const CYCLE_TIME_METRICS_QUERY = `query CycleTimeMetrics($projectId: ID!,
 
 export const EPICS_QUERY = `query Epics($projectId: ID!) {
   epics(projectId: $projectId) {
-    taskId title description status priority position createdAt
+    taskId title description status priority taskType position createdAt
     progress { total completed percentage }
+    children {
+      taskId title description status priority taskType position createdAt
+      progress { total completed percentage }
+    }
+  }
+}`;
+
+export const TASK_ANCESTORS_QUERY = `query TaskAncestors($taskId: ID!) {
+  taskAncestors(taskId: $taskId) {
+    taskId title status taskType
   }
 }`;
 

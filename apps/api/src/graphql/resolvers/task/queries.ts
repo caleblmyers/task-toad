@@ -220,7 +220,7 @@ function buildFilterWhere(
     return { projectId, parentTaskId };
   }
 
-  const where: Record<string, unknown> = { projectId, taskType: { not: 'epic' } };
+  const where: Record<string, unknown> = { projectId, taskType: { notIn: ['epic', 'initiative'] } };
   // Collect AND conditions — used for label AND logic and combining OR groups
   const andConditions: Record<string, unknown>[] = [];
 
@@ -398,7 +398,7 @@ export const taskQueries = {
   epics: async (_parent: unknown, args: { projectId: string }, context: Context) => {
     await requireProjectAccess(context, args.projectId);
     return context.prisma.task.findMany({
-      where: { projectId: args.projectId, taskType: 'epic', parentTaskId: null, archived: false },
+      where: { projectId: args.projectId, taskType: { in: ['epic', 'initiative'] }, parentTaskId: null, archived: false },
       orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
     });
   },
@@ -422,5 +422,22 @@ export const taskQueries = {
       where: { projectId: args.projectId },
       orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
     });
+  },
+
+  taskAncestors: async (_parent: unknown, args: { taskId: string }, context: Context) => {
+    const { task } = await requireTask(context, args.taskId);
+    const ancestors = [];
+    let currentParentId = task.parentTaskId;
+    const maxDepth = 10; // safety limit
+    let depth = 0;
+    while (currentParentId && depth < maxDepth) {
+      const parent = await context.prisma.task.findUnique({ where: { taskId: currentParentId } });
+      if (!parent) break;
+      ancestors.push(parent);
+      currentParentId = parent.parentTaskId;
+      depth++;
+    }
+    // Return from root to immediate parent (reverse order)
+    return ancestors.reverse();
   },
 };

@@ -230,6 +230,8 @@ export const taskQueryFields = /* GraphQL */ `
   customFields(projectId: ID!): [CustomField!]!
   """List all watchers for a task."""
   taskWatchers(taskId: ID!): [TaskWatcher!]!
+  """Get the chain of ancestor tasks from a task up to the root."""
+  taskAncestors(taskId: ID!): [Task!]!
 `;
 
 export const taskMutationFields = /* GraphQL */ `

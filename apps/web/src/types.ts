@@ -33,9 +33,11 @@ export interface Epic {
   description: string | null;
   status: string;
   priority: string;
+  taskType?: string;
   position: number | null;
   createdAt: string;
   progress: { total: number; completed: number; percentage: number } | null;
+  children?: Epic[];
 }
 
 export interface ChildTaskPreview {

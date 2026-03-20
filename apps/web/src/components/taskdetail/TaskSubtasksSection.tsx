@@ -30,7 +30,7 @@ export default function TaskSubtasksSection({
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [showSubtaskForm, setShowSubtaskForm] = useState(false);
 
-  const showSection = subtasks.length > 0 || ((task.taskType === 'epic' || task.taskType === 'story') && onCreateSubtask);
+  const showSection = subtasks.length > 0 || ((task.taskType === 'epic' || task.taskType === 'story' || task.taskType === 'initiative') && onCreateSubtask);
 
   if (!showSection) return null;
 
@@ -116,7 +116,7 @@ export default function TaskSubtasksSection({
         </div>
       )}
 
-      {onCreateSubtask && (task.taskType === 'epic' || task.taskType === 'story') && (
+      {onCreateSubtask && (task.taskType === 'epic' || task.taskType === 'story' || task.taskType === 'initiative') && (
         showSubtaskForm ? (
           <form
             className="flex gap-2 mt-2"

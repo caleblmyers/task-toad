@@ -56,7 +56,7 @@ export const taskFieldResolvers = {
       return deps.map(d => ({ ...d, createdAt: d.createdAt.toISOString() }));
     },
     progress: async (parent: { taskId: string; taskType: string }, _args: unknown, context: Context) => {
-      if (parent.taskType !== 'epic' && parent.taskType !== 'story') return null;
+      if (parent.taskType !== 'epic' && parent.taskType !== 'story' && parent.taskType !== 'initiative') return null;
       const result = await context.loaders.taskProgress.load(parent.taskId);
       if (!result || result.total === 0) return { total: 0, completed: 0, percentage: 0 };
       return { total: result.total, completed: result.completed, percentage: Math.round((result.completed / result.total) * 100) };
