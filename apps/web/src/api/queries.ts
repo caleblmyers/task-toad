@@ -791,6 +791,20 @@ export const CLOSE_SPRINT_MUTATION = `mutation CloseSprint($sprintId: ID!, $inco
   }
 }`;
 
+// ── Task Insights ──
+
+export const TASK_INSIGHTS_QUERY = `query TaskInsights($projectId: ID!, $taskId: ID) {
+  taskInsights(projectId: $projectId, taskId: $taskId) {
+    taskInsightId sourceTaskId targetTaskId type content autoApplied createdAt
+    sourceTask { taskId title }
+    targetTask { taskId title }
+  }
+}`;
+
+export const DISMISS_INSIGHT_MUTATION = `mutation DismissInsight($taskInsightId: ID!) {
+  dismissInsight(taskInsightId: $taskInsightId)
+}`;
+
 // ── AI Review ──
 
 export const REVIEW_PR_MUTATION = `mutation ReviewPR($taskId: ID!, $prNumber: Int!) {
