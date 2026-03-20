@@ -277,6 +277,14 @@ export const CANCEL_ACTION_PLAN_MUTATION = `mutation CancelActionPlan($planId: I
   }
 }`;
 
+export const PROJECT_ACTION_PLANS_QUERY = `query ProjectActionPlans($projectId: ID!, $status: String) {
+  projectActionPlans(projectId: $projectId, status: $status) {
+    id taskId status summary createdAt updatedAt
+    actions { id planId actionType label config position status requiresApproval result errorMessage startedAt completedAt createdAt }
+    task { taskId title status taskType autoComplete parentTaskTitle }
+  }
+}`;
+
 export const TASK_ACTION_PLAN_QUERY = `query TaskActionPlan($taskId: ID!) {
   taskActionPlan(taskId: $taskId) {
     id taskId status summary createdAt updatedAt

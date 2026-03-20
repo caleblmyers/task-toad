@@ -1,4 +1,13 @@
 export const taskActionTypeDefs = /* GraphQL */ `
+  type TaskActionPlanTask {
+    taskId: ID!
+    title: String!
+    status: String!
+    taskType: String
+    autoComplete: Boolean!
+    parentTaskTitle: String
+  }
+
   type TaskActionPlan {
     id: ID!
     taskId: ID!
@@ -9,6 +18,7 @@ export const taskActionTypeDefs = /* GraphQL */ `
     createdAt: String!
     updatedAt: String!
     actions: [TaskAction!]!
+    task: TaskActionPlanTask
   }
 
   type TaskAction {
@@ -51,6 +61,7 @@ export const taskActionTypeDefs = /* GraphQL */ `
 export const taskActionQueryFields = /* GraphQL */ `
   taskActionPlan(taskId: ID!): TaskActionPlan
   taskActionHistory(taskId: ID!): [TaskActionPlan!]!
+  projectActionPlans(projectId: ID!, status: String): [TaskActionPlan!]!
 `;
 
 export const taskActionMutationFields = /* GraphQL */ `

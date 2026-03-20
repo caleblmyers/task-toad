@@ -57,6 +57,38 @@ export const taskActionQueries = {
       include: { actions: { orderBy: { position: 'asc' } } },
     });
   },
+
+  projectActionPlans: async (
+    _parent: unknown,
+    args: { projectId: string; status?: string },
+    context: Context,
+  ) => {
+    const user = requireOrg(context);
+    const project = await context.loaders.projectById.load(args.projectId);
+    if (!project || project.orgId !== user.orgId) throw new NotFoundError('Project not found');
+
+    return context.prisma.taskActionPlan.findMany({
+      where: {
+        task: { projectId: args.projectId },
+        orgId: user.orgId,
+        ...(args.status ? { status: args.status } : {}),
+      },
+      include: {
+        actions: { orderBy: { position: 'asc' } },
+        task: {
+          select: {
+            taskId: true,
+            title: true,
+            status: true,
+            taskType: true,
+            autoComplete: true,
+            parentTask: { select: { title: true } },
+          },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+  },
 };
 
 // ── Mutations ──
@@ -357,6 +389,17 @@ export const taskActionFieldResolvers = {
   TaskActionPlan: {
     createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
     updatedAt: (parent: { updatedAt: Date }) => parent.updatedAt.toISOString(),
+    task: (parent: { task?: { taskId: string; title: string; status: string; taskType: string | null; autoComplete: boolean; parentTask?: { title: string } | null } }) => {
+      if (!parent.task) return null;
+      return {
+        taskId: parent.task.taskId,
+        title: parent.task.title,
+        status: parent.task.status,
+        taskType: parent.task.taskType,
+        autoComplete: parent.task.autoComplete,
+        parentTaskTitle: parent.task.parentTask?.title ?? null,
+      };
+    },
   },
   TaskAction: {
     createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
