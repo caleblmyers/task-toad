@@ -4,6 +4,43 @@ Summaries of work completed each session. Most recent first.
 
 ---
 
+## 2026-03-20 (night)
+
+### Wave 34: Cleanup & Hardening (3 workers, 5 tasks)
+
+**Worker 1 — Centralize GraphQL Queries:**
+- Extracted ~90 inline GraphQL queries from 35+ files into `apps/web/src/api/queries.ts`
+- Settings tabs (Slack 9, Webhook 5, CustomFields 5, Templates 4, Members 4, Workflow 4, Automation 4)
+- OrgSettings (9), GitHubRepoModal (3), NotificationCenter/Settings (5), FilterBar/SavedViewPicker (5)
+- Hooks (useTaskOperations 12, useSprintManagement, useTaskRelations, useTeamCapacity, useReleaseManagement)
+- Pages, charts, modals, auth context
+
+**Worker 2 — ARIA Audit + Task Detail Re-Architecture:**
+- TaskDetailPanel refactored into 4-tab layout (Details, Activity, Relations, Actions)
+- Each tab wrapped in `<section aria-labelledby="...">` with named headings
+- aria-live regions on ActionProgressPanel and ToastContainer
+- Click-divs converted to semantic buttons
+- Icon-only buttons given aria-label throughout
+- Skip-to-main-content link verified in AppLayout
+- Focus trap verification on modal components
+
+**Worker 3 — Permission Scheme:**
+- Permission enum with 22 permissions (VIEW_TASKS through MANAGE_ORG_SETTINGS)
+- ROLE_PERMISSIONS mapping: org:admin (all), project:admin (all project), editor (core ops), viewer (read + comment)
+- requirePermission helper with org:admin bypass and ProjectMember role lookup
+- Resolver guards on: createTask, updateTask, archive, createSprint, updateSprint, closeSprint, createComment, logTime
+- myPermissions query returns user's effective permissions per project
+- Frontend: PermissionContext + usePermissions hook, permission-aware UI (disabled buttons with tooltips)
+- MembersTab role dropdown for admin role management
+
+**Process:** All 5 tasks merged. One rejection each on task-003 (missing items already existed) and task-005 (merge conflict with tabbed TaskDetailPanel from task-003).
+
+**Open follow-ups:**
+- Frontend: disable task field editing when user lacks EDIT_TASKS (backend enforces, UI doesn't grey out)
+- Add keyboard navigation (Enter/Space) to BacklogView task rows
+
+---
+
 ## 2026-03-20 (late)
 
 ### Wave 33: Hierarchy + User Capacity + Compound Filters (3 workers, 5 tasks)

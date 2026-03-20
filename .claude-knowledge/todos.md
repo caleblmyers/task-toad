@@ -12,6 +12,20 @@ All original work sets completed through Wave 30. Competitive gap items ongoing.
 
 ---
 
+## Wave 34 — Query Centralization + ARIA + Permissions — Completed (2026-03-20)
+
+- [x] Centralize inline GraphQL queries — settings & integration components (task-001, worker-1)
+- [x] Centralize inline GraphQL queries — hooks, pages & remaining components (task-002, worker-1)
+- [x] ARIA audit + TaskDetailPanel tabbed layout (task-003, worker-2)
+- [x] Permission scheme — backend: Permission enum, requirePermission, resolver guards (task-004, worker-3)
+- [x] Permission scheme — frontend: usePermissions hook, PermissionContext, permission-aware UI (task-005, worker-3)
+
+### Follow-ups from Wave 34
+- [ ] Frontend: disable task field editing (description, fields, status) when user lacks EDIT_TASKS permission (backend enforces it, but UI doesn't grey out)
+- [ ] Add keyboard navigation (Enter/Space to select task) to BacklogView task rows (SprintSection already has it)
+- [ ] ~3 dynamic mutations remain inline in useTaskOperations.ts — document or extract if patterns stabilize
+- [ ] SavedViewPicker lint warning: setState in useEffect (pre-existing, not from this wave)
+
 ## Wave 33 — Hierarchy + User Capacity + Compound Filters — Completed (2026-03-20)
 
 - [x] Multi-level hierarchy — recursive EpicsView tree, breadcrumbs, initiative taskType, recursive progress (task-001, worker-1)
@@ -74,18 +88,18 @@ All original work sets completed through Wave 30. Competitive gap items ongoing.
 - [x] Delete unused query constants from queries.ts (Wave 29, task-004)
 
 ### Duplication Reduction (large scope)
-- [ ] Centralize inline GraphQL queries (65 queries across 24 files → `apps/web/src/api/queries.ts`). Worst offenders: settings tab components (post-Wave 28 split), `SlackSettings.tsx` (9), `WebhookSettings.tsx` (5)
+- [x] Centralize inline GraphQL queries (~90 queries across 35+ files → `queries.ts`). *(Wave 34, tasks 001-002)*
 - [x] Adopt `useFormState` hook in settings components (Wave 29, tasks 004-006)
 
 ### Lint Warnings
 - [x] Fix lint warning in OrgSettings.tsx:136 (Wave 30, task-005)
 
 ### Remaining Polish
-- [ ] Remaining ARIA audit — screen reader testing, focus management on modal open/close, skip nav landmark coverage
+- [x] ARIA audit — tabbed TaskDetailPanel, aria-live regions, skip-to-content link, click-div→button, icon-only labels, focus trap verification. *(Wave 34, task-003)*
 - [ ] Shared-types expansion — add Report type to `@tasktoad/shared-types`
 - [ ] S3 multipart upload — current 10MB limit uses single PUT; implement multipart for larger files
 - [ ] useAsyncData adoption — migrate other components with inline fetch-in-useEffect patterns
-- [ ] Task detail re-architecture (UX Audit Item 10) — collapsible sections, tabbed comments/activity
+- [x] Task detail re-architecture — 4-tab layout (Details, Activity, Relations, Actions) with aria-labelledby sections. *(Wave 34, task-003)*
 - [ ] Release burndown chart — show task completion progress over time for a release (reuse existing chart patterns)
 
 ### Beta Scope — Known Limitations (not planned)
@@ -153,7 +167,7 @@ Expected by teams switching from Jira/Asana/Wrike.
 - [x] **TimeEntry model** — TimeEntry with CRUD, task/sprint time summaries, per-user breakdowns. Frontend: time log UI in task detail, sprint time summary. *(Wave 32, tasks 003-004)*
 
 ### Permissions
-- [ ] **Permission scheme** — Define `Permission` enum (VIEW_TASKS, CREATE_TASKS, EDIT_TASKS, TRANSITION_TASKS, MANAGE_SPRINTS, etc.). Map roles→permissions. Check in resolvers via `requirePermission()`. Initially hardcoded mapping, later configurable.
+- [x] **Permission scheme** — Permission enum, ROLE_PERMISSIONS mapping, requirePermission helper, resolver guards on key mutations, myPermissions query, frontend PermissionContext + usePermissions hook, permission-aware UI. *(Wave 34, tasks 004-005)*
 
 ---
 

@@ -326,3 +326,25 @@ Format:
 ### Reviewer — Positive
 **Observation:** Tasks 001, 004, and 005 all merged cleanly on first review with no code issues.
 **Why it worked:** Clear task descriptions with specific file paths and acceptance criteria. Workers followed the scope closely and didn't touch files outside their task.
+
+---
+
+## Wave 34
+
+### Reviewer — task-003
+**Issue:** Worker-2 submitted task-003 missing 4 acceptance criteria items (ToastContainer aria-live, skip-to-main-content, modal focus trap verification, BacklogView keyboard nav). Two of these turned out to already be implemented — the task description didn't acknowledge existing implementations.
+**Impact:** One rejection cycle. Worker found ToastContainer already had aria-live and AppLayout already had skip link, enhanced them instead.
+**Suggestion:** Task descriptions should note "add X if not present, verify if it is" for items that may already exist. Avoids false-negative review rejections.
+
+### Reviewer — task-005
+**Issue:** Merge conflict in TaskDetailPanel.tsx because task-003 (worker-2) refactored it into tabs while task-005 (worker-3) needed to modify the same file. Task-005 didn't depend on task-003 in the dependency graph.
+**Impact:** One rejection + rebase cycle for worker-3.
+**Suggestion:** When two tasks modify the same file (TaskDetailPanel.tsx appeared in both task-003 and task-005 scopes), add a dependency or assign to the same worker.
+
+### Reviewer — Positive
+**Observation:** Query centralization (tasks 001/002) was extremely clean — pure mechanical extraction with zero logic changes. Easy to review and merge.
+**Why it worked:** Task descriptions were precise about the pattern (find inline query strings, extract to queries.ts, replace with import). No ambiguity.
+
+### Reviewer — Positive
+**Observation:** Permission scheme split into backend (task-004) and frontend (task-005) with proper dependency was effective. Backend merged first, frontend built on top cleanly.
+**Why it worked:** Clear vertical split at the API boundary. Dependency was correctly specified.
