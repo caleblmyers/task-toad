@@ -77,12 +77,12 @@ export function validateStatus(validStatuses: string[], proposed: string): void 
 // ── Zod input schemas ──
 
 export const CreateTaskInput = z.object({
-  title: z.string().min(1, 'Title is required').max(500, 'Title must be 500 characters or less'),
+  title: z.string().trim().min(1, 'Title is required').max(500, 'Title must be 500 characters or less'),
   description: z.string().max(10000, 'Description must be 10000 characters or less').optional(),
 });
 
 export const UpdateTaskInput = z.object({
-  title: z.string().min(1, 'Title is required').max(500, 'Title must be 500 characters or less').optional(),
+  title: z.string().trim().min(1, 'Title is required').max(500, 'Title must be 500 characters or less').optional(),
   description: z.string().max(10000, 'Description must be 10000 characters or less').optional(),
   instructions: z.string().max(50000, 'Instructions must be 50000 characters or less').optional(),
   acceptanceCriteria: z.string().max(10000, 'Acceptance criteria must be 10000 characters or less').optional(),
