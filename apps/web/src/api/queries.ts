@@ -170,6 +170,24 @@ export const COMMIT_PRD_MUTATION = `mutation CommitPRD($projectId: ID!, $epics: 
   commitPRDBreakdown(projectId: $projectId, epics: $epics) { ${TASK_FIELDS} }
 }`;
 
+export const PREVIEW_HIERARCHICAL_PLAN_QUERY = `query PreviewHierarchicalPlan($projectId: ID!, $prompt: String!) {
+  previewHierarchicalPlan(projectId: $projectId, prompt: $prompt) {
+    epics {
+      title description instructions estimatedHours priority acceptanceCriteria autoComplete
+      dependsOn { title linkType }
+      tasks {
+        title description instructions estimatedHours priority acceptanceCriteria autoComplete
+        dependsOn { title linkType }
+        subtasks { title description estimatedHours priority acceptanceCriteria }
+      }
+    }
+  }
+}`;
+
+export const COMMIT_HIERARCHICAL_PLAN_MUTATION = `mutation CommitHierarchicalPlan($projectId: ID!, $epics: [CommitHierarchicalEpicInput!]!, $clearExisting: Boolean) {
+  commitHierarchicalPlan(projectId: $projectId, epics: $epics, clearExisting: $clearExisting) { ${TASK_FIELDS} }
+}`;
+
 export const BOOTSTRAP_REPO_MUTATION = `mutation BootstrapFromRepo($projectId: ID!) {
   bootstrapProjectFromRepo(projectId: $projectId) { ${TASK_FIELDS} }
 }`;

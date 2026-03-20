@@ -40,6 +40,7 @@ const KnowledgeBasePanel = lazyWithRetry(() => import('../components/KnowledgeBa
 const OnboardingWizard = lazyWithRetry(() => import('../components/OnboardingWizard'));
 const BugReportModal = lazyWithRetry(() => import('../components/BugReportModal'));
 const PRDBreakdownModal = lazyWithRetry(() => import('../components/PRDBreakdownModal'));
+const HierarchicalPlanDialog = lazyWithRetry(() => import('../components/HierarchicalPlanDialog'));
 const SprintTransitionModal = lazyWithRetry(() => import('../components/SprintTransitionModal'));
 const ActionPlanDialog = lazyWithRetry(() => import('../components/ActionPlanDialog'));
 const ReleaseListPanel = lazyWithRetry(() => import('../components/ReleaseListPanel'));
@@ -804,6 +805,22 @@ export default function ProjectDetail() {
               addToast('success', 'Tasks created from PRD');
             }}
             onClose={() => setActiveModal(null)}
+          />
+        </Suspense>
+      )}
+
+      {/* Hierarchical plan dialog */}
+      {activeModal === 'hierarchical-plan' && d.projectId && (
+        <Suspense fallback={lazyFallback}>
+          <HierarchicalPlanDialog
+            isOpen
+            onClose={() => setActiveModal(null)}
+            projectId={d.projectId}
+            onPlanCommitted={() => {
+              addToast('success', 'Hierarchical plan committed');
+              setActiveModal(null);
+              d.loadTasks();
+            }}
           />
         </Suspense>
       )}
