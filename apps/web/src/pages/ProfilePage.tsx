@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
+import { ME_PROFILE_QUERY, UPDATE_PROFILE_MUTATION } from '../api/queries';
 import { useAuth } from '../auth/context';
 import Card from '../components/shared/Card';
 import UserAvatar from '../components/shared/UserAvatar';
@@ -31,10 +32,6 @@ const TIMEZONES = [
   'Pacific/Auckland',
 ];
 
-const ME_PROFILE_QUERY = `query MeProfile {
-  me { userId email displayName avatarUrl timezone }
-}`;
-
 export default function ProfilePage() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -63,11 +60,7 @@ export default function ProfilePage() {
     setSuccess(false);
     try {
       const { updateProfile } = await gql<{ updateProfile: ProfileData }>(
-        `mutation UpdateProfile($displayName: String, $avatarUrl: String, $timezone: String) {
-          updateProfile(displayName: $displayName, avatarUrl: $avatarUrl, timezone: $timezone) {
-            email displayName avatarUrl timezone
-          }
-        }`,
+        UPDATE_PROFILE_MUTATION,
         {
           displayName: displayName.trim() || null,
           avatarUrl: avatarUrl.trim() || null,

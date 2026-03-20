@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
-import { SPRINT_TIME_SUMMARY_QUERY } from '../api/queries';
+import { SPRINT_TIME_SUMMARY_QUERY, GENERATE_SPRINT_REPORT_QUERY } from '../api/queries';
 import { IconClose } from './shared/Icons';
 import Modal from './shared/Modal';
 import type { SprintTimeSummary } from '@tasktoad/shared-types';
@@ -30,11 +30,7 @@ export default function SprintReportPanel({ projectId, sprintId, sprintName, onC
     setError(null);
     try {
       const data = await gql<{ generateSprintReport: SprintReport }>(
-        `query GenerateSprintReport($projectId: ID!, $sprintId: ID!) {
-          generateSprintReport(projectId: $projectId, sprintId: $sprintId) {
-            summary completionRate highlights concerns recommendations
-          }
-        }`,
+        GENERATE_SPRINT_REPORT_QUERY,
         { projectId, sprintId }
       );
       setReport(data.generateSprintReport);

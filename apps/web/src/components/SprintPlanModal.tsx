@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { gql } from '../api/client';
+import { PREVIEW_SPRINT_PLAN_MUTATION, COMMIT_SPRINT_PLAN_MUTATION } from '../api/queries';
 import type { Task, Sprint, SprintPlanItem, TeamCapacitySummary } from '../types';
 import { TEAM_CAPACITY_SUMMARY_QUERY } from '../api/queries';
 import Modal from './shared/Modal';
@@ -84,11 +85,7 @@ export default function SprintPlanModal({
     setErr(null);
     try {
       const data = await gql<{ previewSprintPlan: SprintPlanItem[] }>(
-        `mutation PreviewSprintPlan($projectId: ID!, $sprintLengthWeeks: Int!, $teamSize: Int!) {
-          previewSprintPlan(projectId: $projectId, sprintLengthWeeks: $sprintLengthWeeks, teamSize: $teamSize) {
-            name taskIds totalHours
-          }
-        }`,
+        PREVIEW_SPRINT_PLAN_MUTATION,
         { projectId, sprintLengthWeeks, teamSize }
       );
       setPlan(data.previewSprintPlan);
@@ -105,11 +102,7 @@ export default function SprintPlanModal({
     setErr(null);
     try {
       const data = await gql<{ commitSprintPlan: Sprint[] }>(
-        `mutation CommitSprintPlan($projectId: ID!, $sprints: [SprintPlanInput!]!) {
-          commitSprintPlan(projectId: $projectId, sprints: $sprints) {
-            sprintId projectId name isActive columns startDate endDate createdAt
-          }
-        }`,
+        COMMIT_SPRINT_PLAN_MUTATION,
         {
           projectId,
           sprints: plan.map((s) => ({ name: s.name, taskIds: s.taskIds })),

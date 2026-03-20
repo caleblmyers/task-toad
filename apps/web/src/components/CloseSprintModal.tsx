@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { gql } from '../api/client';
+import { CLOSE_SPRINT_MUTATION } from '../api/queries';
 import type { Task, Sprint, CloseSprintResult } from '../types';
 import { parseColumns } from '../utils/jsonHelpers';
 import Modal from './shared/Modal';
@@ -93,16 +94,7 @@ export default function CloseSprintModal({
       });
 
       const data = await gql<{ closeSprint: CloseSprintResult }>(
-        `mutation CloseSprint($sprintId: ID!, $incompleteTaskActions: [IncompleteTaskAction!]!) {
-          closeSprint(sprintId: $sprintId, incompleteTaskActions: $incompleteTaskActions) {
-            sprint {
-              sprintId projectId name isActive columns startDate endDate createdAt closedAt
-            }
-            nextSprint {
-              sprintId projectId name isActive columns startDate endDate createdAt closedAt
-            }
-          }
-        }`,
+        CLOSE_SPRINT_MUTATION,
         { sprintId: sprint.sprintId, incompleteTaskActions }
       );
 

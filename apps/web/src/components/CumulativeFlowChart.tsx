@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { gql } from '../api/client';
+import { CUMULATIVE_FLOW_QUERY } from '../api/queries';
 import useAsyncData from '../hooks/useAsyncData';
 
 interface StatusCount {
@@ -24,12 +25,6 @@ interface CumulativeFlowChartProps {
   toDate?: string;
 }
 
-const QUERY = `query CumulativeFlow($projectId: ID!, $sprintId: ID, $fromDate: String, $toDate: String) {
-  cumulativeFlow(projectId: $projectId, sprintId: $sprintId, fromDate: $fromDate, toDate: $toDate) {
-    days { date statusCounts { status count } }
-    statuses
-  }
-}`;
 
 const STATUS_COLORS: Record<string, { fill: string; label: string }> = {
   todo: { fill: '#94a3b8', label: 'To Do' },
@@ -53,7 +48,7 @@ export default function CumulativeFlowChart({ projectId, sprintId, fromDate, toD
 
   const { data, loading, error: fetchError, retry } = useAsyncData(
     async () => {
-      const d = await gql<{ cumulativeFlow: CumulativeFlowData }>(QUERY, {
+      const d = await gql<{ cumulativeFlow: CumulativeFlowData }>(CUMULATIVE_FLOW_QUERY, {
         projectId,
         sprintId: sprintId ?? null,
         fromDate: fromDate ?? null,

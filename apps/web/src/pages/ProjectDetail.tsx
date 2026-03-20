@@ -7,6 +7,7 @@ import { useToast } from '../hooks/useToast';
 import { useTimeTracking } from '../hooks/useTimeTracking';
 import { useAuth } from '../auth/context';
 import { gql } from '../api/client';
+import { GITHUB_PROJECT_REPO_QUERY, GITHUB_INSTALLATIONS_QUERY, PROJECT_ACTIVITIES_QUERY, SAVE_AS_TEMPLATE_MUTATION } from '../api/queries';
 import { useSSEListener } from '../hooks/useEventSource';
 import type { Activity, GitHubRepoLink, GitHubInstallation } from '../types';
 import KanbanBoard from '../components/KanbanBoard';
@@ -146,13 +147,13 @@ export default function ProjectDetail() {
   useEffect(() => {
     if (!d.projectId) return;
     gql<{ githubProjectRepo: GitHubRepoLink | null }>(
-      `query GitHubRepo($projectId: ID!) { githubProjectRepo(projectId: $projectId) { repositoryId repositoryName repositoryOwner installationId defaultBranch } }`,
+      GITHUB_PROJECT_REPO_QUERY,
       { projectId: d.projectId }
     )
       .then((data) => setGitHubRepo(data.githubProjectRepo))
       .catch(() => {/* non-critical */});
     gql<{ githubInstallations: GitHubInstallation[] }>(
-      `query { githubInstallations { installationId accountLogin accountType orgId createdAt } }`
+      GITHUB_INSTALLATIONS_QUERY
     )
       .then((data) => setGitHubInstallations(data.githubInstallations))
       .catch(() => {/* non-critical */});
@@ -163,7 +164,7 @@ export default function ProjectDetail() {
     if (!d.projectId) return;
     try {
       const data = await gql<{ activities: Activity[] }>(
-        `query Activities($projectId: ID!) { activities(projectId: $projectId, limit: 50) { activityId projectId taskId sprintId userId userEmail action field oldValue newValue createdAt } }`,
+        PROJECT_ACTIVITIES_QUERY,
         { projectId: d.projectId }
       );
       setProjectActivities(data.activities);
@@ -260,9 +261,7 @@ export default function ProjectDetail() {
     const t = d.selectedTask;
     try {
       await gql<{ createTaskTemplate: { taskTemplateId: string } }>(
-        `mutation SaveAsTemplate($projectId: ID, $name: String!, $description: String, $instructions: String, $acceptanceCriteria: String, $priority: String, $taskType: String) {
-          createTaskTemplate(projectId: $projectId, name: $name, description: $description, instructions: $instructions, acceptanceCriteria: $acceptanceCriteria, priority: $priority, taskType: $taskType) { taskTemplateId }
-        }`,
+        SAVE_AS_TEMPLATE_MUTATION,
         { projectId: d.projectId, name: `Template: ${t.title}`, description: t.description, instructions: t.instructions ?? null, acceptanceCriteria: t.acceptanceCriteria ?? null, priority: t.priority, taskType: t.taskType },
       );
       addToast('success', 'Saved as template');

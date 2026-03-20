@@ -604,3 +604,173 @@ export const LINK_GITHUB_INSTALLATION_MUTATION = `mutation LinkInstallation($ins
 export const REVOKE_INVITE_MUTATION = `mutation RevokeInvite($inviteId: ID!) { revokeInvite(inviteId: $inviteId) }`;
 
 export const SET_PROMPT_LOGGING_MUTATION = `mutation SetAIBudget($promptLoggingEnabled: Boolean) { setAIBudget(promptLoggingEnabled: $promptLoggingEnabled) { orgId name hasApiKey apiKeyHint promptLoggingEnabled } }`;
+
+// ── Task Field Updates (simple, non-dynamic) ──
+
+export const UPDATE_TASK_STATUS_MUTATION = `mutation UpdateTask($taskId: ID!, $status: String!) { updateTask(taskId: $taskId, status: $status) { task { taskId } warnings } }`;
+
+export const UPDATE_TASK_SPRINT_MUTATION = `mutation UpdateTask($taskId: ID!, $sprintId: ID, $sprintColumn: String) {
+  updateTask(taskId: $taskId, sprintId: $sprintId, sprintColumn: $sprintColumn) { task { taskId } warnings }
+}`;
+
+export const UPDATE_TASK_ASSIGNEE_MUTATION = `mutation UpdateTask($taskId: ID!, $assigneeId: ID) { updateTask(taskId: $taskId, assigneeId: $assigneeId) { task { taskId } warnings } }`;
+
+export const UPDATE_TASK_DUEDATE_MUTATION = `mutation UpdateTask($taskId: ID!, $dueDate: String) { updateTask(taskId: $taskId, dueDate: $dueDate) { task { taskId } warnings } }`;
+
+export const UPDATE_TASK_TITLE_MUTATION = `mutation UpdateTask($taskId: ID!, $title: String!) { updateTask(taskId: $taskId, title: $title) { task { taskId } warnings } }`;
+
+export const UPDATE_TASK_ARCHIVED_MUTATION = `mutation UpdateTask($taskId: ID!, $archived: Boolean) { updateTask(taskId: $taskId, archived: $archived) { task { taskId } warnings } }`;
+
+export const UPDATE_TASK_POSITION_MUTATION = `mutation UpdateTask($taskId: ID!, $position: Float, $sprintId: ID, $sprintColumn: String) {
+  updateTask(taskId: $taskId, position: $position, sprintId: $sprintId, sprintColumn: $sprintColumn) { task { taskId } warnings }
+}`;
+
+// ── Task Dependencies ──
+
+export const ADD_TASK_DEPENDENCY_MUTATION = `mutation AddDep($sourceTaskId: ID!, $targetTaskId: ID!, $linkType: DependencyLinkType!) {
+  addTaskDependency(sourceTaskId: $sourceTaskId, targetTaskId: $targetTaskId, linkType: $linkType) {
+    taskDependencyId sourceTaskId targetTaskId linkType createdAt targetTask { taskId title status }
+  }
+}`;
+
+export const REMOVE_TASK_DEPENDENCY_MUTATION = `mutation RemoveDep($taskDependencyId: ID!) { removeTaskDependency(taskDependencyId: $taskDependencyId) }`;
+
+// ── Auth ──
+
+export const ME_QUERY = `query { me { userId email orgId role emailVerifiedAt } }`;
+
+export const LOGIN_MUTATION = `mutation Login($email: String!, $password: String!) {
+  login(email: $email, password: $password) { token }
+}`;
+
+export const SIGNUP_MUTATION = `mutation Signup($email: String!, $password: String!) {
+  signup(email: $email, password: $password)
+}`;
+
+// ── Portfolio ──
+
+export const PORTFOLIO_OVERVIEW_QUERY = `query PortfolioOverview {
+  portfolioOverview {
+    projectId name totalTasks completedTasks overdueTasks
+    completionPercent activeSprint healthScore
+    statusDistribution { label count }
+  }
+  portfolioRollup {
+    totalProjects totalTasks totalVelocity avgCycleTimeHours
+    teamSprintProgress { totalSprints activeSprints avgCompletionPercent }
+    aggregateStatusDistribution { label count }
+  }
+}`;
+
+// ── Profile ──
+
+export const ME_PROFILE_QUERY = `query MeProfile {
+  me { userId email displayName avatarUrl timezone }
+}`;
+
+export const UPDATE_PROFILE_MUTATION = `mutation UpdateProfile($displayName: String, $avatarUrl: String, $timezone: String) {
+  updateProfile(displayName: $displayName, avatarUrl: $avatarUrl, timezone: $timezone) {
+    email displayName avatarUrl timezone
+  }
+}`;
+
+// ── Charts & Reports ──
+
+export const SPRINT_BURNDOWN_QUERY = `query Burndown($sprintId: ID!) {
+  sprintBurndown(sprintId: $sprintId) {
+    days { date remaining completed added }
+    totalScope sprintName startDate endDate
+  }
+}`;
+
+export const CUMULATIVE_FLOW_QUERY = `query CumulativeFlow($projectId: ID!, $sprintId: ID, $fromDate: String, $toDate: String) {
+  cumulativeFlow(projectId: $projectId, sprintId: $sprintId, fromDate: $fromDate, toDate: $toDate) {
+    days { date statusCounts { status count } }
+    statuses
+  }
+}`;
+
+export const SPRINT_VELOCITY_QUERY = `query Velocity($projectId: ID!) { sprintVelocity(projectId: $projectId) { sprintId sprintName completedTasks completedHours totalTasks totalHours } }`;
+
+export const GENERATE_SPRINT_REPORT_QUERY = `query GenerateSprintReport($projectId: ID!, $sprintId: ID!) {
+  generateSprintReport(projectId: $projectId, sprintId: $sprintId) {
+    summary completionRate highlights concerns recommendations
+  }
+}`;
+
+export const GENERATE_STANDUP_REPORT_QUERY = `query GenerateStandup($projectId: ID!) {
+  generateStandupReport(projectId: $projectId) {
+    completed inProgress blockers summary
+  }
+}`;
+
+export const ANALYZE_PROJECT_HEALTH_QUERY = `query AnalyzeHealth($projectId: ID!) {
+  analyzeProjectHealth(projectId: $projectId) {
+    healthScore status
+    issues { title severity description }
+    strengths actionItems
+  }
+}`;
+
+export const ANALYZE_TRENDS_QUERY = `query AnalyzeTrends($projectId: ID!, $period: String) {
+  analyzeTrends(projectId: $projectId, period: $period) {
+    period completionTrend velocityTrend healthTrend insights recommendations
+  }
+}`;
+
+// ── ProjectDetail ──
+
+export const GITHUB_PROJECT_REPO_QUERY = `query GitHubRepo($projectId: ID!) { githubProjectRepo(projectId: $projectId) { repositoryId repositoryName repositoryOwner installationId defaultBranch } }`;
+
+export const PROJECT_ACTIVITIES_QUERY = `query Activities($projectId: ID!) { activities(projectId: $projectId, limit: 50) { activityId projectId taskId sprintId userId userEmail action field oldValue newValue createdAt } }`;
+
+export const SAVE_AS_TEMPLATE_MUTATION = `mutation SaveAsTemplate($projectId: ID, $name: String!, $description: String, $instructions: String, $acceptanceCriteria: String, $priority: String, $taskType: String) {
+  createTaskTemplate(projectId: $projectId, name: $name, description: $description, instructions: $instructions, acceptanceCriteria: $acceptanceCriteria, priority: $priority, taskType: $taskType) { taskTemplateId }
+}`;
+
+// ── Sprint Modals ──
+
+export const UPDATE_SPRINT_MUTATION = `mutation UpdateSprint($sprintId: ID!, $name: String, $goal: String, $columns: String, $startDate: String, $endDate: String, $wipLimits: String) {
+  updateSprint(sprintId: $sprintId, name: $name, goal: $goal, columns: $columns, startDate: $startDate, endDate: $endDate, wipLimits: $wipLimits) {
+    sprintId projectId name goal isActive columns wipLimits startDate endDate createdAt closedAt
+  }
+}`;
+
+export const CREATE_SPRINT_MUTATION = `mutation CreateSprint($projectId: ID!, $name: String!, $goal: String, $columns: String, $startDate: String, $endDate: String, $wipLimits: String) {
+  createSprint(projectId: $projectId, name: $name, goal: $goal, columns: $columns, startDate: $startDate, endDate: $endDate, wipLimits: $wipLimits) {
+    sprintId projectId name goal isActive columns wipLimits startDate endDate createdAt closedAt
+  }
+}`;
+
+export const PREVIEW_SPRINT_PLAN_MUTATION = `mutation PreviewSprintPlan($projectId: ID!, $sprintLengthWeeks: Int!, $teamSize: Int!) {
+  previewSprintPlan(projectId: $projectId, sprintLengthWeeks: $sprintLengthWeeks, teamSize: $teamSize) {
+    name taskIds totalHours
+  }
+}`;
+
+export const COMMIT_SPRINT_PLAN_MUTATION = `mutation CommitSprintPlan($projectId: ID!, $sprints: [SprintPlanInput!]!) {
+  commitSprintPlan(projectId: $projectId, sprints: $sprints) {
+    sprintId projectId name isActive columns startDate endDate createdAt
+  }
+}`;
+
+export const CLOSE_SPRINT_MUTATION = `mutation CloseSprint($sprintId: ID!, $incompleteTaskActions: [IncompleteTaskAction!]!) {
+  closeSprint(sprintId: $sprintId, incompleteTaskActions: $incompleteTaskActions) {
+    sprint {
+      sprintId projectId name isActive columns startDate endDate createdAt closedAt
+    }
+    nextSprint {
+      sprintId projectId name isActive columns startDate endDate createdAt closedAt
+    }
+  }
+}`;
+
+// ── AI Review ──
+
+export const REVIEW_PR_MUTATION = `mutation ReviewPR($taskId: ID!, $prNumber: Int!) {
+  reviewPullRequest(taskId: $taskId, prNumber: $prNumber) {
+    summary approved
+    comments { file line severity comment }
+    suggestions
+  }
+}`;

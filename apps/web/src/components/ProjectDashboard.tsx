@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { ProjectStats, Activity } from '../types';
 import { gql } from '../api/client';
+import { SPRINT_VELOCITY_QUERY, SPRINT_BURNDOWN_QUERY } from '../api/queries';
 import { statusLabel } from '../utils/taskHelpers';
 import ActivityFeed from './ActivityFeed';
 import VelocityChart from './VelocityChart';
@@ -83,7 +84,7 @@ export default function ProjectDashboard({ stats, activities, loading, projectId
   useEffect(() => {
     if (!projectId) return;
     gql<{ sprintVelocity: typeof velocityData }>(
-      `query Velocity($projectId: ID!) { sprintVelocity(projectId: $projectId) { sprintId sprintName completedTasks completedHours totalTasks totalHours } }`,
+      SPRINT_VELOCITY_QUERY,
       { projectId }
     ).then((d) => setVelocityData(d.sprintVelocity)).catch(() => {});
   }, [projectId]);
@@ -94,7 +95,7 @@ export default function ProjectDashboard({ stats, activities, loading, projectId
     const sprint = sprints.find((s) => s.sprintId === sprintId);
     if (!sprint?.startDate || !sprint?.endDate) return;
     gql<{ sprintBurndown: NonNullable<typeof burndownData> }>(
-      `query Burndown($sprintId: ID!) { sprintBurndown(sprintId: $sprintId) { days { date remaining completed added } totalScope sprintName startDate endDate } }`,
+      SPRINT_BURNDOWN_QUERY,
       { sprintId }
     ).then((d) => setBurndownData(d.sprintBurndown)).catch(() => {});
   }, [selectedBurndownSprint, activeSprint?.sprintId, sprints]);

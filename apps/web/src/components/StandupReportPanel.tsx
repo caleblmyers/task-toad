@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
+import { GENERATE_STANDUP_REPORT_QUERY } from '../api/queries';
 import { IconClose } from './shared/Icons';
 
 interface StandupReport {
@@ -25,11 +26,7 @@ export default function StandupReportPanel({ projectId, disabled, onClose }: Pro
     setError(null);
     try {
       const data = await gql<{ generateStandupReport: StandupReport }>(
-        `query GenerateStandup($projectId: ID!) {
-          generateStandupReport(projectId: $projectId) {
-            completed inProgress blockers summary
-          }
-        }`,
+        GENERATE_STANDUP_REPORT_QUERY,
         { projectId }
       );
       setReport(data.generateStandupReport);

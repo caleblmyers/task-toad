@@ -3,6 +3,9 @@ import { gql } from '../api/client';
 import {
   TASKS_QUERY, TASKS_PAGINATED_QUERY, SUBTASKS_QUERY, CREATE_TASK_MUTATION,
   CREATE_TASK_WITH_STATUS_MUTATION, CREATE_SUBTASK_MUTATION, BULK_UPDATE_TASKS_MUTATION,
+  UPDATE_TASK_STATUS_MUTATION, UPDATE_TASK_SPRINT_MUTATION, UPDATE_TASK_ASSIGNEE_MUTATION,
+  UPDATE_TASK_DUEDATE_MUTATION, UPDATE_TASK_TITLE_MUTATION, UPDATE_TASK_ARCHIVED_MUTATION,
+  UPDATE_TASK_POSITION_MUTATION, ADD_TASK_DEPENDENCY_MUTATION, REMOVE_TASK_DEPENDENCY_MUTATION,
 } from '../api/queries';
 import { columnToStatus, statusToColumn } from '../utils/taskHelpers';
 import { parseColumns } from '../utils/jsonHelpers';
@@ -128,6 +131,7 @@ export function useTaskOperations({ projectId, userId, sprints, onWarnings }: Us
     );
 
     try {
+      // Dynamic mutation — conditionally includes sprintColumn and assigneeId fields
       const data = await gql<{ updateTask: UpdateTaskResult }>(
         `mutation UpdateTask($taskId: ID!, $status: String!${newColumn !== undefined ? ', $sprintColumn: String' : ''}${autoAssign ? ', $assigneeId: ID' : ''}) {
           updateTask(taskId: $taskId, status: $status${newColumn !== undefined ? ', sprintColumn: $sprintColumn' : ''}${autoAssign ? ', assigneeId: $assigneeId' : ''}) { task { taskId } warnings }
@@ -146,7 +150,7 @@ export function useTaskOperations({ projectId, userId, sprints, onWarnings }: Us
   const handleSubtaskStatusChange = useCallback(async (parentTaskId: string, taskId: string, status: string) => {
     try {
       const data = await gql<{ updateTask: UpdateTaskResult }>(
-        `mutation UpdateTask($taskId: ID!, $status: String!) { updateTask(taskId: $taskId, status: $status) { task { taskId } warnings } }`,
+        UPDATE_TASK_STATUS_MUTATION,
         { taskId, status },
       );
       setSubtasks((prev) => ({
@@ -174,6 +178,7 @@ export function useTaskOperations({ projectId, userId, sprints, onWarnings }: Us
       : t
     );
     try {
+      // Dynamic mutation — conditionally includes status and assigneeId fields
       const data = await gql<{ updateTask: UpdateTaskResult }>(
         `mutation UpdateTask($taskId: ID!, $sprintColumn: String${newStatus ? ', $status: String!' : ''}${autoAssign ? ', $assigneeId: ID' : ''}) {
           updateTask(taskId: $taskId, sprintColumn: $sprintColumn${newStatus ? ', status: $status' : ''}${autoAssign ? ', assigneeId: $assigneeId' : ''}) { task { taskId } warnings }
@@ -198,9 +203,7 @@ export function useTaskOperations({ projectId, userId, sprints, onWarnings }: Us
     setSelectedTask((t) => t?.taskId === taskId ? { ...t, sprintId, sprintColumn: firstColumn } : t);
     try {
       await gql<{ updateTask: UpdateTaskResult }>(
-        `mutation UpdateTask($taskId: ID!, $sprintId: ID, $sprintColumn: String) {
-          updateTask(taskId: $taskId, sprintId: $sprintId, sprintColumn: $sprintColumn) { task { taskId } warnings }
-        }`,
+        UPDATE_TASK_SPRINT_MUTATION,
         { taskId, sprintId, sprintColumn: firstColumn },
       );
     } catch {
@@ -213,7 +216,7 @@ export function useTaskOperations({ projectId, userId, sprints, onWarnings }: Us
     setSelectedTask((t) => t?.taskId === taskId ? { ...t, assigneeId } : t);
     try {
       await gql<{ updateTask: UpdateTaskResult }>(
-        `mutation UpdateTask($taskId: ID!, $assigneeId: ID) { updateTask(taskId: $taskId, assigneeId: $assigneeId) { task { taskId } warnings } }`,
+        UPDATE_TASK_ASSIGNEE_MUTATION,
         { taskId, assigneeId },
       );
     } catch {
@@ -226,7 +229,7 @@ export function useTaskOperations({ projectId, userId, sprints, onWarnings }: Us
     setSelectedTask((t) => t?.taskId === taskId ? { ...t, dueDate } : t);
     try {
       await gql<{ updateTask: UpdateTaskResult }>(
-        `mutation UpdateTask($taskId: ID!, $dueDate: String) { updateTask(taskId: $taskId, dueDate: $dueDate) { task { taskId } warnings } }`,
+        UPDATE_TASK_DUEDATE_MUTATION,
         { taskId, dueDate },
       );
     } catch {
@@ -237,11 +240,7 @@ export function useTaskOperations({ projectId, userId, sprints, onWarnings }: Us
   const handleAddDependency = useCallback(async (sourceTaskId: string, targetTaskId: string, linkType: string) => {
     try {
       const data = await gql<{ addTaskDependency: TaskDependency }>(
-        `mutation AddDep($sourceTaskId: ID!, $targetTaskId: ID!, $linkType: DependencyLinkType!) {
-          addTaskDependency(sourceTaskId: $sourceTaskId, targetTaskId: $targetTaskId, linkType: $linkType) {
-            taskDependencyId sourceTaskId targetTaskId linkType createdAt targetTask { taskId title status }
-          }
-        }`,
+        ADD_TASK_DEPENDENCY_MUTATION,
         { sourceTaskId, targetTaskId, linkType },
       );
       const dep = data.addTaskDependency;
@@ -265,7 +264,7 @@ export function useTaskOperations({ projectId, userId, sprints, onWarnings }: Us
     setSelectedTask((t) => t ? removeDep(t) : t);
     try {
       await gql<{ removeTaskDependency: boolean }>(
-        `mutation RemoveDep($taskDependencyId: ID!) { removeTaskDependency(taskDependencyId: $taskDependencyId) }`,
+        REMOVE_TASK_DEPENDENCY_MUTATION,
         { taskDependencyId },
       );
     } catch {
@@ -326,9 +325,7 @@ export function useTaskOperations({ projectId, userId, sprints, onWarnings }: Us
 
     try {
       await gql<{ updateTask: UpdateTaskResult }>(
-        `mutation UpdateTask($taskId: ID!, $position: Float, $sprintId: ID, $sprintColumn: String) {
-          updateTask(taskId: $taskId, position: $position, sprintId: $sprintId, sprintColumn: $sprintColumn) { task { taskId } warnings }
-        }`,
+        UPDATE_TASK_POSITION_MUTATION,
         { taskId, position: newPosition, sprintId: targetSprintId, sprintColumn: newSprintColumn },
       );
     } catch {
@@ -390,7 +387,7 @@ export function useTaskOperations({ projectId, userId, sprints, onWarnings }: Us
     setEditingTitle(false);
     try {
       await gql<{ updateTask: UpdateTaskResult }>(
-        `mutation UpdateTask($taskId: ID!, $title: String!) { updateTask(taskId: $taskId, title: $title) { task { taskId } warnings } }`,
+        UPDATE_TASK_TITLE_MUTATION,
         { taskId: selectedTask.taskId, title: editTitleValue },
       );
       const updated = { ...selectedTask, title: editTitleValue };
@@ -418,6 +415,7 @@ export function useTaskOperations({ projectId, userId, sprints, onWarnings }: Us
     setSelectedTask((t) => t?.taskId === taskId ? { ...t, ...updates } : t);
 
     try {
+      // Dynamic mutation — fields vary based on which updates are provided
       await gql<{ updateTask: UpdateTaskResult }>(
         `mutation UpdateTask(${mutationParts.join(', ')}) { updateTask(taskId: $taskId, ${argsPart}) { task { taskId } warnings } }`,
         vars,
@@ -447,7 +445,7 @@ export function useTaskOperations({ projectId, userId, sprints, onWarnings }: Us
     else setSelectedTask((t) => t?.taskId === taskId ? { ...t, archived } : t);
     try {
       await gql<{ updateTask: UpdateTaskResult }>(
-        `mutation UpdateTask($taskId: ID!, $archived: Boolean) { updateTask(taskId: $taskId, archived: $archived) { task { taskId } warnings } }`,
+        UPDATE_TASK_ARCHIVED_MUTATION,
         { taskId, archived },
       );
     } catch {

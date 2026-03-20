@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { gql } from '../api/client';
+import { SPRINT_BURNDOWN_QUERY } from '../api/queries';
 import useAsyncData from '../hooks/useAsyncData';
 
 interface BurndownDay {
@@ -21,12 +22,6 @@ type BurndownChartProps =
   | { sprintId: string; data?: never }
   | { sprintId?: never; data: BurndownData };
 
-const QUERY = `query Burndown($sprintId: ID!) {
-  sprintBurndown(sprintId: $sprintId) {
-    days { date remaining completed added }
-    totalScope sprintName startDate endDate
-  }
-}`;
 
 const CHART_H = 250;
 const PAD = { top: 24, right: 16, bottom: 32, left: 40 };
@@ -47,7 +42,7 @@ export default function BurndownChart(props: BurndownChartProps) {
   const { data: fetched, loading, error: fetchError, retry: fetchData } = useAsyncData(
     async () => {
       if (!sprintId) return null;
-      const d = await gql<{ sprintBurndown: BurndownData }>(QUERY, { sprintId });
+      const d = await gql<{ sprintBurndown: BurndownData }>(SPRINT_BURNDOWN_QUERY, { sprintId });
       return d.sprintBurndown;
     },
     [sprintId],

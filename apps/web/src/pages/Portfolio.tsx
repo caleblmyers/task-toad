@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { gql } from '../api/client';
+import { PORTFOLIO_OVERVIEW_QUERY } from '../api/queries';
 import Badge from '../components/shared/Badge';
 
 interface ProjectSummary {
@@ -24,18 +25,6 @@ interface PortfolioRollup {
   aggregateStatusDistribution: Array<{ label: string; count: number }>;
 }
 
-const PORTFOLIO_QUERY = `query PortfolioOverview {
-  portfolioOverview {
-    projectId name totalTasks completedTasks overdueTasks
-    completionPercent activeSprint healthScore
-    statusDistribution { label count }
-  }
-  portfolioRollup {
-    totalProjects totalTasks totalVelocity avgCycleTimeHours
-    teamSprintProgress { totalSprints activeSprints avgCompletionPercent }
-    aggregateStatusDistribution { label count }
-  }
-}`;
 
 function healthInfo(score: number | null): { label: string; variant: 'success' | 'warning' | 'danger' | 'neutral' } {
   if (score === null) return { label: 'N/A', variant: 'neutral' };
@@ -118,7 +107,7 @@ export default function Portfolio() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    gql<{ portfolioOverview: ProjectSummary[]; portfolioRollup: PortfolioRollup }>(PORTFOLIO_QUERY)
+    gql<{ portfolioOverview: ProjectSummary[]; portfolioRollup: PortfolioRollup }>(PORTFOLIO_OVERVIEW_QUERY)
       .then((data) => {
         setProjects(data.portfolioOverview);
         setRollup(data.portfolioRollup);

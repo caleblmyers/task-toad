@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { gql } from '../api/client';
+import { UPDATE_SPRINT_MUTATION, CREATE_SPRINT_MUTATION } from '../api/queries';
 import type { Sprint } from '../types';
 import { parseColumns } from '../utils/jsonHelpers';
 import Modal from './shared/Modal';
@@ -43,11 +44,7 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
     try {
       if (isEdit && initialSprint) {
         const data = await gql<{ updateSprint: Sprint }>(
-          `mutation UpdateSprint($sprintId: ID!, $name: String, $goal: String, $columns: String, $startDate: String, $endDate: String, $wipLimits: String) {
-            updateSprint(sprintId: $sprintId, name: $name, goal: $goal, columns: $columns, startDate: $startDate, endDate: $endDate, wipLimits: $wipLimits) {
-              sprintId projectId name goal isActive columns wipLimits startDate endDate createdAt closedAt
-            }
-          }`,
+          UPDATE_SPRINT_MUTATION,
           {
             sprintId: initialSprint.sprintId,
             name: name.trim(),
@@ -61,11 +58,7 @@ export default function SprintCreateModal({ projectId, initialSprint, onCreated,
         onUpdated?.(data.updateSprint);
       } else {
         const data = await gql<{ createSprint: Sprint }>(
-          `mutation CreateSprint($projectId: ID!, $name: String!, $goal: String, $columns: String, $startDate: String, $endDate: String, $wipLimits: String) {
-            createSprint(projectId: $projectId, name: $name, goal: $goal, columns: $columns, startDate: $startDate, endDate: $endDate, wipLimits: $wipLimits) {
-              sprintId projectId name goal isActive columns wipLimits startDate endDate createdAt closedAt
-            }
-          }`,
+          CREATE_SPRINT_MUTATION,
           {
             projectId,
             name: name.trim(),

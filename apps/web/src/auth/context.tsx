@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { gql, TOKEN_KEY } from '../api/client';
+import { ME_QUERY, LOGIN_MUTATION, SIGNUP_MUTATION } from '../api/queries';
 import type { MeResponse } from '../types';
 
 type AuthState = {
@@ -23,7 +24,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const token = localStorage.getItem(TOKEN_KEY);
     if (!token) return null;
     try {
-      const data = await gql<{ me: MeResponse | null }>('query { me { userId email orgId role emailVerifiedAt } }');
+      const data = await gql<{ me: MeResponse | null }>(ME_QUERY);
       return data.me;
     } catch {
       return null;
@@ -47,9 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setError(null);
       try {
         const data = await gql<{ login: { token: string } }>(
-          `mutation Login($email: String!, $password: String!) {
-            login(email: $email, password: $password) { token }
-          }`,
+          LOGIN_MUTATION,
           { email, password }
         );
         localStorage.setItem(TOKEN_KEY, data.login.token);
@@ -68,9 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       await gql<{ signup: boolean }>(
-        `mutation Signup($email: String!, $password: String!) {
-          signup(email: $email, password: $password)
-        }`,
+        SIGNUP_MUTATION,
         { email, password }
       );
     } catch (err) {

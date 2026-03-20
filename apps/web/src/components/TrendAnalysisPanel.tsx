@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
+import { ANALYZE_TRENDS_QUERY } from '../api/queries';
 import { IconClose } from './shared/Icons';
 
 interface TrendAnalysis {
@@ -11,11 +12,6 @@ interface TrendAnalysis {
   recommendations: string[];
 }
 
-const QUERY = `query AnalyzeTrends($projectId: ID!, $period: String) {
-  analyzeTrends(projectId: $projectId, period: $period) {
-    period completionTrend velocityTrend healthTrend insights recommendations
-  }
-}`;
 
 interface Props {
   projectId: string;
@@ -43,7 +39,7 @@ export default function TrendAnalysisPanel({ projectId, disabled, onClose }: Pro
     setLoading(true);
     setError(null);
     try {
-      const result = await gql<{ analyzeTrends: TrendAnalysis }>(QUERY, { projectId });
+      const result = await gql<{ analyzeTrends: TrendAnalysis }>(ANALYZE_TRENDS_QUERY, { projectId });
       setData(result.analyzeTrends);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to analyze trends');

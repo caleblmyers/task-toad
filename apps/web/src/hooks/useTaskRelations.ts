@@ -6,6 +6,7 @@ import {
   ADD_TASK_LABEL_MUTATION, REMOVE_TASK_LABEL_MUTATION, LABELS_QUERY,
   ADD_TASK_ASSIGNEE_MUTATION, REMOVE_TASK_ASSIGNEE_MUTATION,
   ADD_TASK_WATCHER_MUTATION, REMOVE_TASK_WATCHER_MUTATION,
+  REVIEW_PR_MUTATION,
 } from '../api/queries';
 import type { Task, Comment, Activity, Label, TaskAssignee, TaskWatcher, CodeReview } from '../types';
 
@@ -161,13 +162,7 @@ export function useTaskRelations({ setTasks, setSelectedTask, selectedTask, setE
     setReviewResult(null);
     try {
       const data = await gql<{ reviewPullRequest: CodeReview }>(
-        `mutation ReviewPR($taskId: ID!, $prNumber: Int!) {
-          reviewPullRequest(taskId: $taskId, prNumber: $prNumber) {
-            summary approved
-            comments { file line severity comment }
-            suggestions
-          }
-        }`,
+        REVIEW_PR_MUTATION,
         { taskId, prNumber },
       );
       setReviewResult(data.reviewPullRequest);

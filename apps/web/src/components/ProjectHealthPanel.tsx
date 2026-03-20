@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
+import { ANALYZE_PROJECT_HEALTH_QUERY } from '../api/queries';
 import { IconClose } from './shared/Icons';
 import Badge from './shared/Badge';
 
@@ -57,13 +58,7 @@ export default function ProjectHealthPanel({ projectId, disabled, onClose }: Pro
     setError(null);
     try {
       const data = await gql<{ analyzeProjectHealth: ProjectHealth }>(
-        `query AnalyzeHealth($projectId: ID!) {
-          analyzeProjectHealth(projectId: $projectId) {
-            healthScore status
-            issues { title severity description }
-            strengths actionItems
-          }
-        }`,
+        ANALYZE_PROJECT_HEALTH_QUERY,
         { projectId }
       );
       setHealth(data.analyzeProjectHealth);
