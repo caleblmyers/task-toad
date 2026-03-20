@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import CreateOrg from './pages/CreateOrg';
 import AppLayout from './pages/AppLayout';
+import { SSEProvider } from './hooks/useEventSource';
 import Home from './pages/Home';
 import VerifyEmail from './pages/VerifyEmail';
 import ForgotPassword from './pages/ForgotPassword';
@@ -76,7 +77,9 @@ export default function App() {
             path="/app"
             element={
               <Protected>
-                <AppLayout />
+                <SSEProvider>
+                  <AppLayout />
+                </SSEProvider>
               </Protected>
             }
           >

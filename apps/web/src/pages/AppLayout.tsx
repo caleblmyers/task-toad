@@ -8,7 +8,7 @@ import GlobalSearchModal from '../components/GlobalSearchModal';
 import UserAvatar from '../components/shared/UserAvatar';
 import { IconSun, IconMoon } from '../components/shared/Icons';
 import Card from '../components/shared/Card';
-import { SSEProvider, useSSEListener } from '../hooks/useEventSource';
+import { useSSEListener } from '../hooks/useEventSource';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 
 const SIDEBAR_COLLAPSED_KEY = 'task-toad-sidebar-collapsed';
@@ -372,7 +372,6 @@ export default function AppLayout() {
   };
 
   return (
-    <SSEProvider>
     <div className="h-screen flex flex-col md:flex-row bg-slate-50 dark:bg-slate-900 overflow-hidden">
       {/* Skip to main content link */}
       <a
@@ -511,6 +510,5 @@ export default function AppLayout() {
       </main>
       {showSearch && <GlobalSearchModal onClose={() => setShowSearch(false)} />}
     </div>
-    </SSEProvider>
   );
 }
