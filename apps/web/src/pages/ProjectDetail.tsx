@@ -36,7 +36,7 @@ const ProjectHealthPanel = lazyWithRetry(() => import('../components/ProjectHeal
 const TrendAnalysisPanel = lazyWithRetry(() => import('../components/TrendAnalysisPanel'));
 const MeetingNotesDialog = lazyWithRetry(() => import('../components/MeetingNotesDialog'));
 const CSVImportModal = lazyWithRetry(() => import('../components/CSVImportModal'));
-const KnowledgeBaseModal = lazyWithRetry(() => import('../components/KnowledgeBaseModal'));
+const KnowledgeBasePanel = lazyWithRetry(() => import('../components/KnowledgeBasePanel'));
 const BugReportModal = lazyWithRetry(() => import('../components/BugReportModal'));
 const PRDBreakdownModal = lazyWithRetry(() => import('../components/PRDBreakdownModal'));
 const SprintTransitionModal = lazyWithRetry(() => import('../components/SprintTransitionModal'));
@@ -797,17 +797,19 @@ export default function ProjectDetail() {
         </Suspense>
       )}
 
-      {/* Knowledge base modal */}
-      <Suspense fallback={lazyFallback}>
-        <KnowledgeBaseModal
-          isOpen={activeModal === 'knowledge-base'}
-          onClose={() => setActiveModal(null)}
-          knowledgeBase={d.project?.knowledgeBase ?? null}
-          onSave={(kb) => d.handleUpdateProject({ knowledgeBase: kb })}
-          onRefreshFromRepo={d.handleRefreshRepoProfile}
-          hasGitHubRepo={!!(d.project?.githubRepositoryName)}
-        />
-      </Suspense>
+      {/* Knowledge base panel */}
+      {activeModal === 'knowledge-base' && d.projectId && (
+        <Suspense fallback={lazyFallback}>
+          <KnowledgeBasePanel
+            isOpen
+            onClose={() => setActiveModal(null)}
+            projectId={d.projectId}
+            knowledgeBase={d.project?.knowledgeBase ?? null}
+            onRefreshFromRepo={d.handleRefreshRepoProfile}
+            hasGitHubRepo={!!(d.project?.githubRepositoryName)}
+          />
+        </Suspense>
+      )}
 
       {/* Project settings modal */}
       {activeModal === 'project-settings' && d.projectId && (

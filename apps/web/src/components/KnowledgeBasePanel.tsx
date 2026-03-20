@@ -54,6 +54,8 @@ interface KnowledgeBasePanelProps {
   isOpen: boolean;
   onClose: () => void;
   projectId: string;
+  /** Legacy project.knowledgeBase text for migration banner */
+  knowledgeBase?: string | null;
   onRefreshFromRepo?: () => Promise<void>;
   hasGitHubRepo?: boolean;
 }
@@ -62,6 +64,7 @@ export default function KnowledgeBasePanel({
   isOpen,
   onClose,
   projectId,
+  knowledgeBase,
   onRefreshFromRepo,
   hasGitHubRepo,
 }: KnowledgeBasePanelProps) {
@@ -72,6 +75,7 @@ export default function KnowledgeBasePanel({
   const [showForm, setShowForm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [migrating, setMigrating] = useState(false);
 
   // Form state
   const [formTitle, setFormTitle] = useState('');
@@ -202,6 +206,35 @@ export default function KnowledgeBasePanel({
     }
   };
 
+  const handleMigrate = async () => {
+    if (!knowledgeBase) return;
+    setMigrating(true);
+    setError(null);
+    try {
+      const data = await gql<{ createKnowledgeEntry: KnowledgeEntry }>(
+        CREATE_KNOWLEDGE_ENTRY_MUTATION,
+        {
+          projectId,
+          title: 'Project Knowledge Base (migrated)',
+          content: knowledgeBase,
+          source: 'upload',
+          category: 'standard',
+        }
+      );
+      setEntries((prev) => [data.createKnowledgeEntry, ...prev]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to migrate knowledge base');
+    } finally {
+      setMigrating(false);
+    }
+  };
+
+  // Show migration banner when legacy KB has content and no matching migrated entry exists
+  const showMigrationBanner =
+    !!knowledgeBase?.trim() &&
+    !loading &&
+    !entries.some((e) => e.title === 'Project Knowledge Base (migrated)');
+
   const getCategoryBadge = (category: string) => {
     const cat = CATEGORIES.find((c) => c.value === category);
     if (!cat) return null;
@@ -263,6 +296,27 @@ export default function KnowledgeBasePanel({
         {error && (
           <div className="mb-4 p-3 text-sm text-red-700 bg-red-50 dark:bg-red-900/20 dark:text-red-400 rounded-lg">
             {error}
+          </div>
+        )}
+
+        {/* Legacy migration banner */}
+        {showMigrationBanner && (
+          <div className="mb-4 p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                Migrate legacy knowledge base
+              </p>
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                Your project has a legacy text-based knowledge base. Migrate it to a structured entry.
+              </p>
+            </div>
+            <button
+              onClick={handleMigrate}
+              disabled={migrating}
+              className="px-3 py-1.5 text-xs text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50 shrink-0"
+            >
+              {migrating ? 'Migrating…' : 'Migrate'}
+            </button>
           </div>
         )}
 
