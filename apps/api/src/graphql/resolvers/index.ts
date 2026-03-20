@@ -16,6 +16,7 @@ import { workflowQueries, workflowMutations } from './workflow.js';
 import { releaseQueries, releaseMutations, releaseFieldResolvers } from './release.js';
 import { timeEntryQueries, timeEntryMutations } from './timeentry.js';
 import { capacityQueries, capacityMutations } from './capacity.js';
+import { knowledgeBaseQueries, knowledgeBaseMutations, knowledgeBaseFieldResolvers } from './knowledgebase.js';
 
 export const resolvers = {
   Query: {
@@ -37,6 +38,7 @@ export const resolvers = {
     ...releaseQueries,
     ...timeEntryQueries,
     ...capacityQueries,
+    ...knowledgeBaseQueries,
   },
   Mutation: {
     ...authMutations,
@@ -57,6 +59,7 @@ export const resolvers = {
     ...releaseMutations,
     ...timeEntryMutations,
     ...capacityMutations,
+    ...knowledgeBaseMutations,
   },
   // Field resolvers
   User: { ...authFieldResolvers.User },
@@ -79,4 +82,5 @@ export const resolvers = {
   TaskActionPlan: { ...taskActionFieldResolvers.TaskActionPlan },
   TaskAction: { ...taskActionFieldResolvers.TaskAction },
   Release: { ...releaseFieldResolvers.Release },
+  KnowledgeEntry: { ...knowledgeBaseFieldResolvers.KnowledgeEntry },
 };

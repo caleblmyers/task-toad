@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-Production deployed at `https://tasktoad-api-production.up.railway.app`. 35 swarm waves completed. All P0 and most P1 competitive gap items done. All 5 Critical security findings fixed. Current phase: hardening + real-world testing.
+Production deployed at `https://tasktoad-api-production.up.railway.app`. 36 swarm waves completed. All P0 and most P1 competitive gap items done. All 5 Critical security findings fixed. Current phase: Auto-Complete Pipeline Redesign (Wave 36 done, Waves 37-41 planned).
 
 ---
 
@@ -191,6 +191,61 @@ Full report: `.claude-knowledge/security-audit.md` (2026-03-20, 39 findings tota
 
 ---
 
+## Auto-Complete Pipeline Redesign
+
+Full design spec: `~/brain/projects/task-toad/auto-complete-redesign.md`
+
+Transforms Auto-Complete from isolated per-task execution into project-level orchestration: knowledge base for context, hierarchical planning (epics→tasks→subtasks), cross-task dependency triggers, parallel auto-execution, and smart error recovery.
+
+### Wave 36 — Foundation: Schema + Retrieval (DONE)
+- [x] **1-A: Knowledge Base Schema + CRUD** — `KnowledgeEntry` model, GraphQL CRUD, DataLoader, migration
+- [x] **1-B: KB Retrieval Function** — `retrieveRelevantKnowledge()` (≤3 returns all, else AI picks top 5-8 by title)
+- [x] **1-C: autoComplete flag + informs link type** — `autoComplete` on Task, `informs` in DependencyLinkType
+
+### Wave 37 — Foundation: UI + Wiring
+- [ ] **2-A: KnowledgeBasePanel** — List entries with category badges, add/edit/delete, file upload (.txt/.md via FileReader). Migration button for old `project.knowledgeBase` text field → single entry. Replace existing KnowledgeBaseModal. *(Depends: 1-A)*
+- [ ] **2-B: Onboarding Interview** — `generateOnboardingQuestion`/`completeOnboarding` mutations. AI generates contextual questions (tech stack, conventions, architecture, deployment, testing, business domain). Multi-step wizard component, local state only. Saves Q&A as KnowledgeEntry(source='onboarding'). *(Depends: 1-A)*
+- [ ] **2-C: Inject KB Retrieval into Pipelines** — Add `knowledgeContext` to ActionContext. Call `retrieveRelevantKnowledge()` in actionExecutor before executing. Wire into generateCode + writeDocs executors + generation prompt builder. Fallback to `project.knowledgeBase` if no entries. *(Depends: 1-B)*
+
+### Wave 38 — Intelligent Planning
+- [ ] **3-A: Hierarchical Plan Generation** — New prompt builder outputting epic→task→subtask hierarchy with dependency inference (`blocks`/`informs` using title references). Zod schema. `generateHierarchicalPlan` AI service function. `previewHierarchicalPlan` query.
+- [ ] **3-B: Plan Commit with Hierarchy + Dependencies** — `commitHierarchicalPlan` mutation. Creates epics→tasks→subtasks via parentTaskId, TaskDependency records, autoComplete toggles. Batch cycle detection. `prisma.$transaction`. *(Depends: 3-A)*
+- [ ] **3-C: Plan Editor UI** — Tree view with editable nodes, autoComplete toggles, dependency badges, drag-to-reorder, commit button. `PlanDependencyEditor` for inline dependency picker. *(Depends: 3-A)*
+
+### Wave 39 — Execution Pipeline
+- [ ] **4-A: Project-Level Orchestrator** — Event-driven: listens to `task.action_plan_completed` + `task.updated(status→done)`. Finds auto-eligible tasks with all blockers completed. Generates action plan if none, then executes. Advisory lock per project. Concurrency limit (default 3).
+- [ ] **4-B: Parallel Execution + Branch Naming** — Orchestrator enqueues ALL eligible tasks. Branch naming: `task-{taskId}-{slug}` (kebab-case first 30 chars). Handle concurrent branch creation (retry on conflict). *(Depends: 4-A)*
+- [ ] **4-C: PR Description Generation** — AI-enriched PR descriptions (what changed, why, task/epic context, testing notes). Verify KB context flows through full pipeline.
+
+### Wave 40 — Orchestration
+- [ ] **5-A: Status-Driven Events** — Orchestrator handles failure (block dependents, attach error context). New events: `task.blocked`, `task.unblocked`. Notification creation for blocked chains.
+- [ ] **5-B: TaskInsight Model + Generation** — `TaskInsight` model (sourceTaskId, targetTaskId, type: discovery/warning/pattern, content, autoApplied). Typedefs, resolvers, prompt builder. Call insight extraction after generate_code completes. Migration.
+- [ ] **5-C: CI Monitor + Auto-Fix** — `monitor_ci` executor (polls GitHub Actions, re-enqueues with delay, max 30 min). `fix_ci` executor (fetch CI logs → AI fix → commit to same branch, one retry). Update ActionType union, registry, action plan prompt.
+
+### Wave 41 — Polish
+- [ ] **6-A: Execution Dashboard** — Frontend view of all auto-completing tasks (executing/queued/completed/failed), dependency visualization, retry/cancel controls. `useExecutionDashboard` hook.
+- [ ] **6-B: Insight Review UI + Notifications** — `InsightPanel` (apply/dismiss insights). Execution notification toasts. Wire into TaskDetailPanel + useEventSource.
+- [ ] **6-C: Manual Task Specs + Auto-Start** — Rich spec generation for manual tasks (files to change, approach, code snippets, KB entries, acceptance criteria). Bootstrap mode: create repo if needed before execution. `autoStartProject` mutation.
+
+### Verification Checklist (per wave)
+- `pnpm typecheck && pnpm lint && pnpm build && pnpm test` all pass
+- Schema waves: `npx prisma generate` succeeds, migration included
+- Wave 37: Create project, run onboarding, upload doc, verify entries in KB
+- Wave 38: Generate hierarchical plan, verify tree with dependencies in plan editor
+- Wave 39: Mark 2 independent tasks auto-eligible, complete blocker, verify both start in parallel
+- Wave 40: Fail a task → dependents blocked + notification. Complete task → insights generated.
+- Wave 41: Execution dashboard shows real-time status via SSE
+
+### Key Design Decisions
+- **KB retrieval:** Claude picks from entry titles (no pgvector yet). Plan for pgvector migration later at client scale.
+- **Execution model:** Parallel for independent auto-eligible tasks, project-level concurrency limit of 3.
+- **Onboarding interview:** Frontend state only, restart on tab close, save to KB on completion.
+- **CI polling:** monitor_ci executor re-enqueues with setTimeout delay (cap 30 min).
+- **Deprecation path:** `project.knowledgeBase` text field kept as fallback; retrieval checks entries first.
+- **Branch naming:** `task-{taskId}-{slug}` prevents conflicts during parallel execution.
+
+---
+
 ## Remaining P1 Features (Deferred)
 
 - [ ] **SLA tracking** — SLAPolicy + SLATimer models. Evaluate on status transitions. *(Niche for MVP — revisit when customers ask)*
@@ -228,5 +283,6 @@ Full report: `.claude-knowledge/security-audit.md` (2026-03-20, 39 findings tota
 | 33 | 2026-03-20 | Multi-level hierarchy, user capacity, compound filters |
 | 34 | 2026-03-20 | Query centralization, ARIA/TaskDetail tabs, permission scheme |
 | 35 | 2026-03-20 | Critical security fixes (C-1 through C-5, H-5/H-7/H-8/H-11) |
+| 36 | 2026-03-20 | Auto-Complete Redesign — Foundation: KB schema, retrieval, autoComplete flag |
 
 Full wave details in `changelog.md`.

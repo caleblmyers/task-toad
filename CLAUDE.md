@@ -112,6 +112,7 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 - **AI:** `aiUsage`, `aiPromptHistory`, `analyzeTrends`, `analyzeSprintTransition`, `projectChat`, `analyzeRepoDrift`
 - **Notification:** `notifications`, `unreadNotificationCount`, `notificationPreferences`
 - **GitHub:** `githubInstallations`, `githubInstallationRepos`, `githubProjectRepo`, `fetchRepoFileContent`
+- **KnowledgeBase:** `knowledgeEntries(projectId)`
 - **Report:** `reports`, `generateStandupReport`, `generateSprintReport`, `analyzeProjectHealth`, `extractTasksFromNotes`
 - **Search:** `globalSearch`
 - **ProjectRole:** `projectMembers`, `automationRules`
@@ -131,6 +132,7 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 - **Report:** `saveReport`, `deleteReport`, `summarizeProject`
 - **ProjectRole:** `addProjectMember`, `removeProjectMember`, `updateProjectMemberRole`, `createAutomationRule`, `updateAutomationRule`, `deleteAutomationRule`
 - **Webhook:** `createWebhookEndpoint`, `updateWebhookEndpoint`, `deleteWebhookEndpoint`, `testWebhookEndpoint`, `replayWebhookDelivery`
+- **KnowledgeBase:** `createKnowledgeEntry`, `updateKnowledgeEntry`, `deleteKnowledgeEntry`
 - **Slack:** `connectSlack`, `updateSlackIntegration`, `disconnectSlack`, `testSlackIntegration`, `mapSlackUser`, `unmapSlackUser`
 
 ### Auth
@@ -150,7 +152,8 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 - `apps/api/src/utils/metrics.ts` — Prometheus metrics (prom-client): HTTP request duration/count, GraphQL resolver duration, Prisma pool gauges
 - `apps/api/src/utils/logger.ts` — Structured logging (pino) with `LOG_LEVEL` env var
 - `apps/api/src/utils/sseManager.ts` — Server-Sent Events manager for real-time notifications
-- `apps/api/prisma/schema/` — Domain-split Prisma schema files (auth, org, project, projectrole, task, sprint, comment, activity, notification, report, github, aiusage, slack, webhook)
+- `apps/api/src/ai/knowledgeRetrieval.ts` — `retrieveRelevantKnowledge()` — AI-based KB entry selection for task context
+- `apps/api/prisma/schema/` — Domain-split Prisma schema files (auth, org, project, projectrole, task, sprint, comment, activity, notification, report, github, aiusage, slack, webhook, knowledgebase)
 - `apps/api/src/actions/` — Action plan executor registry and per-type executors (generateCode, createPR, reviewPR, writeDocs, manualStep)
 - `apps/api/src/infrastructure/jobs/actionExecutor.ts` — Job handler that processes action plan steps sequentially
 - `apps/api/src/infrastructure/eventbus/` — Typed domain event bus (task, sprint, action events)

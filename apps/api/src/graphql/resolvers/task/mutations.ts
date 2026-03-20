@@ -70,7 +70,7 @@ export const taskMutations = {
 
   updateTask: async (
     _parent: unknown,
-    args: { taskId: string; title?: string; status?: string; description?: string; instructions?: string; acceptanceCriteria?: string; sprintId?: string | null; sprintColumn?: string | null; assigneeId?: string | null; dueDate?: string | null; position?: number | null; archived?: boolean; storyPoints?: number | null; taskType?: string; recurrenceRule?: string | null; force?: boolean },
+    args: { taskId: string; title?: string; status?: string; description?: string; instructions?: string; acceptanceCriteria?: string; sprintId?: string | null; sprintColumn?: string | null; assigneeId?: string | null; dueDate?: string | null; position?: number | null; archived?: boolean; autoComplete?: boolean; storyPoints?: number | null; taskType?: string; recurrenceRule?: string | null; force?: boolean },
     context: Context
   ) => {
     parseInput(UpdateTaskInput, { title: args.title, description: args.description, instructions: args.instructions, acceptanceCriteria: args.acceptanceCriteria });
@@ -172,6 +172,7 @@ export const taskMutations = {
         ...(args.dueDate !== undefined ? { dueDate: args.dueDate } : {}),
         ...(args.position !== undefined ? { position: args.position } : {}),
         ...(args.archived !== undefined ? { archived: args.archived } : {}),
+        ...(args.autoComplete !== undefined ? { autoComplete: args.autoComplete } : {}),
         ...(args.storyPoints !== undefined ? { storyPoints: args.storyPoints } : {}),
         ...(args.taskType !== undefined ? { taskType: args.taskType } : {}),
         ...(args.recurrenceRule !== undefined ? { recurrenceRule: args.recurrenceRule || null } : {}),
@@ -655,7 +656,7 @@ export const taskMutations = {
     if (!targetTask || targetTask.orgId !== user.orgId) {
       throw new NotFoundError('Target task not found');
     }
-    const validLinkTypes = ['blocks', 'is_blocked_by', 'relates_to', 'duplicates'];
+    const validLinkTypes = ['blocks', 'is_blocked_by', 'relates_to', 'duplicates', 'informs'];
     if (!validLinkTypes.includes(args.linkType)) {
       throw new ValidationError(`Invalid linkType "${args.linkType}". Valid: ${validLinkTypes.join(', ')}`);
     }

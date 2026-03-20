@@ -25,6 +25,7 @@ model Org {
   timeEntries      TimeEntry[]
   userCapacities   UserCapacity[]
   userTimeOffs     UserTimeOff[]
+  knowledgeEntries KnowledgeEntry[]
 
   @@map("orgs")
 }

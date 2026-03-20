@@ -1,5 +1,5 @@
 import DataLoader from 'dataloader';
-import type { PrismaClient, Task, Project, Sprint, User, Label, GitHubPullRequestLink, GitHubCommitLink, CustomFieldValue, CustomField, TaskAssignee, TaskWatcher, Attachment, TaskDependency } from '@prisma/client';
+import type { PrismaClient, Task, Project, Sprint, User, Label, GitHubPullRequestLink, GitHubCommitLink, CustomFieldValue, CustomField, TaskAssignee, TaskWatcher, Attachment, TaskDependency, KnowledgeEntry } from '@prisma/client';
 
 export type CustomFieldValueWithField = CustomFieldValue & { customField: CustomField };
 export type TaskAssigneeWithUser = TaskAssignee & { user: User };
@@ -24,6 +24,7 @@ export interface Loaders {
   taskAttachments: DataLoader<string, Attachment[]>;
   taskDependencies: DataLoader<string, TaskDependencyWithTask[]>;
   taskDependents: DataLoader<string, TaskDependentWithTask[]>;
+  knowledgeEntriesByProject: DataLoader<string, KnowledgeEntry[]>;
 }
 
 export function createLoaders(prisma: PrismaClient): Loaders {
@@ -215,6 +216,19 @@ export function createLoaders(prisma: PrismaClient): Loaders {
         map.get(d.targetTaskId)!.push(d);
       }
       return taskIds.map(id => map.get(id) ?? []);
+    }),
+
+    knowledgeEntriesByProject: new DataLoader(async (projectIds) => {
+      const entries = await prisma.knowledgeEntry.findMany({
+        where: { projectId: { in: [...projectIds] } },
+        orderBy: { createdAt: 'desc' },
+      });
+      const map = new Map<string, KnowledgeEntry[]>();
+      for (const e of entries) {
+        if (!map.has(e.projectId)) map.set(e.projectId, []);
+        map.get(e.projectId)!.push(e);
+      }
+      return projectIds.map(id => map.get(id) ?? []);
     }),
 
     customFieldValuesByTask: new DataLoader(async (taskIds) => {

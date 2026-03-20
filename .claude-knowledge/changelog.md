@@ -4,6 +4,35 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-20 (auto-complete redesign)
+
+### Wave 36: Auto-Complete Redesign — Foundation: Schema + Retrieval (3 tasks)
+
+**Task 1-A — Knowledge Base Schema + CRUD:**
+- New `KnowledgeEntry` model (`knowledgebase.prisma`): uuid PK, projectId, orgId, title, content (Text), source, category, timestamps
+- GraphQL CRUD: `knowledgeEntries` query, `createKnowledgeEntry`/`updateKnowledgeEntry`/`deleteKnowledgeEntry` mutations
+- Resolvers with `requireProject` + `MANAGE_PROJECT_SETTINGS` permission, input validation for source/category
+- `knowledgeEntriesByProject` DataLoader in `loaders.ts`
+- Relations added to Project and Org models
+- `KnowledgeEntry` interface in shared-types
+- Migration: `20260320040000_add_knowledge_entries_autocomplete_informs`
+
+**Task 1-B — Knowledge Base Retrieval Function:**
+- `retrieveRelevantKnowledge()` in `ai/knowledgeRetrieval.ts`: if ≤3 entries returns all, otherwise sends titles to Claude to pick top 5-8, fetches full content for selected
+- `buildKnowledgeRetrievalPrompt()` prompt builder
+- `KnowledgeRetrievalResponseSchema` Zod schema in aiTypes.ts
+- `knowledgeRetrieval` added to AIFeature type + FEATURE_CONFIG (512 tokens, no cache)
+- Graceful fallback: returns top 3 entries on AI failure
+
+**Task 1-C — autoComplete Flag + informs Link Type:**
+- `autoComplete Boolean @default(false)` added to Task model
+- `informs` added to `DependencyLinkType` enum (typedefs + shared-types)
+- `autoComplete` added to Task type, updateTask args/data, TASK_FIELDS
+- `informs` added to validLinkTypes in addTaskDependency (cycle detection correctly skips non-blocking types)
+- Frontend: `informs: 'Informs'` added to `TaskDependenciesSection.tsx` label map
+
+---
+
 ## 2026-03-20 (security wave)
 
 ### Wave 35: Critical Security Fixes (3 workers, 3 tasks)

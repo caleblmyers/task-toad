@@ -18,6 +18,7 @@ export const taskTypeDefs = /* GraphQL */ `
     sprintColumn: String
     assigneeId: ID
     archived: Boolean!
+    autoComplete: Boolean!
     position: Float
     dueDate: String
     labels: [Label!]!
@@ -42,6 +43,7 @@ export const taskTypeDefs = /* GraphQL */ `
     is_blocked_by
     relates_to
     duplicates
+    informs
   }
 
   type TaskDependency {
@@ -238,7 +240,7 @@ export const taskMutationFields = /* GraphQL */ `
   """Create a new task in a project. Defaults to 'todo' status."""
   createTask(projectId: ID!, title: String!, status: String, taskType: String): Task!
   """Update one or more fields on an existing task."""
-  updateTask(taskId: ID!, title: String, status: String, description: String, instructions: String, acceptanceCriteria: String, sprintId: ID, sprintColumn: String, assigneeId: ID, dueDate: String, position: Float, archived: Boolean, storyPoints: Int, taskType: String, recurrenceRule: String, force: Boolean): UpdateTaskResult!
+  updateTask(taskId: ID!, title: String, status: String, description: String, instructions: String, acceptanceCriteria: String, sprintId: ID, sprintColumn: String, assigneeId: ID, dueDate: String, position: Float, archived: Boolean, autoComplete: Boolean, storyPoints: Int, taskType: String, recurrenceRule: String, force: Boolean): UpdateTaskResult!
   """Create a subtask under a parent task."""
   createSubtask(parentTaskId: ID!, title: String!, taskType: String): Task!
   """Update multiple tasks at once (status, assignee, sprint, or archive)."""

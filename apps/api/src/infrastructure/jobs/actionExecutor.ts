@@ -1,8 +1,10 @@
 import type { PrismaClient } from '@prisma/client';
+import { GraphQLError } from 'graphql';
 import { createChildLogger } from '../../utils/logger.js';
 import { getExecutor } from '../../actions/index.js';
 import type { ActionType, ActionContext } from '../../actions/types.js';
 import { checkBudget } from '../../ai/aiUsageTracker.js';
+import { isRetryableAIError } from '../../ai/aiClient.js';
 import { getEventBus } from '../eventbus/index.js';
 import { getJobQueue } from '../jobqueue/index.js';
 
@@ -229,8 +231,11 @@ export function createHandler(prisma: PrismaClient) {
         });
       }
     } catch (err) {
+      const errorCode = err instanceof GraphQLError ? (err.extensions?.code as string) : undefined;
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      log.error({ err, actionId, planId }, 'Action execution failed');
+      const isRetryable = isRetryableAIError(err);
+
+      log.error({ err, actionId, planId, errorCode, isRetryable }, 'Action execution failed');
 
       await prisma.taskAction.update({
         where: { id: actionId },

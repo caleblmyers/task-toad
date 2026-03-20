@@ -303,7 +303,8 @@ export type AIFeature =
   | 'bootstrapFromRepo'
   | 'projectChat'
   | 'analyzeRepoDrift'
-  | 'batchGenerateCode';
+  | 'batchGenerateCode'
+  | 'knowledgeRetrieval';
 
 export const ProjectChatResponseSchema = z.object({
   answer: z.string(),
@@ -324,6 +325,12 @@ export const DriftAnalysisSchema = z.object({
 });
 
 export type DriftAnalysis = z.infer<typeof DriftAnalysisSchema>;
+
+export const KnowledgeRetrievalResponseSchema = z.object({
+  selectedEntryIds: z.array(z.string()),
+});
+
+export type KnowledgeRetrievalResponse = z.infer<typeof KnowledgeRetrievalResponseSchema>;
 
 export interface AIUsage {
   inputTokens: number;

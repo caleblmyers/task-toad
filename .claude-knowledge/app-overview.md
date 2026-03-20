@@ -23,10 +23,10 @@ Org               — id, name, anthropicApiKeyEncrypted, monthlyBudgetCentsUSD
 Project           — id, name, description, orgId, statuses? (JSON)
 Sprint            — id, name, orgId, projectId, isActive, columns (JSON), wipLimits (JSON), startDate?, endDate?
 Task              — id, title, status, projectId, orgId, parentTaskId?, sprintId?, sprintColumn?, taskType
-                    priority, estimatedHours, storyPoints, description, instructions
+                    priority, estimatedHours, storyPoints, description, instructions, autoComplete
 TaskAssignee      — taskId, userId (join table, multiple assignees)
 TaskWatcher       — taskId, userId (join table, auto-added on create/assign/mention)
-TaskDependency    — sourceTaskId, targetTaskId, linkType (blocks/relates_to/duplicates)
+TaskDependency    — sourceTaskId, targetTaskId, linkType (blocks/relates_to/duplicates/informs)
 Label             — id, name, color, projectId
 Comment           — id, taskId, userId, content, parentCommentId? (threaded)
 Activity          — id, taskId?, projectId?, userId, action, field?, oldValue?, newValue?
@@ -37,6 +37,7 @@ ReleaseTask       — releaseId, taskId (join table)
 TimeEntry         — id, taskId, userId, durationMinutes, loggedDate, billable, description?
 UserCapacity      — id, orgId, userId, hoursPerWeek
 UserTimeOff       — id, orgId, userId, startDate, endDate, description?
+KnowledgeEntry    — id, projectId, orgId, title, content, source, category
 SavedFilter       — id, projectId, userId, name, filters (JSON), viewType?, sortBy?, groupBy?, isShared
 WorkflowTransition — id, projectId, fromStatus, toStatus
 AutomationRule    — id, projectId, orgId, name, trigger (JSON), action (JSON), enabled

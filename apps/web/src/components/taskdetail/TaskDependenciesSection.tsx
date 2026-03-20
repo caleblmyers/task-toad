@@ -16,6 +16,7 @@ const LINK_TYPE_LABELS: Record<LinkType, string> = {
   is_blocked_by: 'Blocked by',
   relates_to: 'Relates to',
   duplicates: 'Duplicates',
+  informs: 'Informs',
 };
 
 function statusDotColor(status: string): string {

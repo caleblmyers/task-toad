@@ -23,6 +23,7 @@ import { workflowTypeDefs, workflowQueryFields, workflowMutationFields } from '.
 import { releaseTypeDefs, releaseQueryFields, releaseMutationFields } from './typedefs/release.js';
 import { timeEntryTypeDefs, timeEntryQueryFields, timeEntryMutationFields } from './typedefs/timeentry.js';
 import { capacityTypeDefs, capacityQueryFields, capacityMutationFields } from './typedefs/capacity.js';
+import { knowledgeBaseTypeDefs, knowledgeBaseQueryFields, knowledgeBaseMutationFields } from './typedefs/knowledgebase.js';
 
 const typeDefs = /* GraphQL */ `
   ${authTypeDefs}
@@ -46,6 +47,7 @@ const typeDefs = /* GraphQL */ `
   ${releaseTypeDefs}
   ${timeEntryTypeDefs}
   ${capacityTypeDefs}
+  ${knowledgeBaseTypeDefs}
 
   type Query {
     ${authQueryFields}
@@ -68,6 +70,7 @@ const typeDefs = /* GraphQL */ `
     ${releaseQueryFields}
     ${timeEntryQueryFields}
     ${capacityQueryFields}
+    ${knowledgeBaseQueryFields}
   }
 
   type Mutation {
@@ -90,6 +93,7 @@ const typeDefs = /* GraphQL */ `
     ${releaseMutationFields}
     ${timeEntryMutationFields}
     ${capacityMutationFields}
+    ${knowledgeBaseMutationFields}
   }
 `;
 

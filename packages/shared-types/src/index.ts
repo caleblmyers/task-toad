@@ -67,6 +67,7 @@ export interface Task {
   sprintColumn?: string | null;
   assigneeId?: string | null;
   archived?: boolean;
+  autoComplete?: boolean;
   position?: number | null;
   dueDate?: string | null;
   labels?: Label[];
@@ -118,7 +119,7 @@ export interface TaskDependency {
   taskDependencyId: string;
   sourceTaskId: string;
   targetTaskId: string;
-  linkType: 'blocks' | 'is_blocked_by' | 'relates_to' | 'duplicates';
+  linkType: 'blocks' | 'is_blocked_by' | 'relates_to' | 'duplicates' | 'informs';
   sourceTask?: Task;
   targetTask?: Task;
   createdAt: string;
@@ -326,6 +327,17 @@ export interface SprintTimeSummary {
   sprintId: string;
   totalMinutes: number;
   byUser: UserTimeSummary[];
+}
+
+export interface KnowledgeEntry {
+  knowledgeEntryId: string;
+  projectId: string;
+  title: string;
+  content: string;
+  source: string;
+  category: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface FilterCondition {

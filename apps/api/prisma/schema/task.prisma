@@ -20,6 +20,7 @@ model Task {
   dueDate        String?  @map("due_date")
   createdAt      DateTime @default(now()) @map("created_at")
   archived       Boolean  @default(false)
+  autoComplete   Boolean  @default(false) @map("auto_complete")
   project        Project  @relation(fields: [projectId], references: [projectId])
   parentTask     Task?    @relation("TaskSubtasks", fields: [parentTaskId], references: [taskId])
   subtasks       Task[]   @relation("TaskSubtasks")

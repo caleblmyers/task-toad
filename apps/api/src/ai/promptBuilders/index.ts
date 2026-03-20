@@ -28,6 +28,8 @@ export {
   buildReleaseNotesPrompt,
 } from './analysis.js';
 
+export { buildKnowledgeRetrievalPrompt } from './knowledgeRetrieval.js';
+
 export {
   buildPlanSprintsPrompt, type MemberCapacityInput,
   buildStandupPrompt,
