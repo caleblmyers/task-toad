@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { gql } from '../../api/client';
+import {
+  CUSTOM_FIELDS_QUERY,
+  CREATE_CUSTOM_FIELD_MUTATION,
+  DELETE_CUSTOM_FIELD_MUTATION,
+  UPDATE_CUSTOM_FIELD_MUTATION,
+} from '../../api/queries';
 import { useFormState } from '../../hooks/useFormState';
 import { parseOptions } from '../../utils/jsonHelpers';
 import Button from '../shared/Button';
@@ -27,9 +33,7 @@ export default function CustomFieldsTab({ projectId }: Props) {
     async (values) => {
       if (!values.name.trim()) return;
       const { createCustomField } = await gql<{ createCustomField: CustomFieldDef }>(
-        `mutation CreateCF($projectId: ID!, $name: String!, $fieldType: String!, $options: String, $required: Boolean) {
-          createCustomField(projectId: $projectId, name: $name, fieldType: $fieldType, options: $options, required: $required) { customFieldId name fieldType options required position }
-        }`,
+        CREATE_CUSTOM_FIELD_MUTATION,
         {
           projectId,
           name: values.name.trim(),
@@ -48,7 +52,7 @@ export default function CustomFieldsTab({ projectId }: Props) {
     setLoading(true);
     try {
       const data = await gql<{ customFields: CustomFieldDef[] }>(
-        `query CustomFields($projectId: ID!) { customFields(projectId: $projectId) { customFieldId name fieldType options required position } }`,
+        CUSTOM_FIELDS_QUERY,
         { projectId },
       );
       setCustomFields(data.customFields);
@@ -64,7 +68,7 @@ export default function CustomFieldsTab({ projectId }: Props) {
   const handleDeleteCustomField = async (fieldId: string) => {
     try {
       await gql<{ deleteCustomField: boolean }>(
-        `mutation DeleteCF($customFieldId: ID!) { deleteCustomField(customFieldId: $customFieldId) }`,
+        DELETE_CUSTOM_FIELD_MUTATION,
         { customFieldId: fieldId },
       );
       setCustomFields((prev) => prev.filter((f) => f.customFieldId !== fieldId));
@@ -85,11 +89,11 @@ export default function CustomFieldsTab({ projectId }: Props) {
     try {
       await Promise.all([
         gql<{ updateCustomField: CustomFieldDef }>(
-          `mutation ReorderA($customFieldId: ID!, $position: Int) { updateCustomField(customFieldId: $customFieldId, position: $position) { customFieldId name fieldType options required position } }`,
+          UPDATE_CUSTOM_FIELD_MUTATION,
           { customFieldId: fieldA.customFieldId, position: fieldB.position },
         ),
         gql<{ updateCustomField: CustomFieldDef }>(
-          `mutation ReorderB($customFieldId: ID!, $position: Int) { updateCustomField(customFieldId: $customFieldId, position: $position) { customFieldId name fieldType options required position } }`,
+          UPDATE_CUSTOM_FIELD_MUTATION,
           { customFieldId: fieldB.customFieldId, position: fieldA.position },
         ),
       ]);

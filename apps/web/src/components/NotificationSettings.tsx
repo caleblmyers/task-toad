@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { gql } from '../api/client';
+import {
+  NOTIFICATION_PREFERENCES_QUERY,
+  UPDATE_NOTIFICATION_PREFERENCE_MUTATION,
+} from '../api/queries';
 
 interface NotificationPref {
   id: string;
@@ -25,7 +29,7 @@ export default function NotificationSettings() {
   const fetchPrefs = useCallback(async () => {
     try {
       const data = await gql<{ notificationPreferences: NotificationPref[] }>(
-        `query NotificationPrefs { notificationPreferences { id notificationType inApp email } }`
+        NOTIFICATION_PREFERENCES_QUERY
       );
       setPrefs(data.notificationPreferences);
     } catch {
@@ -41,11 +45,7 @@ export default function NotificationSettings() {
     setPrefs(prev => prev.map(p => p.notificationType === type ? { ...p, [field]: value } : p));
     try {
       await gql<{ updateNotificationPreference: NotificationPref }>(
-        `mutation UpdatePref($type: String!, $inApp: Boolean, $email: Boolean) {
-          updateNotificationPreference(notificationType: $type, inApp: $inApp, email: $email) {
-            id notificationType inApp email
-          }
-        }`,
+        UPDATE_NOTIFICATION_PREFERENCE_MUTATION,
         { type, [field]: value }
       );
     } catch {

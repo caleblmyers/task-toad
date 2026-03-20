@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
+import {
+  GITHUB_INSTALLATION_REPOS_QUERY,
+  CONNECT_GITHUB_REPO_MUTATION,
+  DISCONNECT_GITHUB_REPO_MUTATION,
+} from '../api/queries';
 import type { GitHubInstallation, GitHubRepoLink, GitHubRepo } from '../types';
 import Modal from './shared/Modal';
 
@@ -38,7 +43,7 @@ export default function GitHubRepoModal({
     setErr(null);
     setSelectedRepo('');
     gql<{ githubInstallationRepos: GitHubRepo[] }>(
-      `query GitHubRepos($installationId: ID!) { githubInstallationRepos(installationId: $installationId) { id name owner fullName isPrivate defaultBranch } }`,
+      GITHUB_INSTALLATION_REPOS_QUERY,
       { installationId: selectedInstallation }
     )
       .then((data) => setRepos(data.githubInstallationRepos))
@@ -57,11 +62,7 @@ export default function GitHubRepoModal({
     setErr(null);
     try {
       const data = await gql<{ connectGitHubRepo: GitHubRepoLink }>(
-        `mutation ConnectRepo($projectId: ID!, $installationId: ID!, $owner: String!, $name: String!) {
-          connectGitHubRepo(projectId: $projectId, installationId: $installationId, owner: $owner, name: $name) {
-            repositoryId repositoryName repositoryOwner installationId defaultBranch
-          }
-        }`,
+        CONNECT_GITHUB_REPO_MUTATION,
         { projectId, installationId: selectedInstallation, owner: repo.owner, name: repo.name }
       );
       onConnected(data.connectGitHubRepo);
@@ -77,7 +78,7 @@ export default function GitHubRepoModal({
     setErr(null);
     try {
       await gql<{ disconnectGitHubRepo: boolean }>(
-        `mutation DisconnectRepo($projectId: ID!) { disconnectGitHubRepo(projectId: $projectId) }`,
+        DISCONNECT_GITHUB_REPO_MUTATION,
         { projectId }
       );
       onDisconnected();

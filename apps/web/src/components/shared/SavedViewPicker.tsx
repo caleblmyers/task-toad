@@ -2,9 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import type { SavedFilter } from './FilterBar';
 import type { ViewConfig } from '../../hooks/useTaskFiltering';
 import { gql } from '../../api/client';
+import { SHARED_VIEWS_QUERY, SAVE_VIEW_MUTATION, DELETE_FILTER_MUTATION } from '../../api/queries';
 import { IconList, IconBoard, IconTable } from './Icons';
-
-const SAVED_FILTER_FIELDS = 'savedFilterId name filters viewType sortBy sortOrder groupBy visibleColumns isShared isDefault createdAt';
 
 interface SavedViewPickerProps {
   projectId: string;
@@ -48,7 +47,7 @@ export default function SavedViewPicker({
   const fetchSharedViews = useCallback(async () => {
     try {
       const { sharedViews: views } = await gql<{ sharedViews: SavedFilter[] }>(
-        `query SharedViews($projectId: ID!) { sharedViews(projectId: $projectId) { ${SAVED_FILTER_FIELDS} } }`,
+        SHARED_VIEWS_QUERY,
         { projectId },
       );
       setSharedViews(views);
@@ -91,9 +90,7 @@ export default function SavedViewPicker({
     try {
       setError(null);
       const { saveFilter } = await gql<{ saveFilter: SavedFilter }>(
-        `mutation SaveView($projectId: ID!, $name: String!, $filters: String!, $viewType: String, $sortBy: String, $sortOrder: String, $groupBy: String, $isShared: Boolean) {
-          saveFilter(projectId: $projectId, name: $name, filters: $filters, viewType: $viewType, sortBy: $sortBy, sortOrder: $sortOrder, groupBy: $groupBy, isShared: $isShared) { ${SAVED_FILTER_FIELDS} }
-        }`,
+        SAVE_VIEW_MUTATION,
         {
           projectId,
           name: saveName.trim(),
@@ -117,7 +114,7 @@ export default function SavedViewPicker({
     try {
       setError(null);
       await gql<{ deleteFilter: boolean }>(
-        `mutation DeleteView($savedFilterId: ID!) { deleteFilter(savedFilterId: $savedFilterId) }`,
+        DELETE_FILTER_MUTATION,
         { savedFilterId: filterId },
       );
       onSavedFiltersChange(savedFilters.filter((f) => f.savedFilterId !== filterId));

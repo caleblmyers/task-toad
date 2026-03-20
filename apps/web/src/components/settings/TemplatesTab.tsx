@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { gql } from '../../api/client';
+import {
+  TASK_TEMPLATES_QUERY,
+  CREATE_TASK_TEMPLATE_MUTATION,
+  UPDATE_TASK_TEMPLATE_MUTATION,
+  DELETE_TASK_TEMPLATE_MUTATION,
+} from '../../api/queries';
 import Button from '../shared/Button';
 
 interface TaskTemplateDef {
@@ -40,7 +46,7 @@ export default function TemplatesTab({ projectId }: Props) {
     setLoading(true);
     try {
       const data = await gql<{ taskTemplates: TaskTemplateDef[] }>(
-        `query TaskTemplates($projectId: ID) { taskTemplates(projectId: $projectId) { taskTemplateId name description instructions acceptanceCriteria priority taskType estimatedHours storyPoints projectId createdAt } }`,
+        TASK_TEMPLATES_QUERY,
         { projectId },
       );
       setTemplates(data.taskTemplates);
@@ -58,9 +64,7 @@ export default function TemplatesTab({ projectId }: Props) {
     setError(null);
     try {
       const { createTaskTemplate } = await gql<{ createTaskTemplate: TaskTemplateDef }>(
-        `mutation CreateTemplate($projectId: ID, $name: String!, $description: String, $instructions: String, $acceptanceCriteria: String, $estimatedHours: Float, $storyPoints: Int, $priority: String, $taskType: String) {
-          createTaskTemplate(projectId: $projectId, name: $name, description: $description, instructions: $instructions, acceptanceCriteria: $acceptanceCriteria, estimatedHours: $estimatedHours, storyPoints: $storyPoints, priority: $priority, taskType: $taskType) { taskTemplateId name description instructions acceptanceCriteria priority taskType estimatedHours storyPoints projectId createdAt }
-        }`,
+        CREATE_TASK_TEMPLATE_MUTATION,
         {
           projectId,
           name: tplName.trim(),
@@ -92,9 +96,7 @@ export default function TemplatesTab({ projectId }: Props) {
     setError(null);
     try {
       const { updateTaskTemplate } = await gql<{ updateTaskTemplate: TaskTemplateDef }>(
-        `mutation UpdateTemplate($taskTemplateId: ID!, $name: String, $description: String, $instructions: String, $acceptanceCriteria: String, $estimatedHours: Float, $storyPoints: Int, $priority: String, $taskType: String) {
-          updateTaskTemplate(taskTemplateId: $taskTemplateId, name: $name, description: $description, instructions: $instructions, acceptanceCriteria: $acceptanceCriteria, estimatedHours: $estimatedHours, storyPoints: $storyPoints, priority: $priority, taskType: $taskType) { taskTemplateId name description instructions acceptanceCriteria priority taskType estimatedHours storyPoints projectId createdAt }
-        }`,
+        UPDATE_TASK_TEMPLATE_MUTATION,
         {
           taskTemplateId: editingTemplate.taskTemplateId,
           name: editingTemplate.name,
@@ -118,7 +120,7 @@ export default function TemplatesTab({ projectId }: Props) {
     setError(null);
     try {
       await gql<{ deleteTaskTemplate: boolean }>(
-        `mutation DeleteTemplate($taskTemplateId: ID!) { deleteTaskTemplate(taskTemplateId: $taskTemplateId) }`,
+        DELETE_TASK_TEMPLATE_MUTATION,
         { taskTemplateId: templateId },
       );
       setTemplates((prev) => prev.filter((t) => t.taskTemplateId !== templateId));

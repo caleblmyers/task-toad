@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { gql } from '../../api/client';
+import {
+  WORKFLOW_TRANSITIONS_QUERY,
+  WORKFLOW_PROJECT_STATUSES_QUERY,
+  CREATE_WORKFLOW_TRANSITION_MUTATION,
+  DELETE_WORKFLOW_TRANSITION_MUTATION,
+} from '../../api/queries';
 import { useFormState } from '../../hooks/useFormState';
 import Button from '../shared/Button';
 
@@ -26,17 +32,11 @@ export default function WorkflowTab({ projectId }: Props) {
     try {
       const [transData, projData] = await Promise.all([
         gql<{ workflowTransitions: WorkflowTransition[] }>(
-          `query WorkflowTransitions($projectId: ID!) {
-            workflowTransitions(projectId: $projectId) {
-              transitionId projectId fromStatus toStatus allowedRoles createdAt
-            }
-          }`,
+          WORKFLOW_TRANSITIONS_QUERY,
           { projectId },
         ),
         gql<{ project: { statuses: string } }>(
-          `query Project($projectId: ID!) {
-            project(projectId: $projectId) { statuses }
-          }`,
+          WORKFLOW_PROJECT_STATUSES_QUERY,
           { projectId },
         ),
       ]);
@@ -63,11 +63,7 @@ export default function WorkflowTab({ projectId }: Props) {
     async (values) => {
       if (!values.fromStatus || !values.toStatus) return;
       const { createWorkflowTransition } = await gql<{ createWorkflowTransition: WorkflowTransition }>(
-        `mutation CreateTransition($projectId: ID!, $fromStatus: String!, $toStatus: String!) {
-          createWorkflowTransition(projectId: $projectId, fromStatus: $fromStatus, toStatus: $toStatus) {
-            transitionId projectId fromStatus toStatus allowedRoles createdAt
-          }
-        }`,
+        CREATE_WORKFLOW_TRANSITION_MUTATION,
         { projectId, fromStatus: values.fromStatus, toStatus: values.toStatus },
       );
       setTransitions((prev) => [...prev, createWorkflowTransition]);
@@ -78,9 +74,7 @@ export default function WorkflowTab({ projectId }: Props) {
   const handleDelete = useCallback(async (transitionId: string) => {
     try {
       await gql<{ deleteWorkflowTransition: boolean }>(
-        `mutation DeleteTransition($transitionId: ID!) {
-          deleteWorkflowTransition(transitionId: $transitionId)
-        }`,
+        DELETE_WORKFLOW_TRANSITION_MUTATION,
         { transitionId },
       );
       setTransitions((prev) => prev.filter((t) => t.transitionId !== transitionId));

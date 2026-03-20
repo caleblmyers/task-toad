@@ -1,6 +1,14 @@
 import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
-import { WEBHOOK_DELIVERIES_QUERY, REPLAY_WEBHOOK_DELIVERY_MUTATION } from '../api/queries';
+import {
+  WEBHOOK_DELIVERIES_QUERY,
+  REPLAY_WEBHOOK_DELIVERY_MUTATION,
+  WEBHOOK_ENDPOINTS_QUERY,
+  CREATE_WEBHOOK_ENDPOINT_MUTATION,
+  UPDATE_WEBHOOK_ENDPOINT_MUTATION,
+  TEST_WEBHOOK_ENDPOINT_MUTATION,
+  DELETE_WEBHOOK_ENDPOINT_MUTATION,
+} from '../api/queries';
 import { useFormState } from '../hooks/useFormState';
 import { useConfirmDialog } from './shared/ConfirmDialog';
 import Badge from './shared/Badge';
@@ -37,8 +45,6 @@ const SUPPORTED_EVENTS = [
   'comment.created',
 ];
 
-const WEBHOOKS_QUERY = `query { webhookEndpoints { id url events enabled description lastError lastFiredAt createdAt } }`;
-
 const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
   success: 'success',
   retrying: 'warning',
@@ -58,7 +64,7 @@ export default function WebhookSettings() {
 
   const fetchEndpoints = () => {
     setLoading(true);
-    gql<{ webhookEndpoints: WebhookEndpoint[] }>(WEBHOOKS_QUERY)
+    gql<{ webhookEndpoints: WebhookEndpoint[] }>(WEBHOOK_ENDPOINTS_QUERY)
       .then((data) => setEndpoints(data.webhookEndpoints))
       .catch((e) => setErr(e instanceof Error ? e.message : 'Failed to load webhooks'))
       .finally(() => setLoading(false));
@@ -69,11 +75,7 @@ export default function WebhookSettings() {
     async (values) => {
       if (!values.url.trim() || values.events.length === 0) return;
       const data = await gql<{ createWebhookEndpoint: WebhookEndpoint & { secret: string } }>(
-        `mutation CreateWebhook($url: String!, $events: [String!]!, $description: String) {
-          createWebhookEndpoint(url: $url, events: $events, description: $description) {
-            id url events enabled description lastError lastFiredAt createdAt
-          }
-        }`,
+        CREATE_WEBHOOK_ENDPOINT_MUTATION,
         { url: values.url.trim(), events: values.events, description: values.description.trim() || null }
       );
       setCreatedSecret(null);
@@ -139,9 +141,7 @@ export default function WebhookSettings() {
   const handleToggleEnabled = async (endpoint: WebhookEndpoint) => {
     try {
       await gql<{ updateWebhookEndpoint: WebhookEndpoint }>(
-        `mutation UpdateWebhook($id: ID!, $enabled: Boolean) {
-          updateWebhookEndpoint(id: $id, enabled: $enabled) { id enabled }
-        }`,
+        UPDATE_WEBHOOK_ENDPOINT_MUTATION,
         { id: endpoint.id, enabled: !endpoint.enabled }
       );
       setEndpoints((prev) =>
@@ -156,7 +156,7 @@ export default function WebhookSettings() {
     setTestingId(id);
     try {
       const data = await gql<{ testWebhookEndpoint: boolean }>(
-        `mutation TestWebhook($id: ID!) { testWebhookEndpoint(id: $id) }`,
+        TEST_WEBHOOK_ENDPOINT_MUTATION,
         { id }
       );
       if (data.testWebhookEndpoint) {
@@ -180,7 +180,7 @@ export default function WebhookSettings() {
     if (!await confirm({ title: 'Delete webhook', message: 'Delete this webhook endpoint?', confirmLabel: 'Delete', variant: 'danger' })) return;
     try {
       await gql<{ deleteWebhookEndpoint: boolean }>(
-        `mutation DeleteWebhook($id: ID!) { deleteWebhookEndpoint(id: $id) }`,
+        DELETE_WEBHOOK_ENDPOINT_MUTATION,
         { id }
       );
       setEndpoints((prev) => prev.filter((ep) => ep.id !== id));

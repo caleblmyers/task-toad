@@ -1,21 +1,7 @@
 import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
+import { AI_USAGE_QUERY, SET_AI_BUDGET_MUTATION } from '../api/queries';
 import type { AIUsageSummary } from '../types';
-
-const AI_USAGE_QUERY = `query AIUsage($days: Int) {
-  aiUsage(days: $days) {
-    totalCostUSD totalInputTokens totalOutputTokens totalCalls
-    byFeature { feature calls costUSD avgLatencyMs }
-    budgetUsedPercent budgetLimitCentsUSD budgetEnforcement
-    dailyAverageCostUSD projectedMonthlyCostUSD
-  }
-}`;
-
-const SET_BUDGET_MUTATION = `mutation SetAIBudget($monthlyBudgetCentsUSD: Int, $alertThreshold: Int, $budgetEnforcement: String) {
-  setAIBudget(monthlyBudgetCentsUSD: $monthlyBudgetCentsUSD, alertThreshold: $alertThreshold, budgetEnforcement: $budgetEnforcement) {
-    orgId monthlyBudgetCentsUSD budgetAlertThreshold budgetEnforcement
-  }
-}`;
 
 const TIME_RANGES = [
   { label: '7d', days: 7 },
@@ -120,7 +106,7 @@ export default function AIUsageDashboard() {
     setBudgetMsg(null);
     try {
       const cents = getEffectiveCents();
-      await gql<unknown>(SET_BUDGET_MUTATION, {
+      await gql<unknown>(SET_AI_BUDGET_MUTATION, {
         monthlyBudgetCentsUSD: cents,
         alertThreshold,
         budgetEnforcement: enforcement,

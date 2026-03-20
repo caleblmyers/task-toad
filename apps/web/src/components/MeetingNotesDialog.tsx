@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { gql } from '../api/client';
+import { EXTRACT_TASKS_FROM_NOTES_QUERY, CREATE_TASK_WITH_STATUS_MUTATION } from '../api/queries';
 import { IconClose } from './shared/Icons';
 import Modal from './shared/Modal';
 import Badge from './shared/Badge';
@@ -44,12 +45,7 @@ export default function MeetingNotesDialog({ projectId, onTasksCreated, onClose 
     setError(null);
     try {
       const data = await gql<{ extractTasksFromNotes: MeetingNotesResult }>(
-        `query ExtractTasks($projectId: ID!, $notes: String!) {
-          extractTasksFromNotes(projectId: $projectId, notes: $notes) {
-            tasks { title description assigneeName priority status }
-            summary
-          }
-        }`,
+        EXTRACT_TASKS_FROM_NOTES_QUERY,
         { projectId, notes }
       );
       setResult(data.extractTasksFromNotes);
@@ -86,9 +82,7 @@ export default function MeetingNotesDialog({ projectId, onTasksCreated, onClose 
       const tasksToCreate = result.tasks.filter((_, i) => selected.has(i));
       for (const task of tasksToCreate) {
         await gql<{ createTask: { taskId: string } }>(
-          `mutation CreateTask($projectId: ID!, $title: String!, $status: String) {
-            createTask(projectId: $projectId, title: $title, status: $status) { taskId }
-          }`,
+          CREATE_TASK_WITH_STATUS_MUTATION,
           { projectId, title: task.title, status: task.status || 'todo' }
         );
       }

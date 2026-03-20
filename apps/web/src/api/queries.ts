@@ -390,3 +390,217 @@ export const ADD_TIME_OFF_MUTATION = `mutation AddTimeOff($userId: ID!, $startDa
 export const REMOVE_TIME_OFF_MUTATION = `mutation RemoveTimeOff($userTimeOffId: ID!) {
   removeTimeOff(userTimeOffId: $userTimeOffId)
 }`;
+
+// ── Automation Rules ──
+
+export const AUTOMATION_RULES_QUERY = `query AutomationRules($projectId: ID!) { automationRules(projectId: $projectId) { id name trigger action enabled createdAt } }`;
+
+export const CREATE_AUTOMATION_RULE_MUTATION = `mutation CreateRule($projectId: ID!, $name: String!, $trigger: String!, $action: String!) {
+  createAutomationRule(projectId: $projectId, name: $name, trigger: $trigger, action: $action) { id name trigger action enabled createdAt }
+}`;
+
+export const UPDATE_AUTOMATION_RULE_MUTATION = `mutation ToggleRule($ruleId: ID!, $enabled: Boolean) {
+  updateAutomationRule(ruleId: $ruleId, enabled: $enabled) { id name trigger action enabled createdAt }
+}`;
+
+export const DELETE_AUTOMATION_RULE_MUTATION = `mutation DeleteRule($ruleId: ID!) { deleteAutomationRule(ruleId: $ruleId) }`;
+
+// ── Custom Fields ──
+
+export const CUSTOM_FIELDS_QUERY = `query CustomFields($projectId: ID!) { customFields(projectId: $projectId) { customFieldId name fieldType options required position } }`;
+
+export const CREATE_CUSTOM_FIELD_MUTATION = `mutation CreateCF($projectId: ID!, $name: String!, $fieldType: String!, $options: String, $required: Boolean) {
+  createCustomField(projectId: $projectId, name: $name, fieldType: $fieldType, options: $options, required: $required) { customFieldId name fieldType options required position }
+}`;
+
+export const DELETE_CUSTOM_FIELD_MUTATION = `mutation DeleteCF($customFieldId: ID!) { deleteCustomField(customFieldId: $customFieldId) }`;
+
+export const UPDATE_CUSTOM_FIELD_MUTATION = `mutation ReorderCF($customFieldId: ID!, $position: Int) { updateCustomField(customFieldId: $customFieldId, position: $position) { customFieldId name fieldType options required position } }`;
+
+// ── Project Members ──
+
+export const PROJECT_MEMBERS_QUERY = `query ProjectMembers($projectId: ID!) { projectMembers(projectId: $projectId) { id userId email role createdAt } }`;
+
+export const ADD_PROJECT_MEMBER_MUTATION = `mutation AddMember($projectId: ID!, $userId: ID!, $role: String) {
+  addProjectMember(projectId: $projectId, userId: $userId, role: $role) { id userId email role createdAt }
+}`;
+
+export const REMOVE_PROJECT_MEMBER_MUTATION = `mutation RemoveMember($projectId: ID!, $userId: ID!) { removeProjectMember(projectId: $projectId, userId: $userId) }`;
+
+export const UPDATE_PROJECT_MEMBER_ROLE_MUTATION = `mutation UpdateRole($projectId: ID!, $userId: ID!, $role: String!) {
+  updateProjectMemberRole(projectId: $projectId, userId: $userId, role: $role) { id userId email role createdAt }
+}`;
+
+// ── Task Templates ──
+
+export const TASK_TEMPLATES_QUERY = `query TaskTemplates($projectId: ID) { taskTemplates(projectId: $projectId) { taskTemplateId name description instructions acceptanceCriteria priority taskType estimatedHours storyPoints projectId createdAt } }`;
+
+export const CREATE_TASK_TEMPLATE_MUTATION = `mutation CreateTemplate($projectId: ID, $name: String!, $description: String, $instructions: String, $acceptanceCriteria: String, $estimatedHours: Float, $storyPoints: Int, $priority: String, $taskType: String) {
+  createTaskTemplate(projectId: $projectId, name: $name, description: $description, instructions: $instructions, acceptanceCriteria: $acceptanceCriteria, estimatedHours: $estimatedHours, storyPoints: $storyPoints, priority: $priority, taskType: $taskType) { taskTemplateId name description instructions acceptanceCriteria priority taskType estimatedHours storyPoints projectId createdAt }
+}`;
+
+export const UPDATE_TASK_TEMPLATE_MUTATION = `mutation UpdateTemplate($taskTemplateId: ID!, $name: String, $description: String, $instructions: String, $acceptanceCriteria: String, $estimatedHours: Float, $storyPoints: Int, $priority: String, $taskType: String) {
+  updateTaskTemplate(taskTemplateId: $taskTemplateId, name: $name, description: $description, instructions: $instructions, acceptanceCriteria: $acceptanceCriteria, estimatedHours: $estimatedHours, storyPoints: $storyPoints, priority: $priority, taskType: $taskType) { taskTemplateId name description instructions acceptanceCriteria priority taskType estimatedHours storyPoints projectId createdAt }
+}`;
+
+export const DELETE_TASK_TEMPLATE_MUTATION = `mutation DeleteTemplate($taskTemplateId: ID!) { deleteTaskTemplate(taskTemplateId: $taskTemplateId) }`;
+
+// ── Workflow Transitions ──
+
+export const WORKFLOW_TRANSITIONS_QUERY = `query WorkflowTransitions($projectId: ID!) {
+  workflowTransitions(projectId: $projectId) {
+    transitionId projectId fromStatus toStatus allowedRoles createdAt
+  }
+}`;
+
+export const WORKFLOW_PROJECT_STATUSES_QUERY = `query Project($projectId: ID!) {
+  project(projectId: $projectId) { statuses }
+}`;
+
+export const CREATE_WORKFLOW_TRANSITION_MUTATION = `mutation CreateTransition($projectId: ID!, $fromStatus: String!, $toStatus: String!) {
+  createWorkflowTransition(projectId: $projectId, fromStatus: $fromStatus, toStatus: $toStatus) {
+    transitionId projectId fromStatus toStatus allowedRoles createdAt
+  }
+}`;
+
+export const DELETE_WORKFLOW_TRANSITION_MUTATION = `mutation DeleteTransition($transitionId: ID!) {
+  deleteWorkflowTransition(transitionId: $transitionId)
+}`;
+
+// ── Slack ──
+
+export const SLACK_INTEGRATIONS_QUERY = `query { slackIntegrations { id teamId teamName channelId channelName events enabled createdAt } }`;
+
+export const CONNECT_SLACK_MUTATION = `mutation ConnectSlack($webhookUrl: String!, $teamId: String!, $teamName: String!, $channelId: String!, $channelName: String!, $events: [String!]!) {
+  connectSlack(webhookUrl: $webhookUrl, teamId: $teamId, teamName: $teamName, channelId: $channelId, channelName: $channelName, events: $events) {
+    id teamId teamName channelId channelName events enabled createdAt
+  }
+}`;
+
+export const SLACK_ORG_USERS_QUERY = `query { orgUsers { userId email displayName } }`;
+
+export const SLACK_USER_MAPPINGS_QUERY = `query ($integrationId: ID!) { slackUserMappings(integrationId: $integrationId) { id slackUserId slackTeamId userId orgId createdAt user { userId email displayName } } }`;
+
+export const MAP_SLACK_USER_MUTATION = `mutation MapSlack($slackUserId: String!, $slackTeamId: String!, $userId: ID!) {
+  mapSlackUser(slackUserId: $slackUserId, slackTeamId: $slackTeamId, userId: $userId) {
+    id slackUserId slackTeamId userId orgId createdAt user { userId email displayName }
+  }
+}`;
+
+export const UNMAP_SLACK_USER_MUTATION = `mutation UnmapSlack($mappingId: ID!) { unmapSlackUser(mappingId: $mappingId) }`;
+
+export const UPDATE_SLACK_INTEGRATION_MUTATION = `mutation UpdateSlack($id: ID!, $enabled: Boolean) {
+  updateSlackIntegration(id: $id, enabled: $enabled) { id enabled }
+}`;
+
+export const TEST_SLACK_INTEGRATION_MUTATION = `mutation TestSlack($id: ID!) { testSlackIntegration(id: $id) }`;
+
+export const DISCONNECT_SLACK_MUTATION = `mutation DisconnectSlack($id: ID!) { disconnectSlack(id: $id) }`;
+
+// ── Webhooks ──
+
+export const WEBHOOK_ENDPOINTS_QUERY = `query { webhookEndpoints { id url events enabled description lastError lastFiredAt createdAt } }`;
+
+export const CREATE_WEBHOOK_ENDPOINT_MUTATION = `mutation CreateWebhook($url: String!, $events: [String!]!, $description: String) {
+  createWebhookEndpoint(url: $url, events: $events, description: $description) {
+    id url events enabled description lastError lastFiredAt createdAt
+  }
+}`;
+
+export const UPDATE_WEBHOOK_ENDPOINT_MUTATION = `mutation UpdateWebhook($id: ID!, $enabled: Boolean) {
+  updateWebhookEndpoint(id: $id, enabled: $enabled) { id enabled }
+}`;
+
+export const TEST_WEBHOOK_ENDPOINT_MUTATION = `mutation TestWebhook($id: ID!) { testWebhookEndpoint(id: $id) }`;
+
+export const DELETE_WEBHOOK_ENDPOINT_MUTATION = `mutation DeleteWebhook($id: ID!) { deleteWebhookEndpoint(id: $id) }`;
+
+// ── GitHub ──
+
+export const GITHUB_INSTALLATION_REPOS_QUERY = `query GitHubRepos($installationId: ID!) { githubInstallationRepos(installationId: $installationId) { id name owner fullName isPrivate defaultBranch } }`;
+
+export const CONNECT_GITHUB_REPO_MUTATION = `mutation ConnectRepo($projectId: ID!, $installationId: ID!, $owner: String!, $name: String!) {
+  connectGitHubRepo(projectId: $projectId, installationId: $installationId, owner: $owner, name: $name) {
+    repositoryId repositoryName repositoryOwner installationId defaultBranch
+  }
+}`;
+
+export const DISCONNECT_GITHUB_REPO_MUTATION = `mutation DisconnectRepo($projectId: ID!) { disconnectGitHubRepo(projectId: $projectId) }`;
+
+// ── Notifications ──
+
+export const NOTIFICATIONS_QUERY = `query Notifications { notifications(limit: 30) { notificationId type title body linkUrl isRead createdAt } }`;
+
+export const MARK_NOTIFICATION_READ_MUTATION = `mutation MarkRead($notificationId: ID!) { markNotificationRead(notificationId: $notificationId) { notificationId isRead } }`;
+
+export const MARK_ALL_NOTIFICATIONS_READ_MUTATION = `mutation MarkAllRead { markAllNotificationsRead }`;
+
+export const NOTIFICATION_PREFERENCES_QUERY = `query NotificationPrefs { notificationPreferences { id notificationType inApp email } }`;
+
+export const UPDATE_NOTIFICATION_PREFERENCE_MUTATION = `mutation UpdatePref($type: String!, $inApp: Boolean, $email: Boolean) {
+  updateNotificationPreference(notificationType: $type, inApp: $inApp, email: $email) {
+    id notificationType inApp email
+  }
+}`;
+
+// ── AI Usage ──
+
+export const AI_USAGE_QUERY = `query AIUsage($days: Int) {
+  aiUsage(days: $days) {
+    totalCostUSD totalInputTokens totalOutputTokens totalCalls
+    byFeature { feature calls costUSD avgLatencyMs }
+    budgetUsedPercent budgetLimitCentsUSD budgetEnforcement
+    dailyAverageCostUSD projectedMonthlyCostUSD
+  }
+}`;
+
+export const SET_AI_BUDGET_MUTATION = `mutation SetAIBudget($monthlyBudgetCentsUSD: Int, $alertThreshold: Int, $budgetEnforcement: String) {
+  setAIBudget(monthlyBudgetCentsUSD: $monthlyBudgetCentsUSD, alertThreshold: $alertThreshold, budgetEnforcement: $budgetEnforcement) {
+    orgId monthlyBudgetCentsUSD budgetAlertThreshold budgetEnforcement
+  }
+}`;
+
+// ── Meeting Notes ──
+
+export const EXTRACT_TASKS_FROM_NOTES_QUERY = `query ExtractTasks($projectId: ID!, $notes: String!) {
+  extractTasksFromNotes(projectId: $projectId, notes: $notes) {
+    tasks { title description assigneeName priority status }
+    summary
+  }
+}`;
+
+// ── Saved Filters / Views ──
+
+export const SAVE_FILTER_MUTATION = `mutation SaveFilter($projectId: ID!, $name: String!, $filters: String!) {
+  saveFilter(projectId: $projectId, name: $name, filters: $filters) { savedFilterId name filters viewType sortBy sortOrder groupBy visibleColumns isShared isDefault createdAt }
+}`;
+
+export const DELETE_FILTER_MUTATION = `mutation DeleteFilter($savedFilterId: ID!) { deleteFilter(savedFilterId: $savedFilterId) }`;
+
+const SAVED_FILTER_FIELDS = 'savedFilterId name filters viewType sortBy sortOrder groupBy visibleColumns isShared isDefault createdAt';
+
+export const SHARED_VIEWS_QUERY = `query SharedViews($projectId: ID!) { sharedViews(projectId: $projectId) { ${SAVED_FILTER_FIELDS} } }`;
+
+export const SAVE_VIEW_MUTATION = `mutation SaveView($projectId: ID!, $name: String!, $filters: String!, $viewType: String, $sortBy: String, $sortOrder: String, $groupBy: String, $isShared: Boolean) {
+  saveFilter(projectId: $projectId, name: $name, filters: $filters, viewType: $viewType, sortBy: $sortBy, sortOrder: $sortOrder, groupBy: $groupBy, isShared: $isShared) { ${SAVED_FILTER_FIELDS} }
+}`;
+
+// ── Org Settings ──
+
+export const ORG_QUERY = `query GetOrg { org { orgId name hasApiKey apiKeyHint promptLoggingEnabled } }`;
+
+export const ORG_INVITES_QUERY = `query { orgInvites { inviteId email role expiresAt createdAt } }`;
+
+export const GITHUB_INSTALLATIONS_QUERY = `query { githubInstallations { installationId accountLogin accountType orgId createdAt } }`;
+
+export const SET_ORG_API_KEY_MUTATION = `mutation SetOrgApiKey($apiKey: String!) { setOrgApiKey(apiKey: $apiKey) { orgId name hasApiKey apiKeyHint } }`;
+
+export const INVITE_ORG_MEMBER_MUTATION = `mutation InviteOrgMember($email: String!, $role: String) {
+  inviteOrgMember(email: $email, role: $role)
+}`;
+
+export const LINK_GITHUB_INSTALLATION_MUTATION = `mutation LinkInstallation($installationId: ID!) { linkGitHubInstallation(installationId: $installationId) { installationId accountLogin accountType orgId createdAt } }`;
+
+export const REVOKE_INVITE_MUTATION = `mutation RevokeInvite($inviteId: ID!) { revokeInvite(inviteId: $inviteId) }`;
+
+export const SET_PROMPT_LOGGING_MUTATION = `mutation SetAIBudget($promptLoggingEnabled: Boolean) { setAIBudget(promptLoggingEnabled: $promptLoggingEnabled) { orgId name hasApiKey apiKeyHint promptLoggingEnabled } }`;

@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { gql } from '../api/client';
+import {
+  NOTIFICATIONS_QUERY,
+  MARK_NOTIFICATION_READ_MUTATION,
+  MARK_ALL_NOTIFICATIONS_READ_MUTATION,
+} from '../api/queries';
 import type { Notification } from '../types';
 import ErrorBanner from './shared/ErrorBanner';
 import { useFocusTrap } from '../hooks/useFocusTrap';
@@ -66,7 +71,7 @@ export default function NotificationCenter({ onClose }: NotificationCenterProps)
     setError(null);
     try {
       const data = await gql<{ notifications: Notification[] }>(
-        `query Notifications { notifications(limit: 30) { notificationId type title body linkUrl isRead createdAt } }`
+        NOTIFICATIONS_QUERY
       );
       setNotifications(data.notifications);
     } catch (e) {
@@ -80,7 +85,7 @@ export default function NotificationCenter({ onClose }: NotificationCenterProps)
     if (!notification.isRead) {
       try {
         await gql<{ markNotificationRead: Notification }>(
-          `mutation MarkRead($notificationId: ID!) { markNotificationRead(notificationId: $notificationId) { notificationId isRead } }`,
+          MARK_NOTIFICATION_READ_MUTATION,
           { notificationId: notification.notificationId }
         );
         setNotifications((prev) =>
@@ -99,7 +104,7 @@ export default function NotificationCenter({ onClose }: NotificationCenterProps)
   const handleMarkAllRead = async () => {
     try {
       await gql<{ markAllNotificationsRead: boolean }>(
-        `mutation MarkAllRead { markAllNotificationsRead }`
+        MARK_ALL_NOTIFICATIONS_READ_MUTATION
       );
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     } catch (e) {

@@ -2,6 +2,17 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/context';
 import { gql } from '../api/client';
+import {
+  ORG_QUERY,
+  ORG_USERS_QUERY,
+  ORG_INVITES_QUERY,
+  GITHUB_INSTALLATIONS_QUERY,
+  SET_ORG_API_KEY_MUTATION,
+  INVITE_ORG_MEMBER_MUTATION,
+  LINK_GITHUB_INSTALLATION_MUTATION,
+  REVOKE_INVITE_MUTATION,
+  SET_PROMPT_LOGGING_MUTATION,
+} from '../api/queries';
 import { useFormState } from '../hooks/useFormState';
 import type { Org, OrgUser, OrgInvite, GitHubInstallation } from '../types';
 import AIUsageDashboard from '../components/AIUsageDashboard';
@@ -15,10 +26,6 @@ import SectionHeader from '../components/shared/SectionHeader';
 import Input from '../components/shared/Input';
 import Select from '../components/shared/Select';
 
-const ORG_QUERY = `query GetOrg { org { orgId name hasApiKey apiKeyHint promptLoggingEnabled } }`;
-const ORG_USERS_QUERY = `query { orgUsers { userId email role } }`;
-const ORG_INVITES_QUERY = `query { orgInvites { inviteId email role expiresAt createdAt } }`;
-const GITHUB_INSTALLATIONS_QUERY = `query { githubInstallations { installationId accountLogin accountType orgId createdAt } }`;
 const GITHUB_APP_SLUG = import.meta.env.VITE_GITHUB_APP_SLUG as string | undefined;
 
 export default function OrgSettings() {
@@ -33,7 +40,7 @@ export default function OrgSettings() {
     async (values) => {
       if (!values.apiKey.trim()) return;
       const data = await gql<{ setOrgApiKey: Org }>(
-        `mutation SetOrgApiKey($apiKey: String!) { setOrgApiKey(apiKey: $apiKey) { orgId name hasApiKey apiKeyHint } }`,
+        SET_ORG_API_KEY_MUTATION,
         { apiKey: values.apiKey.trim() }
       );
       setOrg(data.setOrgApiKey);
@@ -56,9 +63,7 @@ export default function OrgSettings() {
     async (values) => {
       if (!values.email.trim()) return;
       await gql<{ inviteOrgMember: boolean }>(
-        `mutation InviteOrgMember($email: String!, $role: String) {
-          inviteOrgMember(email: $email, role: $role)
-        }`,
+        INVITE_ORG_MEMBER_MUTATION,
         { email: values.email.trim(), role: values.role }
       );
       await reloadInvites();
@@ -77,7 +82,7 @@ export default function OrgSettings() {
     setLinkingInstallation(true);
     setLinkErr(null);
     gql<{ linkGitHubInstallation: GitHubInstallation }>(
-      `mutation LinkInstallation($installationId: ID!) { linkGitHubInstallation(installationId: $installationId) { installationId accountLogin accountType orgId createdAt } }`,
+      LINK_GITHUB_INSTALLATION_MUTATION,
       { installationId }
     )
       .then(() => {
@@ -164,7 +169,7 @@ export default function OrgSettings() {
   const handleRevoke = async (inviteId: string) => {
     try {
       await gql<{ revokeInvite: boolean }>(
-        `mutation RevokeInvite($inviteId: ID!) { revokeInvite(inviteId: $inviteId) }`,
+        REVOKE_INVITE_MUTATION,
         { inviteId }
       );
       setInvites((prev) => prev.filter((i) => i.inviteId !== inviteId));
@@ -417,7 +422,7 @@ export default function OrgSettings() {
                         setOrg({ ...org, promptLoggingEnabled: newValue });
                         try {
                           await gql<{ setAIBudget: Org }>(
-                            `mutation SetAIBudget($promptLoggingEnabled: Boolean) { setAIBudget(promptLoggingEnabled: $promptLoggingEnabled) { orgId name hasApiKey apiKeyHint promptLoggingEnabled } }`,
+                            SET_PROMPT_LOGGING_MUTATION,
                             { promptLoggingEnabled: newValue }
                           );
                         } catch (error) {

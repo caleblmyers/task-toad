@@ -3,6 +3,7 @@ import type { OrgUser } from '../../types';
 import { statusLabel } from '../../utils/taskHelpers';
 import { parseOptions } from '../../utils/jsonHelpers';
 import { gql } from '../../api/client';
+import { SAVE_FILTER_MUTATION, DELETE_FILTER_MUTATION } from '../../api/queries';
 import FilterBuilder, { type FilterGroupInput } from './FilterBuilder';
 
 export interface SavedFilter {
@@ -81,9 +82,7 @@ export default function FilterBar({
     try {
       setFilterError(null);
       const { saveFilter } = await gql<{ saveFilter: SavedFilter }>(
-        `mutation SaveFilter($projectId: ID!, $name: String!, $filters: String!) {
-          saveFilter(projectId: $projectId, name: $name, filters: $filters) { savedFilterId name filters viewType sortBy sortOrder groupBy visibleColumns isShared isDefault createdAt }
-        }`,
+        SAVE_FILTER_MUTATION,
         { projectId, name: saveName.trim(), filters: filtersJson },
       );
       onSavedFiltersChange?.([...(savedFilters ?? []), saveFilter]);
@@ -98,7 +97,7 @@ export default function FilterBar({
     try {
       setFilterError(null);
       await gql<{ deleteFilter: boolean }>(
-        `mutation DeleteFilter($savedFilterId: ID!) { deleteFilter(savedFilterId: $savedFilterId) }`,
+        DELETE_FILTER_MUTATION,
         { savedFilterId: filterId },
       );
       onSavedFiltersChange?.((savedFilters ?? []).filter((f) => f.savedFilterId !== filterId));

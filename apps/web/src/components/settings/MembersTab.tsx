@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { gql } from '../../api/client';
+import {
+  PROJECT_MEMBERS_QUERY,
+  ADD_PROJECT_MEMBER_MUTATION,
+  REMOVE_PROJECT_MEMBER_MUTATION,
+  UPDATE_PROJECT_MEMBER_ROLE_MUTATION,
+} from '../../api/queries';
 import { useFormState } from '../../hooks/useFormState';
 import type { OrgUser } from '../../types';
 import Button from '../shared/Button';
@@ -27,9 +33,7 @@ export default function MembersTab({ projectId, orgUsers }: Props) {
     async (values) => {
       if (!values.userId) return;
       const { addProjectMember } = await gql<{ addProjectMember: ProjectMember }>(
-        `mutation AddMember($projectId: ID!, $userId: ID!, $role: String) {
-          addProjectMember(projectId: $projectId, userId: $userId, role: $role) { id userId email role createdAt }
-        }`,
+        ADD_PROJECT_MEMBER_MUTATION,
         { projectId, userId: values.userId, role: values.role },
       );
       setMembers((prev) => [...prev.filter((m) => m.userId !== addProjectMember.userId), addProjectMember]);
@@ -41,7 +45,7 @@ export default function MembersTab({ projectId, orgUsers }: Props) {
     setLoading(true);
     try {
       const data = await gql<{ projectMembers: ProjectMember[] }>(
-        `query ProjectMembers($projectId: ID!) { projectMembers(projectId: $projectId) { id userId email role createdAt } }`,
+        PROJECT_MEMBERS_QUERY,
         { projectId },
       );
       setMembers(data.projectMembers);
@@ -58,7 +62,7 @@ export default function MembersTab({ projectId, orgUsers }: Props) {
     setError(null);
     try {
       await gql<{ removeProjectMember: boolean }>(
-        `mutation RemoveMember($projectId: ID!, $userId: ID!) { removeProjectMember(projectId: $projectId, userId: $userId) }`,
+        REMOVE_PROJECT_MEMBER_MUTATION,
         { projectId, userId },
       );
       setMembers((prev) => prev.filter((m) => m.userId !== userId));
@@ -71,9 +75,7 @@ export default function MembersTab({ projectId, orgUsers }: Props) {
     setError(null);
     try {
       const { updateProjectMemberRole } = await gql<{ updateProjectMemberRole: ProjectMember }>(
-        `mutation UpdateRole($projectId: ID!, $userId: ID!, $role: String!) {
-          updateProjectMemberRole(projectId: $projectId, userId: $userId, role: $role) { id userId email role createdAt }
-        }`,
+        UPDATE_PROJECT_MEMBER_ROLE_MUTATION,
         { projectId, userId, role },
       );
       setMembers((prev) => prev.map((m) => (m.userId === userId ? updateProjectMemberRole : m)));

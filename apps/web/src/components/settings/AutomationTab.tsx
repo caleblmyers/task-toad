@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { gql } from '../../api/client';
+import {
+  AUTOMATION_RULES_QUERY,
+  CREATE_AUTOMATION_RULE_MUTATION,
+  UPDATE_AUTOMATION_RULE_MUTATION,
+  DELETE_AUTOMATION_RULE_MUTATION,
+} from '../../api/queries';
 import { useFormState } from '../../hooks/useFormState';
 import type { OrgUser } from '../../types';
 import Button from '../shared/Button';
@@ -49,9 +55,7 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
       else if (values.actionType === 'assign_to') action.userId = values.actionParam;
 
       const { createAutomationRule } = await gql<{ createAutomationRule: AutomationRule }>(
-        `mutation CreateRule($projectId: ID!, $name: String!, $trigger: String!, $action: String!) {
-          createAutomationRule(projectId: $projectId, name: $name, trigger: $trigger, action: $action) { id name trigger action enabled createdAt }
-        }`,
+        CREATE_AUTOMATION_RULE_MUTATION,
         { projectId, name: values.name.trim(), trigger: JSON.stringify(trigger), action: JSON.stringify(action) },
       );
       setRules((prev) => [...prev, createAutomationRule]);
@@ -64,7 +68,7 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
     setLoading(true);
     try {
       const data = await gql<{ automationRules: AutomationRule[] }>(
-        `query AutomationRules($projectId: ID!) { automationRules(projectId: $projectId) { id name trigger action enabled createdAt } }`,
+        AUTOMATION_RULES_QUERY,
         { projectId },
       );
       setRules(data.automationRules);
@@ -80,9 +84,7 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
   const handleToggleRule = async (ruleId: string, enabled: boolean) => {
     try {
       const { updateAutomationRule } = await gql<{ updateAutomationRule: AutomationRule }>(
-        `mutation ToggleRule($ruleId: ID!, $enabled: Boolean) {
-          updateAutomationRule(ruleId: $ruleId, enabled: $enabled) { id name trigger action enabled createdAt }
-        }`,
+        UPDATE_AUTOMATION_RULE_MUTATION,
         { ruleId, enabled },
       );
       setRules((prev) => prev.map((r) => (r.id === ruleId ? updateAutomationRule : r)));
@@ -94,7 +96,7 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
   const handleDeleteRule = async (ruleId: string) => {
     try {
       await gql<{ deleteAutomationRule: boolean }>(
-        `mutation DeleteRule($ruleId: ID!) { deleteAutomationRule(ruleId: $ruleId) }`,
+        DELETE_AUTOMATION_RULE_MUTATION,
         { ruleId },
       );
       setRules((prev) => prev.filter((r) => r.id !== ruleId));

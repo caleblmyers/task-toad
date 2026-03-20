@@ -1,5 +1,16 @@
 import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
+import {
+  SLACK_INTEGRATIONS_QUERY,
+  CONNECT_SLACK_MUTATION,
+  SLACK_ORG_USERS_QUERY,
+  SLACK_USER_MAPPINGS_QUERY,
+  MAP_SLACK_USER_MUTATION,
+  UNMAP_SLACK_USER_MUTATION,
+  UPDATE_SLACK_INTEGRATION_MUTATION,
+  TEST_SLACK_INTEGRATION_MUTATION,
+  DISCONNECT_SLACK_MUTATION,
+} from '../api/queries';
 import { useFormState } from '../hooks/useFormState';
 import { useConfirmDialog } from './shared/ConfirmDialog';
 import Badge from './shared/Badge';
@@ -40,8 +51,6 @@ const SUPPORTED_EVENTS = [
   'comment.created',
 ];
 
-const SLACK_QUERY = `query { slackIntegrations { id teamId teamName channelId channelName events enabled createdAt } }`;
-
 export default function SlackSettings() {
   const { confirm, ConfirmDialogPortal } = useConfirmDialog();
   const [integrations, setIntegrations] = useState<SlackIntegration[]>([]);
@@ -55,11 +64,7 @@ export default function SlackSettings() {
     async (values) => {
       if (!values.webhookUrl.trim() || values.events.length === 0) return;
       const data = await gql<{ connectSlack: SlackIntegration }>(
-        `mutation ConnectSlack($webhookUrl: String!, $teamId: String!, $teamName: String!, $channelId: String!, $channelName: String!, $events: [String!]!) {
-          connectSlack(webhookUrl: $webhookUrl, teamId: $teamId, teamName: $teamName, channelId: $channelId, channelName: $channelName, events: $events) {
-            id teamId teamName channelId channelName events enabled createdAt
-          }
-        }`,
+        CONNECT_SLACK_MUTATION,
         {
           webhookUrl: values.webhookUrl.trim(),
           teamId: values.teamId.trim(),
@@ -90,11 +95,7 @@ export default function SlackSettings() {
       const integration = integrations.find((i) => i.id === selectedIntegrationId);
       if (!integration) return;
       const data = await gql<{ mapSlackUser: SlackUserMapping }>(
-        `mutation MapSlack($slackUserId: String!, $slackTeamId: String!, $userId: ID!) {
-          mapSlackUser(slackUserId: $slackUserId, slackTeamId: $slackTeamId, userId: $userId) {
-            id slackUserId slackTeamId userId orgId createdAt user { userId email displayName }
-          }
-        }`,
+        MAP_SLACK_USER_MUTATION,
         { slackUserId: values.slackUserId.trim(), slackTeamId: integration.teamId, userId: values.userId }
       );
       setMappings((prev) => [data.mapSlackUser, ...prev.filter((m) => m.id !== data.mapSlackUser.id)]);
@@ -104,7 +105,7 @@ export default function SlackSettings() {
 
   const fetchIntegrations = () => {
     setLoading(true);
-    gql<{ slackIntegrations: SlackIntegration[] }>(SLACK_QUERY)
+    gql<{ slackIntegrations: SlackIntegration[] }>(SLACK_INTEGRATIONS_QUERY)
       .then((data) => setIntegrations(data.slackIntegrations))
       .catch((e) => setErr(e instanceof Error ? e.message : 'Failed to load Slack integrations'))
       .finally(() => setLoading(false));
@@ -113,7 +114,7 @@ export default function SlackSettings() {
   useEffect(() => {
     fetchIntegrations();
     // Fetch org users for the mapping dropdown
-    gql<{ orgUsers: OrgUser[] }>(`query { orgUsers { userId email displayName } }`)
+    gql<{ orgUsers: OrgUser[] }>(SLACK_ORG_USERS_QUERY)
       .then((data) => setOrgUsers(data.orgUsers))
       .catch(() => { /* non-critical */ });
   }, []);
@@ -128,7 +129,7 @@ export default function SlackSettings() {
   const fetchMappings = (integrationId: string) => {
     setSelectedIntegrationId(integrationId);
     gql<{ slackUserMappings: SlackUserMapping[] }>(
-      `query ($integrationId: ID!) { slackUserMappings(integrationId: $integrationId) { id slackUserId slackTeamId userId orgId createdAt user { userId email displayName } } }`,
+      SLACK_USER_MAPPINGS_QUERY,
       { integrationId }
     )
       .then((data) => setMappings(data.slackUserMappings))
@@ -138,7 +139,7 @@ export default function SlackSettings() {
   const handleUnmapUser = async (mappingId: string) => {
     try {
       await gql<{ unmapSlackUser: boolean }>(
-        `mutation UnmapSlack($mappingId: ID!) { unmapSlackUser(mappingId: $mappingId) }`,
+        UNMAP_SLACK_USER_MUTATION,
         { mappingId }
       );
       setMappings((prev) => prev.filter((m) => m.id !== mappingId));
@@ -157,9 +158,7 @@ export default function SlackSettings() {
   const handleToggleEnabled = async (integration: SlackIntegration) => {
     try {
       await gql<{ updateSlackIntegration: SlackIntegration }>(
-        `mutation UpdateSlack($id: ID!, $enabled: Boolean) {
-          updateSlackIntegration(id: $id, enabled: $enabled) { id enabled }
-        }`,
+        UPDATE_SLACK_INTEGRATION_MUTATION,
         { id: integration.id, enabled: !integration.enabled }
       );
       setIntegrations((prev) =>
@@ -175,7 +174,7 @@ export default function SlackSettings() {
     setTestResult(null);
     try {
       const data = await gql<{ testSlackIntegration: boolean }>(
-        `mutation TestSlack($id: ID!) { testSlackIntegration(id: $id) }`,
+        TEST_SLACK_INTEGRATION_MUTATION,
         { id }
       );
       setTestResult({ id, success: data.testSlackIntegration });
@@ -191,7 +190,7 @@ export default function SlackSettings() {
     if (!await confirm({ title: 'Disconnect Slack', message: 'Disconnect this Slack integration?', confirmLabel: 'Disconnect', variant: 'danger' })) return;
     try {
       await gql<{ disconnectSlack: boolean }>(
-        `mutation DisconnectSlack($id: ID!) { disconnectSlack(id: $id) }`,
+        DISCONNECT_SLACK_MUTATION,
         { id }
       );
       setIntegrations((prev) => prev.filter((i) => i.id !== id));
