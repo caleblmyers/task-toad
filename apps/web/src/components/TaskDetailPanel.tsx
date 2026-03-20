@@ -3,7 +3,7 @@ import type { Task, Sprint, OrgUser, Comment, Activity, Label, CodeReview, Attac
 import type { TaskTimeSummary } from '@tasktoad/shared-types';
 import ActionProgressPanel from './ActionProgressPanel';
 import { gql, TOKEN_KEY } from '../api/client';
-import { TASK_ANCESTORS_QUERY } from '../api/queries';
+import { TASK_ANCESTORS_QUERY, TASK_INSIGHTS_QUERY } from '../api/queries';
 import CommentSection from './CommentSection';
 import ActivityFeed from './ActivityFeed';
 import MarkdownRenderer from './shared/MarkdownRenderer';
@@ -16,6 +16,8 @@ import TaskDependenciesSection from './taskdetail/TaskDependenciesSection';
 import TaskSubtasksSection from './taskdetail/TaskSubtasksSection';
 import TaskAIHistory from './taskdetail/TaskAIHistory';
 import TaskAIReviewSection from './taskdetail/TaskAIReviewSection';
+import InsightPanel from './taskdetail/InsightPanel';
+import type { TaskInsight } from './taskdetail/InsightPanel';
 import Badge from './shared/Badge';
 
 interface TaskAncestor {
@@ -134,6 +136,8 @@ function PanelContent({
       .catch(() => { if (!cancelled) setAncestors([]); });
     return () => { cancelled = true; };
   }, [task.taskId, task.parentTaskId]);
+
+  const [insightCount, setInsightCount] = useState(0);
 
   const [editingDescription, setEditingDescription] = useState(false);
   const [editDescValue, setEditDescValue] = useState('');
@@ -531,19 +535,63 @@ function PanelContent({
     </section>
   );
 
-  const tabs = useMemo(() => [
-    { id: 'details', label: 'Details', content: detailsTab },
-    { id: 'activity', label: 'Activity', content: activityTab },
-    { id: 'relations', label: 'Relations', content: relationsTab },
-    { id: 'actions', label: 'Actions', content: actionsTab },
+  // Fetch insight count for tab badge
+  useEffect(() => {
+    if (!task.autoComplete) {
+      setInsightCount(0);
+      return;
+    }
+    let cancelled = false;
+    gql<{ taskInsights: Array<{ taskInsightId: string }> }>(TASK_INSIGHTS_QUERY, { projectId: task.projectId, taskId: task.taskId })
+      .then((data) => { if (!cancelled) setInsightCount(data.taskInsights.length); })
+      .catch(() => { if (!cancelled) setInsightCount(0); });
+    return () => { cancelled = true; };
+  }, [task.taskId, task.projectId, task.autoComplete]);
+
+  const handleApplyInsight = useCallback((insight: TaskInsight) => {
+    if (onUpdateTask) {
+      void onUpdateTask(task.taskId, {
+        instructions: (task.instructions || '') + '\n\n---\nInsight: ' + insight.content,
+      });
+    }
+  }, [task.taskId, task.instructions, onUpdateTask]);
+
+  const showInsightsTab = task.autoComplete || insightCount > 0;
+
+  const insightsTab = showInsightsTab ? (
+    <section className="space-y-4">
+      <InsightPanel
+        projectId={task.projectId}
+        taskId={task.taskId}
+        onApplyInsight={onUpdateTask ? handleApplyInsight : undefined}
+      />
+    </section>
+  ) : null;
+
+  const insightsLabel = insightCount > 0
+    ? `Insights (${insightCount})`
+    : 'Insights';
+
+  const tabs = useMemo(() => {
+    const result = [
+      { id: 'details', label: 'Details', content: detailsTab },
+      { id: 'activity', label: 'Activity', content: activityTab },
+      { id: 'relations', label: 'Relations', content: relationsTab },
+      { id: 'actions', label: 'Actions', content: actionsTab },
+    ];
+    if (showInsightsTab && insightsTab) {
+      result.push({ id: 'insights', label: insightsLabel, content: insightsTab });
+    }
+    return result;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [
+  }, [
     task, subtasks, editingTitle, editTitleValue, generatingInstructions,
     sprints, orgUsers, statuses, allTasks, comments, activities, labels,
     disabled, projectHasRepo, editingDescription, editDescValue,
     editingInstructions, editInstrValue, editingAC, editACValue,
     uploading, localAttachments, reviewResult, reviewLoading,
     autoCompleteLoading, actionPlan, timeSummary, tools.length, ancestors,
+    showInsightsTab, insightCount,
   ]);
 
   return (

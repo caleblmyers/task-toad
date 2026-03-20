@@ -123,14 +123,30 @@ export default function ProjectDetail() {
     enabled: !d.isGenerating,
   });
 
-  // SSE: refresh action plan when action events arrive for the selected task
+  // SSE: refresh action plan when action events arrive for the selected task + toast notifications
   useSSEListener(
-    ['task.action_completed', 'task.action_plan_completed', 'task.updated'],
+    ['task.action_completed', 'task.action_plan_completed', 'task.action_plan_failed', 'task.blocked', 'task.unblocked', 'task.updated'],
     (event: string, data: unknown) => {
       if (event === 'task.action_completed' || event === 'task.action_plan_completed') {
-        const payload = data as { taskId?: string };
+        const payload = data as { taskId?: string; taskTitle?: string };
         if (payload?.taskId && d.selectedTask?.taskId === payload.taskId) {
           void d.loadActionPlan(payload.taskId);
+        }
+        if (event === 'task.action_plan_completed' && payload?.taskTitle) {
+          addToast('success', `Auto-complete finished for "${payload.taskTitle}"`);
+        }
+      }
+      if (event === 'task.action_plan_failed') {
+        const payload = data as { taskId?: string; taskTitle?: string; errorMessage?: string };
+        if (payload?.taskId && d.selectedTask?.taskId === payload.taskId) {
+          void d.loadActionPlan(payload.taskId);
+        }
+        addToast('error', `Auto-complete failed: ${(payload?.errorMessage || 'Unknown error').slice(0, 100)}`);
+      }
+      if (event === 'task.blocked') {
+        const payload = data as { taskTitle?: string };
+        if (payload?.taskTitle) {
+          addToast('info', `"${payload.taskTitle}" is now blocked`);
         }
       }
       if (event === 'task.updated') {
