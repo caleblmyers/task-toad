@@ -191,7 +191,7 @@ export default function ActionProgressPanel({ plan, onCompleteManual, onSkip, on
   const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   return (
-    <div className="mb-4">
+    <div className="mb-4" aria-live="polite">
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
           Action Plan

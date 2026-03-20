@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { Task, Sprint, OrgUser, Comment, Activity, Label, CodeReview, Attachment, TaskActionPlan } from '../types';
 import type { TaskTimeSummary } from '@tasktoad/shared-types';
 import ActionProgressPanel from './ActionProgressPanel';
@@ -8,6 +8,7 @@ import CommentSection from './CommentSection';
 import ActivityFeed from './ActivityFeed';
 import MarkdownRenderer from './shared/MarkdownRenderer';
 import MarkdownEditor from './shared/MarkdownEditor';
+import Tabs from './shared/Tabs';
 import TaskTitleEditor from './taskdetail/TaskTitleEditor';
 import TaskFieldsPanel from './taskdetail/TaskFieldsPanel';
 import TaskGitHubSection from './taskdetail/TaskGitHubSection';
@@ -174,38 +175,9 @@ function PanelContent({
     } catch { /* ignore */ }
   }, []);
 
-  return (
-    <div className="p-6 max-w-2xl">
-      {ancestors.length > 0 && onSelectTask && (
-        <nav className="mb-2 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-          {ancestors.map((ancestor, i) => (
-            <span key={ancestor.taskId} className="flex items-center gap-1">
-              {i > 0 && <span className="text-slate-300 dark:text-slate-600">›</span>}
-              <button
-                type="button"
-                onClick={() => onSelectTask({ taskId: ancestor.taskId, title: ancestor.title, status: ancestor.status, taskType: ancestor.taskType } as unknown as Task)}
-                className="hover:text-slate-700 dark:hover:text-slate-200 hover:underline truncate max-w-[150px]"
-              >
-                {ancestor.title}
-              </button>
-            </span>
-          ))}
-          <span className="text-slate-300 dark:text-slate-600">›</span>
-          <span className="text-slate-700 dark:text-slate-200 font-medium truncate max-w-[150px]">{task.title}</span>
-        </nav>
-      )}
-      <TaskTitleEditor
-        task={task}
-        editingTitle={editingTitle}
-        editTitleValue={editTitleValue}
-        titleEditRef={titleEditRef}
-        disabled={disabled}
-        onStartEdit={onStartEditTitle}
-        onChange={onTitleChange}
-        onSave={onTitleSave}
-        onKeyDown={onTitleKeyDown}
-        allTasks={allTasks}
-      />
+  const detailsTab = (
+    <section aria-labelledby="task-tab-details-heading">
+      <h3 id="task-tab-details-heading" className="sr-only">Task Details</h3>
 
       <TaskFieldsPanel
         task={task}
@@ -240,7 +212,6 @@ function PanelContent({
           onChange={(e) => {
             const rule = e.target.value || null;
             if (onUpdateTask) {
-              // The mutation builder in useTaskCRUD dynamically constructs from object keys
               (onUpdateTask as (taskId: string, updates: Record<string, unknown>) => Promise<void>)(
                 task.taskId,
                 { recurrenceRule: rule },
@@ -259,21 +230,6 @@ function PanelContent({
         </select>
       </div>
 
-      <TaskGitHubSection
-        task={task}
-        projectHasRepo={projectHasRepo}
-        disabled={disabled}
-        onSyncToGitHub={onSyncToGitHub}
-      />
-
-      <TaskDependenciesSection
-        task={task}
-        allTasks={allTasks}
-        disabled={disabled}
-        onAddDependency={onAddDependency}
-        onRemoveDependency={onRemoveDependency}
-      />
-
       {/* Description */}
       <div className="mb-4">
         <p className="text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">Description</p>
@@ -290,13 +246,15 @@ function PanelContent({
             rows={4}
           />
         ) : task.description ? (
-          <div
-            className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded p-1 -m-1"
+          <button
+            type="button"
+            className="w-full text-left cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded p-1 -m-1"
             onClick={() => { if (!disabled) { setEditDescValue(task.description ?? ''); setEditingDescription(true); } }}
-            title="Click to edit"
+            disabled={disabled}
+            aria-label="Edit description"
           >
             <MarkdownRenderer content={task.description} />
-          </div>
+          </button>
         ) : (
           <button
             onClick={() => { setEditDescValue(''); setEditingDescription(true); }}
@@ -306,42 +264,6 @@ function PanelContent({
             + Add description
           </button>
         )}
-      </div>
-
-      {/* Attachments */}
-      <div className="mb-4">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">Attachments</p>
-        {localAttachments.length > 0 && (
-          <ul className="space-y-1 mb-2">
-            {localAttachments.map(a => (
-              <li key={a.attachmentId} className="flex items-center justify-between text-sm bg-slate-50 dark:bg-slate-800 rounded px-2 py-1">
-                <a
-                  href={`/api/uploads/${a.attachmentId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 dark:text-blue-400 hover:underline truncate mr-2"
-                >
-                  {a.fileName}
-                </a>
-                <span className="flex items-center gap-2 text-xs text-slate-500 flex-shrink-0">
-                  {a.sizeBytes < 1024 ? `${a.sizeBytes} B` : a.sizeBytes < 1048576 ? `${(a.sizeBytes / 1024).toFixed(1)} KB` : `${(a.sizeBytes / 1048576).toFixed(1)} MB`}
-                  <button
-                    onClick={() => handleDeleteAttachment(a.attachmentId)}
-                    className="text-red-400 hover:text-red-600"
-                    disabled={disabled}
-                    title="Delete attachment"
-                  >
-                    ✕
-                  </button>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <label className={`inline-flex items-center gap-1 text-xs px-2 py-1 border border-slate-300 dark:border-slate-600 rounded cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 ${disabled || uploading ? 'opacity-50 pointer-events-none' : ''}`}>
-          {uploading ? 'Uploading…' : '+ Attach file'}
-          <input type="file" className="hidden" onChange={handleUpload} disabled={disabled || uploading} />
-        </label>
       </div>
 
       {/* Acceptance Criteria */}
@@ -362,13 +284,15 @@ function PanelContent({
             rows={4}
           />
         ) : task.acceptanceCriteria ? (
-          <div
-            className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded p-1 -m-1"
+          <button
+            type="button"
+            className="w-full text-left cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded p-1 -m-1"
             onClick={() => { if (!disabled) { setEditACValue(task.acceptanceCriteria ?? ''); setEditingAC(true); } }}
-            title="Click to edit"
+            disabled={disabled}
+            aria-label="Edit acceptance criteria"
           >
             <MarkdownRenderer content={task.acceptanceCriteria} />
-          </div>
+          </button>
         ) : (
           <button
             onClick={() => { setEditACValue(''); setEditingAC(true); }}
@@ -396,13 +320,15 @@ function PanelContent({
             rows={6}
           />
         ) : task.instructions ? (
-          <div
-            className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700"
+          <button
+            type="button"
+            className="w-full text-left bg-slate-50 dark:bg-slate-800 rounded-lg p-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700"
             onClick={() => { if (!disabled) { setEditInstrValue(task.instructions ?? ''); setEditingInstructions(true); } }}
-            title="Click to edit"
+            disabled={disabled}
+            aria-label="Edit instructions"
           >
             <MarkdownRenderer content={task.instructions} />
-          </div>
+          </button>
         ) : (
           <div className="flex gap-2">
             <button
@@ -424,35 +350,51 @@ function PanelContent({
         )}
       </div>
 
-      {/* AI Review */}
-      {onReviewPR && task.pullRequests && task.pullRequests.length > 0 && (
-        <div className="mb-4">
-          <button
-            type="button"
-            onClick={() => onReviewPR(task.taskId, task.pullRequests![0].prNumber)}
-            disabled={disabled || reviewLoading}
-            className="px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 dark:text-slate-200"
-          >
-            {reviewLoading ? 'Reviewing…' : '✦ AI Review'}
-          </button>
-        </div>
-      )}
+      <TaskGitHubSection
+        task={task}
+        projectHasRepo={projectHasRepo}
+        disabled={disabled}
+        onSyncToGitHub={onSyncToGitHub}
+      />
+    </section>
+  );
 
-      <TaskAIReviewSection review={reviewResult ?? null} loading={reviewLoading ?? false} />
+  const activityTab = (
+    <section aria-labelledby="task-tab-activity-heading">
+      <h3 id="task-tab-activity-heading" className="sr-only">Activity</h3>
 
-      {/* Action button for leaf tasks (no subtasks, not epic/story) */}
-      {subtasks.length === 0 && task.taskType !== 'epic' && task.taskType !== 'story' && task.instructions && onAutoComplete && (
-        <div className="mb-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => onAutoComplete(task)}
-            disabled={disabled || autoCompleteLoading}
-            className="px-3 py-1.5 text-sm border border-indigo-300 dark:border-indigo-600 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/30 disabled:opacity-50"
-          >
-            {autoCompleteLoading ? 'Planning…' : '⚡ Auto-Complete'}
-          </button>
-        </div>
-      )}
+      <div className="mb-4">
+        <CommentSection
+          comments={comments}
+          currentUserId={currentUserId}
+          isAdmin={isAdmin}
+          orgUsers={orgUsers}
+          onCreateComment={onCreateComment}
+          onUpdateComment={onUpdateComment}
+          onDeleteComment={onDeleteComment}
+        />
+      </div>
+
+      <TaskAIHistory taskId={task.taskId} />
+
+      <div>
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">Activity</p>
+        <ActivityFeed activities={activities} />
+      </div>
+    </section>
+  );
+
+  const relationsTab = (
+    <section aria-labelledby="task-tab-relations-heading">
+      <h3 id="task-tab-relations-heading" className="sr-only">Relations</h3>
+
+      <TaskDependenciesSection
+        task={task}
+        allTasks={allTasks}
+        disabled={disabled}
+        onAddDependency={onAddDependency}
+        onRemoveDependency={onRemoveDependency}
+      />
 
       <TaskSubtasksSection
         task={task}
@@ -467,15 +409,41 @@ function PanelContent({
         autoCompleteLoading={autoCompleteLoading}
       />
 
-      {actionPlan && onCompleteManualAction && onSkipAction && onRetryAction && onCancelActionPlan && (
-        <ActionProgressPanel
-          plan={actionPlan}
-          onCompleteManual={onCompleteManualAction}
-          onSkip={onSkipAction}
-          onRetry={onRetryAction}
-          onCancel={onCancelActionPlan}
-        />
-      )}
+      {/* Attachments */}
+      <div className="mb-4">
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">Attachments</p>
+        {localAttachments.length > 0 && (
+          <ul className="space-y-1 mb-2">
+            {localAttachments.map(a => (
+              <li key={a.attachmentId} className="flex items-center justify-between text-sm bg-slate-50 dark:bg-slate-800 rounded px-2 py-1">
+                <a
+                  href={`/api/uploads/${a.attachmentId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 dark:text-blue-400 hover:underline truncate mr-2"
+                >
+                  {a.fileName}
+                </a>
+                <span className="flex items-center gap-2 text-xs text-slate-500 flex-shrink-0">
+                  {a.sizeBytes < 1024 ? `${a.sizeBytes} B` : a.sizeBytes < 1048576 ? `${(a.sizeBytes / 1024).toFixed(1)} KB` : `${(a.sizeBytes / 1048576).toFixed(1)} MB`}
+                  <button
+                    onClick={() => handleDeleteAttachment(a.attachmentId)}
+                    className="text-red-400 hover:text-red-600"
+                    disabled={disabled}
+                    aria-label={`Delete attachment ${a.fileName}`}
+                  >
+                    ✕
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <label className={`inline-flex items-center gap-1 text-xs px-2 py-1 border border-slate-300 dark:border-slate-600 rounded cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 ${disabled || uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+          {uploading ? 'Uploading…' : '+ Attach file'}
+          <input type="file" className="hidden" onChange={handleUpload} disabled={disabled || uploading} />
+        </label>
+      </div>
 
       {/* Suggested Tools */}
       {tools.length > 0 && (
@@ -492,28 +460,52 @@ function PanelContent({
           </div>
         </div>
       )}
+    </section>
+  );
 
-      {/* Comments */}
-      <div className="mb-4">
-        <CommentSection
-          comments={comments}
-          currentUserId={currentUserId}
-          isAdmin={isAdmin}
-          orgUsers={orgUsers}
-          onCreateComment={onCreateComment}
-          onUpdateComment={onUpdateComment}
-          onDeleteComment={onDeleteComment}
+  const actionsTab = (
+    <section aria-labelledby="task-tab-actions-heading">
+      <h3 id="task-tab-actions-heading" className="sr-only">Actions</h3>
+
+      {/* AI Review */}
+      {onReviewPR && task.pullRequests && task.pullRequests.length > 0 && (
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => onReviewPR(task.taskId, task.pullRequests![0].prNumber)}
+            disabled={disabled || reviewLoading}
+            className="px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 dark:text-slate-200"
+          >
+            {reviewLoading ? 'Reviewing…' : '✦ AI Review'}
+          </button>
+        </div>
+      )}
+
+      <TaskAIReviewSection review={reviewResult ?? null} loading={reviewLoading ?? false} />
+
+      {/* Auto-Complete for leaf tasks */}
+      {subtasks.length === 0 && task.taskType !== 'epic' && task.taskType !== 'story' && task.instructions && onAutoComplete && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => onAutoComplete(task)}
+            disabled={disabled || autoCompleteLoading}
+            className="px-3 py-1.5 text-sm border border-indigo-300 dark:border-indigo-600 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/30 disabled:opacity-50"
+          >
+            {autoCompleteLoading ? 'Planning…' : '⚡ Auto-Complete'}
+          </button>
+        </div>
+      )}
+
+      {actionPlan && onCompleteManualAction && onSkipAction && onRetryAction && onCancelActionPlan && (
+        <ActionProgressPanel
+          plan={actionPlan}
+          onCompleteManual={onCompleteManualAction}
+          onSkip={onSkipAction}
+          onRetry={onRetryAction}
+          onCancel={onCancelActionPlan}
         />
-      </div>
-
-      {/* AI History */}
-      <TaskAIHistory taskId={task.taskId} />
-
-      {/* Activity */}
-      <div>
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">Activity</p>
-        <ActivityFeed activities={activities} />
-      </div>
+      )}
 
       {/* Archive / Unarchive */}
       {onArchiveTask && (
@@ -532,6 +524,58 @@ function PanelContent({
           </button>
         </div>
       )}
+    </section>
+  );
+
+  const tabs = useMemo(() => [
+    { id: 'details', label: 'Details', content: detailsTab },
+    { id: 'activity', label: 'Activity', content: activityTab },
+    { id: 'relations', label: 'Relations', content: relationsTab },
+    { id: 'actions', label: 'Actions', content: actionsTab },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [
+    task, subtasks, editingTitle, editTitleValue, generatingInstructions,
+    sprints, orgUsers, statuses, allTasks, comments, activities, labels,
+    disabled, projectHasRepo, editingDescription, editDescValue,
+    editingInstructions, editInstrValue, editingAC, editACValue,
+    uploading, localAttachments, reviewResult, reviewLoading,
+    autoCompleteLoading, actionPlan, timeSummary, tools.length, ancestors,
+  ]);
+
+  return (
+    <div className="p-6 max-w-2xl">
+      {ancestors.length > 0 && onSelectTask && (
+        <nav className="mb-2 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 flex-wrap" aria-label="Task hierarchy">
+          {ancestors.map((ancestor, i) => (
+            <span key={ancestor.taskId} className="flex items-center gap-1">
+              {i > 0 && <span className="text-slate-300 dark:text-slate-600">›</span>}
+              <button
+                type="button"
+                onClick={() => onSelectTask({ taskId: ancestor.taskId, title: ancestor.title, status: ancestor.status, taskType: ancestor.taskType } as unknown as Task)}
+                className="hover:text-slate-700 dark:hover:text-slate-200 hover:underline truncate max-w-[150px]"
+              >
+                {ancestor.title}
+              </button>
+            </span>
+          ))}
+          <span className="text-slate-300 dark:text-slate-600">›</span>
+          <span className="text-slate-700 dark:text-slate-200 font-medium truncate max-w-[150px]">{task.title}</span>
+        </nav>
+      )}
+      <TaskTitleEditor
+        task={task}
+        editingTitle={editingTitle}
+        editTitleValue={editTitleValue}
+        titleEditRef={titleEditRef}
+        disabled={disabled}
+        onStartEdit={onStartEditTitle}
+        onChange={onTitleChange}
+        onSave={onTitleSave}
+        onKeyDown={onTitleKeyDown}
+        allTasks={allTasks}
+      />
+
+      <Tabs tabs={tabs} defaultTab="details" ariaLabel="Task detail sections" />
     </div>
   );
 }

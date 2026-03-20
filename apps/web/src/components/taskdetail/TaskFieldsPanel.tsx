@@ -471,6 +471,7 @@ export default function TaskFieldsPanel({
                     onClick={() => onRemoveTaskLabel(task.taskId, label.labelId)}
                     className="ml-0.5 hover:opacity-70"
                     disabled={disabled}
+                    aria-label={`Remove label ${label.name}`}
                   >
                     ✕
                   </button>

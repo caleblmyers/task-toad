@@ -43,6 +43,7 @@ export default function TimeEntryList({ entries, currentUserId, onDelete }: Time
                 onClick={() => onDelete(entry.timeEntryId)}
                 className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                 title="Delete"
+                aria-label="Delete time entry"
               >
                 &times;
               </button>

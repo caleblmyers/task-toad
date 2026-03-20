@@ -9,9 +9,10 @@ interface Tab {
 interface TabsProps {
   tabs: Tab[];
   defaultTab?: string;
+  ariaLabel?: string;
 }
 
-export default function Tabs({ tabs, defaultTab }: TabsProps) {
+export default function Tabs({ tabs, defaultTab, ariaLabel }: TabsProps) {
   const [activeId, setActiveId] = useState(defaultTab ?? tabs[0]?.id ?? '');
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -43,7 +44,7 @@ export default function Tabs({ tabs, defaultTab }: TabsProps) {
     <div>
       <div
         role="tablist"
-        aria-label="Settings sections"
+        aria-label={ariaLabel ?? "Settings sections"}
         className="flex border-b border-slate-200 dark:border-slate-700 mb-6 gap-1"
       >
         {tabs.map((tab, i) => (

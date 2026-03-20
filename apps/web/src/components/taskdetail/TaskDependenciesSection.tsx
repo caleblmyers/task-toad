@@ -86,6 +86,7 @@ export default function TaskDependenciesSection({
                     onClick={() => onRemoveDependency(dep.taskDependencyId)}
                     className="text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ml-auto"
                     disabled={disabled}
+                    aria-label={`Remove dependency ${target?.title ?? dep.targetTaskId.slice(0, 8)}`}
                   >
                     <span className="text-xs">✕</span>
                   </button>
@@ -114,6 +115,7 @@ export default function TaskDependenciesSection({
                       onClick={() => onRemoveDependency(dep.taskDependencyId)}
                       className="text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ml-auto"
                       disabled={disabled}
+                      aria-label={`Remove dependency ${source?.title ?? dep.sourceTaskId.slice(0, 8)}`}
                     >
                       <span className="text-xs">✕</span>
                     </button>
