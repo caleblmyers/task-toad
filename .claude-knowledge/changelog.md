@@ -4,6 +4,45 @@ Summaries of work completed each session. Most recent first.
 
 ---
 
+## 2026-03-20 (late)
+
+### Wave 33: Hierarchy + User Capacity + Compound Filters (3 workers, 5 tasks)
+
+**Worker 1 — Multi-Level Hierarchy (P1 Hierarchy):**
+- Recursive `TaskTreeNode` component in EpicsView with expand/collapse and depth indentation
+- `taskAncestors` query for breadcrumb navigation in TaskDetailPanel
+- Initiative taskType support in createTask/createSubtask and progress calculations
+- Recursive descendant progress counting (all levels, not just direct children)
+- TaskSubtasksSection updated for initiative/epic/story types
+
+**Worker 2 — User Capacity (P1 Planning):**
+- New `UserCapacity` + `UserTimeOff` models in capacity.prisma
+- `teamCapacity`, `teamCapacitySummary`, `userTimeOffs` queries
+- `setUserCapacity` (upsert), `addTimeOff`, `removeTimeOff` mutations
+- Sprint planner prompt enhanced with per-member capacity data
+- Frontend: TeamCapacityPanel with inline hours editing and time-off management
+- SprintPlanModal uses real capacity when available, falls back to manual calculation
+
+**Worker 3 — Compound Filters (P1 Search):**
+- `FilterGroupInput` + `FilterConditionInput` GraphQL types
+- `translateFilterGroup` recursive Prisma WHERE translator
+- Supports: status, priority, assignee, label, taskType, dueDate, estimatedHours, storyPoints, search
+- Operators: eq, neq, in, not_in, gt, lt, gte, lte, contains, is_empty, is_not_empty
+- Depth limit (5) and condition count limit (50) validation
+- Exported for reuse by automation engine
+- Frontend: FilterBuilder component with visual AND/OR grouping, field-specific value inputs
+- Advanced button in FilterBar toggles compound filter builder
+
+**Other changes this session:**
+- Removed generated placeholder images (favicon.svg, og-image.svg/png)
+- Updated index.html to use favicon.png and logo.png for OG tags
+- Added Deployment & Ops checklist and Post-Deployment testing phase to todos.md
+- Removed stale ANTHROPIC_API_KEY env var and startup warning
+
+**Process:** All 5 tasks merged cleanly.
+
+---
+
 ## 2026-03-20
 
 ### Wave 32: Cumulative Flow + Time Tracking + Saved Views (3 workers, 6 tasks)

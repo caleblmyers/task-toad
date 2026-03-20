@@ -317,3 +317,12 @@ Format:
 **Issue:** Worker-3's branch included commits from task-005 (already merged). The squash merge script handled this gracefully — only the new changes were staged.
 **Impact:** No impact, just a minor cosmetic issue in the merge output showing 2 commits instead of 1.
 **Suggestion:** Workers should rebase onto main after their first task is merged before starting their second task. This keeps the branch clean.
+
+### Reviewer — task-002
+**Issue:** Merge conflict in `packages/shared-types/src/index.ts` — both task-002 (worker-2) and task-004 (worker-3) append types to the end of the same file.
+**Impact:** Task-002 sent back to worker for rebase, delaying merge by one cycle.
+**Suggestion:** When multiple tasks add shared types, either assign them to the same worker or add a note in the task description that shared-types may have concurrent changes and workers should rebase before marking complete.
+
+### Reviewer — Positive
+**Observation:** Tasks 001, 004, and 005 all merged cleanly on first review with no code issues.
+**Why it worked:** Clear task descriptions with specific file paths and acceptance criteria. Workers followed the scope closely and didn't touch files outside their task.

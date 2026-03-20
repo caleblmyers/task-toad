@@ -12,6 +12,14 @@ All original work sets completed through Wave 30. Competitive gap items ongoing.
 
 ---
 
+## Wave 33 — Hierarchy + User Capacity + Compound Filters — Completed (2026-03-20)
+
+- [x] Multi-level hierarchy — recursive EpicsView tree, breadcrumbs, initiative taskType, recursive progress (task-001, worker-1)
+- [x] User capacity — backend: UserCapacity + UserTimeOff models, sprint planner integration (task-002, worker-2)
+- [x] User capacity — frontend: TeamCapacityPanel, sprint planning modal integration (task-003, worker-2)
+- [x] Compound filter expressions — backend: FilterGroup recursive Prisma translation, validation (task-004, worker-3)
+- [x] Compound filter expressions — frontend: FilterBuilder UI with AND/OR grouping (task-005, worker-3)
+
 ## Wave 32 — Cumulative Flow + Time Tracking + Saved Views — Completed (2026-03-20)
 
 - [x] Cumulative flow diagram — backend query + SVG stacked area chart (task-001, worker-1)
@@ -114,7 +122,8 @@ Expected by teams switching from Jira/Asana/Wrike.
 - [ ] **SLA tracking** — `SLAPolicy { projectId, name, targetMinutes, businessHoursCalendar?, pauseOnStatuses? }` and `SLATimer { taskId, policyId, startedAt, pausedMinutes, breachedAt? }`. Evaluate on status transitions.
 
 ### Planning & Estimation
-- [ ] **User capacity model** — `UserCapacity { userId, weeklyHours }` and `UserTimeOff { userId, startDate, endDate }`. Sprint planning calculates available hours vs committed work. Feed into AI sprint planner as context.
+- [x] **User capacity model** — UserCapacity + UserTimeOff models, CRUD, teamCapacitySummary query, sprint planner integration. *(Wave 33, task-002)*
+- [x] **User capacity frontend** — TeamCapacityPanel in OrgSettings, sprint planning integration with real capacity data. *(Wave 33, task-003)*
 - [x] **Release model** — Release + ReleaseTask models, CRUD, task association, AI release notes generation, frontend list/detail/modal + Releases tab. *(Wave 31, tasks 005-006)*
 
 ### Views & Visualization
@@ -123,7 +132,7 @@ Expected by teams switching from Jira/Asana/Wrike.
 - [x] **Cumulative flow diagram** — `cumulativeFlow` query computing daily status snapshots from Activity table. Hand-coded SVG stacked area chart with hover tooltips. *(Wave 32, task-001)*
 
 ### Search & Filtering
-- [ ] **Compound filter expressions** — `FilterGroup { operator: AND|OR, conditions: [...] }` structure. Recursive Prisma clause translation. Shared with automation engine conditions.
+- [x] **Compound filter expressions** — FilterGroup with AND/OR recursive Prisma translation, depth/count validation, exported for automation reuse. Frontend FilterBuilder UI with nesting. *(Wave 33, tasks 004-005)*
 - [x] **Saved views** — Extended SavedFilter with viewType, sortBy, sortOrder, groupBy, visibleColumns, isShared. SavedViewPicker UI with shared views support. *(Wave 32, tasks 005-006)*
 
 ### Collaboration
@@ -138,7 +147,7 @@ Expected by teams switching from Jira/Asana/Wrike.
 - [ ] **Scheduled report delivery** — `ReportSchedule { reportType, projectId, cronExpression, recipientUserIds }`. Reuse existing AI report generators. Deliver via email or Slack webhook.
 
 ### Hierarchy
-- [ ] **Multi-level hierarchy UI** — Schema already supports arbitrary nesting via `parentTaskId`. Add recursive rendering in EpicsView/TaskDetailPanel, breadcrumb navigation, `taskType: 'initiative'`.
+- [x] **Multi-level hierarchy UI** — Recursive EpicsView tree with expand/collapse, TaskDetailPanel breadcrumbs, initiative taskType, recursive descendant progress counting. *(Wave 33, task-001)*
 
 ### Time Tracking
 - [x] **TimeEntry model** — TimeEntry with CRUD, task/sprint time summaries, per-user breakdowns. Frontend: time log UI in task detail, sprint time summary. *(Wave 32, tasks 003-004)*
