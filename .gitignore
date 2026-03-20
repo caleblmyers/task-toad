@@ -14,10 +14,10 @@ vite.config.js
 vite.config.d.ts
 # Swarm role prompt (injected per worktree, never committed)
 .claude/swarm-role.md
-# Swarm task queue (ephemeral per swarm run)
-.ai/swarm/tasks.json
-.ai/swarm/tasks-*.json
-.ai/e2e-test-results-*.md
-# Test swarm artifacts (ephemeral per swarm run)
+# Swarm artifacts (ephemeral per run, cleaned up by teardown scripts)
+.ai/taskswarm/tasks*.json
+.ai/taskswarm/issues.md
+.ai/swarm/
 .ai/bugs/*
 !.ai/bugs/.gitkeep
+.ai/e2e-test-results-*.md

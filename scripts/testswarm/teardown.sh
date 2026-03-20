@@ -8,11 +8,10 @@ BUGS_FILE="$MAIN_REPO/.ai/bugs/bugs.json"
 
 echo "=== Tearing down test swarm ==="
 
-# Archive bug queue
-if [ -f "$BUGS_FILE" ]; then
-  ARCHIVE="$MAIN_REPO/.ai/bugs/bugs-$(date +%Y%m%d-%H%M%S).json"
-  cp "$BUGS_FILE" "$ARCHIVE"
-  echo "Archived bug queue to $ARCHIVE"
+# Clean up bug queue and test data
+if [ -d "$MAIN_REPO/.ai/bugs" ]; then
+  rm -f "$MAIN_REPO/.ai/bugs/"*.json
+  echo "Removed test swarm bug artifacts"
 fi
 
 # Remove debugger worktrees

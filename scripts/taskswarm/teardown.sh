@@ -8,13 +8,8 @@ TASKS_FILE="$MAIN_REPO/.ai/taskswarm/tasks.json"
 
 echo "=== Tearing down swarm ==="
 
-# Archive tasks.json if it exists
-if [ -f "$TASKS_FILE" ]; then
-  ARCHIVE="$MAIN_REPO/.ai/taskswarm/tasks-$(date +%Y%m%d-%H%M%S).json"
-  cp "$TASKS_FILE" "$ARCHIVE"
-  rm "$TASKS_FILE"
-  echo "Archived task queue to $ARCHIVE"
-fi
+# Clean up task swarm artifacts (keep README and prompts)
+rm -f "$MAIN_REPO/.ai/taskswarm/tasks"*.json "$MAIN_REPO/.ai/taskswarm/issues.md" 2>/dev/null && echo "Removed task swarm artifacts" || true
 
 # Remove worker worktrees
 for dir in "$PARENT_DIR/${REPO_NAME}"-worker-*; do
