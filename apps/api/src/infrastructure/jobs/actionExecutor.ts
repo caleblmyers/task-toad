@@ -178,6 +178,19 @@ export function createHandler(prisma: PrismaClient) {
           where: { id: planId },
           data: { status: 'failed' },
         });
+
+        bus.emit('task.action_plan_failed', {
+          orgId,
+          userId,
+          projectId: task.projectId,
+          timestamp: new Date().toISOString(),
+          planId,
+          taskId: task.taskId,
+          taskTitle: task.title,
+          lastFailedActionId: actionId,
+          lastFailedActionType: action.actionType,
+          errorMessage: (result.data.error as string) || 'Action failed',
+        });
         return;
       }
 
@@ -275,6 +288,19 @@ export function createHandler(prisma: PrismaClient) {
         planId,
         taskId: task.taskId,
         success: false,
+      });
+
+      bus.emit('task.action_plan_failed', {
+        orgId,
+        userId,
+        projectId: task.projectId,
+        timestamp: new Date().toISOString(),
+        planId,
+        taskId: task.taskId,
+        taskTitle: task.title,
+        lastFailedActionId: actionId,
+        lastFailedActionType: action.actionType,
+        errorMessage,
       });
     }
   };

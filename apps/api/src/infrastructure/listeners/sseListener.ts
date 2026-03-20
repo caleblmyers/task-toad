@@ -54,4 +54,29 @@ export function register(bus: EventBus): void {
       taskId: e.taskId,
     });
   });
+
+  bus.on('task.action_plan_failed', (e) => {
+    sseManager.broadcast(e.orgId, 'task.action_plan_failed', {
+      planId: e.planId,
+      taskId: e.taskId,
+      taskTitle: e.taskTitle,
+      errorMessage: e.errorMessage,
+    });
+  });
+
+  bus.on('task.blocked', (e) => {
+    sseManager.broadcast(e.orgId, 'task.blocked', {
+      taskId: e.taskId,
+      taskTitle: e.taskTitle,
+      blockerTaskId: e.blockerTaskId,
+      reason: e.reason,
+    });
+  });
+
+  bus.on('task.unblocked', (e) => {
+    sseManager.broadcast(e.orgId, 'task.unblocked', {
+      taskId: e.taskId,
+      taskTitle: e.taskTitle,
+    });
+  });
 }

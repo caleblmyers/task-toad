@@ -247,5 +247,46 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
     }
   });
 
+  bus.on('task.action_plan_failed', async (event) => {
+    const { taskId, orgId, userId, projectId } = event;
+
+    try {
+      // Find tasks that are blocked by the failed task
+      const dependents = await prisma.taskDependency.findMany({
+        where: { sourceTaskId: taskId, linkType: 'blocks' },
+        include: { targetTask: { select: { taskId: true, title: true, autoComplete: true } } },
+      });
+
+      const autoCompleteDependents = dependents.filter((d) => d.targetTask.autoComplete);
+      if (autoCompleteDependents.length === 0) return;
+
+      const failedTask = await prisma.task.findUnique({
+        where: { taskId },
+        select: { title: true },
+      });
+
+      for (const dep of autoCompleteDependents) {
+        bus.emit('task.blocked', {
+          orgId,
+          userId,
+          projectId,
+          timestamp: new Date().toISOString(),
+          taskId: dep.targetTask.taskId,
+          taskTitle: dep.targetTask.title,
+          blockerTaskId: taskId,
+          blockerTaskTitle: failedTask?.title ?? event.taskTitle,
+          reason: 'dependency_failed',
+        });
+      }
+
+      log.warn(
+        { taskId, blockedCount: autoCompleteDependents.length },
+        'Emitted task.blocked for dependents of failed action plan',
+      );
+    } catch (err) {
+      log.error({ err, taskId }, 'Failed to process action_plan_failed for dependents');
+    }
+  });
+
   log.info('Orchestrator listener registered');
 }

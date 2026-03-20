@@ -116,6 +116,26 @@ export interface DomainEventMap {
     planId: string;
     taskId: string;
   };
+  'task.action_plan_failed': BaseEventPayload & {
+    planId: string;
+    taskId: string;
+    taskTitle: string;
+    lastFailedActionId: string;
+    lastFailedActionType: string;
+    errorMessage: string;
+  };
+  'task.blocked': BaseEventPayload & {
+    taskId: string;
+    taskTitle: string;
+    blockerTaskId: string;
+    blockerTaskTitle: string;
+    reason: 'dependency_failed';
+  };
+  'task.unblocked': BaseEventPayload & {
+    taskId: string;
+    taskTitle: string;
+    unblockerTaskId: string;
+  };
 }
 
 export type EventName = keyof DomainEventMap;

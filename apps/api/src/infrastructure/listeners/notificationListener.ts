@@ -77,6 +77,52 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
     }
   });
 
+  bus.on('task.action_plan_failed', async (e) => {
+    const assignees = await prisma.taskAssignee.findMany({
+      where: { taskId: e.taskId },
+      select: { userId: true },
+    });
+    const recipientIds = assignees.length > 0
+      ? assignees.map((a) => a.userId)
+      : [e.userId];
+
+    for (const recipientId of recipientIds) {
+      createNotification(prisma, {
+        orgId: e.orgId,
+        userId: recipientId,
+        type: 'action_plan_failed',
+        title: `Auto-complete failed on "${e.taskTitle}"`,
+        body: `${e.lastFailedActionType} failed: ${e.errorMessage.slice(0, 200)}`,
+        linkUrl: `/app/projects/${e.projectId}`,
+        relatedTaskId: e.taskId,
+        relatedProjectId: e.projectId,
+      });
+    }
+  });
+
+  bus.on('task.blocked', async (e) => {
+    const assignees = await prisma.taskAssignee.findMany({
+      where: { taskId: e.taskId },
+      select: { userId: true },
+    });
+    const recipientIds = assignees.length > 0
+      ? assignees.map((a) => a.userId)
+      : [e.userId];
+
+    for (const recipientId of recipientIds) {
+      createNotification(prisma, {
+        orgId: e.orgId,
+        userId: recipientId,
+        type: 'task_blocked',
+        title: `"${e.taskTitle}" is blocked`,
+        body: `Blocked by "${e.blockerTaskTitle}": ${e.reason}`,
+        linkUrl: `/app/projects/${e.projectId}`,
+        relatedTaskId: e.taskId,
+        relatedProjectId: e.projectId,
+      });
+    }
+  });
+
   bus.on('comment.created', (e) => {
     // Notify task assignee
     if (e.task.assigneeId && (e.task.assigneeId as string) !== e.userId) {
