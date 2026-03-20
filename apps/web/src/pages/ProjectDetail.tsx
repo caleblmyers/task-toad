@@ -835,6 +835,7 @@ export default function ProjectDetail() {
             knowledgeBase={d.project?.knowledgeBase ?? null}
             onRefreshFromRepo={d.handleRefreshRepoProfile}
             hasGitHubRepo={!!(d.project?.githubRepositoryName)}
+            onRunInterview={() => setActiveModal('onboarding')}
           />
         </Suspense>
       )}

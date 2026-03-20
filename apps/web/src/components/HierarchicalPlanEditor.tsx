@@ -120,11 +120,12 @@ export function HierarchicalPlanEditor({
   });
 
   // Reset expanded when plan changes (e.g. regenerate)
+  const epicCount = plan.epics.length;
   useEffect(() => {
     const ids = new Set<string>();
-    plan.epics.forEach((_, i) => ids.add(makeKey(i)));
+    Array.from({ length: epicCount }, (_, i) => ids.add(makeKey(i)));
     setExpandedIds(ids);
-  }, [plan.epics.length]);
+  }, [epicCount]);
 
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -377,6 +378,8 @@ export function HierarchicalPlanEditor({
           <button
             onClick={() => toggleExpand(key)}
             className="w-5 h-5 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex-shrink-0"
+            aria-label={isExpanded ? `Collapse ${title}` : `Expand ${title}`}
+            aria-expanded={isExpanded}
           >
             {isExpanded ? '▼' : '▶'}
           </button>
@@ -470,7 +473,7 @@ export function HierarchicalPlanEditor({
         <button
           onClick={() => deleteNode(key)}
           className="w-5 h-5 flex items-center justify-center text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-          title="Remove"
+          aria-label={`Delete ${nodeType} '${title}'`}
         >
           ×
         </button>
