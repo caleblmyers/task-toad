@@ -3,7 +3,9 @@ import type { Task, Sprint, OrgUser, Comment, Activity, Label, CodeReview, Attac
 import type { TaskTimeSummary } from '@tasktoad/shared-types';
 import ActionProgressPanel from './ActionProgressPanel';
 import { gql, TOKEN_KEY } from '../api/client';
-import { TASK_ANCESTORS_QUERY, TASK_INSIGHTS_QUERY } from '../api/queries';
+import { TASK_ANCESTORS_QUERY, TASK_INSIGHTS_QUERY, GENERATE_MANUAL_TASK_SPEC_MUTATION } from '../api/queries';
+import ManualTaskSpecView from './taskdetail/ManualTaskSpecView';
+import type { ManualTaskSpec } from './taskdetail/ManualTaskSpecView';
 import CommentSection from './CommentSection';
 import ActivityFeed from './ActivityFeed';
 import MarkdownRenderer from './shared/MarkdownRenderer';
@@ -147,6 +149,8 @@ function PanelContent({
   const [editACValue, setEditACValue] = useState('');
   const [uploading, setUploading] = useState(false);
   const [localAttachments, setLocalAttachments] = useState<Attachment[]>(task.attachments ?? []);
+  const [manualSpec, setManualSpec] = useState<ManualTaskSpec | null>(null);
+  const [specLoading, setSpecLoading] = useState(false);
 
   const handleUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -353,6 +357,26 @@ function PanelContent({
               Write manually
             </button>
           </div>
+        )}
+        {task.instructions && !editingInstructions && (
+          <ManualTaskSpecView
+            spec={manualSpec}
+            loading={specLoading}
+            onGenerate={async () => {
+              setSpecLoading(true);
+              try {
+                const data = await gql<{ generateManualTaskSpec: ManualTaskSpec }>(
+                  GENERATE_MANUAL_TASK_SPEC_MUTATION,
+                  { taskId: task.taskId }
+                );
+                setManualSpec(data.generateManualTaskSpec);
+              } catch {
+                // silently fail — button stays available
+              } finally {
+                setSpecLoading(false);
+              }
+            }}
+          />
         )}
       </div>
 
@@ -591,7 +615,7 @@ function PanelContent({
     editingInstructions, editInstrValue, editingAC, editACValue,
     uploading, localAttachments, reviewResult, reviewLoading,
     autoCompleteLoading, actionPlan, timeSummary, tools.length, ancestors,
-    showInsightsTab, insightCount,
+    showInsightsTab, insightCount, manualSpec, specLoading,
   ]);
 
   return (

@@ -156,6 +156,20 @@ export const GENERATE_INSTRUCTIONS_MUTATION = `mutation GenerateTaskInstructions
   generateTaskInstructions(taskId: $taskId) { ${TASK_FIELDS} }
 }`;
 
+export const GENERATE_MANUAL_TASK_SPEC_MUTATION = `mutation GenerateManualTaskSpec($taskId: ID!) {
+  generateManualTaskSpec(taskId: $taskId) {
+    filesToChange { path action description }
+    approach
+    codeSnippets { file language code explanation }
+    testingNotes
+    dependencies
+  }
+}`;
+
+export const AUTO_START_PROJECT_MUTATION = `mutation AutoStartProject($projectId: ID!) {
+  autoStartProject(projectId: $projectId) { projectId name }
+}`;
+
 export const PARSE_BUG_REPORT_MUTATION = `mutation ParseBugReport($projectId: ID!, $bugReport: String!) {
   parseBugReport(projectId: $projectId, bugReport: $bugReport) { ${TASK_FIELDS} }
 }`;

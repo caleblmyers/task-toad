@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { useConfirmDialog } from './shared/ConfirmDialog';
 import { Link } from 'react-router-dom';
 import { gql, TOKEN_KEY } from '../api/client';
+import { AUTO_START_PROJECT_MUTATION } from '../api/queries';
 import type { ProjectData } from '../hooks/useProjectData';
 import type { TaskFiltering } from '../hooks/useTaskFiltering';
 import type { GitHubRepoLink } from '../types';
@@ -83,6 +84,7 @@ export default function ProjectToolbar({
   const [templateTitle, setTemplateTitle] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [bootstrapping, setBootstrapping] = useState(false);
+  const [autoStarting, setAutoStarting] = useState(false);
   const templateMenuRef = useRef<HTMLDivElement>(null);
   const templateSelectRef = useRef<HTMLSelectElement>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
@@ -345,6 +347,25 @@ export default function ProjectToolbar({
                   }
                 },
                 disabled: d.isGenerating || bootstrapping,
+              }] : []),
+              ...(gitHubRepo ? [{
+                label: autoStarting ? 'Starting…' : 'Auto-Start Project',
+                onClick: async () => {
+                  if (!d.projectId) return;
+                  setAutoStarting(true);
+                  try {
+                    await gql<{ autoStartProject: { projectId: string } }>(
+                      AUTO_START_PROJECT_MUTATION,
+                      { projectId: d.projectId }
+                    );
+                    addToast('success', 'Project auto-start triggered — tasks will begin executing');
+                  } catch (err) {
+                    addToast('error', err instanceof Error ? err.message : 'Auto-start failed');
+                  } finally {
+                    setAutoStarting(false);
+                  }
+                },
+                disabled: d.isGenerating || autoStarting,
               }] : []),
             ] satisfies DropdownMenuItem[]}
           />
