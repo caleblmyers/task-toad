@@ -7,7 +7,8 @@ import type { TaskFiltering } from '../hooks/useTaskFiltering';
 import type { GitHubRepoLink } from '../types';
 import { statusLabel } from '../utils/taskHelpers';
 import SearchInput from './shared/SearchInput';
-import FilterBar from './shared/FilterBar';
+import FilterBar, { type SavedFilter } from './shared/FilterBar';
+import SavedViewPicker from './shared/SavedViewPicker';
 import Button from './shared/Button';
 import DropdownMenu, { type DropdownMenuItem } from './shared/DropdownMenu';
 import { IconList, IconBoard, IconTable, IconCalendar, IconClose, IconPlus, IconRefresh, IconSummary, IconFilter, IconKeyboard, IconGitHub, IconSparkle } from './shared/Icons';
@@ -45,6 +46,37 @@ export default function ProjectToolbar({
   const [showStatusEditor, setShowStatusEditor] = useState(false);
   const [newStatusValue, setNewStatusValue] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([]);
+
+  // Fetch saved filters on mount
+  const fetchSavedFilters = useCallback(async () => {
+    if (!d.projectId) return;
+    try {
+      const data = await gql<{ savedFilters: SavedFilter[] }>(
+        `query SavedFilters($projectId: ID!) { savedFilters(projectId: $projectId) { savedFilterId name filters viewType sortBy sortOrder groupBy visibleColumns isShared isDefault createdAt } }`,
+        { projectId: d.projectId },
+      );
+      setSavedFilters(data.savedFilters);
+    } catch { /* non-critical */ }
+  }, [d.projectId]);
+
+  useEffect(() => { fetchSavedFilters(); }, [fetchSavedFilters]);
+
+  // Wire up view config callback so loading a view can switch the active tab
+  useEffect(() => {
+    filtering.setOnViewConfigApplied((config) => {
+      const viewMap: Record<string, 'backlog' | 'board' | 'table'> = { list: 'backlog', board: 'board', table: 'table' };
+      if (config.viewType && viewMap[config.viewType]) {
+        d.switchView(viewMap[config.viewType]);
+        setTimelineView(false);
+      }
+    });
+    return () => filtering.setOnViewConfigApplied(undefined);
+  }, [d, filtering, setTimelineView]);
+
+  const handleLoadFilter = useCallback((filtersJson: string, viewConfig?: { viewType?: string | null; sortBy?: string | null; sortOrder?: string | null; groupBy?: string | null }) => {
+    filtering.loadSavedFilter(filtersJson, viewConfig);
+  }, [filtering]);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
   const [templateList, setTemplateList] = useState<Array<{ taskTemplateId: string; name: string; description: string | null; instructions: string | null; acceptanceCriteria: string | null; priority: string; taskType: string }>>([]);
@@ -261,6 +293,15 @@ export default function ProjectToolbar({
             <IconFilter className="w-3.5 h-3.5" />
             {filtering.hasActiveFilters && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
           </button>
+          {d.projectId && (
+            <SavedViewPicker
+              projectId={d.projectId}
+              savedFilters={savedFilters}
+              onSavedFiltersChange={setSavedFilters}
+              onLoadFilter={handleLoadFilter}
+              currentViewType={d.view === 'backlog' ? 'list' : d.view === 'board' ? 'board' : d.view === 'table' ? 'table' : undefined}
+            />
+          )}
         </div>
         <div className="relative flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={() => d.setShowAddForm(!d.showAddForm)} disabled={d.isGenerating}>
@@ -496,6 +537,10 @@ export default function ProjectToolbar({
             onAssigneeChange={filtering.setAssigneeFilter}
             onClear={filtering.clearFilters}
             hasActiveFilters={filtering.hasActiveFilters}
+            projectId={d.projectId}
+            savedFilters={savedFilters}
+            onSavedFiltersChange={setSavedFilters}
+            onLoadFilter={(filtersJson) => filtering.loadSavedFilter(filtersJson)}
           />
         </div>
       )}

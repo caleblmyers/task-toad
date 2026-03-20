@@ -16,6 +16,13 @@ export interface TaskFilterInput {
   sortOrder?: string;
 }
 
+export interface ViewConfig {
+  viewType?: string | null;
+  sortBy?: string | null;
+  sortOrder?: string | null;
+  groupBy?: string | null;
+}
+
 export interface TaskFiltering {
   searchQuery: string;
   statusFilter: string;
@@ -35,7 +42,9 @@ export interface TaskFiltering {
   setCustomFieldFilter: (fieldId: string, value: string) => void;
   clearFilters: () => void;
   hasActiveFilters: boolean;
-  loadSavedFilter: (filtersJson: string) => void;
+  loadSavedFilter: (filtersJson: string, viewConfig?: ViewConfig) => void;
+  onViewConfigApplied?: (config: ViewConfig) => void;
+  setOnViewConfigApplied: (cb: ((config: ViewConfig) => void) | undefined) => void;
 }
 
 /**
@@ -57,6 +66,11 @@ export function useTaskFiltering(tasks: Task[]): TaskFiltering {
   const [labelFilter, setLabelFilter] = useState<string[]>([]);
   const [showArchived, setShowArchived] = useState(false);
   const [customFieldFilters, setCustomFieldFilters] = useState<Record<string, string>>({});
+  const viewConfigCallbackRef = useRef<((config: ViewConfig) => void) | undefined>();
+
+  const setOnViewConfigApplied = useCallback((cb: ((config: ViewConfig) => void) | undefined) => {
+    viewConfigCallbackRef.current = cb;
+  }, []);
 
   // Debounce search input (300ms)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
@@ -119,7 +133,7 @@ export function useTaskFiltering(tasks: Task[]): TaskFiltering {
     setCustomFieldFilters({});
   };
 
-  const loadSavedFilter = useCallback((filtersJson: string) => {
+  const loadSavedFilter = useCallback((filtersJson: string, viewConfig?: ViewConfig) => {
     try {
       const parsed = JSON.parse(filtersJson) as {
         statusFilter?: string;
@@ -134,6 +148,9 @@ export function useTaskFiltering(tasks: Task[]): TaskFiltering {
       if (parsed.labelFilter) setLabelFilter(parsed.labelFilter);
       if (parsed.customFieldFilters) setCustomFieldFilters(parsed.customFieldFilters);
     } catch { /* ignore invalid JSON */ }
+    if (viewConfig && viewConfigCallbackRef.current) {
+      viewConfigCallbackRef.current(viewConfig);
+    }
   }, []);
 
   return {
@@ -141,5 +158,6 @@ export function useTaskFiltering(tasks: Task[]): TaskFiltering {
     customFieldFilters, filteredTasks, filterInput, setSearchQuery, setStatusFilter,
     setPriorityFilter, setAssigneeFilter, setLabelFilter, showArchived, setShowArchived,
     setCustomFieldFilter, clearFilters, hasActiveFilters, loadSavedFilter,
+    onViewConfigApplied: viewConfigCallbackRef.current, setOnViewConfigApplied,
   };
 }

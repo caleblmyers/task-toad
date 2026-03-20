@@ -4,10 +4,16 @@ import { statusLabel } from '../../utils/taskHelpers';
 import { parseOptions } from '../../utils/jsonHelpers';
 import { gql } from '../../api/client';
 
-interface SavedFilter {
+export interface SavedFilter {
   savedFilterId: string;
   name: string;
   filters: string;
+  viewType?: string | null;
+  sortBy?: string | null;
+  sortOrder?: string | null;
+  groupBy?: string | null;
+  visibleColumns?: string | null;
+  isShared: boolean;
   isDefault: boolean;
   createdAt: string;
 }
@@ -70,7 +76,7 @@ export default function FilterBar({
       setFilterError(null);
       const { saveFilter } = await gql<{ saveFilter: SavedFilter }>(
         `mutation SaveFilter($projectId: ID!, $name: String!, $filters: String!) {
-          saveFilter(projectId: $projectId, name: $name, filters: $filters) { savedFilterId name filters isDefault createdAt }
+          saveFilter(projectId: $projectId, name: $name, filters: $filters) { savedFilterId name filters viewType sortBy sortOrder groupBy visibleColumns isShared isDefault createdAt }
         }`,
         { projectId, name: saveName.trim(), filters: filtersJson },
       );
