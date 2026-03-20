@@ -206,6 +206,19 @@ export const taskQueries = {
     });
   },
 
+  taskWatchers: async (_parent: unknown, args: { taskId: string }, context: Context) => {
+    await requireTask(context, args.taskId);
+    const watchers = await context.prisma.taskWatcher.findMany({
+      where: { taskId: args.taskId },
+      include: { user: true },
+    });
+    return watchers.map((w) => ({
+      id: w.id,
+      user: w.user,
+      watchedAt: w.watchedAt.toISOString(),
+    }));
+  },
+
   customFields: async (_parent: unknown, args: { projectId: string }, context: Context) => {
     await requireProjectAccess(context, args.projectId);
     return context.prisma.customField.findMany({

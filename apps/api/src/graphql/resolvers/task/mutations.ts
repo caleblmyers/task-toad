@@ -52,6 +52,10 @@ export const taskMutations = {
         position: nextPosition,
       },
     });
+    // Auto-add creator as watcher
+    await context.prisma.taskWatcher.create({
+      data: { taskId: task.taskId, userId: user.userId },
+    });
     getEventBus().emit('task.created', {
       orgId: user.orgId, userId: user.userId, projectId: args.projectId,
       timestamp: new Date().toISOString(),
@@ -329,6 +333,14 @@ export const taskMutations = {
           mentionedUserIds.push(mentionedUser.userId);
         }
       }
+      // Auto-add mentioned users as watchers
+      for (const mentionedUser of mentionedUsers) {
+        await context.prisma.taskWatcher.upsert({
+          where: { taskId_userId: { taskId: args.taskId, userId: mentionedUser.userId } },
+          create: { taskId: args.taskId, userId: mentionedUser.userId },
+          update: {},
+        });
+      }
     }
     getEventBus().emit('comment.created', {
       orgId: user.orgId, userId: user.userId, projectId: task.projectId,
@@ -493,6 +505,12 @@ export const taskMutations = {
       update: {},
       include: { user: true },
     });
+    // Auto-add assignee as watcher
+    await context.prisma.taskWatcher.upsert({
+      where: { taskId_userId: { taskId: args.taskId, userId: args.userId } },
+      create: { taskId: args.taskId, userId: args.userId },
+      update: {},
+    });
     getEventBus().emit('task.assignee_added', {
       orgId: user.orgId, userId: user.userId, projectId: task.projectId,
       timestamp: new Date().toISOString(),
@@ -520,6 +538,49 @@ export const taskMutations = {
       orgId: user.orgId, userId: user.userId, projectId: task.projectId,
       timestamp: new Date().toISOString(),
       taskId: task.taskId, assigneeId: args.userId,
+    });
+    return true;
+  },
+
+  addTaskWatcher: async (
+    _parent: unknown,
+    args: { taskId: string; userId: string },
+    context: Context
+  ) => {
+    const { user, task } = await requireTask(context, args.taskId);
+    await requireOrgUser(context, args.userId);
+    const watcher = await context.prisma.taskWatcher.upsert({
+      where: { taskId_userId: { taskId: args.taskId, userId: args.userId } },
+      create: { taskId: args.taskId, userId: args.userId },
+      update: {},
+      include: { user: true },
+    });
+    getEventBus().emit('task.watcher_added', {
+      orgId: user.orgId, userId: user.userId, projectId: task.projectId,
+      timestamp: new Date().toISOString(),
+      taskId: task.taskId, taskTitle: task.title, watcherId: args.userId,
+    });
+    return {
+      id: watcher.id,
+      user: watcher.user,
+      watchedAt: watcher.watchedAt.toISOString(),
+    };
+  },
+
+  removeTaskWatcher: async (
+    _parent: unknown,
+    args: { taskId: string; userId: string },
+    context: Context
+  ) => {
+    const { user, task } = await requireTask(context, args.taskId);
+    await requireOrgUser(context, args.userId);
+    await context.prisma.taskWatcher.deleteMany({
+      where: { taskId: args.taskId, userId: args.userId },
+    });
+    getEventBus().emit('task.watcher_removed', {
+      orgId: user.orgId, userId: user.userId, projectId: task.projectId,
+      timestamp: new Date().toISOString(),
+      taskId: task.taskId, taskTitle: task.title, watcherId: args.userId,
     });
     return true;
   },

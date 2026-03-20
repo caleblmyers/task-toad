@@ -63,6 +63,16 @@ export interface DomainEventMap {
     taskId: string;
     assigneeId: string;
   };
+  'task.watcher_added': BaseEventPayload & {
+    taskId: string;
+    taskTitle: string;
+    watcherId: string;
+  };
+  'task.watcher_removed': BaseEventPayload & {
+    taskId: string;
+    taskTitle: string;
+    watcherId: string;
+  };
   'task.reordered': BaseEventPayload & {
     task: TaskPayload;
   };

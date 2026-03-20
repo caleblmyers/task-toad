@@ -153,6 +153,7 @@ const COST_MAP: Record<string, number> = {
   replies: 5,
   children: 10,
   taskAssignees: 3,
+  watchers: 5,
 };
 
 const DEFAULT_LIST_MULTIPLIER = 5;

@@ -35,6 +35,32 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
         relatedProjectId: e.projectId,
       });
     }
+
+    // Notify all watchers (excluding the actor)
+    const watchers = await prisma.taskWatcher.findMany({
+      where: { taskId: e.task.taskId },
+      select: { userId: true },
+    });
+    const changedFields = Object.keys(changes);
+    if (changedFields.length > 0) {
+      const changeSummary = changedFields.map(f => {
+        if (f === 'status') return `status to ${changes[f].new}`;
+        return f;
+      }).join(', ');
+      for (const watcher of watchers) {
+        if (watcher.userId !== e.userId) {
+          createNotification(prisma, {
+            orgId: e.orgId,
+            userId: watcher.userId,
+            type: 'task_updated',
+            title: `"${e.task.title}" was updated: ${changeSummary}`,
+            linkUrl: `/app/projects/${e.projectId}`,
+            relatedTaskId: e.task.taskId,
+            relatedProjectId: e.projectId,
+          });
+        }
+      }
+    }
   });
 
   bus.on('task.assignee_added', (e) => {

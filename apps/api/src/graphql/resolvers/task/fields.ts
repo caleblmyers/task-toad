@@ -22,6 +22,14 @@ export const taskFieldResolvers = {
         assignedAt: a.assignedAt.toISOString(),
       }));
     },
+    watchers: async (parent: { taskId: string }, _args: unknown, context: Context) => {
+      const watchers = await context.loaders.taskWatchers.load(parent.taskId);
+      return watchers.map((w) => ({
+        id: w.id,
+        user: w.user,
+        watchedAt: w.watchedAt.toISOString(),
+      }));
+    },
     githubIssueUrl: async (parent: { taskId: string; projectId: string; githubIssueNumber?: number | null }, _args: unknown, context: Context) => {
       if (!parent.githubIssueNumber) return null;
       const project = await context.loaders.projectById.load(parent.projectId);

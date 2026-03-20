@@ -32,6 +32,7 @@ export const taskTypeDefs = /* GraphQL */ `
     recurrenceParentId: ID
     attachments: [Attachment!]!
     assignees: [TaskAssignee!]!
+    watchers: [TaskWatcher!]!
     dependencies: [TaskDependency!]!
     dependents: [TaskDependency!]!
   }
@@ -68,6 +69,12 @@ export const taskTypeDefs = /* GraphQL */ `
     id: ID!
     user: User!
     assignedAt: String!
+  }
+
+  type TaskWatcher {
+    id: ID!
+    user: User!
+    watchedAt: String!
   }
 
   type TaskCycleMetrics {
@@ -208,6 +215,8 @@ export const taskQueryFields = /* GraphQL */ `
   labels: [Label!]!
   """List custom fields defined for a project."""
   customFields(projectId: ID!): [CustomField!]!
+  """List all watchers for a task."""
+  taskWatchers(taskId: ID!): [TaskWatcher!]!
 `;
 
 export const taskMutationFields = /* GraphQL */ `
@@ -240,6 +249,9 @@ export const taskMutationFields = /* GraphQL */ `
 
   addTaskAssignee(taskId: ID!, userId: ID!): TaskAssignee!
   removeTaskAssignee(taskId: ID!, userId: ID!): Boolean!
+
+  addTaskWatcher(taskId: ID!, userId: ID!): TaskWatcher!
+  removeTaskWatcher(taskId: ID!, userId: ID!): Boolean!
 
   deleteAttachment(attachmentId: ID!): Boolean!
 

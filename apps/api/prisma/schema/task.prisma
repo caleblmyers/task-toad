@@ -39,6 +39,7 @@ model Task {
   commits           GitHubCommitLink[]
   customFieldValues CustomFieldValue[]
   taskAssignees     TaskAssignee[]
+  taskWatchers      TaskWatcher[]
   actionPlans       TaskActionPlan[]
   dependenciesAsSource TaskDependency[] @relation("TaskDependenciesSource")
   dependenciesAsTarget TaskDependency[] @relation("TaskDependenciesTarget")
@@ -124,6 +125,19 @@ model TaskAssignee {
   @@index([taskId])
   @@index([userId])
   @@map("task_assignees")
+}
+
+model TaskWatcher {
+  id        String   @id @default(cuid())
+  taskId    String   @map("task_id")
+  userId    String   @map("user_id")
+  watchedAt DateTime @default(now()) @map("watched_at")
+  task      Task     @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
+  user      User     @relation("TaskWatchers", fields: [userId], references: [userId], onDelete: Cascade)
+  @@unique([taskId, userId])
+  @@index([taskId])
+  @@index([userId])
+  @@map("task_watchers")
 }
 
 model TaskDependency {

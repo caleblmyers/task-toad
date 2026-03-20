@@ -80,6 +80,7 @@ export interface Task {
   recurrenceParentId?: string | null;
   attachments?: Attachment[];
   assignees?: TaskAssignee[];
+  watchers?: TaskWatcher[];
   dependencies?: TaskDependency[];
   dependents?: TaskDependency[];
 }
@@ -105,6 +106,12 @@ export interface TaskAssignee {
   id: string;
   user: { userId: string; email: string };
   assignedAt: string;
+}
+
+export interface TaskWatcher {
+  id: string;
+  user: { userId: string; email: string };
+  watchedAt: string;
 }
 
 export interface TaskDependency {

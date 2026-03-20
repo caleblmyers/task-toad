@@ -1,9 +1,10 @@
 import DataLoader from 'dataloader';
-import type { PrismaClient, Task, Project, Sprint, User, Label, GitHubPullRequestLink, GitHubCommitLink, CustomFieldValue, CustomField, TaskAssignee, Attachment, TaskDependency } from '@prisma/client';
+import type { PrismaClient, Task, Project, Sprint, User, Label, GitHubPullRequestLink, GitHubCommitLink, CustomFieldValue, CustomField, TaskAssignee, TaskWatcher, Attachment, TaskDependency } from '@prisma/client';
 
 export type CustomFieldValueWithField = CustomFieldValue & { customField: CustomField };
 export type TaskAssigneeWithUser = TaskAssignee & { user: User };
 export type TaskDependencyWithTask = TaskDependency & { targetTask: Task };
+export type TaskWatcherWithUser = TaskWatcher & { user: User };
 export type TaskDependentWithTask = TaskDependency & { sourceTask: Task };
 
 export interface Loaders {
@@ -19,6 +20,7 @@ export interface Loaders {
   sprintTasks: DataLoader<string, Task[]>;
   customFieldValuesByTask: DataLoader<string, CustomFieldValueWithField[]>;
   taskAssignees: DataLoader<string, TaskAssigneeWithUser[]>;
+  taskWatchers: DataLoader<string, TaskWatcherWithUser[]>;
   taskAttachments: DataLoader<string, Attachment[]>;
   taskDependencies: DataLoader<string, TaskDependencyWithTask[]>;
   taskDependents: DataLoader<string, TaskDependentWithTask[]>;
@@ -137,6 +139,19 @@ export function createLoaders(prisma: PrismaClient): Loaders {
       for (const a of assignees) {
         if (!map.has(a.taskId)) map.set(a.taskId, []);
         map.get(a.taskId)!.push(a);
+      }
+      return taskIds.map(id => map.get(id) ?? []);
+    }),
+
+    taskWatchers: new DataLoader(async (taskIds) => {
+      const watchers = await prisma.taskWatcher.findMany({
+        where: { taskId: { in: [...taskIds] } },
+        include: { user: true },
+      });
+      const map = new Map<string, TaskWatcherWithUser[]>();
+      for (const w of watchers) {
+        if (!map.has(w.taskId)) map.set(w.taskId, []);
+        map.get(w.taskId)!.push(w);
       }
       return taskIds.map(id => map.get(id) ?? []);
     }),
