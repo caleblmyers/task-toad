@@ -79,3 +79,28 @@ Running log of errors encountered and their resolutions.
 Additionally, 3 orphaned DB-only migrations exist from a prior GitHub integration session.
 **Fix:** Run `cd apps/api && npx prisma migrate deploy` to apply pending migrations. For the orphaned migrations, may need `prisma migrate resolve` to mark them as applied/rolled-back.
 **Rule:** After adding new Prisma schema models/fields and generating migrations, always apply them to the dev DB before testing.
+
+---
+
+### 2026-03-20 — Intermittent HTTP 500 on GraphQL mutations (signup, login, updateTask)
+**Context:** QA testers reported signup, login, and cross-tenant updateTask returning `{"error":"Internal server error"}` (HTTP 500) instead of proper GraphQL error responses. The error hits Express's global error handler (app.ts:360), bypassing yoga entirely.
+**Error:** `{"error":"Internal server error"}` (HTTP 500) — intermittent, not consistently reproducible
+**Symptoms:**
+- signup for new users sometimes returns 500 instead of `{"data":{"signup":true}}`
+- login with correct password sometimes returns 500 instead of AuthPayload or AuthenticationError
+- cross-tenant updateTask sometimes returns 500 instead of NotFoundError
+- Wrong-password login and duplicate-email signup return proper GraphQL errors most of the time
+- The same request may succeed or fail depending on timing
+**Investigation:**
+- All resolver code is correct: ConflictError, AuthenticationError, NotFoundError all extend GraphQLError and are properly thrown
+- Rate limiter returns 429 (not 500) when exhausted
+- No duplicate `graphql` package (single copy at v16.13.1)
+- graphql-yoga v5.18.1 maskedErrors defaults are reasonable
+- 3 unapplied migrations exist but none modify the User table
+- Likely caused by transient Prisma connection pool exhaustion under concurrent tester load, or tsx watch server reloading mid-request
+**Workaround:** Retry the request. The issue is transient and self-resolves.
+**Fix needed:** If this recurs in production, investigate:
+1. Prisma connection pool settings (`connection_limit` in DATABASE_URL)
+2. Add connection pool monitoring via the existing Prisma metrics preview feature
+3. Consider adding a yoga `onError` plugin to catch and log errors that escape to Express
+4. Review if `compression()` middleware (registered before yoga) could interfere with error response streaming
