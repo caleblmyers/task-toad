@@ -38,6 +38,8 @@ export const authMutationFields = /* GraphQL */ `
   signup(email: String!, password: String!): Boolean!
   """Authenticate with email and password. Returns a JWT valid for 7 days."""
   login(email: String!, password: String!): AuthPayload!
+  """Invalidate all existing sessions by incrementing the token version."""
+  logout: Boolean!
 
   sendVerificationEmail: Boolean!
   verifyEmail(token: String!): Boolean!

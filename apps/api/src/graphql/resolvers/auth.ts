@@ -117,7 +117,7 @@ export const authMutations = {
     if (!user.emailVerifiedAt) {
       throw new AuthenticationError('Please verify your email before logging in. Check your inbox for a verification link.');
     }
-    const token = await new SignJWT({ sub: user.userId, email: user.email })
+    const token = await new SignJWT({ sub: user.userId, email: user.email, tv: user.tokenVersion })
       .setProtectedHeader({ alg: 'HS256' })
       .setExpirationTime('7d')
       .sign(JWT_SECRET);
@@ -197,7 +197,7 @@ export const authMutations = {
     const passwordHash = await bcrypt.hash(args.newPassword, 10);
     await context.prisma.user.update({
       where: { userId: user.userId },
-      data: { passwordHash, resetToken: null, resetTokenExpiry: null },
+      data: { passwordHash, resetToken: null, resetTokenExpiry: null, tokenVersion: { increment: 1 } },
     });
     return true;
   },
@@ -286,7 +286,7 @@ export const authMutations = {
     });
     const updatedUser = await context.prisma.user.findUnique({ where: { userId } });
     if (!updatedUser) throw new NotFoundError('User not found');
-    const token = await new SignJWT({ sub: updatedUser.userId, email: updatedUser.email })
+    const token = await new SignJWT({ sub: updatedUser.userId, email: updatedUser.email, tv: updatedUser.tokenVersion })
       .setProtectedHeader({ alg: 'HS256' })
       .setExpirationTime('7d')
       .sign(JWT_SECRET);
@@ -303,6 +303,15 @@ export const authMutations = {
       throw new NotFoundError('Invite not found');
     }
     await context.prisma.orgInvite.delete({ where: { inviteId: args.inviteId } });
+    return true;
+  },
+
+  logout: async (_parent: unknown, _args: unknown, context: Context) => {
+    const user = requireAuth(context);
+    await context.prisma.user.update({
+      where: { userId: user.userId },
+      data: { tokenVersion: { increment: 1 } },
+    });
     return true;
   },
 

@@ -31,6 +31,7 @@ model User {
   timeEntries       TimeEntry[]    @relation("UserTimeEntries")
   userCapacities    UserCapacity[]
   userTimeOffs      UserTimeOff[]
+  tokenVersion      Int            @default(0) @map("token_version")
 
   @@index([orgId])
   @@map("users")

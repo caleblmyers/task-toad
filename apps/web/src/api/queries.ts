@@ -653,6 +653,8 @@ export const SIGNUP_MUTATION = `mutation Signup($email: String!, $password: Stri
   signup(email: $email, password: $password)
 }`;
 
+export const LOGOUT_MUTATION = `mutation Logout { logout }`;
+
 // ── Portfolio ──
 
 export const PORTFOLIO_OVERVIEW_QUERY = `query PortfolioOverview {

@@ -45,6 +45,12 @@ export async function buildContext(ctx: { request: Request }): Promise<Context> 
     const dbUser = await prisma.user.findUnique({ where: { userId } });
     if (!dbUser) return { user: null, org: null, prisma, loaders };
 
+    // Reject tokens with stale tokenVersion (revoked via logout or password reset)
+    const tv = payload.tv as number | undefined;
+    if (tv !== undefined && tv !== dbUser.tokenVersion) {
+      return { user: null, org: null, prisma, loaders };
+    }
+
     let org: Context['org'] = null;
     if (dbUser.orgId) {
       org = await prisma.org.findUnique({

@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { gql, TOKEN_KEY } from '../api/client';
-import { ME_QUERY, LOGIN_MUTATION, SIGNUP_MUTATION } from '../api/queries';
+import { ME_QUERY, LOGIN_MUTATION, SIGNUP_MUTATION, LOGOUT_MUTATION } from '../api/queries';
 import type { MeResponse } from '../types';
 
 type AuthState = {
@@ -9,7 +9,7 @@ type AuthState = {
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshMe: () => Promise<void>;
 };
 
@@ -77,7 +77,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      await gql<{ logout: boolean }>(LOGOUT_MUTATION);
+    } catch {
+      // Still clear localStorage even if mutation fails (e.g., network error)
+    }
     localStorage.removeItem(TOKEN_KEY);
     setUser(null);
   }, []);
