@@ -266,7 +266,18 @@ export const ActionPlanResponseSchema = z.object({
 export type ActionPlanItem = z.infer<typeof ActionPlanItemSchema>;
 export type ActionPlanResponse = z.infer<typeof ActionPlanResponseSchema>;
 
+export const ReleaseNotesSchema = z.object({
+  summary: z.string(),
+  features: z.array(z.string()),
+  bugFixes: z.array(z.string()),
+  improvements: z.array(z.string()),
+  breakingChanges: z.array(z.string()),
+});
+
+export type ReleaseNotes = z.infer<typeof ReleaseNotesSchema>;
+
 export type AIFeature =
+  | 'generateReleaseNotes'
   | 'planTaskActions'
   | 'analyzeTrends'
   | 'generateProjectOptions'

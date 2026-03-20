@@ -21,6 +21,7 @@ model Org {
   slackUserMappings SlackUserMapping[]
   customFields    CustomField[]
   taskTemplates   TaskTemplate[]
+  releases        Release[]
 
   @@map("orgs")
 }

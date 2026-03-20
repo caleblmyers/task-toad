@@ -23,6 +23,7 @@ model Project {
   savedFilters          SavedFilter[]
   taskTemplates         TaskTemplate[]
   transitions           WorkflowTransition[]
+  releases              Release[]
 
   @@index([orgId])
   @@map("projects")

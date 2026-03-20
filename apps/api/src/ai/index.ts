@@ -27,6 +27,7 @@ export {
   analyzeRepoDrift,
   planTaskActions,
   generateRepoProfile,
+  generateReleaseNotes,
 } from './aiService.js';
 
 export { logUsageToDB, checkBudget, type BudgetStatus } from './aiUsageTracker.js';
@@ -60,4 +61,5 @@ export type {
   ActionPlanResponse,
   ActionPlanItem,
   AIFeature,
+  ReleaseNotes,
 } from './aiTypes.js';

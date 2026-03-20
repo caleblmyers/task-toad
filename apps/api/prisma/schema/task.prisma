@@ -43,6 +43,7 @@ model Task {
   actionPlans       TaskActionPlan[]
   dependenciesAsSource TaskDependency[] @relation("TaskDependenciesSource")
   dependenciesAsTarget TaskDependency[] @relation("TaskDependenciesTarget")
+  releases             ReleaseTask[]
 
   @@index([projectId])
   @@index([parentTaskId])

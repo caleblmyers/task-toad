@@ -339,3 +339,37 @@ ${grouped}
 Write 2–4 sentences covering: what has been completed, what is in progress, and what still needs to be done. Be specific about the work, not the process.`,
   };
 }
+
+export function buildReleaseNotesPrompt(data: {
+  releaseName: string;
+  releaseVersion: string;
+  projectName: string;
+  projectDescription?: string;
+  tasks: Array<{ title: string; status: string; description: string; taskType: string }>;
+}): Prompt {
+  const taskLines = data.tasks
+    .map((t) => `- [${t.status}] (${t.taskType}) ${t.title}${t.description ? `: ${truncate(t.description, 150)}` : ''}`)
+    .join('\n');
+
+  return {
+    systemPrompt: SYSTEM_JSON,
+    userPrompt: `Generate release notes for this software release.
+
+Release: ${userInput('release', `${data.releaseName} v${data.releaseVersion}`)}
+Project: ${userInput('project', data.projectName)}
+${data.projectDescription ? `Project description: ${userInput('description', truncate(data.projectDescription, MAX_PROJECT_DESCRIPTION_CHARS))}\n` : ''}
+Tasks included in this release (${data.tasks.length}):
+${taskLines}
+
+Return JSON:
+{
+  "summary": string,           // 1-2 sentence overview of the release
+  "features": string[],        // new features added
+  "bugFixes": string[],        // bugs that were fixed
+  "improvements": string[],    // improvements and enhancements
+  "breakingChanges": string[]  // any breaking changes
+}
+
+Categorize each task into the most appropriate section. Write user-facing descriptions (not task titles). If a category has no items, return an empty array.`,
+  };
+}

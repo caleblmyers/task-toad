@@ -141,6 +141,27 @@ export interface TaskCommit {
   createdAt: string;
 }
 
+export interface Release {
+  releaseId: string;
+  projectId: string;
+  name: string;
+  description?: string | null;
+  version: string;
+  status: string;
+  releaseDate?: string | null;
+  releaseNotes?: string | null;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  tasks?: Task[];
+}
+
+export interface ReleaseTask {
+  releaseId: string;
+  taskId: string;
+  addedAt: string;
+}
+
 export interface Sprint {
   sprintId: string;
   projectId: string;

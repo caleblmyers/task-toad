@@ -20,6 +20,7 @@ import { slackTypeDefs, slackQueryFields, slackMutationFields } from './typedefs
 import { templateTypeDefs, templateQueryFields, templateMutationFields } from './typedefs/template.js';
 import { taskActionTypeDefs, taskActionQueryFields, taskActionMutationFields } from './typedefs/taskaction.js';
 import { workflowTypeDefs, workflowQueryFields, workflowMutationFields } from './typedefs/workflow.js';
+import { releaseTypeDefs, releaseQueryFields, releaseMutationFields } from './typedefs/release.js';
 
 const typeDefs = /* GraphQL */ `
   ${authTypeDefs}
@@ -40,6 +41,7 @@ const typeDefs = /* GraphQL */ `
   ${templateTypeDefs}
   ${taskActionTypeDefs}
   ${workflowTypeDefs}
+  ${releaseTypeDefs}
 
   type Query {
     ${authQueryFields}
@@ -59,6 +61,7 @@ const typeDefs = /* GraphQL */ `
     ${templateQueryFields}
     ${taskActionQueryFields}
     ${workflowQueryFields}
+    ${releaseQueryFields}
   }
 
   type Mutation {
@@ -78,6 +81,7 @@ const typeDefs = /* GraphQL */ `
     ${templateMutationFields}
     ${taskActionMutationFields}
     ${workflowMutationFields}
+    ${releaseMutationFields}
   }
 `;
 

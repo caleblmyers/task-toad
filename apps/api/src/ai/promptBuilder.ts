@@ -29,4 +29,5 @@ export {
   buildSprintTransitionPrompt,
   buildProjectChatPrompt,
   buildPlanTaskActionsPrompt,
+  buildReleaseNotesPrompt,
 } from './promptBuilders/index.js';

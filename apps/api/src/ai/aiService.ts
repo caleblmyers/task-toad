@@ -27,8 +27,9 @@ import {
   ProjectChatResponseSchema,
   DriftAnalysisSchema,
   TrendAnalysisSchema,
+  ReleaseNotesSchema,
 } from './aiTypes.js';
-import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse, DriftAnalysis, TrendAnalysis, ActionPlanResponse } from './aiTypes.js';
+import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse, DriftAnalysis, TrendAnalysis, ActionPlanResponse, ReleaseNotes } from './aiTypes.js';
 import { FEATURE_CONFIG } from './aiConfig.js';
 import { callAI, type PromptLogContext } from './aiClient.js';
 import { parseJSON } from './responseParser.js';
@@ -59,6 +60,7 @@ import {
   buildTrendAnalysisPrompt,
   buildPlanTaskActionsPrompt,
   buildRepoProfilePrompt,
+  buildReleaseNotesPrompt,
 } from './promptBuilder.js';
 
 // ---------------------------------------------------------------------------
@@ -566,4 +568,19 @@ export async function generateRepoProfile(
     promptLogContext,
   });
   return result.raw.trim();
+}
+
+export async function generateReleaseNotes(
+  apiKey: string,
+  data: {
+    releaseName: string;
+    releaseVersion: string;
+    projectName: string;
+    projectDescription?: string;
+    tasks: Array<{ title: string; status: string; description: string; taskType: string }>;
+  },
+  promptLogContext?: PromptLogContext
+): Promise<ReleaseNotes> {
+  const p = buildReleaseNotesPrompt(data);
+  return callAndParse(apiKey, 'generateReleaseNotes', p, ReleaseNotesSchema, promptLogContext);
 }

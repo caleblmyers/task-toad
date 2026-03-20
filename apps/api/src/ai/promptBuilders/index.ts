@@ -25,6 +25,7 @@ export {
   buildRepoDriftPrompt,
   buildTrendAnalysisPrompt,
   buildSummarizeProjectPrompt,
+  buildReleaseNotesPrompt,
 } from './analysis.js';
 
 export {

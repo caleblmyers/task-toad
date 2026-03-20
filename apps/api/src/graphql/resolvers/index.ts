@@ -13,6 +13,7 @@ import { slackQueries, slackMutations, slackFieldResolvers } from './slack.js';
 import { templateQueries, templateMutations } from './template.js';
 import { taskActionQueries, taskActionMutations, taskActionFieldResolvers } from './taskaction.js';
 import { workflowQueries, workflowMutations } from './workflow.js';
+import { releaseQueries, releaseMutations, releaseFieldResolvers } from './release.js';
 
 export const resolvers = {
   Query: {
@@ -31,6 +32,7 @@ export const resolvers = {
     ...templateQueries,
     ...taskActionQueries,
     ...workflowQueries,
+    ...releaseQueries,
   },
   Mutation: {
     ...authMutations,
@@ -48,6 +50,7 @@ export const resolvers = {
     ...templateMutations,
     ...taskActionMutations,
     ...workflowMutations,
+    ...releaseMutations,
   },
   // Field resolvers
   User: { ...authFieldResolvers.User },
@@ -66,4 +69,5 @@ export const resolvers = {
   },
   TaskActionPlan: { ...taskActionFieldResolvers.TaskActionPlan },
   TaskAction: { ...taskActionFieldResolvers.TaskAction },
+  Release: { ...releaseFieldResolvers.Release },
 };

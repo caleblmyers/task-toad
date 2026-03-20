@@ -1,0 +1,35 @@
+model Release {
+  releaseId    String   @id @default(uuid()) @map("release_id")
+  orgId        String   @map("org_id")
+  projectId    String   @map("project_id")
+  name         String
+  description  String?
+  version      String
+  status       String   @default("draft")
+  releaseDate  String?  @map("release_date")
+  releaseNotes String?  @map("release_notes")
+  createdBy    String   @map("created_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  org          Org      @relation(fields: [orgId], references: [orgId])
+  project      Project  @relation(fields: [projectId], references: [projectId])
+  creator      User     @relation("UserReleases", fields: [createdBy], references: [userId])
+  tasks        ReleaseTask[]
+
+  @@index([projectId])
+  @@index([orgId])
+  @@index([projectId, status])
+  @@map("releases")
+}
+
+model ReleaseTask {
+  releaseId String   @map("release_id")
+  taskId    String   @map("task_id")
+  addedAt   DateTime @default(now()) @map("added_at")
+  release   Release  @relation(fields: [releaseId], references: [releaseId], onDelete: Cascade)
+  task      Task     @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
+
+  @@id([releaseId, taskId])
+  @@index([taskId])
+  @@map("release_tasks")
+}
