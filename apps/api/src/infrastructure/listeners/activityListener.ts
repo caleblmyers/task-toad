@@ -21,10 +21,19 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
 
   bus.on('task.bulk_updated', (e) => {
     for (const taskId of e.taskIds) {
-      logActivity(prisma, {
-        orgId: e.orgId, projectId: e.projectId, taskId, userId: e.userId,
-        action: 'task.bulk_updated',
-      });
+      if (e.changes && Object.keys(e.changes).length > 0) {
+        for (const [field, change] of Object.entries(e.changes)) {
+          logActivity(prisma, {
+            orgId: e.orgId, projectId: e.projectId, taskId, userId: e.userId,
+            action: 'task.updated', field, oldValue: change.old, newValue: change.new,
+          });
+        }
+      } else {
+        logActivity(prisma, {
+          orgId: e.orgId, projectId: e.projectId, taskId, userId: e.userId,
+          action: 'task.bulk_updated',
+        });
+      }
     }
   });
 

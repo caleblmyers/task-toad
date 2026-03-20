@@ -272,10 +272,17 @@ export const taskMutations = {
     const updated = await context.prisma.task.findMany({
       where: { taskId: { in: args.taskIds } },
     });
+    // Build changes map for activity logging
+    const changes: Record<string, { old: string | null; new: string | null }> = {};
+    if (args.status !== undefined && args.status !== null) changes.status = { old: null, new: args.status };
+    if (args.assigneeId !== undefined) changes.assigneeId = { old: null, new: args.assigneeId };
+    if (args.sprintId !== undefined) changes.sprintId = { old: null, new: args.sprintId ?? null };
+    if (args.archived !== undefined && args.archived !== null) changes.archived = { old: null, new: String(args.archived) };
     getEventBus().emit('task.bulk_updated', {
       orgId: user.orgId, userId: user.userId, projectId: projectIds[0],
       timestamp: new Date().toISOString(),
       taskIds: args.taskIds,
+      changes: Object.keys(changes).length > 0 ? changes : undefined,
     });
     return updated;
   },
