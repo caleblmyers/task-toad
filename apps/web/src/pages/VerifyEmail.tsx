@@ -26,8 +26,8 @@ export default function VerifyEmail() {
   useEffect(() => {
     if (!token) return;
     setStatus('verifying');
-    gql<{ verifyEmail: boolean }>(
-      `mutation VerifyEmail($token: String!) { verifyEmail(token: $token) }`,
+    gql<{ verifyEmail: { success: boolean; token: string | null } }>(
+      `mutation VerifyEmail($token: String!) { verifyEmail(token: $token) { success token } }`,
       { token }
     )
       .then(async () => {

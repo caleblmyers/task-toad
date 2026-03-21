@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { gql } from '../api/client';
 import { ME_QUERY, LOGIN_MUTATION, SIGNUP_MUTATION, LOGOUT_MUTATION } from '../api/queries';
 import type { MeResponse } from '../types';
+import SessionExpiredModal from '../components/SessionExpiredModal';
 
 type AuthState = {
   user: MeResponse | null;
@@ -19,6 +20,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<MeResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  // Listen for session-expired events from the API client
+  useEffect(() => {
+    const handler = () => setSessionExpired(true);
+    window.addEventListener('session-expired', handler);
+    return () => window.removeEventListener('session-expired', handler);
+  }, []);
 
   const fetchMe = useCallback(async (): Promise<MeResponse | null> => {
     // Cookie is sent automatically — just call the me query
@@ -88,6 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={{ user, loading, error, login, signup, logout, refreshMe }}>
       {children}
+      <SessionExpiredModal isOpen={sessionExpired} />
     </AuthContext.Provider>
   );
 }

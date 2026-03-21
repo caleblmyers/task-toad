@@ -186,7 +186,32 @@ export const authMutations = {
       where: { userId: user.userId },
       data: { emailVerifiedAt: new Date(), verificationToken: null, verificationTokenExpiry: null },
     });
-    return true;
+    // Auto-login: generate tokens and set cookies (same pattern as login)
+    const accessToken = await new SignJWT({ sub: user.userId, email: user.email, tv: user.tokenVersion })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setExpirationTime('15m')
+      .sign(JWT_SECRET);
+    const refreshToken = await new SignJWT({ sub: user.userId, type: 'refresh', tv: user.tokenVersion })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setExpirationTime('7d')
+      .sign(JWT_SECRET);
+    if (context.res) {
+      context.res.cookie('tt-access', accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 15 * 60 * 1000,
+        path: '/',
+      });
+      context.res.cookie('tt-refresh', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        path: '/api/auth/refresh',
+      });
+    }
+    return { success: true, token: accessToken };
   },
 
   requestPasswordReset: async (_parent: unknown, args: { email: string }, context: Context) => {

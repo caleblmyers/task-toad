@@ -22,6 +22,11 @@ export const authTypeDefs = /* GraphQL */ `
   type AuthPayload {
     token: String!
   }
+
+  type VerifyEmailResult {
+    success: Boolean!
+    token: String
+  }
 `;
 
 export const authQueryFields = /* GraphQL */ `
@@ -42,7 +47,7 @@ export const authMutationFields = /* GraphQL */ `
   logout: Boolean!
 
   sendVerificationEmail: Boolean!
-  verifyEmail(token: String!): Boolean!
+  verifyEmail(token: String!): VerifyEmailResult!
 
   requestPasswordReset(email: String!): Boolean!
   resetPassword(token: String!, newPassword: String!): Boolean!

@@ -63,8 +63,8 @@ export async function gql<T>(
       if (json.errors?.length) throw new Error(json.errors[0].message);
       return json.data as T;
     }
-    // Refresh failed — redirect to login
-    window.location.href = '/login';
+    // Refresh failed — notify UI instead of hard redirect
+    window.dispatchEvent(new CustomEvent('session-expired'));
     throw new Error('Session expired');
   }
 
