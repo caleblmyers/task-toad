@@ -7,11 +7,14 @@ Multi-tenant SaaS project management MVP. Users belong to orgs; orgs own project
 ## Auth Flow
 
 1. User calls `signup(email, password)` or `login(email, password)` mutation
-2. API returns JWT signed with `JWT_SECRET` (HS256 via `jose`), payload includes `sub`, `email`, `tv` (tokenVersion)
-3. Web stores token in `localStorage` under key `task-toad-id-token`
-4. Subsequent requests include `Authorization: Bearer <token>`
+2. API sets two HttpOnly cookies: `access_token` (15-min JWT, HS256 via `jose`, payload: `sub`, `email`, `tv`) and `refresh_token` (7-day opaque token stored hashed in DB)
+3. Cookies are `HttpOnly`, `Secure` (in production), `SameSite=Strict`, `Path=/api`
+4. Subsequent requests send cookies automatically; `context.ts` reads `access_token` from cookie (falls back to `Authorization: Bearer` header for API clients)
 5. `context.ts` verifies token, loads user, checks `tokenVersion` matches JWT `tv` claim
-6. `logout` mutation increments `tokenVersion`, invalidating all existing sessions
+6. CSRF protection: `POST /graphql` requires `X-Requested-With` header (any value); requests without it get 403
+7. Token refresh: `POST /api/auth/refresh` validates refresh token cookie, issues new access + refresh tokens, rotates refresh token in DB
+8. `logout` mutation increments `tokenVersion`, clears cookies, invalidates refresh token
+9. Sensitive operations (e.g., `setOrgApiKey`) require `confirmPassword` argument for re-authentication
 
 ## Data Model (Prisma)
 

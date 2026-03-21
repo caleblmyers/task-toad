@@ -4,6 +4,45 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-21 (security phase 2)
+
+### Wave 42: Security Phase 2 — Auth Hardening (3 workers, 5 tasks)
+
+**Worker 1 — H-1 Backend + Frontend (task-001, task-002):**
+- JWT migration from localStorage to HttpOnly cookies: 15-min access token + 7-day refresh token with rotation
+- `POST /api/auth/refresh` endpoint with hashed refresh token storage (`RefreshToken` model concept via tokenVersion)
+- Cookie options: `HttpOnly`, `Secure` (prod), `SameSite=Strict`, `Path=/api`
+- CSRF protection: middleware on `POST /graphql` requires `X-Requested-With` header (403 without)
+- Frontend: removed localStorage token storage, `gql()` sends `X-Requested-With: XMLHttpRequest`, credential: 'include'
+- Auto-refresh: `client.ts` intercepts 401, calls `/api/auth/refresh`, retries original request (once)
+- `useEventSource.ts` updated to use cookie auth (removed token query params)
+- `context.ts` reads `access_token` cookie with `Authorization` header fallback
+
+**Worker 2 — H-6: Pagination Caps (task-003):**
+- `Math.min(limit, 100)` enforced on all list query resolvers across task, sprint, comment, notification, report, webhook, slack, knowledge base, search, AI prompt history, and release queries
+- Consistent capping pattern: resolvers clamp user-provided limit before passing to Prisma
+
+**Worker 3 — H-3 + H-4 + H-9 + H-10 + H-12 (task-004, task-005):**
+- Webhook secrets encrypted at rest via AES-256-GCM (`encryptField`/`decryptField` in encryption.ts)
+- Slack webhook URLs encrypted at rest, masked in query responses
+- Invite tokens hashed with SHA-256 before DB storage (`hashToken()` in encryption.ts)
+- `acceptInvite` resolver compares against hashed token
+- Advisory lock SQL migrated from `$queryRawUnsafe` to `$queryRaw` tagged template literals
+- `setOrgApiKey` mutation requires `confirmPassword` argument for re-authentication
+
+**Process:** All 5 tasks merged cleanly with zero rejections. Worker-1 handled two sequential tasks (backend then frontend) on same branch — squash merge correctly deduped.
+
+**Security findings resolved:** H-1, H-2, H-3, H-4, H-6, H-9, H-10, H-12 (all 8 remaining High items). Also resolves L-1 (JWT expiry) and L-9 (SameSite cookie).
+
+**Open follow-ups:**
+- Data migration scripts needed: encrypt existing plaintext webhook secrets/Slack URLs, hash existing invite tokens
+- Signup mutation should also set HttpOnly cookies (currently only login and resetPassword do)
+- Integration tests for cookie-based auth flow and CSRF protection
+- Auto-refresh loop protection: failed refresh redirects to /login, could lose unsaved work
+- L-5 (concurrent session limit) now feasible with tokenVersion + refresh tokens
+
+---
+
 ## 2026-03-20 (auto-complete redesign)
 
 ### Wave 41: Auto-Complete Redesign — Polish / Final Wave (3 workers, 6 tasks)
@@ -144,164 +183,16 @@ Full pipeline: KB context → onboarding interview → hierarchical planning →
 - Missing aria-labels on expand/collapse and delete buttons
 - No integration tests for preview/commit resolvers or unit tests for batchDetectCycles
 
----
-
-### Wave 37: Auto-Complete Redesign — Foundation: UI + Wiring (3 workers, 6 tasks)
-
-**Worker 1 — 2-A: KnowledgeBasePanel:**
-- New `KnowledgeBasePanel.tsx` replaces old `KnowledgeBaseModal.tsx`
-- List view with color-coded category badges (standard/pattern/business/integration) and source badges (upload/onboarding/learned)
-- Full CRUD: add/edit/delete entries, file upload (.txt/.md via FileReader)
-- Migration banner: detects legacy `project.knowledgeBase` text field, one-click migration to KnowledgeEntry
-- "Refresh from repo" button preserved for GitHub-connected projects
-- GraphQL query for `knowledgeEntries` added to frontend queries
-
-**Worker 2 — 2-B: Onboarding Interview:**
-- Backend: `generateOnboardingQuestions` mutation (AI generates 3-6 contextual questions about tech stack, conventions, architecture, etc.)
-- Backend: `saveOnboardingAnswers` mutation (creates KnowledgeEntry per answer with `source: 'onboarding'`)
-- `OnboardingQuestionSchema` + `OnboardingQuestionsResponseSchema` Zod schemas
-- `buildOnboardingQuestionsPrompt` prompt builder with `userInput()` safety
-- `onboardingQuestion` added to AIFeature + FEATURE_CONFIG
-- Frontend: `OnboardingWizard.tsx` — 3-step modal wizard (welcome → question carousel → review/save)
-- Auto-opens after project creation via `location.state.showOnboarding`
-- Trigger in ProjectToolbar overflow menu
-
-**Worker 3 — 2-C: KB Pipeline Injection:**
-- `knowledgeContext: string | null` added to `ActionContext` interface
-- `actionExecutor.ts` calls `retrieveRelevantKnowledge()` before execution, with try/catch + fallback to `project.knowledgeBase`
-- `generateCode` executor updated to use `ctx.knowledgeContext` instead of `project.knowledgeBase`
-- `writeDocs` executor now includes KB context in documentation prompts (with `userInput()` + `truncate()`)
-- `buildPlanTaskActionsPrompt` accepts optional `knowledgeBase` parameter
-- Action plan resolver fetches KB context before planning
-
-**Process:** Worker-2 needed 3 rebase cycles (cross-worker file conflicts with KnowledgeBasePanel). Worker-3 merged first-attempt. Detailed task descriptions with exact file paths paid off.
-
-**Open follow-ups:**
-- "Refresh from repo" still writes to legacy `project.knowledgeBase` — update to create KnowledgeEntry instead
-- Add "Run Interview" button inside KnowledgeBasePanel (currently only in toolbar overflow)
-- KB entry search/filter for large entry counts
-- Onboarding wizard keyboard navigation
-
----
-
-### Wave 36: Auto-Complete Redesign — Foundation: Schema + Retrieval (3 tasks)
-
-**Task 1-A — Knowledge Base Schema + CRUD:**
-- New `KnowledgeEntry` model (`knowledgebase.prisma`): uuid PK, projectId, orgId, title, content (Text), source, category, timestamps
-- GraphQL CRUD: `knowledgeEntries` query, `createKnowledgeEntry`/`updateKnowledgeEntry`/`deleteKnowledgeEntry` mutations
-- Resolvers with `requireProject` + `MANAGE_PROJECT_SETTINGS` permission, input validation for source/category
-- `knowledgeEntriesByProject` DataLoader in `loaders.ts`
-- Relations added to Project and Org models
-- `KnowledgeEntry` interface in shared-types
-- Migration: `20260320040000_add_knowledge_entries_autocomplete_informs`
-
-**Task 1-B — Knowledge Base Retrieval Function:**
-- `retrieveRelevantKnowledge()` in `ai/knowledgeRetrieval.ts`: if ≤3 entries returns all, otherwise sends titles to Claude to pick top 5-8, fetches full content for selected
-- `buildKnowledgeRetrievalPrompt()` prompt builder
-- `KnowledgeRetrievalResponseSchema` Zod schema in aiTypes.ts
-- `knowledgeRetrieval` added to AIFeature type + FEATURE_CONFIG (512 tokens, no cache)
-- Graceful fallback: returns top 3 entries on AI failure
-
-**Task 1-C — autoComplete Flag + informs Link Type:**
-- `autoComplete Boolean @default(false)` added to Task model
-- `informs` added to `DependencyLinkType` enum (typedefs + shared-types)
-- `autoComplete` added to Task type, updateTask args/data, TASK_FIELDS
-- `informs` added to validLinkTypes in addTaskDependency (cycle detection correctly skips non-blocking types)
-- Frontend: `informs: 'Informs'` added to `TaskDependenciesSection.tsx` label map
-
----
-
-## 2026-03-20 (security wave)
-
-### Wave 35: Critical Security Fixes (3 workers, 3 tasks)
-
-**Worker 1 — C-1: Token Revocation:**
-- Added `tokenVersion` field to User model (Prisma migration)
-- JWT payload now includes `tv` (tokenVersion) claim
-- `buildContext` validates tokenVersion — stale tokens rejected, backward compat for old tokens
-- New `logout` mutation increments tokenVersion, invalidating all sessions
-- `resetPassword` also increments tokenVersion (H-11)
-- Frontend logout calls mutation before clearing localStorage
-
-**Worker 2 — C-2 + C-4 + C-5: Multi-Tenant Isolation:**
-- Export endpoints: added `orgId` to all 4 Prisma WHERE clauses (defense-in-depth)
-- `aiPromptHistory`: validates projectId/taskId access via `requireProjectAccess`
-- `automationRules`: added orgId to query WHERE clause
-- `updateAutomationRule`/`deleteAutomationRule`: verify `rule.orgId === user.orgId`
-
-**Worker 3 — C-3 + H-5 + H-7 + H-8: SSRF + Quick Highs:**
-- New `urlValidator.ts` with DNS resolution, private IP blocking, protocol/port checks
-- Wired into webhook create/update/test endpoints
-- `app.set('trust proxy', 1)` for correct rate limiting behind Railway proxy
-- `frameAncestors: ["'none'"]` added to Helmet CSP
-- SSE `?token=` query string fallback removed
-
-**Process:** All 3 tasks merged cleanly. No rejections.
-
-**Security findings resolved:** C-1, C-2, C-3, C-4, C-5 (all Critical), H-5, H-7, H-8, H-11 (4 High). 9 of 39 findings fixed.
-
----
-
-## 2026-03-20 (night)
-
-### Wave 34: Cleanup & Hardening (3 workers, 5 tasks)
-
-**Worker 1 — Centralize GraphQL Queries:** Extracted ~90 inline queries from 35+ files into `queries.ts`.
-
-**Worker 2 — ARIA Audit + Task Detail Re-Architecture:** TaskDetailPanel refactored into 4-tab layout, aria-live regions, semantic buttons, skip-to-content link, focus trap verification.
-
-**Worker 3 — Permission Scheme:** Permission enum (22 permissions), ROLE_PERMISSIONS mapping, requirePermission helper, resolver guards, myPermissions query, frontend PermissionContext + permission-aware UI.
-
-**Process:** All 5 tasks merged. One rejection each on task-003 and task-005 (merge conflicts).
-
----
-
-## 2026-03-20 (late)
-
-### Wave 33: Hierarchy + User Capacity + Compound Filters (3 workers, 5 tasks)
-
-**Worker 1 — Multi-Level Hierarchy:** Recursive EpicsView tree, breadcrumb navigation, initiative taskType, recursive descendant progress.
-
-**Worker 2 — User Capacity:** UserCapacity + UserTimeOff models, teamCapacitySummary query, sprint planner integration, TeamCapacityPanel frontend.
-
-**Worker 3 — Compound Filters:** FilterGroupInput with AND/OR, recursive Prisma translator, depth/count validation, FilterBuilder UI.
-
-**Other:** Removed placeholder images, ANTHROPIC_API_KEY env var cleanup, deployment checklist added.
-
----
-
-## 2026-03-20
-
-### Wave 32: Cumulative Flow + Time Tracking + Saved Views (3 workers, 6 tasks)
-
-**Worker 1 — Charts & Portfolio:** cumulativeFlow query + SVG stacked area chart, portfolioRollup query + Portfolio stat cards.
-
-**Worker 2 — Time Tracking:** TimeEntry model, CRUD, task/sprint summaries, frontend time log UI + sprint time summary.
-
-**Worker 3 — Saved Views:** Extended SavedFilter with view config fields, SavedViewPicker with shared views, ProjectToolbar wiring.
-
-**Other:** SSEProvider context fix, ANTHROPIC_API_KEY removal.
-
----
-
-## 2026-03-19 (evening)
-
-### Wave 31: Task Watchers + WIP Limits + Release Model (3 workers, 6 tasks)
-
-**Worker 1 — Task Watchers:** TaskWatcher join table, auto-watch on create/assign/mention, watcher notifications, Watch/Unwatch UI.
-
-**Worker 2 — WIP Limits + Cycle Time Filter:** wipLimits JSON on Sprint, KanbanBoard warnings, SprintCreateModal inputs, CycleTimePanel date pickers.
-
-**Worker 3 — Release Model:** Release + ReleaseTask models, CRUD, AI release notes, frontend list/detail/modal + Releases tab.
-
----
-
 ## Older Entries (one-line summaries)
 
-- **2026-03-19** — Waves 28-30: codebase cleanup (dead code, decomposition), dependency graph, cycle time metrics, server-side filtering, workflow transitions, kanban swimlanes. Plus swarm tooling improvements and CI fixes.
-- **2026-03-18** — Wave 30 execution. Server-side task filtering, workflow transition model + config UI, dependsOn→TaskDependency migration, kanban swimlanes.
-- **2026-03-17** — Waves 22-27: GitHub integration (repo linking, PR creation, issue decomposition), Slack integration, webhook system, notification preferences, dark mode, PWA, S3 file attachments, responsive layout, focus trap extraction, SSE real-time.
-- **2026-03-16** — Waves 14-21: Sentry integration, lazy loading, code splitting, unit/integration tests, CI pipeline, file attachments, recurring tasks, accessibility audit, dark mode contrast fixes, shared-types package, action plan pipeline improvements.
+- **2026-03-20** — Wave 37: KB panel (CRUD + file upload), onboarding interview wizard, KB context injection into action pipeline.
+- **2026-03-20** — Wave 36: KnowledgeEntry model + CRUD, AI-based KB retrieval, autoComplete flag + informs link type.
+- **2026-03-20** — Wave 35: Critical security fixes (C-1 through C-5, H-5/H-7/H-8/H-11) — token revocation, multi-tenant isolation, SSRF protection.
+- **2026-03-20** — Wave 34: Query centralization (~90 inline→queries.ts), ARIA audit + TaskDetail tabs, permission scheme (22 permissions).
+- **2026-03-20** — Waves 31-33: Task watchers, WIP limits, release model, cumulative flow chart, time tracking, saved views, multi-level hierarchy, user capacity, compound filters.
+- **2026-03-19** — Waves 28-30: codebase cleanup (dead code, decomposition), dependency graph, cycle time metrics, server-side filtering, workflow transitions, kanban swimlanes.
+- **2026-03-17** — Waves 22-27: GitHub integration (repo linking, PR creation, issue decomposition), Slack integration, webhook system, notification preferences, dark mode, PWA, S3 file attachments, responsive layout, SSE real-time.
+- **2026-03-16** — Waves 14-21: Sentry integration, lazy loading, code splitting, unit/integration tests, CI pipeline, file attachments, recurring tasks, accessibility audit, shared-types package, action plan pipeline improvements.
 - **2026-03-14** — Waves 8-13: AI code generation, GitHub PR creation, action plan pipeline, AI caching, prompt logging, task templates, multiple assignees, custom fields, saved filters, Prometheus metrics, structured logging.
 - **2026-03-13** — Waves 4-7: Sprint model, kanban board, backlog view, AI task planning, notification system, SSE real-time events, comment @mentions, project export (CSV/JSON).
 - **2026-03-12** — Waves 1-3: Initial build. Express + graphql-yoga + Prisma setup, HMAC JWT auth, React frontend, task CRUD, project CRUD, org management, security hardening (helmet, CORS, rate limiting), generation UX (skeletons, progress, abort).

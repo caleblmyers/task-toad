@@ -138,8 +138,11 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 ### Auth
 
 - HMAC JWT (HS256) signed with `JWT_SECRET` env var (defaults to `'dev-secret'` in development)
-- Token stored in `localStorage` under key `task-toad-id-token` (exported as `TOKEN_KEY` from `apps/web/src/api/client.ts`)
-- Context built in `apps/api/src/graphql/context.ts` — verifies token, loads user from DB
+- Tokens delivered via HttpOnly cookies (`access_token` 15-min, `refresh_token` 7-day) — `Secure`/`SameSite=Strict` in production
+- CSRF protection: `POST /graphql` requires `X-Requested-With` header; `POST /api/auth/refresh` for token rotation
+- Fallback: `Authorization: Bearer <token>` header still supported for API clients
+- Context built in `apps/api/src/graphql/context.ts` — reads cookie or header, verifies token, loads user from DB
+- Sensitive ops (e.g., `setOrgApiKey`) require `confirmPassword` for re-authentication
 
 ### Key Files
 

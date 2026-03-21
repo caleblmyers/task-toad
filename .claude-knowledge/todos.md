@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-Production deployed at `https://tasktoad-api-production.up.railway.app`. 41 swarm waves completed. All P0 and most P1 competitive gap items done. All 5 Critical security findings fixed. Auto-Complete Pipeline Redesign complete (Waves 36-41).
+Production deployed at `https://tasktoad-api-production.up.railway.app`. 42 swarm waves completed. All P0 and most P1 competitive gap items done. All Critical and High security findings fixed. Auto-Complete Pipeline Redesign complete (Waves 36-41). Security Phase 2 complete (Wave 42).
 
 ---
 
@@ -121,17 +121,18 @@ Test against production: `https://tasktoad-api-production.up.railway.app`
 Full report: `.claude-knowledge/security-audit.md` (2026-03-20, 39 findings total)
 
 **Resolved (Wave 35):** C-1, C-2, C-3, C-4, C-5, H-5, H-7, H-8, H-11 — 9 of 39 findings fixed.
+**Resolved (Wave 42):** H-1, H-2, H-3, H-4, H-6, H-9, H-10, H-12 — all 8 High items fixed. Also resolves L-1 (JWT expiry) and L-9 (SameSite cookie).
 
-### Phase 2 — High (Auth Hardening)
+### Phase 2 — High (Auth Hardening) ✅ Complete
 
-- [ ] **H-1: JWT in localStorage → HttpOnly cookies** — Migrate to `HttpOnly`, `Secure`, `SameSite=Strict` cookies. Short-lived access tokens (15-30 min) + refresh token rotation.
-- [ ] **H-2: CSRF protection** — Require custom header (`X-Requested-With`) on all mutations.
-- [ ] **H-3: Encrypt webhook secrets at rest** — Use existing `encryption.ts` AES-256-GCM.
-- [ ] **H-4: Encrypt Slack webhook URLs at rest** — Use existing encryption utility.
-- [ ] **H-6: Pagination caps on list queries** — Enforce `Math.min(args.limit ?? 50, 100)` on all list resolvers.
-- [ ] **H-9: Hash invite tokens before storage** — Use same `hashToken()` pattern as password reset tokens.
-- [ ] **H-10: Fix $queryRawUnsafe in advisory locks** — Switch to `prisma.$queryRaw` tagged template literals.
-- [ ] **H-12: Re-authentication for sensitive operations** — Add `confirmPassword` argument to `setOrgApiKey`.
+- [x] **H-1: JWT in localStorage → HttpOnly cookies** — 15-min access + 7-day refresh tokens in HttpOnly/Secure/SameSite=Strict cookies.
+- [x] **H-2: CSRF protection** — X-Requested-With header required on POST /graphql.
+- [x] **H-3: Encrypt webhook secrets at rest** — AES-256-GCM via encryption.ts.
+- [x] **H-4: Encrypt Slack webhook URLs at rest** — AES-256-GCM, masked in responses.
+- [x] **H-6: Pagination caps on list queries** — Math.min(limit, 100) on all list resolvers.
+- [x] **H-9: Hash invite tokens before storage** — SHA-256 hashToken() before DB storage.
+- [x] **H-10: Fix $queryRawUnsafe in advisory locks** — $queryRaw tagged template literals.
+- [x] **H-12: Re-authentication for sensitive operations** — confirmPassword on setOrgApiKey.
 
 ### Phase 3 — Medium
 
@@ -148,7 +149,7 @@ Full report: `.claude-knowledge/security-audit.md` (2026-03-20, 39 findings tota
 
 ### Phase 4 — Low
 
-- [ ] **L-1:** Reduce JWT expiry + refresh tokens *(depends on H-1)*
+- [x] **L-1:** Reduce JWT expiry + refresh tokens *(resolved by H-1 in Wave 42)*
 - [ ] **L-2:** Email enumeration on signup
 - [ ] **L-3:** URL-encode GitHub file paths
 - [ ] **L-4:** Remove console.error in production ErrorBoundary → Sentry
@@ -156,7 +157,7 @@ Full report: `.claude-knowledge/security-audit.md` (2026-03-20, 39 findings tota
 - [ ] **L-6:** Unicode homograph in filenames
 - [ ] **L-7:** Bulk mutation item count limit (cap 100)
 - [ ] **L-8:** Reduce GraphQL depth limit (10 → 6-7)
-- [ ] **L-9:** SameSite cookie attribute *(depends on H-1)*
+- [x] **L-9:** SameSite cookie attribute *(resolved by H-1 in Wave 42)*
 - [ ] **L-10:** Cap Retry-After parsing (max 1 hour)
 - [ ] **L-11:** Null byte stripping on REST endpoints
 - [ ] **L-12:** Test database credentials in CI/CD
@@ -189,6 +190,15 @@ Pipeline complete (Waves 36-41). These are deferred polish items:
 - [ ] monitor_ci: make polling resilient to process restarts (job queue re-enqueue vs in-process sleep)
 - [ ] cancelActionPlan: verify it interrupts actively executing actions (currently only updates status)
 - [ ] Planning prompt: validate monitor_ci/fix_ci source action IDs in schema
+
+### Security Wave 42 Follow-ups
+- [ ] Data migration script for existing plaintext webhook secrets and Slack URLs → encrypt in place
+- [ ] Data migration script for existing plaintext invite tokens → hash in place (invalidates active invites)
+- [ ] L-5: Concurrent session limit — now feasible with tokenVersion + refresh tokens
+- [ ] Signup mutation should also set HttpOnly cookies (currently only login and resetPassword do)
+- [ ] Integration tests for cookie-based auth flow (login → cookie set → me query → refresh → logout)
+- [ ] Integration test for CSRF protection (POST /graphql without X-Requested-With returns 403)
+- [ ] Auto-refresh loop protection: current redirect to /login on failed refresh could lose unsaved work — consider showing modal instead
 
 ### Tooling
 - [ ] merge-worker.sh: fix script treating lint warnings (exit 0 with warnings) as failures
@@ -247,5 +257,6 @@ Pipeline complete (Waves 36-41). These are deferred polish items:
 | 34 | 2026-03-20 | Query centralization, ARIA/TaskDetail tabs, permission scheme |
 | 35 | 2026-03-20 | Critical security fixes (C-1 through C-5, H-5/H-7/H-8/H-11) |
 | 36-41 | 2026-03-20 | Auto-Complete Pipeline Redesign (KB, planning, execution, insights, dashboard) |
+| 42 | 2026-03-21 | Security Phase 2 — Auth Hardening (H-1/H-2/H-3/H-4/H-6/H-9/H-10/H-12) |
 
 Full wave details in `changelog.md`.
