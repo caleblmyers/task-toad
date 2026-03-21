@@ -107,13 +107,13 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 - **Org:** `org`, `orgUsers`
 - **Project:** `projects`, `project(projectId)`, `projectStats`, `portfolioOverview`, `savedFilters`
 - **Task:** `tasks(projectId)`, `epics`, `labels`, `customFields`
-- **Sprint:** `sprints(projectId)`, `sprintVelocity`, `sprintBurndown`, `sprintForecast`
+- **Sprint:** `sprints(projectId)`, `sprintVelocity`, `sprintBurndown`, `sprintForecast`, `workloadHeatmap`
 - **Comment:** `comments`, `activities`
 - **AI:** `aiUsage`, `aiPromptHistory`, `analyzeTrends`, `analyzeSprintTransition`, `projectChat`, `analyzeRepoDrift`, `previewHierarchicalPlan`, `taskInsights`, `projectActionPlans`
 - **Notification:** `notifications`, `unreadNotificationCount`, `notificationPreferences`
 - **GitHub:** `githubInstallations`, `githubInstallationRepos`, `githubProjectRepo`, `fetchRepoFileContent`
 - **KnowledgeBase:** `knowledgeEntries(projectId)`
-- **Report:** `reports`, `generateStandupReport`, `generateSprintReport`, `analyzeProjectHealth`, `extractTasksFromNotes`
+- **Report:** `reports`, `generateStandupReport`, `generateSprintReport`, `analyzeProjectHealth`, `extractTasksFromNotes`, `releaseBurndown`
 - **Search:** `globalSearch`
 - **ProjectRole:** `projectMembers`, `automationRules`
 - **SLA:** `slaPolicies`, `taskSLAStatus`

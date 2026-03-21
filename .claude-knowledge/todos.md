@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-Production deployed at `https://tasktoad-api-production.up.railway.app`. 46 swarm waves completed. Security audit: 38 of 39 findings resolved (97%). P1 features complete. P2 features started (Monte Carlo forecasting, scheduled automation). Zero lint warnings. Sentry web integration complete.
+Production deployed at `https://tasktoad-api-production.up.railway.app`. 47 swarm waves completed. Security audit: 38 of 39 findings resolved (97%). All P1 features complete. 5 P2 features shipped. Zero lint warnings. 299 tests.
 
 ---
 
@@ -129,14 +129,9 @@ Full report: `.claude-knowledge/security-audit.md`
 
 ### Code Quality
 - [ ] Add integration tests for `previewHierarchicalPlan` and `commitHierarchicalPlan` resolvers
-- [ ] Monte Carlo forecast unit tests — edge cases (zero work, empty velocities, single data point)
-- [ ] Sentry ErrorBoundary guard — captureException called unconditionally; add initialization check
-- [ ] Automation rule validation — `scheduled` trigger should enforce cronExpression on create
-- [ ] SLA: periodic breach-check job (currently only on status transitions)
 - [ ] SLA: paused time handling (task reopened, weekends/business hours)
 
 ### Features
-- [ ] **SprintForecastPanel loading state** — uses bare "Loading forecast..." text; replace with skeleton loader for consistency with the rest of the app
 - [ ] KB entry search/filter in KnowledgeBasePanel when entry count grows large
 - [ ] PlanDependencyEditor: subtask-level dependencies not supported
 - [ ] ExecutionDashboard: dependency visualization between plans
@@ -145,10 +140,8 @@ Full report: `.claude-knowledge/security-audit.md`
 - [ ] Shared-types expansion — add Report type to `@tasktoad/shared-types`
 - [ ] S3 multipart upload — current 10MB limit uses single PUT
 - [ ] useAsyncData adoption — migrate components with inline fetch-in-useEffect
-- [ ] Release burndown chart
 
 ### Reliability
-- [ ] **Cron scheduler graceful shutdown** — the cron scheduler uses `setInterval` but doesn't await in-flight rule executions on shutdown; consider tracking active promises to drain cleanly
 - [ ] monitor_ci: make polling resilient to process restarts
 - [ ] cancelActionPlan: verify it interrupts actively executing actions
 - [ ] Planning prompt: validate monitor_ci/fix_ci source action IDs in schema
@@ -172,16 +165,21 @@ Full report: `.claude-knowledge/security-audit.md`
 ## P2 Features (Backlog)
 
 - [x] Monte Carlo forecasting — velocity-based sprint completion probability *(Wave 46)*
-- [ ] Cycle time scatter / control chart — percentile overlay lines
+- [x] Cycle time scatter / control chart — percentile overlay lines *(Wave 47)*
 - [ ] Query language (TQL) — PEG parser → FilterGroup
 - [ ] Approval workflows — Approval model, workflow transition triggers
 - [x] Scheduled automation triggers — cron on AutomationRule *(Wave 46)*
-- [ ] Workload heatmap — assignee × week calendar grid
+- [x] Workload heatmap — assignee × week calendar grid *(Wave 47)*
 - [ ] Cross-project initiatives — Initiative model + portfolio tracking
-- [ ] Auto-tracking from status transitions — TimeEntry with autoTracked
+- [x] Auto-tracking from status transitions — TimeEntry with autoTracked *(Wave 47)*
 - [ ] Timesheet view — weekly grid
 - [ ] Workflow-based permissions — allowedRoles on WorkflowTransition
 - [ ] Field-level edit restrictions — FieldPermission per project
+- [ ] Release burndown — tests for releaseBurndown resolver (edge cases: no tasks, all done, release with no activities)
+- [ ] Cycle time scatter — control chart mode (rolling average line, standard deviation bands)
+- [ ] Workload heatmap — use display name instead of email prefix for userName
+- [ ] Auto-tracking — handle re-assignment during in_progress (currently uses single assigneeId, should respect multi-assignee)
+- [ ] Auto-tracking — tests for timeTrackingListener (mock event bus + prisma)
 
 ---
 
@@ -203,5 +201,6 @@ Full report: `.claude-knowledge/security-audit.md`
 | 44 | 2026-03-21 | Security cleanup, integration tests, auth follow-ups, frontend polish |
 | 45 | 2026-03-21 | P1 features (SLA, multi-action automation, compound conditions), L-5 session limit, backend+frontend polish |
 | 46 | 2026-03-21 | Code quality (SLA perms, prisma casts, Sentry web, 0 lint warnings), unit tests (3 suites), P2 (Monte Carlo forecasting, cron automation) |
+| 47 | 2026-03-21 | P2 features (cycle time scatter, release burndown, auto-tracking, workload heatmap), polish batch (cron shutdown, SLA checker, Monte Carlo tests, forecast skeleton, Sentry guard) |
 
 Full wave details in `changelog.md`.

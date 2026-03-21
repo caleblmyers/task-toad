@@ -4,6 +4,36 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-21 (P2 visualizations + productivity + polish)
+
+### Wave 47: P2 Charts, Auto-Tracking, Workload Heatmap & Polish (3 workers, 3 tasks)
+
+**Worker 1 — task-001: Cycle Time Scatter + Release Burndown:**
+- Cycle time scatter chart in CycleTimePanel: SVG with date×hours dots, P50/P85/P95 percentile overlay lines (green/amber/red dashed), hover tooltips with task title + duration. Table/Scatter view toggle.
+- Release burndown chart: `releaseBurndown(releaseId)` query (daily total/completed/remaining task series from activities), `ReleaseBurndownChart.tsx` SVG line chart wired into release detail view.
+
+**Worker 2 — task-002: Auto-Tracking + Workload Heatmap:**
+- Auto-tracking from status transitions: `autoTracked` boolean on TimeEntry (migration). New `timeTrackingListener.ts` — when status changes from `in_progress`, calculates duration from last `in_progress` activity and creates TimeEntry with `autoTracked: true`. "Auto" badge in time log UI. Entries are editable.
+- Workload heatmap: `workloadHeatmap(projectId, startDate, endDate)` query returns per-user per-week hours/task counts. `WorkloadHeatmap.tsx` — user×week grid with color-coded cells (green <30h, amber 30-40h, red >40h). Wired into Dashboard tab.
+
+**Worker 3 — task-003: Polish Batch (6 items):**
+- Cron scheduler graceful shutdown: `stop()` tracks active execution promises, awaits before resolving. SIGTERM handler in index.ts calls `scheduler.stop()`.
+- Automation cron validation: `createAutomationRule` rejects scheduled triggers without valid `cronExpression` (parsed with cron-parser).
+- SLA periodic breach checker: `slaBreachChecker.ts` runs every 5 minutes, flags overdue SLATimers where `now - startedAt > responseTimeHours`.
+- Monte Carlo edge case tests: `monteCarloForecast.test.ts` — zero work, empty velocities, single data point, large simulation count, negative days.
+- SprintForecastPanel skeleton loader: replaces bare "Loading forecast..." text.
+- Sentry ErrorBoundary guard: `captureException` guarded against uninitialized Sentry.
+
+**Process:** All 3 tasks merged cleanly with zero rejections. No issues logged.
+
+**Open follow-ups:**
+- Release burndown: tests for edge cases (no tasks, all done, no activities)
+- Cycle time scatter: control chart mode (rolling average, std dev bands)
+- Workload heatmap: use display name instead of email prefix
+- Auto-tracking: handle multi-assignee during in_progress, add listener tests
+
+---
+
 ## 2026-03-21 (code quality + tests + P2 features)
 
 ### Wave 46: Code Quality, Unit Tests & P2 Features (3 workers, 3 tasks)
@@ -167,47 +197,9 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-03-21 (security phase 2)
-
-### Wave 42: Security Phase 2 — Auth Hardening (3 workers, 5 tasks)
-
-**Worker 1 — H-1 Backend + Frontend (task-001, task-002):**
-- JWT migration from localStorage to HttpOnly cookies: 15-min access token + 7-day refresh token with rotation
-- `POST /api/auth/refresh` endpoint with hashed refresh token storage (`RefreshToken` model concept via tokenVersion)
-- Cookie options: `HttpOnly`, `Secure` (prod), `SameSite=Strict`, `Path=/api`
-- CSRF protection: middleware on `POST /graphql` requires `X-Requested-With` header (403 without)
-- Frontend: removed localStorage token storage, `gql()` sends `X-Requested-With: XMLHttpRequest`, credential: 'include'
-- Auto-refresh: `client.ts` intercepts 401, calls `/api/auth/refresh`, retries original request (once)
-- `useEventSource.ts` updated to use cookie auth (removed token query params)
-- `context.ts` reads `access_token` cookie with `Authorization` header fallback
-
-**Worker 2 — H-6: Pagination Caps (task-003):**
-- `Math.min(limit, 100)` enforced on all list query resolvers across task, sprint, comment, notification, report, webhook, slack, knowledge base, search, AI prompt history, and release queries
-- Consistent capping pattern: resolvers clamp user-provided limit before passing to Prisma
-
-**Worker 3 — H-3 + H-4 + H-9 + H-10 + H-12 (task-004, task-005):**
-- Webhook secrets encrypted at rest via AES-256-GCM (`encryptField`/`decryptField` in encryption.ts)
-- Slack webhook URLs encrypted at rest, masked in query responses
-- Invite tokens hashed with SHA-256 before DB storage (`hashToken()` in encryption.ts)
-- `acceptInvite` resolver compares against hashed token
-- Advisory lock SQL migrated from `$queryRawUnsafe` to `$queryRaw` tagged template literals
-- `setOrgApiKey` mutation requires `confirmPassword` argument for re-authentication
-
-**Process:** All 5 tasks merged cleanly with zero rejections. Worker-1 handled two sequential tasks (backend then frontend) on same branch — squash merge correctly deduped.
-
-**Security findings resolved:** H-1, H-2, H-3, H-4, H-6, H-9, H-10, H-12 (all 8 remaining High items). Also resolves L-1 (JWT expiry) and L-9 (SameSite cookie).
-
-**Open follow-ups:**
-- Data migration scripts needed: encrypt existing plaintext webhook secrets/Slack URLs, hash existing invite tokens
-- Signup mutation should also set HttpOnly cookies (currently only login and resetPassword do)
-- Integration tests for cookie-based auth flow and CSRF protection
-- Auto-refresh loop protection: failed refresh redirects to /login, could lose unsaved work
-- L-5 (concurrent session limit) now feasible with tokenVersion + refresh tokens
-
----
-
 ## Older Entries (one-line summaries)
 
+- **2026-03-21** — Wave 42: Security Phase 2 — JWT→HttpOnly cookies, CSRF protection, webhook/Slack encryption, invite token hashing, pagination caps, re-auth for sensitive ops. All 8 High items resolved.
 - **2026-03-20** — Wave 41: Execution dashboard (plan list, stat cards, SSE real-time), insight review UI + toast notifications, manual task specs + auto-start project.
 - **2026-03-20** — Wave 40: Status-driven events (action_plan_failed, task.blocked/unblocked), TaskInsight model + AI generation hook, CI monitor + auto-fix executors.
 
