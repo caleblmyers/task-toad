@@ -46,6 +46,32 @@ export const workflowMutations = {
     };
   },
 
+  updateWorkflowTransition: async (
+    _parent: unknown,
+    args: { transitionId: string; allowedRoles?: string[] | null },
+    context: Context
+  ) => {
+    const user = requireOrg(context);
+    const transition = await context.prisma.workflowTransition.findUnique({
+      where: { transitionId: args.transitionId },
+      include: { project: { select: { orgId: true } } },
+    });
+    if (!transition || transition.project.orgId !== user.orgId) {
+      throw new NotFoundError('Workflow transition not found');
+    }
+    const updated = await context.prisma.workflowTransition.update({
+      where: { transitionId: args.transitionId },
+      data: {
+        allowedRoles: args.allowedRoles ? JSON.stringify(args.allowedRoles) : null,
+      },
+    });
+    return {
+      ...updated,
+      allowedRoles: updated.allowedRoles ? JSON.parse(updated.allowedRoles) : null,
+      createdAt: updated.createdAt.toISOString(),
+    };
+  },
+
   deleteWorkflowTransition: async (
     _parent: unknown,
     args: { transitionId: string },

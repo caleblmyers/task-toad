@@ -85,6 +85,40 @@ export const taskMutations = {
       throw new ValidationError('Story points must be non-negative');
     }
     const warnings: string[] = [];
+
+    // ── Field-level permission checks ──
+    // Check FieldPermission restrictions for each field being updated
+    if (user.role !== 'org:admin') {
+      const fieldPermissions = await context.prisma.fieldPermission.findMany({
+        where: { projectId: task.projectId },
+      });
+      if (fieldPermissions.length > 0) {
+        const membership = await context.prisma.projectMember.findUnique({
+          where: { projectId_userId: { projectId: task.projectId, userId: user.userId } },
+        });
+        const userRole = membership?.role ?? 'viewer';
+        const restrictedFieldMap = new Map(
+          fieldPermissions.map((fp) => [fp.fieldName, JSON.parse(fp.allowedRoles) as string[]]),
+        );
+        // Map of task arg names to field permission names
+        const fieldArgMapping: Record<string, string> = {
+          storyPoints: 'storyPoints',
+          dueDate: 'dueDate',
+          assigneeId: 'assigneeId',
+        };
+        for (const [argName, fieldName] of Object.entries(fieldArgMapping)) {
+          if ((args as Record<string, unknown>)[argName] !== undefined) {
+            const allowedRoles = restrictedFieldMap.get(fieldName);
+            if (allowedRoles && !allowedRoles.includes(userRole)) {
+              warnings.push(`You do not have permission to edit "${fieldName}" — change ignored`);
+              // Remove the field from args so it won't be applied
+              delete (args as Record<string, unknown>)[argName];
+            }
+          }
+        }
+      }
+    }
+
     if (args.status !== undefined) {
       const statusParse = StringArraySchema.safeParse(JSON.parse(task.project.statuses));
       if (!statusParse.success) {
@@ -106,6 +140,26 @@ export const taskMutations = {
             throw new ValidationError(
               `Status transition from '${task.status}' to '${args.status}' is not allowed by the project workflow`
             );
+          }
+          // Check if user's role is allowed for this transition
+          if (matchingTransition.allowedRoles && user.role !== 'org:admin') {
+            try {
+              const transitionAllowedRoles = JSON.parse(matchingTransition.allowedRoles) as string[];
+              if (transitionAllowedRoles.length > 0) {
+                const membership = await context.prisma.projectMember.findUnique({
+                  where: { projectId_userId: { projectId: task.projectId, userId: user.userId } },
+                });
+                const userRole = membership?.role ?? 'viewer';
+                if (!transitionAllowedRoles.includes(userRole)) {
+                  throw new AuthorizationError(
+                    'Your role does not have permission for this status transition'
+                  );
+                }
+              }
+            } catch (e) {
+              if (e instanceof AuthorizationError) throw e;
+              // Invalid JSON in allowedRoles — ignore and proceed
+            }
           }
           // Check if transition requires approval
           if (matchingTransition.condition) {

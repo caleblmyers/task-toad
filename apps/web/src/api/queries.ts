@@ -533,8 +533,32 @@ export const CREATE_WORKFLOW_TRANSITION_MUTATION = `mutation CreateTransition($p
   }
 }`;
 
+export const UPDATE_WORKFLOW_TRANSITION_MUTATION = `mutation UpdateTransition($transitionId: ID!, $allowedRoles: [String!]) {
+  updateWorkflowTransition(transitionId: $transitionId, allowedRoles: $allowedRoles) {
+    transitionId projectId fromStatus toStatus allowedRoles createdAt
+  }
+}`;
+
 export const DELETE_WORKFLOW_TRANSITION_MUTATION = `mutation DeleteTransition($transitionId: ID!) {
   deleteWorkflowTransition(transitionId: $transitionId)
+}`;
+
+// ── Field Permissions ──
+
+export const FIELD_PERMISSIONS_QUERY = `query FieldPermissions($projectId: ID!) {
+  fieldPermissions(projectId: $projectId) {
+    id projectId fieldName allowedRoles createdAt
+  }
+}`;
+
+export const SET_FIELD_PERMISSION_MUTATION = `mutation SetFieldPermission($projectId: ID!, $fieldName: String!, $allowedRoles: [String!]!) {
+  setFieldPermission(projectId: $projectId, fieldName: $fieldName, allowedRoles: $allowedRoles) {
+    id projectId fieldName allowedRoles createdAt
+  }
+}`;
+
+export const DELETE_FIELD_PERMISSION_MUTATION = `mutation DeleteFieldPermission($projectId: ID!, $fieldName: String!) {
+  deleteFieldPermission(projectId: $projectId, fieldName: $fieldName)
 }`;
 
 // ── Slack ──

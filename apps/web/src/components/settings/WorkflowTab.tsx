@@ -5,9 +5,12 @@ import {
   WORKFLOW_PROJECT_STATUSES_QUERY,
   CREATE_WORKFLOW_TRANSITION_MUTATION,
   DELETE_WORKFLOW_TRANSITION_MUTATION,
+  UPDATE_WORKFLOW_TRANSITION_MUTATION,
 } from '../../api/queries';
 import { useFormState } from '../../hooks/useFormState';
 import Button from '../shared/Button';
+
+const ALL_ROLES = ['viewer', 'editor', 'admin'] as const;
 
 interface WorkflowTransition {
   transitionId: string;
@@ -83,6 +86,26 @@ export default function WorkflowTab({ projectId }: Props) {
     }
   }, []);
 
+  const handleRoleToggle = useCallback(async (transitionId: string, role: string, currentRoles: string[] | null) => {
+    const roles = currentRoles ?? [];
+    const newRoles = roles.includes(role)
+      ? roles.filter((r) => r !== role)
+      : [...roles, role];
+    // If all roles are unchecked, send null (allow all)
+    const allowedRoles = newRoles.length === 0 ? null : newRoles;
+    try {
+      const { updateWorkflowTransition } = await gql<{ updateWorkflowTransition: WorkflowTransition }>(
+        UPDATE_WORKFLOW_TRANSITION_MUTATION,
+        { transitionId, allowedRoles },
+      );
+      setTransitions((prev) =>
+        prev.map((t) => (t.transitionId === transitionId ? updateWorkflowTransition : t)),
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update transition roles');
+    }
+  }, []);
+
   const formatStatus = (s: string) => s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
   if (loading) {
@@ -116,6 +139,7 @@ export default function WorkflowTab({ projectId }: Props) {
                 <th className="text-left px-3 py-2 text-slate-600 dark:text-slate-300 font-medium">From</th>
                 <th className="text-left px-3 py-2 text-slate-600 dark:text-slate-300 font-medium"></th>
                 <th className="text-left px-3 py-2 text-slate-600 dark:text-slate-300 font-medium">To</th>
+                <th className="text-left px-3 py-2 text-slate-600 dark:text-slate-300 font-medium">Allowed Roles</th>
                 <th className="px-3 py-2 w-16"></th>
               </tr>
             </thead>
@@ -125,6 +149,24 @@ export default function WorkflowTab({ projectId }: Props) {
                   <td className="px-3 py-2 text-slate-700 dark:text-slate-300">{formatStatus(t.fromStatus)}</td>
                   <td className="px-3 py-2 text-slate-400">&rarr;</td>
                   <td className="px-3 py-2 text-slate-700 dark:text-slate-300">{formatStatus(t.toStatus)}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex gap-2">
+                      {ALL_ROLES.map((role) => (
+                        <label key={role} className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={t.allowedRoles?.includes(role) ?? false}
+                            onChange={() => handleRoleToggle(t.transitionId, role, t.allowedRoles)}
+                            className="rounded border-slate-300 dark:border-slate-500"
+                          />
+                          {role}
+                        </label>
+                      ))}
+                      {!t.allowedRoles || t.allowedRoles.length === 0 ? (
+                        <span className="text-xs text-slate-400 italic">all</span>
+                      ) : null}
+                    </div>
+                  </td>
                   <td className="px-3 py-2 text-right">
                     <button
                       onClick={() => handleDelete(t.transitionId)}

@@ -28,6 +28,7 @@ model Project {
   taskInsights          TaskInsight[]
   slaPolicies           SLAPolicy[]
   initiativeProjects    InitiativeProject[]
+  fieldPermissions      FieldPermission[]
 
   @@index([orgId])
   @@map("projects")

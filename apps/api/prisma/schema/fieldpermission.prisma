@@ -1,0 +1,13 @@
+model FieldPermission {
+  id           String   @id @default(uuid())
+  projectId    String   @map("project_id")
+  orgId        String   @map("org_id")
+  fieldName    String   @map("field_name") // e.g., "priority", "estimatedHours", "storyPoints"
+  allowedRoles String   @map("allowed_roles") // JSON array: ["admin", "editor"]
+  createdAt    DateTime @default(now()) @map("created_at")
+  project      Project  @relation(fields: [projectId], references: [projectId], onDelete: Cascade)
+
+  @@unique([projectId, fieldName])
+  @@index([projectId])
+  @@map("field_permissions")
+}

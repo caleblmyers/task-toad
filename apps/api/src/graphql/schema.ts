@@ -28,6 +28,7 @@ import { taskInsightTypeDefs, taskInsightQueryFields, taskInsightMutationFields 
 import { slaTypeDefs, slaQueryFields, slaMutationFields } from './typedefs/sla.js';
 import { approvalTypeDefs, approvalQueryFields, approvalMutationFields } from './typedefs/approval.js';
 import { initiativeTypeDefs, initiativeQueryFields, initiativeMutationFields } from './typedefs/initiative.js';
+import { fieldPermissionTypeDefs, fieldPermissionQueryFields, fieldPermissionMutationFields } from './typedefs/fieldpermission.js';
 
 const typeDefs = /* GraphQL */ `
   ${authTypeDefs}
@@ -57,6 +58,7 @@ const typeDefs = /* GraphQL */ `
   ${slaTypeDefs}
   ${approvalTypeDefs}
   ${initiativeTypeDefs}
+  ${fieldPermissionTypeDefs}
 
   type Query {
     ${authQueryFields}
@@ -84,6 +86,7 @@ const typeDefs = /* GraphQL */ `
     ${slaQueryFields}
     ${approvalQueryFields}
     ${initiativeQueryFields}
+    ${fieldPermissionQueryFields}
   }
 
   type Mutation {
@@ -111,6 +114,7 @@ const typeDefs = /* GraphQL */ `
     ${slaMutationFields}
     ${approvalMutationFields}
     ${initiativeMutationFields}
+    ${fieldPermissionMutationFields}
   }
 `;
 
