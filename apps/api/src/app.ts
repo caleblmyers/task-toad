@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
+import cookieParser from 'cookie-parser';
 import compression from 'compression';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -17,7 +18,7 @@ import { docsRouter } from './routes/docs.js';
 import { uploadRouter } from './routes/upload.js';
 import { logger } from './utils/logger.js';
 import { sseManager } from './utils/sseManager.js';
-import { jwtVerify } from 'jose';
+import { jwtVerify, SignJWT } from 'jose';
 import { JWT_SECRET } from './graphql/context.js';
 import crypto from 'crypto';
 import { register, httpRequestDuration, httpRequestsTotal, graphqlResolverDuration } from './utils/metrics.js';
@@ -71,6 +72,9 @@ app.use(
     credentials: true,
   })
 );
+
+// Parse cookies — must be before any handler that reads cookies
+app.use(cookieParser());
 
 // Health check — before rate limiting so monitoring isn't rate-limited
 app.get('/api/health', async (_req, res) => {
@@ -163,9 +167,47 @@ app.use(compression());
 // Body size limit
 app.use(express.json({ limit: '1mb' }));
 
-// SSE endpoint for real-time events — reads token from Authorization header
+// Refresh token endpoint — rotates access token using refresh cookie
+app.post('/api/auth/refresh', async (req, res) => {
+  const refreshToken = req.cookies?.['tt-refresh'];
+  if (!refreshToken) { res.status(401).json({ error: 'No refresh token' }); return; }
+  try {
+    const { payload } = await jwtVerify(refreshToken, JWT_SECRET);
+    if (payload.type !== 'refresh') { res.status(401).json({ error: 'Invalid token type' }); return; }
+    const userId = payload.sub as string;
+    const user = await sharedPrisma.user.findUnique({ where: { userId } });
+    if (!user) { res.status(401).json({ error: 'User not found' }); return; }
+    // Check tokenVersion matches to detect revoked tokens
+    const tv = payload.tv as number | undefined;
+    if (tv !== undefined && tv !== user.tokenVersion) {
+      res.clearCookie('tt-access', { path: '/' });
+      res.clearCookie('tt-refresh', { path: '/api/auth/refresh' });
+      res.status(401).json({ error: 'Token revoked' });
+      return;
+    }
+    // Issue new access token
+    const accessToken = await new SignJWT({ sub: user.userId, email: user.email, tv: user.tokenVersion })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setExpirationTime('15m')
+      .sign(JWT_SECRET);
+    res.cookie('tt-access', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 15 * 60 * 1000,
+      path: '/',
+    });
+    res.json({ ok: true });
+  } catch {
+    res.clearCookie('tt-access', { path: '/' });
+    res.clearCookie('tt-refresh', { path: '/api/auth/refresh' });
+    res.status(401).json({ error: 'Invalid refresh token' });
+  }
+});
+
+// SSE endpoint for real-time events — reads token from cookie with Authorization fallback
 app.get(['/events', '/api/events'], async (req, res) => {
-  const token = req.headers.authorization?.replace('Bearer ', '');
+  const token = req.cookies?.['tt-access'] || req.headers.authorization?.replace('Bearer ', '');
   if (!token) { res.status(401).json({ error: 'No token' }); return; }
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
@@ -334,6 +376,15 @@ const yoga = createYoga({
     },
   ],
 });
+// CSRF protection: POST /graphql must include X-Requested-With header
+app.use('/graphql', (req, res, next) => {
+  if (req.method === 'POST' && !req.headers['x-requested-with']) {
+    res.status(403).json({ errors: [{ message: 'Missing X-Requested-With header' }] });
+    return;
+  }
+  next();
+});
+
 // graphql-yoga's server adapter is compatible with Express but requires a type cast
 app.use('/graphql', yoga as unknown as express.RequestHandler);
 

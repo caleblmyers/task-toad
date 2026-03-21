@@ -26,29 +26,33 @@ export interface Context {
   org: { orgId: string; name: string; anthropicApiKeyEncrypted: string | null; promptLoggingEnabled: boolean; monthlyBudgetCentsUSD: number | null; budgetAlertThreshold: number; createdAt: Date } | null;
   prisma: PrismaClient;
   loaders: Loaders;
+  res?: import('express').Response;
 }
 
-export async function buildContext(ctx: { request: Request }): Promise<Context> {
+export async function buildContext(ctx: { request: Request; req?: import('http').IncomingMessage & { cookies?: Record<string, string> }; res?: import('express').Response }): Promise<Context> {
   const loaders = createLoaders(prisma);
+  const res = ctx.res;
+
+  // Read token from HttpOnly cookie first, fall back to Authorization header
+  const cookieToken = ctx.req?.cookies?.['tt-access'] as string | undefined;
   const auth = ctx.request.headers.get('authorization');
+  const token = cookieToken || (auth?.startsWith('Bearer ') ? auth.slice(7) : undefined);
 
-  if (!auth?.startsWith('Bearer ')) {
-    return { user: null, org: null, prisma, loaders };
+  if (!token) {
+    return { user: null, org: null, prisma, loaders, res };
   }
-
-  const token = auth.slice(7);
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
     const userId = payload.sub;
-    if (!userId) return { user: null, org: null, prisma, loaders };
+    if (!userId) return { user: null, org: null, prisma, loaders, res };
 
     const dbUser = await prisma.user.findUnique({ where: { userId } });
-    if (!dbUser) return { user: null, org: null, prisma, loaders };
+    if (!dbUser) return { user: null, org: null, prisma, loaders, res };
 
     // Reject tokens with stale tokenVersion (revoked via logout or password reset)
     const tv = payload.tv as number | undefined;
     if (tv !== undefined && tv !== dbUser.tokenVersion) {
-      return { user: null, org: null, prisma, loaders };
+      return { user: null, org: null, prisma, loaders, res };
     }
 
     let org: Context['org'] = null;
@@ -73,10 +77,11 @@ export async function buildContext(ctx: { request: Request }): Promise<Context> 
       org,
       prisma,
       loaders,
+      res,
     };
   } catch (err) {
     const code = err instanceof Error ? err.message : 'unknown';
     log.warn({ code }, 'JWT verification failed');
-    return { user: null, org: null, prisma, loaders };
+    return { user: null, org: null, prisma, loaders, res };
   }
 }

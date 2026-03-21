@@ -117,11 +117,35 @@ export const authMutations = {
     if (!user.emailVerifiedAt) {
       throw new AuthenticationError('Please verify your email before logging in. Check your inbox for a verification link.');
     }
-    const token = await new SignJWT({ sub: user.userId, email: user.email, tv: user.tokenVersion })
+    // Short-lived access token (15 min)
+    const accessToken = await new SignJWT({ sub: user.userId, email: user.email, tv: user.tokenVersion })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setExpirationTime('15m')
+      .sign(JWT_SECRET);
+    // Long-lived refresh token (7 days)
+    const refreshToken = await new SignJWT({ sub: user.userId, type: 'refresh', tv: user.tokenVersion })
       .setProtectedHeader({ alg: 'HS256' })
       .setExpirationTime('7d')
       .sign(JWT_SECRET);
-    return { token };
+    // Set HttpOnly cookies
+    if (context.res) {
+      context.res.cookie('tt-access', accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 15 * 60 * 1000,
+        path: '/',
+      });
+      context.res.cookie('tt-refresh', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        path: '/api/auth/refresh',
+      });
+    }
+    // Return token in body for backward compat during migration
+    return { token: accessToken };
   },
 
   sendVerificationEmail: async (_parent: unknown, _args: unknown, context: Context) => {
@@ -286,11 +310,34 @@ export const authMutations = {
     });
     const updatedUser = await context.prisma.user.findUnique({ where: { userId } });
     if (!updatedUser) throw new NotFoundError('User not found');
-    const token = await new SignJWT({ sub: updatedUser.userId, email: updatedUser.email, tv: updatedUser.tokenVersion })
+    // Short-lived access token (15 min)
+    const accessToken = await new SignJWT({ sub: updatedUser.userId, email: updatedUser.email, tv: updatedUser.tokenVersion })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setExpirationTime('15m')
+      .sign(JWT_SECRET);
+    // Long-lived refresh token (7 days)
+    const refreshToken = await new SignJWT({ sub: updatedUser.userId, type: 'refresh', tv: updatedUser.tokenVersion })
       .setProtectedHeader({ alg: 'HS256' })
       .setExpirationTime('7d')
       .sign(JWT_SECRET);
-    return { token };
+    // Set HttpOnly cookies
+    if (context.res) {
+      context.res.cookie('tt-access', accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 15 * 60 * 1000,
+        path: '/',
+      });
+      context.res.cookie('tt-refresh', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        path: '/api/auth/refresh',
+      });
+    }
+    return { token: accessToken };
   },
 
   revokeInvite: async (_parent: unknown, args: { inviteId: string }, context: Context) => {
@@ -312,6 +359,11 @@ export const authMutations = {
       where: { userId: user.userId },
       data: { tokenVersion: { increment: 1 } },
     });
+    // Clear auth cookies
+    if (context.res) {
+      context.res.clearCookie('tt-access', { path: '/' });
+      context.res.clearCookie('tt-refresh', { path: '/api/auth/refresh' });
+    }
     return true;
   },
 
