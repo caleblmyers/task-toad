@@ -44,6 +44,26 @@ export const timeEntryTypeDefs = /* GraphQL */ `
     totalHours: Float!
     taskCount: Int!
   }
+
+  type TimesheetEntry {
+    date: String!
+    minutes: Int!
+    timeEntryId: ID
+  }
+
+  type TimesheetRow {
+    taskId: ID!
+    taskTitle: String!
+    taskStatus: String!
+    entries: [TimesheetEntry!]!
+    weekTotal: Float!
+  }
+
+  type TimesheetData {
+    rows: [TimesheetRow!]!
+    dailyTotals: [Float!]!
+    weekTotal: Float!
+  }
 `;
 
 export const timeEntryQueryFields = /* GraphQL */ `
@@ -55,6 +75,8 @@ export const timeEntryQueryFields = /* GraphQL */ `
   sprintTimeSummary(sprintId: ID!): SprintTimeSummary!
   """Get workload heatmap data for a project within a date range."""
   workloadHeatmap(projectId: ID!, startDate: String!, endDate: String!): [WorkloadCell!]!
+  """Get weekly timesheet data for a project (Mon-Sun grid)."""
+  timesheetData(projectId: ID!, userId: ID, weekStart: String!): TimesheetData!
 `;
 
 export const timeEntryMutationFields = /* GraphQL */ `

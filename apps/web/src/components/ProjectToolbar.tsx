@@ -12,7 +12,7 @@ import FilterBar, { type SavedFilter } from './shared/FilterBar';
 import SavedViewPicker from './shared/SavedViewPicker';
 import Button from './shared/Button';
 import DropdownMenu, { type DropdownMenuItem } from './shared/DropdownMenu';
-import { IconList, IconBoard, IconTable, IconCalendar, IconClose, IconPlus, IconRefresh, IconSummary, IconFilter, IconKeyboard, IconGitHub, IconSparkle } from './shared/Icons';
+import { IconList, IconBoard, IconTable, IconCalendar, IconClose, IconPlus, IconRefresh, IconSummary, IconFilter, IconKeyboard, IconGitHub, IconSparkle, IconClock } from './shared/Icons';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 
 const activeClass = 'px-3 py-1 text-sm rounded-md bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-medium shadow-sm';
@@ -229,6 +229,9 @@ export default function ProjectToolbar({
           <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 3h10v10H3z" /><path d="M3 7h10M7 3v10" /></svg>
           <span className="hidden sm:inline">Releases</span>
         </span>
+      </button>
+      <button onClick={() => { d.switchView('timesheet'); setTimelineView(false); }} className={d.view === 'timesheet' && !timelineView ? activeClass : inactiveClass} disabled={d.isGenerating} title="Timesheet">
+        <span className="flex items-center gap-1"><IconClock className="w-3.5 h-3.5" /><span className="hidden sm:inline">Timesheet</span></span>
       </button>
       <button onClick={() => { d.switchView('dashboard'); setTimelineView(false); onLoadProjectActivities(); }} className={d.view === 'dashboard' && !timelineView ? activeClass : inactiveClass} disabled={d.isGenerating} title="Dashboard">
         <span className="flex items-center gap-1">📊<span className="hidden sm:inline">Dashboard</span></span>

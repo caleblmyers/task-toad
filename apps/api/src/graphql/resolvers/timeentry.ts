@@ -271,6 +271,129 @@ export const timeEntryQueries = {
       totalHours: Math.round(c.totalHours * 100) / 100,
     }));
   },
+
+  timesheetData: async (
+    _parent: unknown,
+    args: { projectId: string; userId?: string; weekStart: string },
+    context: Context,
+  ) => {
+    const user = requireOrg(context);
+
+    if (!ISO_DATE_RE.test(args.weekStart)) {
+      throw new ValidationError('weekStart must be in YYYY-MM-DD format');
+    }
+
+    const project = await context.prisma.project.findUnique({
+      where: { projectId: args.projectId },
+    });
+    if (!project || project.orgId !== user.orgId) {
+      throw new NotFoundError('Project not found');
+    }
+
+    // Calculate Mon-Sun dates for the week
+    const start = new Date(args.weekStart + 'T00:00:00Z');
+    // Adjust to Monday if not already
+    const dayOfWeek = start.getUTCDay();
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    start.setUTCDate(start.getUTCDate() + mondayOffset);
+
+    const dates: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setUTCDate(d.getUTCDate() + i);
+      dates.push(d.toISOString().slice(0, 10));
+    }
+
+    const weekStartDate = dates[0];
+    const weekEndDate = dates[6];
+
+    // Fetch time entries for the week within this project
+    const timeEntries = await context.prisma.timeEntry.findMany({
+      where: {
+        loggedDate: { gte: weekStartDate, lte: weekEndDate },
+        task: { projectId: args.projectId },
+        ...(args.userId ? { userId: args.userId } : {}),
+      },
+      include: {
+        task: { select: { taskId: true, title: true, status: true } },
+      },
+    });
+
+    // Group by task, then by date
+    const taskMap = new Map<
+      string,
+      {
+        taskId: string;
+        taskTitle: string;
+        taskStatus: string;
+        entriesByDate: Map<string, { minutes: number; timeEntryId: string | null }>;
+      }
+    >();
+
+    for (const entry of timeEntries) {
+      let row = taskMap.get(entry.taskId);
+      if (!row) {
+        row = {
+          taskId: entry.task.taskId,
+          taskTitle: entry.task.title,
+          taskStatus: entry.task.status,
+          entriesByDate: new Map(),
+        };
+        taskMap.set(entry.taskId, row);
+      }
+      const existing = row.entriesByDate.get(entry.loggedDate);
+      if (existing) {
+        existing.minutes += entry.durationMinutes;
+        // Keep the most recent entry ID for editing
+        existing.timeEntryId = entry.timeEntryId;
+      } else {
+        row.entriesByDate.set(entry.loggedDate, {
+          minutes: entry.durationMinutes,
+          timeEntryId: entry.timeEntryId,
+        });
+      }
+    }
+
+    // Sort: in_progress first, then todo, then done
+    const statusOrder: Record<string, number> = { in_progress: 0, todo: 1, done: 2 };
+    const sortedTasks = Array.from(taskMap.values()).sort((a, b) => {
+      const aOrder = statusOrder[a.taskStatus] ?? 1;
+      const bOrder = statusOrder[b.taskStatus] ?? 1;
+      return aOrder - bOrder;
+    });
+
+    const dailyTotals = dates.map(() => 0);
+    let weekTotal = 0;
+
+    const rows = sortedTasks.map((task) => {
+      let rowTotal = 0;
+      const entries = dates.map((date, i) => {
+        const entry = task.entriesByDate.get(date);
+        const minutes = entry?.minutes ?? 0;
+        rowTotal += minutes;
+        dailyTotals[i] += minutes;
+        return {
+          date,
+          minutes,
+          timeEntryId: entry?.timeEntryId ?? null,
+        };
+      });
+      weekTotal += rowTotal;
+      return {
+        taskId: task.taskId,
+        taskTitle: task.taskTitle,
+        taskStatus: task.taskStatus,
+        entries,
+        weekTotal: Math.round((rowTotal / 60) * 100) / 100,
+      };
+    });
+
+    return {
+      rows,
+      dailyTotals: dailyTotals.map((m) => Math.round((m / 60) * 100) / 100),
+      weekTotal: Math.round((weekTotal / 60) * 100) / 100,
+    };
+  },
 };
 
 // ── Mutations ──

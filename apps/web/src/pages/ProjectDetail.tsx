@@ -46,6 +46,7 @@ const ActionPlanDialog = lazyWithRetry(() => import('../components/ActionPlanDia
 const ReleaseListPanel = lazyWithRetry(() => import('../components/ReleaseListPanel'));
 const ReleaseModal = lazyWithRetry(() => import('../components/ReleaseModal'));
 const ExecutionDashboard = lazyWithRetry(() => import('../components/ExecutionDashboard'));
+const TimesheetView = lazyWithRetry(() => import('../components/TimesheetView'));
 import { TaskListSkeleton, KanbanBoardSkeleton } from '../components/Skeleton';
 import ToastContainer from '../components/shared/ToastContainer';
 import KeyboardShortcutHelp from '../components/shared/KeyboardShortcutHelp';
@@ -493,6 +494,13 @@ export default function ProjectDetail() {
               selectedTask={d.selectedTask}
               onSelectTask={d.selectTask}
             />
+          ) : d.view === 'timesheet' ? (
+            <Suspense fallback={lazyFallback}>
+              <TimesheetView
+                projectId={d.projectId!}
+                orgUsers={d.orgUsers}
+              />
+            </Suspense>
           ) : d.view === 'releases' ? (
             <Suspense fallback={lazyFallback}>
               <ReleaseListPanel

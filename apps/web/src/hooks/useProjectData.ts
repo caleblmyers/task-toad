@@ -35,7 +35,7 @@ export interface ProjectData {
   isGenerating: boolean;
   epics: Epic[];
   epicMap: Map<string, string>;
-  view: 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar' | 'epics' | 'releases';
+  view: 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar' | 'epics' | 'releases' | 'timesheet';
   editingTitle: boolean;
   editTitleValue: string;
   showAddForm: boolean;
@@ -78,7 +78,7 @@ export interface ProjectData {
   startEditTitle: (task: Task) => void;
   handleTitleSave: () => Promise<void>;
   handleUpdateTask: (taskId: string, updates: { description?: string; instructions?: string; acceptanceCriteria?: string; storyPoints?: number | null }) => Promise<void>;
-  switchView: (v: 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar' | 'epics' | 'releases') => void;
+  switchView: (v: 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar' | 'epics' | 'releases' | 'timesheet') => void;
   handleUpdateProject: (data: { name?: string; description?: string; prompt?: string; knowledgeBase?: string; statuses?: string }) => Promise<void>;
   handleRefreshRepoProfile: () => Promise<void>;
   handleAddDependency: (sourceTaskId: string, targetTaskId: string, linkType: string) => Promise<void>;

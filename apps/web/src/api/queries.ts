@@ -411,6 +411,18 @@ export const WORKLOAD_HEATMAP_QUERY = `query WorkloadHeatmap($projectId: ID!, $s
   }
 }`;
 
+export const TIMESHEET_DATA_QUERY = `query TimesheetData($projectId: ID!, $userId: ID, $weekStart: String!) {
+  timesheetData(projectId: $projectId, userId: $userId, weekStart: $weekStart) {
+    rows {
+      taskId taskTitle taskStatus
+      entries { date minutes timeEntryId }
+      weekTotal
+    }
+    dailyTotals
+    weekTotal
+  }
+}`;
+
 // ── Capacity Queries & Mutations ──
 
 export const TEAM_CAPACITY_QUERY = `query TeamCapacity($projectId: ID!) {
