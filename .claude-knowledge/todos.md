@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-Production deployed at `https://tasktoad-api-production.up.railway.app`. 45 swarm waves completed. Security audit: 38 of 39 findings resolved (97%). All Critical, High, Medium, and Low (except L-12) fixed. P1 features complete (SLA, automation, compound conditions).
+Production deployed at `https://tasktoad-api-production.up.railway.app`. 46 swarm waves completed. Security audit: 38 of 39 findings resolved (97%). P1 features complete. P2 features started (Monte Carlo forecasting, scheduled automation). Zero lint warnings. Sentry web integration complete.
 
 ---
 
@@ -129,17 +129,14 @@ Full report: `.claude-knowledge/security-audit.md`
 
 ### Code Quality
 - [ ] Add integration tests for `previewHierarchicalPlan` and `commitHierarchicalPlan` resolvers
-- [ ] Add unit tests for `batchDetectCycles` utility
-- [ ] Add tests for insight generation hook in actionExecutor
-- [ ] Unit tests for `urlValidator.ts`
-- [ ] Remove unnecessary `context.prisma as unknown as PrismaClient` casts in auth.ts (3 instances)
-- [ ] SLA: `createSLAPolicy` should use `requirePermission('MANAGE_PROJECT_SETTINGS')` instead of basic `requireProjectAccess`
-- [ ] SLA: add periodic breach-check job (breach flags only set on status transitions, not proactively)
+- [ ] Monte Carlo forecast unit tests — edge cases (zero work, empty velocities, single data point)
+- [ ] Sentry ErrorBoundary guard — captureException called unconditionally; add initialization check
+- [ ] Automation rule validation — `scheduled` trigger should enforce cronExpression on create
+- [ ] SLA: periodic breach-check job (currently only on status transitions)
 - [ ] SLA: paused time handling (task reopened, weekends/business hours)
-- [ ] Fix 44 pre-existing integration test failures on main (foreign key / DB state issues)
-- [ ] AppLayout `fetchCount` lint warning (last remaining react-hooks/set-state-in-effect)
 
 ### Features
+- [ ] **SprintForecastPanel loading state** — uses bare "Loading forecast..." text; replace with skeleton loader for consistency with the rest of the app
 - [ ] KB entry search/filter in KnowledgeBasePanel when entry count grows large
 - [ ] PlanDependencyEditor: subtask-level dependencies not supported
 - [ ] ExecutionDashboard: dependency visualization between plans
@@ -151,6 +148,7 @@ Full report: `.claude-knowledge/security-audit.md`
 - [ ] Release burndown chart
 
 ### Reliability
+- [ ] **Cron scheduler graceful shutdown** — the cron scheduler uses `setInterval` but doesn't await in-flight rule executions on shutdown; consider tracking active promises to drain cleanly
 - [ ] monitor_ci: make polling resilient to process restarts
 - [ ] cancelActionPlan: verify it interrupts actively executing actions
 - [ ] Planning prompt: validate monitor_ci/fix_ci source action IDs in schema
@@ -159,6 +157,7 @@ Full report: `.claude-knowledge/security-audit.md`
 - [ ] M-7: consider making email redaction default with admin opt-out
 
 ### Tooling
+- [ ] merge-worker.sh: fix squash merge deleting files from previously-merged tasks (use cherry-pick instead when worker has diverged)
 - [ ] merge-worker.sh: fix script treating lint warnings as failures
 - [ ] Swarm task descriptions: call out "update existing tests" when changing observable API behavior
 
@@ -172,11 +171,11 @@ Full report: `.claude-knowledge/security-audit.md`
 
 ## P2 Features (Backlog)
 
-- [ ] Monte Carlo forecasting — velocity-based sprint completion probability
+- [x] Monte Carlo forecasting — velocity-based sprint completion probability *(Wave 46)*
 - [ ] Cycle time scatter / control chart — percentile overlay lines
 - [ ] Query language (TQL) — PEG parser → FilterGroup
 - [ ] Approval workflows — Approval model, workflow transition triggers
-- [ ] Scheduled automation triggers — cron on AutomationRule
+- [x] Scheduled automation triggers — cron on AutomationRule *(Wave 46)*
 - [ ] Workload heatmap — assignee × week calendar grid
 - [ ] Cross-project initiatives — Initiative model + portfolio tracking
 - [ ] Auto-tracking from status transitions — TimeEntry with autoTracked
@@ -203,5 +202,6 @@ Full report: `.claude-knowledge/security-audit.md`
 | 43 | 2026-03-21 | Security Phase 3+4 — 9 Medium + 6 Low fixes |
 | 44 | 2026-03-21 | Security cleanup, integration tests, auth follow-ups, frontend polish |
 | 45 | 2026-03-21 | P1 features (SLA, multi-action automation, compound conditions), L-5 session limit, backend+frontend polish |
+| 46 | 2026-03-21 | Code quality (SLA perms, prisma casts, Sentry web, 0 lint warnings), unit tests (3 suites), P2 (Monte Carlo forecasting, cron automation) |
 
 Full wave details in `changelog.md`.

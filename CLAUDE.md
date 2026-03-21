@@ -107,7 +107,7 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 - **Org:** `org`, `orgUsers`
 - **Project:** `projects`, `project(projectId)`, `projectStats`, `portfolioOverview`, `savedFilters`
 - **Task:** `tasks(projectId)`, `epics`, `labels`, `customFields`
-- **Sprint:** `sprints(projectId)`, `sprintVelocity`, `sprintBurndown`
+- **Sprint:** `sprints(projectId)`, `sprintVelocity`, `sprintBurndown`, `sprintForecast`
 - **Comment:** `comments`, `activities`
 - **AI:** `aiUsage`, `aiPromptHistory`, `analyzeTrends`, `analyzeSprintTransition`, `projectChat`, `analyzeRepoDrift`, `previewHierarchicalPlan`, `taskInsights`, `projectActionPlans`
 - **Notification:** `notifications`, `unreadNotificationCount`, `notificationPreferences`

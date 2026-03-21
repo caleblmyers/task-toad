@@ -4,6 +4,37 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-21 (code quality + tests + P2 features)
+
+### Wave 46: Code Quality, Unit Tests & P2 Features (3 workers, 3 tasks)
+
+**Worker 1 — task-001: Code Quality Fixes:**
+- SLA permission fix: `createSLAPolicy`/`updateSLAPolicy`/`deleteSLAPolicy` now use `requirePermission('MANAGE_PROJECT_SETTINGS')` instead of basic `requireProjectAccess`.
+- Removed 3 `context.prisma as unknown as PrismaClient` double casts in auth.ts — changed `trackRefreshToken` parameter type to `Context['prisma']`.
+- AppLayout `fetchCount` lint warning fixed — 0 lint warnings remaining across entire codebase.
+- Sentry web frontend integration: `@sentry/react` installed, `Sentry.init()` in production with `VITE_SENTRY_DSN`, `ErrorBoundary.componentDidCatch` calls `Sentry.captureException`.
+
+**Worker 2 — task-002: Unit Test Suites (35 new tests):**
+- `cyclicDependencyCheck.test.ts` — 8+ tests: self-loops, direct/indirect cycles, non-blocking type exclusion, `is_blocked_by` normalization, multiple proposed edges.
+- `urlValidator.test.ts` — 8+ tests: valid URLs, localhost variants, private IP ranges, blocked ports, protocol restrictions. DNS resolution mocked.
+- `insightGeneration.test.ts` — 5+ tests: insight generation called after `generate_code`, skipped for other types, non-blocking on failure, TaskInsight record creation.
+
+**Worker 3 — task-003: P2 Features:**
+- Monte Carlo sprint forecasting: `sprintForecast` query, `monteCarloForecast.ts` pure simulation function, `SprintForecastPanel.tsx` with probability gauge + percentile table (50th/75th/90th/95th). Only renders with >= 3 closed sprints.
+- Scheduled automation triggers: `cronExpression`, `timezone`, `nextRunAt`, `lastRunAt` fields on AutomationRule. `cronScheduler.ts` checks due rules every 60s via `setInterval`. `cron-parser` package for expression parsing. AutomationTab schedule section with presets (hourly, daily, weekly) and timezone selector.
+
+**Process:** All 3 tasks merged. Reviewer encountered squash merge issue (deleting files from previously-merged tasks when worker branch diverged) — worked around with `git cherry-pick --no-commit`.
+
+**Open follow-ups:**
+- Monte Carlo forecast edge case tests
+- Sentry ErrorBoundary initialization guard
+- Automation rule validation: enforce cronExpression on scheduled triggers
+- Cron scheduler graceful shutdown (track active promises)
+- SprintForecastPanel loading state (use skeleton loader)
+- merge-worker.sh: fix squash merge to use cherry-pick when diverged
+
+---
+
 ## 2026-03-21 (P1 features + polish + L-5)
 
 ### Wave 45: P1 Features, Polish & Session Limit (5 workers, 6 tasks)
@@ -175,48 +206,9 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-03-20 (auto-complete redesign)
-
-### Wave 41: Auto-Complete Redesign — Polish / Final Wave (3 workers, 6 tasks)
-
-**Worker 1 — 6-A: Execution Dashboard:**
-- `projectActionPlans(projectId, status?)` backend query with task context and action details
-- `ExecutionDashboard.tsx` component: stat cards (executing/queued/completed/failed), plan list with status badges + progress bars, expandable action steps with status icons, status filter buttons
-- Wired into ProjectDetail as lazy-loaded panel via ProjectToolbar overflow menu
-- SSE real-time: added `task.action_plan_failed`, `task.blocked`, `task.unblocked` to SSE_EVENTS, auto-refetch on any execution event
-- Retry button on failed plans, Cancel button on executing plans (new `cancelActionPlan` mutation)
-
-**Worker 2 — 6-B: Insight Review UI + Notifications:**
-- `InsightPanel.tsx` component in taskdetail: fetches insights for task, type badges (discovery=blue, warning=amber, pattern=purple), dismiss/apply actions, source/target context, relative timestamps
-- Insights tab in TaskDetailPanel with count badge, auto-shown for autoComplete tasks
-- Apply insight appends content to task instructions
-- Toast notifications for execution events: plan_completed (success), plan_failed (error), blocked (info)
-- ToastContainer wired into ProjectDetail SSE listener
-
-**Worker 3 — 6-C: Manual Task Specs + Auto-Start:**
-- `ManualTaskSpecSchema` Zod schema: filesToChange (path/action/description), approach (steps), codeSnippets (file/language/code/explanation), testingNotes, dependencies
-- `buildManualTaskSpecPrompt` prompt builder with KB + repo file context
-- `generateManualTaskSpec` mutation — loads task+project, KB retrieval, repo files, returns rich spec
-- `ManualTaskSpecView.tsx` component: collapsible code snippets in dark blocks, file action badges, numbered approach steps, dependency pills
-- `autoStartProject` mutation — creates GitHub repo if needed, triggers orchestrator for all autoComplete=true tasks
-- Auto-Start button in ProjectToolbar (only shown with GitHub installation)
-
-**Process:** 1 rebase needed (task-006 conflicted with task-004 in TaskDetailPanel.tsx). Zero code quality rejections. Clean independent merges for all first-tasks.
-
-**Open follow-ups:**
-- ExecutionDashboard stats count from filtered list (should use separate all-plans query)
-- ManualTaskSpec: DataLoader type missing acceptanceCriteria (uses cast workaround)
-- No dependency visualization between plans in dashboard
-- cancelActionPlan doesn't interrupt actively executing actions
-- Insights tab count badge duplicates InsightPanel fetch
-
-**AUTO-COMPLETE PIPELINE REDESIGN COMPLETE (Waves 36-41)**
-Full pipeline: KB context → onboarding interview → hierarchical planning → parallel auto-execution → CI monitoring → failure handling → insights generation → execution dashboard → manual task specs → auto-start.
-
----
-
 ## Older Entries (one-line summaries)
 
+- **2026-03-20** — Wave 41: Execution dashboard (plan list, stat cards, SSE real-time), insight review UI + toast notifications, manual task specs + auto-start project.
 - **2026-03-20** — Wave 40: Status-driven events (action_plan_failed, task.blocked/unblocked), TaskInsight model + AI generation hook, CI monitor + auto-fix executors.
 
 - **2026-03-20** — Wave 39: Project orchestrator (parallel execution, advisory locks, concurrency limit), AI-enriched PR descriptions, plan dependency editor wiring, HierarchicalPlanDialog feedback.
