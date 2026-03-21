@@ -15,7 +15,7 @@ Production deployed at `https://tasktoad-api-production.up.railway.app`. 41 swar
 ## Priority Order
 
 1. Manual testing (12 test groups below) — find real bugs
-2. Security Phase 2 (High items) — auth hardening swarm wave
+2. Security Phase 2 (High items) — auth hardening
 3. Remaining ops (UptimeRobot, SMTP, Railway health check)
 4. Security Phase 3-4 (Medium + Low)
 5. Remaining P1 features (automation, scheduled reports, SLA)
@@ -25,31 +25,17 @@ Production deployed at `https://tasktoad-api-production.up.railway.app`. 41 swar
 
 ## Deployment & Ops
 
-### Infrastructure (Railway)
-- [x] Railway project (`blissful-insight`), Postgres addon, API service (`tasktoad-api`)
-- [x] Auto-deploys from GitHub on push to `main`
-- [x] Env vars: DATABASE_URL, JWT_SECRET, ENCRYPTION_MASTER_KEY, CORS_ORIGINS, NODE_ENV, GITHUB_APP_*, SENTRY_DSN
-- [x] Public domain: `tasktoad-api-production.up.railway.app`
-- [x] Frontend served as static files from API service
-- [x] Health check passing: `/api/health`
+### Infrastructure
 - [ ] Railway health check in service settings (auto-restart on failure)
 - [ ] Custom domain (optional — Railway domain works for beta)
 
 ### Observability
-- [x] Sentry DSN set on production
 - [ ] Verify Sentry receives errors in production
 - [ ] UptimeRobot monitor: HTTP check on `/api/health` every 5 min
 
 ### Email (optional for beta)
 - [ ] SMTP provider configured (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`)
 - [ ] Email verification and password reset flows tested
-
-### Security
-- [x] JWT_SECRET is strong random hex
-- [x] ENCRYPTION_MASTER_KEY is random 64-char hex
-- [x] CORS_ORIGINS set to production domain only
-- [x] No secrets committed to git
-- [x] All 5 Critical security findings fixed (Wave 35)
 
 ---
 
@@ -136,44 +122,76 @@ Full report: `.claude-knowledge/security-audit.md` (2026-03-20, 39 findings tota
 
 **Resolved (Wave 35):** C-1, C-2, C-3, C-4, C-5, H-5, H-7, H-8, H-11 — 9 of 39 findings fixed.
 
-### Phase 2 — High (Next Swarm Wave: Auth Hardening)
+### Phase 2 — High (Auth Hardening)
 
-- [ ] **H-1: JWT in localStorage → HttpOnly cookies** — Migrate to `HttpOnly`, `Secure`, `SameSite=Strict` cookies. Short-lived access tokens (15-30 min) + refresh token rotation. *(Full auth rework: client.ts, context.ts, auth.ts, App.tsx)*
-- [ ] **H-2: CSRF protection** — Require custom header (`X-Requested-With`) on all mutations, or implement CSRF tokens. *(File: app.ts)*
-- [ ] **H-3: Encrypt webhook secrets at rest** — Use existing `encryption.ts` AES-256-GCM. *(File: webhook.prisma, webhook resolvers)*
-- [ ] **H-4: Encrypt Slack webhook URLs at rest** — Use existing encryption utility. *(File: slack.prisma, slack resolvers)*
+- [ ] **H-1: JWT in localStorage → HttpOnly cookies** — Migrate to `HttpOnly`, `Secure`, `SameSite=Strict` cookies. Short-lived access tokens (15-30 min) + refresh token rotation.
+- [ ] **H-2: CSRF protection** — Require custom header (`X-Requested-With`) on all mutations.
+- [ ] **H-3: Encrypt webhook secrets at rest** — Use existing `encryption.ts` AES-256-GCM.
+- [ ] **H-4: Encrypt Slack webhook URLs at rest** — Use existing encryption utility.
 - [ ] **H-6: Pagination caps on list queries** — Enforce `Math.min(args.limit ?? 50, 100)` on all list resolvers.
-- [ ] **H-9: Hash invite tokens before storage** — Use same `hashToken()` pattern as password reset tokens. *(File: auth.ts)*
-- [ ] **H-10: Fix $queryRawUnsafe in advisory locks** — Switch to `prisma.$queryRaw` tagged template literals. *(File: advisoryLock.ts)*
-- [ ] **H-12: Re-authentication for sensitive operations** — Add `confirmPassword` argument to `setOrgApiKey`. *(File: org.ts resolvers)*
+- [ ] **H-9: Hash invite tokens before storage** — Use same `hashToken()` pattern as password reset tokens.
+- [ ] **H-10: Fix $queryRawUnsafe in advisory locks** — Switch to `prisma.$queryRaw` tagged template literals.
+- [ ] **H-12: Re-authentication for sensitive operations** — Add `confirmPassword` argument to `setOrgApiKey`.
 
 ### Phase 3 — Medium
 
-- [ ] **M-1: Disable GraphQL introspection in production** — Check `NODE_ENV` in schema.ts.
-- [ ] **M-2: Per-org AI rate limiting** — Add per-org throttle (e.g., 5 AI requests/hour).
-- [ ] **M-3: Content-Disposition header injection** — Use RFC 5987 encoding for export filenames.
-- [ ] **M-4: File upload magic byte validation** — Use `file-type` library. *(File: upload.ts)*
-- [ ] **M-5: Scope DataLoaders by orgId** — Add orgId to DataLoader keys. *(File: loaders.ts)*
-- [ ] **M-6: Audit logging for sensitive operations** — Log setOrgApiKey, createWebhookEndpoint, connectSlack, linkGitHubInstallation.
-- [ ] **M-7: Redact emails in exports by default** — Add `includeEmails` opt-in parameter.
-- [ ] **M-8: Saved filter mutations skip orgId validation** — Validate filter's project belongs to user's org.
-- [ ] **M-9: Input length validation on text fields** — Zod `.max()`: title (200), description (10000).
-- [ ] **M-10: Webhook replay prevention** — Add unique `X-Webhook-Delivery-ID` header.
+- [ ] **M-1:** Disable GraphQL introspection in production
+- [ ] **M-2:** Per-org AI rate limiting (5 AI requests/hour)
+- [ ] **M-3:** Content-Disposition header injection — RFC 5987 encoding
+- [ ] **M-4:** File upload magic byte validation (`file-type` library)
+- [ ] **M-5:** Scope DataLoaders by orgId
+- [ ] **M-6:** Audit logging for sensitive operations
+- [ ] **M-7:** Redact emails in exports by default
+- [ ] **M-8:** Saved filter mutations skip orgId validation
+- [ ] **M-9:** Input length validation on text fields (title 200, description 10000)
+- [ ] **M-10:** Webhook replay prevention (`X-Webhook-Delivery-ID`)
 
 ### Phase 4 — Low
 
-- [ ] **L-1: Reduce JWT expiry + refresh tokens** — Depends on H-1.
-- [ ] **L-2: Email enumeration on signup** — Accept trade-off or switch to silent success.
-- [ ] **L-3: URL-encode GitHub file paths** — `encodeURIComponent(path)`. *(File: githubFileService.ts)*
-- [ ] **L-4: Remove console.error in production ErrorBoundary** — Route to Sentry.
-- [ ] **L-5: Concurrent session limit** — Track sessions, view/terminate. *(Depends on C-1)*
-- [ ] **L-6: Unicode homograph in filenames** — NFKD normalize + ASCII whitelist.
-- [ ] **L-7: Bulk mutation item count limit** — Cap `bulkUpdateTasks` at 100.
-- [ ] **L-8: Reduce GraphQL depth limit** — Lower from 10 to 6-7.
-- [ ] **L-9: SameSite cookie attribute** — Depends on H-1.
-- [ ] **L-10: Cap Retry-After parsing** — Max 1 hour. *(File: githubAppClient.ts)*
-- [ ] **L-11: Null byte stripping on REST endpoints** — Apply globally via middleware.
-- [ ] **L-12: Test database credentials in CI/CD** — Require `TEST_DATABASE_URL`.
+- [ ] **L-1:** Reduce JWT expiry + refresh tokens *(depends on H-1)*
+- [ ] **L-2:** Email enumeration on signup
+- [ ] **L-3:** URL-encode GitHub file paths
+- [ ] **L-4:** Remove console.error in production ErrorBoundary → Sentry
+- [ ] **L-5:** Concurrent session limit *(depends on H-1)*
+- [ ] **L-6:** Unicode homograph in filenames
+- [ ] **L-7:** Bulk mutation item count limit (cap 100)
+- [ ] **L-8:** Reduce GraphQL depth limit (10 → 6-7)
+- [ ] **L-9:** SameSite cookie attribute *(depends on H-1)*
+- [ ] **L-10:** Cap Retry-After parsing (max 1 hour)
+- [ ] **L-11:** Null byte stripping on REST endpoints
+- [ ] **L-12:** Test database credentials in CI/CD
+
+---
+
+## Auto-Complete Pipeline Follow-ups
+
+Pipeline complete (Waves 36-41). These are deferred polish items:
+
+### Code Quality
+- [ ] Add integration tests for `previewHierarchicalPlan` and `commitHierarchicalPlan` resolvers
+- [ ] Add unit tests for `batchDetectCycles` utility
+- [ ] Add tests for insight generation hook in actionExecutor
+- [ ] ManualTaskSpec resolver uses `(task as Record<string, unknown>).acceptanceCriteria` cast — DataLoader type should include acceptanceCriteria
+- [ ] TaskInsight: add DataLoader for sourceTask/targetTask field resolvers (N+1)
+- [ ] Insights tab count badge duplicates InsightPanel fetch — deduplicate with shared state or count-only query
+- [ ] `setExpandedIds` in HierarchicalPlanEditor useEffect triggers `react-hooks/set-state-in-effect` warning
+
+### Features
+- [ ] "Refresh from repo" in KnowledgeBasePanel still writes to legacy `project.knowledgeBase` — update to create KnowledgeEntry
+- [ ] Onboarding wizard keyboard navigation (Enter to advance, Escape to close)
+- [ ] KB entry search/filter in KnowledgeBasePanel when entry count grows large
+- [ ] PlanDependencyEditor: subtask-level dependencies not supported (only epics and tasks)
+- [ ] ExecutionDashboard: dependency visualization between plans (blocked-by relationships)
+- [ ] ExecutionDashboard: stat cards count from filtered list — use separate all-plans query
+- [ ] Orchestrator: add metrics/observability (tasks auto-enqueued, failures, concurrency limit hits)
+
+### Reliability
+- [ ] monitor_ci: make polling resilient to process restarts (job queue re-enqueue vs in-process sleep)
+- [ ] cancelActionPlan: verify it interrupts actively executing actions (currently only updates status)
+- [ ] Planning prompt: validate monitor_ci/fix_ci source action IDs in schema
+
+### Tooling
+- [ ] merge-worker.sh: fix script treating lint warnings (exit 0 with warnings) as failures
 
 ---
 
@@ -191,102 +209,11 @@ Full report: `.claude-knowledge/security-audit.md` (2026-03-20, 39 findings tota
 
 ---
 
-## Auto-Complete Pipeline Redesign
-
-Full design spec: `~/brain/projects/task-toad/auto-complete-redesign.md`
-
-Transforms Auto-Complete from isolated per-task execution into project-level orchestration: knowledge base for context, hierarchical planning (epics→tasks→subtasks), cross-task dependency triggers, parallel auto-execution, and smart error recovery.
-
-### Wave 36 — Foundation: Schema + Retrieval (DONE)
-- [x] **1-A: Knowledge Base Schema + CRUD** — `KnowledgeEntry` model, GraphQL CRUD, DataLoader, migration
-- [x] **1-B: KB Retrieval Function** — `retrieveRelevantKnowledge()` (≤3 returns all, else AI picks top 5-8 by title)
-- [x] **1-C: autoComplete flag + informs link type** — `autoComplete` on Task, `informs` in DependencyLinkType
-
-### Wave 37 — Foundation: UI + Wiring (DONE)
-- [x] **2-A: KnowledgeBasePanel** — List entries with category badges, add/edit/delete, file upload (.txt/.md via FileReader). Migration button for old `project.knowledgeBase` text field → single entry. Replace existing KnowledgeBaseModal.
-- [x] **2-B: Onboarding Interview** — `generateOnboardingQuestions`/`saveOnboardingAnswers` mutations. AI generates contextual questions. Multi-step wizard component, local state only. Saves Q&A as KnowledgeEntry(source='onboarding'). Auto-opens after project creation.
-- [x] **2-C: Inject KB Retrieval into Pipelines** — `knowledgeContext` on ActionContext. `retrieveRelevantKnowledge()` in actionExecutor. Wired into generateCode + writeDocs executors + planning prompt builder. Fallback to `project.knowledgeBase`.
-
-**Wave 37 follow-ups** (out of scope, add to future waves):
-- [ ] "Refresh from repo" in KnowledgeBasePanel still writes to legacy `project.knowledgeBase` — update to create/update a KnowledgeEntry instead
-- [x] Add "Run Interview" button inside KnowledgeBasePanel *(Wave 39)*
-- [ ] Onboarding wizard keyboard navigation (Enter to advance, Escape to close)
-- [ ] KB entry search/filter in KnowledgeBasePanel when entry count grows large
-
-### Wave 38 — Intelligent Planning
-- [x] **3-A: Hierarchical Plan Generation** — New prompt builder outputting epic→task→subtask hierarchy with dependency inference (`blocks`/`informs` using title references). Zod schema. `generateHierarchicalPlan` AI service function. `previewHierarchicalPlan` query.
-- [x] **3-B: Plan Commit with Hierarchy + Dependencies** — `commitHierarchicalPlan` mutation. Creates epics→tasks→subtasks via parentTaskId, TaskDependency records, autoComplete toggles. Batch cycle detection. `prisma.$transaction`. *(Depends: 3-A)*
-- [x] **3-C: Plan Editor UI** — Tree view with editable nodes, autoComplete toggles, dependency badges, drag-to-reorder, commit button. `PlanDependencyEditor` for inline dependency picker. *(Depends: 3-A)*
-
-**Wave 38 follow-ups** (out of scope, add to future waves):
-- [x] HierarchicalPlanDialog: add feedback textarea in editing state for "Regenerate with feedback" flow *(Wave 39)*
-- [x] HierarchicalPlanEditor: fix exhaustive-deps lint warning *(Wave 39)*
-- [x] HierarchicalPlanEditor: add aria-labels to expand/collapse buttons and delete buttons *(Wave 39)*
-- [ ] Add integration tests for `previewHierarchicalPlan` and `commitHierarchicalPlan` resolvers
-- [ ] Add unit tests for `batchDetectCycles` utility
-- [x] PlanDependencyEditor wired into HierarchicalPlanEditor's node rendering *(Wave 39)*
-
-### Wave 39 — Execution Pipeline ✅
-- [x] **4-A: Project-Level Orchestrator** — Event-driven orchestrator with advisory lock + concurrency limit
-- [x] **4-B: Parallel Execution + Branch Naming** — Parallel enqueue, `task-{taskId}-{slug}` branches, conflict retry
-- [x] **4-C: PR Description Generation** — AI-enriched PRs with KB, acceptance criteria, parent task context
-- [x] **4-D: PlanDependencyEditor wiring** — Inline dependency editing in plan editor
-- [x] **4-E: Accessibility + KnowledgeBase UX** — Aria labels, Run Interview button
-
-**Wave 39 follow-ups** (out of scope, add to future waves):
-- [x] Fix flaky `export.integration.test.ts` — fixed by setting DATABASE_URL in vitest config to isolate test DB (Wave 40)
-- [ ] HierarchicalPlanEditor: the `setExpandedIds` in useEffect still triggers `react-hooks/set-state-in-effect` warning — consider using `useMemo` or `useState` initializer instead
-- [ ] Orchestrator: add metrics/observability for auto-complete task processing (count of tasks auto-enqueued, failures, concurrency limit hits)
-- [ ] PlanDependencyEditor: subtask-level dependencies not supported (editor only renders for epics and tasks)
-
-### Wave 40 — Orchestration (Done)
-- [x] **5-A: Status-Driven Events** — Orchestrator handles failure (block dependents, attach error context). New events: `task.blocked`, `task.unblocked`. Notification creation for blocked chains. SSE broadcasts.
-- [x] **5-B: TaskInsight Model + Generation** — `TaskInsight` model (sourceTaskId, targetTaskId, type: discovery/warning/pattern, content, autoApplied). Typedefs, resolvers, prompt builder. Call insight extraction after generate_code completes. Migration.
-- [x] **5-C: CI Monitor + Auto-Fix** — `monitor_ci` executor (polls GitHub Actions with in-process sleep, max 30 min). `fix_ci` executor (fetch CI annotations → AI fix → commit to same branch, one retry). ActionType union, registry, action plan prompt updated.
-
-**Wave 40 follow-ups** (out of scope, add to future waves):
-- [ ] monitor_ci: Make polling resilient to process restarts by using job queue re-enqueue with attempt tracking persisted in action config (currently uses in-process sleep loop)
-- [ ] TaskInsight: Add DataLoader for sourceTask/targetTask field resolvers to avoid N+1 queries
-- [ ] TaskInsight: Consider adding tests for the insight generation hook in actionExecutor
-- [ ] Planning prompt: Add validation that monitor_ci/fix_ci actions reference valid source action IDs in the action plan schema
-- [ ] merge-worker.sh: Fix script treating lint warnings (exit 0 with warnings) as failures, causing manual merge fallback
-
-### Wave 41 — Polish (DONE)
-- [x] **6-A: Execution Dashboard** — projectActionPlans query, ExecutionDashboard component with stat cards, status filters, progress bars, expandable action steps, SSE auto-refresh, retry/cancel controls. Wired into ProjectDetail as panel via ProjectToolbar.
-- [x] **6-B: Insight Review UI + Notifications** — InsightPanel with type badges, dismiss/apply actions. Insights tab in TaskDetailPanel with count badge. Toast notifications for plan_completed, plan_failed, blocked events. SSE events: action_plan_failed, blocked, unblocked.
-- [x] **6-C: Manual Task Specs + Auto-Start** — ManualTaskSpecSchema, buildManualTaskSpecPrompt, generateManualTaskSpec mutation with KB retrieval and repo file context. ManualTaskSpecView component with collapsible code snippets. autoStartProject mutation creates GitHub repo + triggers orchestrator. Auto-Start button in ProjectToolbar.
-
-**Wave 41 follow-ups** (out of scope, add to future waves):
-- [ ] ExecutionDashboard stat cards show counts from filtered list when a filter is active — consider separate `all` query for stats
-- [ ] ManualTaskSpec: `(task as Record<string, unknown>).acceptanceCriteria` cast in resolver — DataLoader type should include acceptanceCriteria for cleaner access
-- [ ] ExecutionDashboard: no dependency visualization yet (mentioned in original spec) — show blocked-by relationships between plans
-- [ ] cancelActionPlan mutation: verify it interrupts actively executing actions (currently only updates plan status to 'cancelled')
-- [ ] Insights tab count badge fetches insights separately from InsightPanel itself — could deduplicate with shared state or a count-only query
-
-### Verification Checklist (per wave)
-- `pnpm typecheck && pnpm lint && pnpm build && pnpm test` all pass
-- Schema waves: `npx prisma generate` succeeds, migration included
-- Wave 37: Create project, run onboarding, upload doc, verify entries in KB
-- Wave 38: Generate hierarchical plan, verify tree with dependencies in plan editor
-- Wave 39: Mark 2 independent tasks auto-eligible, complete blocker, verify both start in parallel
-- Wave 40: Fail a task → dependents blocked + notification. Complete task → insights generated.
-- Wave 41: Execution dashboard shows real-time status via SSE
-
-### Key Design Decisions
-- **KB retrieval:** Claude picks from entry titles (no pgvector yet). Plan for pgvector migration later at client scale.
-- **Execution model:** Parallel for independent auto-eligible tasks, project-level concurrency limit of 3.
-- **Onboarding interview:** Frontend state only, restart on tab close, save to KB on completion.
-- **CI polling:** monitor_ci executor re-enqueues with setTimeout delay (cap 30 min).
-- **Deprecation path:** `project.knowledgeBase` text field kept as fallback; retrieval checks entries first.
-- **Branch naming:** `task-{taskId}-{slug}` prevents conflicts during parallel execution.
-
----
-
 ## Remaining P1 Features (Deferred)
 
-- [ ] **SLA tracking** — SLAPolicy + SLATimer models. Evaluate on status transitions. *(Niche for MVP — revisit when customers ask)*
+- [ ] **SLA tracking** — SLAPolicy + SLATimer models. Evaluate on status transitions.
 - [ ] **Multi-action automation rules** — Change action field to array. New action types: send_webhook, add_label, add_comment, set_due_date.
-- [ ] **Compound automation conditions** — Reuse FilterGroup from search. *(Depends on compound filters — done in Wave 33)*
+- [ ] **Compound automation conditions** — Reuse FilterGroup from search.
 - [ ] **Scheduled report delivery** — ReportSchedule model, cron, email/Slack. *(Depends on SMTP setup)*
 
 ---
@@ -319,11 +246,6 @@ Transforms Auto-Complete from isolated per-task execution into project-level orc
 | 33 | 2026-03-20 | Multi-level hierarchy, user capacity, compound filters |
 | 34 | 2026-03-20 | Query centralization, ARIA/TaskDetail tabs, permission scheme |
 | 35 | 2026-03-20 | Critical security fixes (C-1 through C-5, H-5/H-7/H-8/H-11) |
-| 36 | 2026-03-20 | Auto-Complete Redesign — Foundation: KB schema, retrieval, autoComplete flag |
-| 37 | 2026-03-20 | Auto-Complete Redesign — Foundation: KB panel, onboarding interview, pipeline wiring |
-| 38 | 2026-03-20 | Auto-Complete Redesign — Intelligent Planning: hierarchical plans, batch cycle detection, plan editor |
-| 39 | 2026-03-20 | Auto-Complete Redesign — Execution Pipeline: orchestrator, parallel execution, PR descriptions, follow-ups |
-| 40 | 2026-03-20 | Auto-Complete Redesign — Orchestration: failure events, task insights, CI monitor/fix, test fix |
-| 41 | 2026-03-20 | Auto-Complete Redesign — Polish: execution dashboard, insight panel, manual specs, auto-start |
+| 36-41 | 2026-03-20 | Auto-Complete Pipeline Redesign (KB, planning, execution, insights, dashboard) |
 
 Full wave details in `changelog.md`.
