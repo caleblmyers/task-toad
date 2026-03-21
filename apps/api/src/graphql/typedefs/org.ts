@@ -14,6 +14,7 @@ export const orgTypeDefs = /* GraphQL */ `
   type OrgUser {
     userId: ID!
     email:  String!
+    displayName: String
     role:   String
   }
 `;

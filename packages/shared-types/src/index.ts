@@ -32,6 +32,7 @@ export interface Org {
 export interface OrgUser {
   userId: string;
   email: string;
+  displayName: string | null;
   role: string | null;
 }
 

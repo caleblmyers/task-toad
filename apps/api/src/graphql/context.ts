@@ -22,7 +22,7 @@ function getJwtSecret(): Uint8Array {
 export const JWT_SECRET = getJwtSecret();
 
 export interface Context {
-  user: { userId: string; email: string; orgId: string | null; role: string | null; emailVerifiedAt: Date | null } | null;
+  user: { userId: string; email: string; displayName?: string | null; orgId: string | null; role: string | null; emailVerifiedAt: Date | null } | null;
   org: { orgId: string; name: string; anthropicApiKeyEncrypted: string | null; promptLoggingEnabled: boolean; monthlyBudgetCentsUSD: number | null; budgetAlertThreshold: number; createdAt: Date } | null;
   prisma: PrismaClient;
   loaders: Loaders;
@@ -82,6 +82,7 @@ export async function buildContext(ctx: { request: Request; req?: import('http')
       user: {
         userId: dbUser.userId,
         email: dbUser.email,
+        displayName: dbUser.displayName,
         orgId: dbUser.orgId,
         role: dbUser.role,
         emailVerifiedAt: dbUser.emailVerifiedAt,

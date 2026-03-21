@@ -1,9 +1,43 @@
 import type { Context } from '../context.js';
-import { NotFoundError, ValidationError } from '../errors.js';
+import { AuthorizationError, NotFoundError, ValidationError } from '../errors.js';
 import { requireOrg, requireProjectAccess } from './auth.js';
 import { requirePermission, Permission } from '../../auth/permissions.js';
 import { getEventBus } from '../../infrastructure/eventbus/index.js';
 import { sseManager } from '../../utils/sseManager.js';
+
+/**
+ * Check if the current user is authorized to approve/reject a transition.
+ * If the transition's condition specifies approverUserIds, only those users can act.
+ * Otherwise, fall back to MANAGE_PROJECT_SETTINGS permission.
+ */
+async function requireApproverAccess(
+  context: Context,
+  userId: string,
+  projectId: string,
+  taskFromStatus: string,
+  taskToStatus: string,
+): Promise<void> {
+  // Look up the workflow transition to check for designated approvers
+  const transition = await context.prisma.workflowTransition.findFirst({
+    where: { projectId, fromStatus: taskFromStatus, toStatus: taskToStatus },
+  });
+  if (transition?.condition) {
+    try {
+      const condition = JSON.parse(transition.condition) as Record<string, unknown>;
+      if (condition.approverUserIds && Array.isArray(condition.approverUserIds) && condition.approverUserIds.length > 0) {
+        if (!(condition.approverUserIds as string[]).includes(userId)) {
+          throw new AuthorizationError('You are not designated as an approver for this transition');
+        }
+        return; // Designated approver — authorized
+      }
+    } catch (e) {
+      if (e instanceof AuthorizationError) throw e;
+      // Invalid JSON — fall through to permission check
+    }
+  }
+  // No designated approvers — fall back to permission check
+  await requirePermission(context, projectId, Permission.MANAGE_PROJECT_SETTINGS);
+}
 
 export const approvalQueries = {
   pendingApprovals: async (
@@ -75,7 +109,7 @@ export const approvalMutations = {
     if (approval.status !== 'pending') {
       throw new ValidationError('Approval has already been decided');
     }
-    await requirePermission(context, approval.task.projectId, Permission.MANAGE_PROJECT_SETTINGS);
+    await requireApproverAccess(context, user.userId, approval.task.projectId, approval.fromStatus, approval.toStatus);
 
     // Approve and execute the status change
     const updated = await context.prisma.$transaction(async (tx) => {
@@ -127,6 +161,8 @@ export const approvalMutations = {
       taskTitle: approval.task.title,
       decision: 'approved',
       decidedBy: user.email,
+      approverEmail: user.email,
+      approverDisplayName: user.displayName ?? null,
       fromStatus: approval.fromStatus,
       toStatus: approval.toStatus,
     });
@@ -154,7 +190,7 @@ export const approvalMutations = {
     if (approval.status !== 'pending') {
       throw new ValidationError('Approval has already been decided');
     }
-    await requirePermission(context, approval.task.projectId, Permission.MANAGE_PROJECT_SETTINGS);
+    await requireApproverAccess(context, user.userId, approval.task.projectId, approval.fromStatus, approval.toStatus);
 
     const updated = await context.prisma.approval.update({
       where: { approvalId: args.approvalId },
@@ -177,6 +213,8 @@ export const approvalMutations = {
       taskTitle: approval.task.title,
       decision: 'rejected',
       decidedBy: user.email,
+      approverEmail: user.email,
+      approverDisplayName: user.displayName ?? null,
       fromStatus: approval.fromStatus,
       toStatus: approval.toStatus,
     });

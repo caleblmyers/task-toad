@@ -55,7 +55,7 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
         {tab === 'automation' && <AutomationTab projectId={projectId} orgUsers={orgUsers} />}
         {tab === 'fields' && <CustomFieldsTab projectId={projectId} />}
         {tab === 'templates' && <TemplatesTab projectId={projectId} />}
-        {tab === 'workflow' && <WorkflowTab projectId={projectId} />}
+        {tab === 'workflow' && <WorkflowTab projectId={projectId} orgUsers={orgUsers} />}
         {tab === 'permissions' && <FieldPermissionsTab projectId={projectId} />}
         {tab === 'sla' && <SLATab projectId={projectId} />}
       </div>

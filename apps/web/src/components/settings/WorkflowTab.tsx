@@ -9,8 +9,14 @@ import {
 } from '../../api/queries';
 import { useFormState } from '../../hooks/useFormState';
 import Button from '../shared/Button';
+import type { OrgUser } from '../../types';
 
 const ALL_ROLES = ['viewer', 'editor', 'admin'] as const;
+
+interface TransitionCondition {
+  requiresApproval?: boolean;
+  approverUserIds?: string[];
+}
 
 interface WorkflowTransition {
   transitionId: string;
@@ -18,14 +24,25 @@ interface WorkflowTransition {
   fromStatus: string;
   toStatus: string;
   allowedRoles: string[] | null;
+  condition: string | null;
   createdAt: string;
+}
+
+function parseCondition(condition: string | null): TransitionCondition {
+  if (!condition) return {};
+  try {
+    return JSON.parse(condition) as TransitionCondition;
+  } catch {
+    return {};
+  }
 }
 
 interface Props {
   projectId: string;
+  orgUsers: OrgUser[];
 }
 
-export default function WorkflowTab({ projectId }: Props) {
+export default function WorkflowTab({ projectId, orgUsers }: Props) {
   const [transitions, setTransitions] = useState<WorkflowTransition[]>([]);
   const [statuses, setStatuses] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,6 +123,37 @@ export default function WorkflowTab({ projectId }: Props) {
     }
   }, []);
 
+  const handleConditionUpdate = useCallback(async (transitionId: string, currentCondition: string | null, update: Partial<TransitionCondition>) => {
+    const existing = parseCondition(currentCondition);
+    const merged = { ...existing, ...update };
+    // Clean up: if requiresApproval is false, remove approverUserIds
+    if (!merged.requiresApproval) {
+      delete merged.approverUserIds;
+      delete merged.requiresApproval;
+    }
+    const conditionStr = Object.keys(merged).length > 0 ? JSON.stringify(merged) : null;
+    try {
+      const { updateWorkflowTransition } = await gql<{ updateWorkflowTransition: WorkflowTransition }>(
+        UPDATE_WORKFLOW_TRANSITION_MUTATION,
+        { transitionId, condition: conditionStr },
+      );
+      setTransitions((prev) =>
+        prev.map((t) => (t.transitionId === transitionId ? updateWorkflowTransition : t)),
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update transition condition');
+    }
+  }, []);
+
+  const handleApproverToggle = useCallback(async (transitionId: string, currentCondition: string | null, userId: string) => {
+    const existing = parseCondition(currentCondition);
+    const currentIds = existing.approverUserIds ?? [];
+    const newIds = currentIds.includes(userId)
+      ? currentIds.filter((id) => id !== userId)
+      : [...currentIds, userId];
+    await handleConditionUpdate(transitionId, currentCondition, { approverUserIds: newIds });
+  }, [handleConditionUpdate]);
+
   const formatStatus = (s: string) => s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
   if (loading) {
@@ -140,6 +188,7 @@ export default function WorkflowTab({ projectId }: Props) {
                 <th className="text-left px-3 py-2 text-slate-600 dark:text-slate-300 font-medium"></th>
                 <th className="text-left px-3 py-2 text-slate-600 dark:text-slate-300 font-medium">To</th>
                 <th className="text-left px-3 py-2 text-slate-600 dark:text-slate-300 font-medium">Allowed Roles</th>
+                <th className="text-left px-3 py-2 text-slate-600 dark:text-slate-300 font-medium">Approval</th>
                 <th className="px-3 py-2 w-16"></th>
               </tr>
             </thead>
@@ -165,6 +214,38 @@ export default function WorkflowTab({ projectId }: Props) {
                       {!t.allowedRoles || t.allowedRoles.length === 0 ? (
                         <span className="text-xs text-slate-400 italic">all</span>
                       ) : null}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="space-y-1">
+                      <label className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={parseCondition(t.condition).requiresApproval ?? false}
+                          onChange={(e) => handleConditionUpdate(t.transitionId, t.condition, { requiresApproval: e.target.checked })}
+                          className="rounded border-slate-300 dark:border-slate-500"
+                        />
+                        Requires approval
+                      </label>
+                      {parseCondition(t.condition).requiresApproval && (
+                        <div className="ml-4 space-y-0.5">
+                          <div className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Designated approvers:</div>
+                          {orgUsers.map((u) => (
+                            <label key={u.userId} className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={(parseCondition(t.condition).approverUserIds ?? []).includes(u.userId)}
+                                onChange={() => handleApproverToggle(t.transitionId, t.condition, u.userId)}
+                                className="rounded border-slate-300 dark:border-slate-500"
+                              />
+                              {u.displayName || u.email.split('@')[0]}
+                            </label>
+                          ))}
+                          {(parseCondition(t.condition).approverUserIds ?? []).length === 0 && (
+                            <span className="text-xs text-slate-400 italic">any settings manager</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </td>
                   <td className="px-3 py-2 text-right">

@@ -17,7 +17,7 @@ export const orgQueries = {
     const user = requireOrg(context);
     return context.prisma.user.findMany({
       where: { orgId: user.orgId },
-      select: { userId: true, email: true, role: true },
+      select: { userId: true, email: true, displayName: true, role: true },
     });
   },
 

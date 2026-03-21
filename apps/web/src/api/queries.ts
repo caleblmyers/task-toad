@@ -28,7 +28,7 @@ export const SPRINTS_QUERY = `query Sprints($projectId: ID!) {
   sprints(projectId: $projectId) { sprintId projectId name goal isActive columns wipLimits startDate endDate createdAt closedAt }
 }`;
 
-export const ORG_USERS_QUERY = `query OrgUsers { orgUsers { userId email role } }`;
+export const ORG_USERS_QUERY = `query OrgUsers { orgUsers { userId email displayName role } }`;
 
 export const LABELS_QUERY = `query Labels { labels { labelId name color } }`;
 
@@ -519,7 +519,7 @@ export const DELETE_TASK_TEMPLATE_MUTATION = `mutation DeleteTemplate($taskTempl
 
 export const WORKFLOW_TRANSITIONS_QUERY = `query WorkflowTransitions($projectId: ID!) {
   workflowTransitions(projectId: $projectId) {
-    transitionId projectId fromStatus toStatus allowedRoles createdAt
+    transitionId projectId fromStatus toStatus allowedRoles condition createdAt
   }
 }`;
 
@@ -529,13 +529,13 @@ export const WORKFLOW_PROJECT_STATUSES_QUERY = `query Project($projectId: ID!) {
 
 export const CREATE_WORKFLOW_TRANSITION_MUTATION = `mutation CreateTransition($projectId: ID!, $fromStatus: String!, $toStatus: String!) {
   createWorkflowTransition(projectId: $projectId, fromStatus: $fromStatus, toStatus: $toStatus) {
-    transitionId projectId fromStatus toStatus allowedRoles createdAt
+    transitionId projectId fromStatus toStatus allowedRoles condition createdAt
   }
 }`;
 
-export const UPDATE_WORKFLOW_TRANSITION_MUTATION = `mutation UpdateTransition($transitionId: ID!, $allowedRoles: [String!]) {
-  updateWorkflowTransition(transitionId: $transitionId, allowedRoles: $allowedRoles) {
-    transitionId projectId fromStatus toStatus allowedRoles createdAt
+export const UPDATE_WORKFLOW_TRANSITION_MUTATION = `mutation UpdateTransition($transitionId: ID!, $allowedRoles: [String!], $condition: String) {
+  updateWorkflowTransition(transitionId: $transitionId, allowedRoles: $allowedRoles, condition: $condition) {
+    transitionId projectId fromStatus toStatus allowedRoles condition createdAt
   }
 }`;
 

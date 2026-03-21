@@ -16,6 +16,7 @@ export const workflowQueries = {
     return transitions.map(t => ({
       ...t,
       allowedRoles: t.allowedRoles ? JSON.parse(t.allowedRoles) : null,
+      condition: t.condition ?? null,
       createdAt: t.createdAt.toISOString(),
     }));
   },
@@ -42,13 +43,14 @@ export const workflowMutations = {
     return {
       ...transition,
       allowedRoles: transition.allowedRoles ? JSON.parse(transition.allowedRoles) : null,
+      condition: transition.condition ?? null,
       createdAt: transition.createdAt.toISOString(),
     };
   },
 
   updateWorkflowTransition: async (
     _parent: unknown,
-    args: { transitionId: string; allowedRoles?: string[] | null },
+    args: { transitionId: string; allowedRoles?: string[] | null; condition?: string | null },
     context: Context
   ) => {
     const user = requireOrg(context);
@@ -59,15 +61,21 @@ export const workflowMutations = {
     if (!transition || transition.project.orgId !== user.orgId) {
       throw new NotFoundError('Workflow transition not found');
     }
+    const data: Record<string, unknown> = {};
+    if (args.allowedRoles !== undefined) {
+      data.allowedRoles = args.allowedRoles ? JSON.stringify(args.allowedRoles) : null;
+    }
+    if (args.condition !== undefined) {
+      data.condition = args.condition || null;
+    }
     const updated = await context.prisma.workflowTransition.update({
       where: { transitionId: args.transitionId },
-      data: {
-        allowedRoles: args.allowedRoles ? JSON.stringify(args.allowedRoles) : null,
-      },
+      data,
     });
     return {
       ...updated,
       allowedRoles: updated.allowedRoles ? JSON.parse(updated.allowedRoles) : null,
+      condition: updated.condition ?? null,
       createdAt: updated.createdAt.toISOString(),
     };
   },

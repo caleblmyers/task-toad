@@ -202,16 +202,16 @@ export default function TimesheetView({ projectId, orgUsers }: TimesheetViewProp
       }
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      handleCellSave({ rowIndex: rowIndex - 1, colIndex });
+      focusCell(rowIndex - 1, colIndex);
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
-      handleCellSave({ rowIndex: rowIndex + 1, colIndex });
+      focusCell(rowIndex + 1, colIndex);
     } else if (e.key === 'ArrowLeft') {
       e.preventDefault();
-      handleCellSave({ rowIndex, colIndex: colIndex - 1 });
+      focusCell(rowIndex, colIndex - 1);
     } else if (e.key === 'ArrowRight') {
       e.preventDefault();
-      handleCellSave({ rowIndex, colIndex: colIndex + 1 });
+      focusCell(rowIndex, colIndex + 1);
     }
   };
 
@@ -274,7 +274,7 @@ export default function TimesheetView({ projectId, orgUsers }: TimesheetViewProp
             <option value="">All Users</option>
             {orgUsers.map((u) => (
               <option key={u.userId} value={u.userId}>
-                {u.email}
+                {u.displayName || u.email.split('@')[0]}
               </option>
             ))}
           </select>
