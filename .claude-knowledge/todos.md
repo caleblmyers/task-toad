@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-Production deployed at `https://tasktoad-api-production.up.railway.app`. 44 swarm waves completed. Security audit: 37 of 39 findings resolved (95%). Auto-Complete Pipeline complete. All Critical, High, and Medium findings fixed.
+Production deployed at `https://tasktoad-api-production.up.railway.app`. 45 swarm waves completed. Security audit: 38 of 39 findings resolved (97%). All Critical, High, Medium, and Low (except L-12) fixed. P1 features complete (SLA, automation, compound conditions).
 
 ---
 
@@ -117,9 +117,8 @@ Test against production: `https://tasktoad-api-production.up.railway.app`
 
 ---
 
-## Security — Remaining (2 of 39)
+## Security — Remaining (1 of 39)
 
-- [ ] **L-5:** Concurrent session limit — needs RefreshToken model design
 - [ ] **L-12:** Test database credentials in CI/CD
 
 Full report: `.claude-knowledge/security-audit.md`
@@ -132,16 +131,15 @@ Full report: `.claude-knowledge/security-audit.md`
 - [ ] Add integration tests for `previewHierarchicalPlan` and `commitHierarchicalPlan` resolvers
 - [ ] Add unit tests for `batchDetectCycles` utility
 - [ ] Add tests for insight generation hook in actionExecutor
-- [ ] ManualTaskSpec resolver: DataLoader type should include acceptanceCriteria (removes cast)
-- [ ] TaskInsight: add DataLoader for sourceTask/targetTask field resolvers (N+1)
-- [ ] Insights tab count badge duplicates InsightPanel fetch — deduplicate
-- [ ] HierarchicalPlanEditor `setExpandedIds` lint warning (react-hooks/set-state-in-effect)
 - [ ] Unit tests for `urlValidator.ts`
-- [ ] ~3 dynamic mutations remain inline in useTaskOperations.ts
+- [ ] Remove unnecessary `context.prisma as unknown as PrismaClient` casts in auth.ts (3 instances)
+- [ ] SLA: `createSLAPolicy` should use `requirePermission('MANAGE_PROJECT_SETTINGS')` instead of basic `requireProjectAccess`
+- [ ] SLA: add periodic breach-check job (breach flags only set on status transitions, not proactively)
+- [ ] SLA: paused time handling (task reopened, weekends/business hours)
+- [ ] Fix 44 pre-existing integration test failures on main (foreign key / DB state issues)
+- [ ] AppLayout `fetchCount` lint warning (last remaining react-hooks/set-state-in-effect)
 
 ### Features
-- [ ] "Refresh from repo" in KnowledgeBasePanel — update to create KnowledgeEntry (not legacy field)
-- [ ] Onboarding wizard keyboard navigation (Enter to advance, Escape to close)
 - [ ] KB entry search/filter in KnowledgeBasePanel when entry count grows large
 - [ ] PlanDependencyEditor: subtask-level dependencies not supported
 - [ ] ExecutionDashboard: dependency visualization between plans
@@ -168,9 +166,6 @@ Full report: `.claude-knowledge/security-audit.md`
 
 ## Remaining P1 Features (Deferred)
 
-- [ ] **SLA tracking** — SLAPolicy + SLATimer models. Evaluate on status transitions.
-- [ ] **Multi-action automation rules** — Change action field to array. New action types: send_webhook, add_label, add_comment, set_due_date.
-- [ ] **Compound automation conditions** — Reuse FilterGroup from search.
 - [ ] **Scheduled report delivery** — ReportSchedule model, cron, email/Slack. *(Depends on SMTP setup)*
 
 ---
@@ -207,5 +202,6 @@ Full report: `.claude-knowledge/security-audit.md`
 | 42 | 2026-03-21 | Security Phase 2 — Auth Hardening (all 8 High items) |
 | 43 | 2026-03-21 | Security Phase 3+4 — 9 Medium + 6 Low fixes |
 | 44 | 2026-03-21 | Security cleanup, integration tests, auth follow-ups, frontend polish |
+| 45 | 2026-03-21 | P1 features (SLA, multi-action automation, compound conditions), L-5 session limit, backend+frontend polish |
 
 Full wave details in `changelog.md`.

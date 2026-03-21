@@ -116,6 +116,7 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 - **Report:** `reports`, `generateStandupReport`, `generateSprintReport`, `analyzeProjectHealth`, `extractTasksFromNotes`
 - **Search:** `globalSearch`
 - **ProjectRole:** `projectMembers`, `automationRules`
+- **SLA:** `slaPolicies`, `taskSLAStatus`
 - **Webhook:** `webhookEndpoints`, `webhookDeliveries`
 - **Slack:** `slackIntegrations`, `slackUserMappings`
 
@@ -131,6 +132,7 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 - **GitHub:** `linkGitHubInstallation`, `connectGitHubRepo`, `disconnectGitHubRepo`, `createGitHubRepo`, `createPullRequestFromTask`, `syncTaskToGitHub`, `decomposeGitHubIssue`, `generateFixFromReview`
 - **Report:** `saveReport`, `deleteReport`, `summarizeProject`
 - **ProjectRole:** `addProjectMember`, `removeProjectMember`, `updateProjectMemberRole`, `createAutomationRule`, `updateAutomationRule`, `deleteAutomationRule`
+- **SLA:** `createSLAPolicy`, `updateSLAPolicy`, `deleteSLAPolicy`
 - **Webhook:** `createWebhookEndpoint`, `updateWebhookEndpoint`, `deleteWebhookEndpoint`, `testWebhookEndpoint`, `replayWebhookDelivery`
 - **KnowledgeBase:** `createKnowledgeEntry`, `updateKnowledgeEntry`, `deleteKnowledgeEntry`
 - **Slack:** `connectSlack`, `updateSlackIntegration`, `disconnectSlack`, `testSlackIntegration`, `mapSlackUser`, `unmapSlackUser`
@@ -181,7 +183,7 @@ All packages extend `tsconfig.base.json`. Strict mode + `noUnusedLocals` + `noUn
 
 ### Env Files
 
-- `apps/api/.env` — `DATABASE_URL`, `JWT_SECRET`, `ENCRYPTION_MASTER_KEY`, `CORS_ORIGINS`, `LOG_LEVEL` (optional, defaults to `info`), `SENTRY_DSN` (optional), `AI_RATE_LIMIT_PER_HOUR` (optional, defaults to `60`), `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` (optional — falls back to local disk storage if not set)
+- `apps/api/.env` — `DATABASE_URL`, `JWT_SECRET`, `ENCRYPTION_MASTER_KEY`, `CORS_ORIGINS`, `LOG_LEVEL` (optional, defaults to `info`), `SENTRY_DSN` (optional), `AI_RATE_LIMIT_PER_HOUR` (optional, defaults to `60`), `MAX_SESSIONS_PER_USER` (optional, defaults to `5`), `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` (optional — falls back to local disk storage if not set)
 - `apps/web/.env` — `VITE_API_URL` (set to `/api` in dev; Vite proxy handles routing)
 
 Copy from `.env.example` and fill in values.

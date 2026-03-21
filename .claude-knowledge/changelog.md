@@ -4,6 +4,54 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-21 (P1 features + polish + L-5)
+
+### Wave 45: P1 Features, Polish & Session Limit (5 workers, 6 tasks)
+
+**Worker 1 — task-001 + task-002: Multi-Action Automation Rules:**
+- Backend: automation engine now processes action arrays (backward-compatible with single objects). 4 new action types: `send_webhook` (validated URL + webhookDispatcher), `add_label` (TaskLabel, skip if exists), `add_comment` (Comment record), `set_due_date` (daysFromNow calculation).
+- Compound conditions: `matchesCondition()` supports `{operator: "AND"|"OR", conditions: [{field, op, value}]}` in addition to simple `{key: value}`.
+- Zod validation for action types in createAutomationRule/updateAutomationRule resolvers.
+- Frontend: AutomationTab multi-action builder (dynamic add/remove rows, 8 action types with appropriate inputs), compound condition builder (AND/OR toggle, field/op/value rows).
+
+**Worker 2 — task-003: SLA Tracking (Full Vertical Slice):**
+- New `SLAPolicy` model (projectId, name, responseTimeHours, resolutionTimeHours, priority filter, enabled) and `SLATimer` model (taskId, policyId, startedAt, respondedAt, resolvedAt, responseBreached, resolutionBreached).
+- Migration: `add_sla_tracking`.
+- CRUD resolvers with permission checks. `taskSLAStatus` query returns timers with computed time-remaining fields.
+- `slaListener.ts`: creates timers on task.created, updates on status transitions (start→in_progress, respond→in_review, resolve→done), checks breach flags.
+- Frontend: `SLAStatusBadge.tsx` (green/amber/red) in task detail, SLA policy management in project settings.
+
+**Worker 3 — task-004: Backend Polish:**
+- TaskInsight sourceTask/targetTask field resolvers now use `context.loaders.taskById.load()` — eliminates N+1 queries.
+- `refreshRepoProfile` creates/updates `KnowledgeEntry` with source='learned' instead of only writing to legacy `project.knowledgeBase` field (backward compat preserved).
+- ManualTaskSpec acceptanceCriteria: removed unsafe double cast, uses direct property access.
+
+**Worker 4 — task-005: Frontend Polish:**
+- HierarchicalPlanEditor: `setExpandedIds` lint warning fixed (lazy initializer instead of effect). Lint warnings reduced from 3 to 1.
+- Extracted ~3 inline dynamic mutations from useTaskOperations.ts to `buildUpdateTaskMutation()` in queries.ts.
+- Insight duplicate fetch eliminated: TaskDetailPanel passes loaded insights to InsightPanel as initial data.
+- OnboardingWizard: Enter/Ctrl+Enter advances steps, Escape closes, auto-focus on primary inputs.
+
+**Worker 5 — task-006: L-5 Concurrent Session Limit:**
+- New `RefreshToken` model (userId, tokenHash, expiresAt, userAgent) in auth.prisma. Migration: `add_refresh_tokens`.
+- Login/acceptInvite/verifyEmail create RefreshToken records with hashed tokens.
+- Max 5 concurrent sessions per user (configurable via `MAX_SESSIONS_PER_USER`). Oldest sessions pruned on new login.
+- Refresh endpoint (`/api/auth/refresh`) validates token exists in DB, implements token rotation (delete old, create new).
+- Logout deletes specific RefreshToken record.
+- Expired token cleanup on server startup.
+
+**Process:** All 6 tasks merged with zero rejections. 44 pre-existing test failures on main (not from this wave) prevented test validation in merge pipeline.
+
+**Open follow-ups:**
+- Fix 44 pre-existing integration test failures (FK/DB state issues)
+- Remove `context.prisma as unknown as PrismaClient` casts in auth.ts (3 instances)
+- SLA: createSLAPolicy should use requirePermission('MANAGE_PROJECT_SETTINGS')
+- SLA: periodic breach-check job (currently only on status transitions)
+- SLA: paused time handling (reopened tasks, business hours)
+- AppLayout fetchCount lint warning (last remaining)
+
+---
+
 ## 2026-03-21 (security cleanup + tests + polish)
 
 ### Wave 44: Security Cleanup, Integration Tests & Auth Follow-ups (3 workers, 5 tasks)
@@ -167,42 +215,9 @@ Full pipeline: KB context → onboarding interview → hierarchical planning →
 
 ---
 
-### Wave 40: Auto-Complete Redesign — Orchestration + CI Fix (3 workers, 6 tasks)
-
-**Worker 1 — 5-A: Status-Driven Events:**
-- New event types: `task.action_plan_failed`, `task.blocked`, `task.unblocked` in eventbus types
-- `actionExecutor.ts` emits `task.action_plan_failed` when plan status set to 'failed'
-- Orchestrator listener handles `task.action_plan_failed` — finds dependents via TaskDependency, emits `task.blocked` for autoComplete=true tasks
-- Notification listener creates `action_plan_failed` and `task_blocked` notifications for task assignees
-- SSE listener broadcasts all three new events for real-time frontend updates
-
-**Worker 2 — 5-B: TaskInsight Model + Generation:**
-- New `TaskInsight` Prisma model (`taskinsight.prisma`): sourceTaskId, targetTaskId, type (discovery/warning/pattern), content, autoApplied
-- Migration: `add_task_insights`
-- `TaskInsightItemSchema` + `TaskInsightsResponseSchema` Zod schemas, `generateTaskInsights` AIFeature + FEATURE_CONFIG
-- `buildGenerateTaskInsightsPrompt` prompt builder — analyzes generated code for discoveries, warnings, patterns targeting sibling tasks
-- `generateTaskInsights` AI service function
-- GraphQL: `taskInsights(projectId, taskId?)` query, `dismissInsight` mutation, field resolvers
-- ActionExecutor hook: after successful `generate_code`, loads sibling tasks, generates insights, creates records (wrapped in try/catch — never blocks pipeline)
-
-**Worker 3 — 5-C: CI Monitor + Auto-Fix + Test Fix:**
-- Fixed flaky `export.integration.test.ts` — root cause was missing DATABASE_URL in vitest config (not token version as suspected)
-- `monitor_ci` executor: polls GitHub check runs via REST API with in-process sleep loop (30s intervals, max 30 min)
-- `fix_ci` executor: fetches CI error annotations, calls AI to generate fix, commits to same branch (one retry limit)
-- `monitor_ci` and `fix_ci` added to ActionType union + registered in actions/index.ts
-- Planning prompt updated with new action types and sequencing rules
-
-**Process:** Zero code quality rejections. Reviewer noted task-005 (test fix) was over-prescribed — debugging tasks should describe symptoms and let workers investigate. monitor_ci uses in-process sleep vs job queue re-enqueue (follow-up).
-
-**Open follow-ups:**
-- monitor_ci: make resilient to process restarts via job queue re-enqueue
-- TaskInsight: add DataLoader for sourceTask/targetTask field resolvers
-- Planning prompt: validate monitor_ci/fix_ci source action IDs in schema
-- merge-worker.sh: fix script treating lint warnings as failures
-
----
-
 ## Older Entries (one-line summaries)
+
+- **2026-03-20** — Wave 40: Status-driven events (action_plan_failed, task.blocked/unblocked), TaskInsight model + AI generation hook, CI monitor + auto-fix executors.
 
 - **2026-03-20** — Wave 39: Project orchestrator (parallel execution, advisory locks, concurrency limit), AI-enriched PR descriptions, plan dependency editor wiring, HierarchicalPlanDialog feedback.
 - **2026-03-20** — Wave 38: Hierarchical plan generation (3-level epics→tasks→subtasks), batch cycle detection, plan editor UI (tree view, drag-to-reorder, dependency picker).

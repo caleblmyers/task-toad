@@ -45,7 +45,11 @@ UserTimeOff       — id, orgId, userId, startDate, endDate, description?
 KnowledgeEntry    — id, projectId, orgId, title, content, source, category
 SavedFilter       — id, projectId, userId, name, filters (JSON), viewType?, sortBy?, groupBy?, isShared
 WorkflowTransition — id, projectId, fromStatus, toStatus
-AutomationRule    — id, projectId, orgId, name, trigger (JSON), action (JSON), enabled
+AutomationRule    — id, projectId, orgId, name, trigger (JSON), action (JSON array), enabled
+                    Action types: notify_assignee, move_to_column, set_status, assign_to, send_webhook, add_label, add_comment, set_due_date
+SLAPolicy         — id, projectId, orgId, name, responseTimeHours, resolutionTimeHours, priority?, enabled
+SLATimer          — id, taskId, policyId, orgId, startedAt, respondedAt?, resolvedAt?, responseBreached, resolutionBreached
+RefreshToken      — id, userId, tokenHash (unique), expiresAt, userAgent?, createdAt
 ProjectMember     — projectId, userId, role (viewer/editor/admin)
 CustomField       — id, projectId, name, fieldType, options?
 ActionPlan        — id, taskId, status, actions (ordered)
@@ -74,9 +78,9 @@ Browser → Vite dev server (localhost:5173)
 
 **Public (no auth):** `signup`, `login`
 
-**Authed queries:** `me`, `orgInvites`, `org`, `orgUsers`, `projects`, `project(projectId)`, `projectStats`, `portfolioOverview`, `savedFilters`, `tasks(projectId)`, `epics`, `labels`, `customFields`, `sprints(projectId)`, `sprintVelocity`, `sprintBurndown`, `comments`, `activities`, `aiUsage`, `aiPromptHistory`, `analyzeTrends`, `analyzeSprintTransition`, `projectChat`, `analyzeRepoDrift`, `notifications`, `unreadNotificationCount`, `notificationPreferences`, `githubInstallations`, `githubInstallationRepos`, `githubProjectRepo`, `fetchRepoFileContent`, `knowledgeEntries(projectId)`, `previewHierarchicalPlan(projectId, prompt)`, `taskInsights(projectId, taskId?)`, `projectActionPlans(projectId, status?)`, `reports`, `generateStandupReport`, `generateSprintReport`, `analyzeProjectHealth`, `extractTasksFromNotes`, `globalSearch`, `projectMembers`, `automationRules`, `webhookEndpoints`, `webhookDeliveries`, `slackIntegrations`, `slackUserMappings`
+**Authed queries:** `me`, `orgInvites`, `org`, `orgUsers`, `projects`, `project(projectId)`, `projectStats`, `portfolioOverview`, `savedFilters`, `tasks(projectId)`, `epics`, `labels`, `customFields`, `sprints(projectId)`, `sprintVelocity`, `sprintBurndown`, `comments`, `activities`, `aiUsage`, `aiPromptHistory`, `analyzeTrends`, `analyzeSprintTransition`, `projectChat`, `analyzeRepoDrift`, `notifications`, `unreadNotificationCount`, `notificationPreferences`, `githubInstallations`, `githubInstallationRepos`, `githubProjectRepo`, `fetchRepoFileContent`, `knowledgeEntries(projectId)`, `previewHierarchicalPlan(projectId, prompt)`, `taskInsights(projectId, taskId?)`, `projectActionPlans(projectId, status?)`, `reports`, `generateStandupReport`, `generateSprintReport`, `analyzeProjectHealth`, `extractTasksFromNotes`, `globalSearch`, `projectMembers`, `automationRules`, `webhookEndpoints`, `webhookDeliveries`, `slackIntegrations`, `slackUserMappings`, `slaPolicies(projectId)`, `taskSLAStatus(taskId)`
 
-**Authed mutations:** `createOrg`, `setOrgApiKey`, `setAIBudget`, `createProject`, `updateProject`, `archiveProject`, `generateProjectOptions`, `createProjectFromOption`, `saveFilter`, `updateFilter`, `deleteFilter`, `createTask`, `updateTask`, `createSubtask`, `bulkUpdateTasks`, `createLabel`, `deleteLabel`, `addTaskLabel`, `removeTaskLabel`, `generateTaskPlan`, `previewTaskPlan`, `commitTaskPlan`, `expandTask`, `generateTaskInstructions`, `createCustomField`, `updateCustomField`, `deleteCustomField`, `setCustomFieldValue`, `addTaskAssignee`, `removeTaskAssignee`, `createSprint`, `updateSprint`, `deleteSprint`, `closeSprint`, `previewSprintPlan`, `commitSprintPlan`, `createComment`, `updateComment`, `deleteComment`, `generateCodeFromTask`, `regenerateCodeFile`, `reviewPullRequest`, `parseBugReport`, `previewPRDBreakdown`, `commitPRDBreakdown`, `bootstrapProjectFromRepo`, `batchGenerateCode`, `markNotificationRead`, `markAllNotificationsRead`, `updateNotificationPreference`, `linkGitHubInstallation`, `connectGitHubRepo`, `disconnectGitHubRepo`, `createGitHubRepo`, `createPullRequestFromTask`, `syncTaskToGitHub`, `decomposeGitHubIssue`, `generateFixFromReview`, `saveReport`, `deleteReport`, `summarizeProject`, `addProjectMember`, `removeProjectMember`, `updateProjectMemberRole`, `createAutomationRule`, `updateAutomationRule`, `deleteAutomationRule`, `createWebhookEndpoint`, `updateWebhookEndpoint`, `deleteWebhookEndpoint`, `testWebhookEndpoint`, `replayWebhookDelivery`, `connectSlack`, `updateSlackIntegration`, `disconnectSlack`, `testSlackIntegration`, `mapSlackUser`, `unmapSlackUser`, `sendVerificationEmail`, `verifyEmail`, `requestPasswordReset`, `resetPassword`, `updateProfile`, `inviteOrgMember`, `acceptInvite`, `revokeInvite`, `createKnowledgeEntry`, `updateKnowledgeEntry`, `deleteKnowledgeEntry`, `generateOnboardingQuestions`, `saveOnboardingAnswers`, `commitHierarchicalPlan`, `dismissInsight`, `cancelActionPlan`, `generateManualTaskSpec`, `autoStartProject`
+**Authed mutations:** `createOrg`, `setOrgApiKey`, `setAIBudget`, `createProject`, `updateProject`, `archiveProject`, `generateProjectOptions`, `createProjectFromOption`, `saveFilter`, `updateFilter`, `deleteFilter`, `createTask`, `updateTask`, `createSubtask`, `bulkUpdateTasks`, `createLabel`, `deleteLabel`, `addTaskLabel`, `removeTaskLabel`, `generateTaskPlan`, `previewTaskPlan`, `commitTaskPlan`, `expandTask`, `generateTaskInstructions`, `createCustomField`, `updateCustomField`, `deleteCustomField`, `setCustomFieldValue`, `addTaskAssignee`, `removeTaskAssignee`, `createSprint`, `updateSprint`, `deleteSprint`, `closeSprint`, `previewSprintPlan`, `commitSprintPlan`, `createComment`, `updateComment`, `deleteComment`, `generateCodeFromTask`, `regenerateCodeFile`, `reviewPullRequest`, `parseBugReport`, `previewPRDBreakdown`, `commitPRDBreakdown`, `bootstrapProjectFromRepo`, `batchGenerateCode`, `markNotificationRead`, `markAllNotificationsRead`, `updateNotificationPreference`, `linkGitHubInstallation`, `connectGitHubRepo`, `disconnectGitHubRepo`, `createGitHubRepo`, `createPullRequestFromTask`, `syncTaskToGitHub`, `decomposeGitHubIssue`, `generateFixFromReview`, `saveReport`, `deleteReport`, `summarizeProject`, `addProjectMember`, `removeProjectMember`, `updateProjectMemberRole`, `createAutomationRule`, `updateAutomationRule`, `deleteAutomationRule`, `createWebhookEndpoint`, `updateWebhookEndpoint`, `deleteWebhookEndpoint`, `testWebhookEndpoint`, `replayWebhookDelivery`, `connectSlack`, `updateSlackIntegration`, `disconnectSlack`, `testSlackIntegration`, `mapSlackUser`, `unmapSlackUser`, `sendVerificationEmail`, `verifyEmail`, `requestPasswordReset`, `resetPassword`, `updateProfile`, `inviteOrgMember`, `acceptInvite`, `revokeInvite`, `createKnowledgeEntry`, `updateKnowledgeEntry`, `deleteKnowledgeEntry`, `generateOnboardingQuestions`, `saveOnboardingAnswers`, `commitHierarchicalPlan`, `dismissInsight`, `cancelActionPlan`, `generateManualTaskSpec`, `autoStartProject`, `createSLAPolicy`, `updateSLAPolicy`, `deleteSLAPolicy`
 
 ## Key File Map
 
@@ -92,6 +96,9 @@ Browser → Vite dev server (localhost:5173)
 | Job executor (action pipeline) | `apps/api/src/infrastructure/jobs/actionExecutor.ts` |
 | Event bus (typed domain events) | `apps/api/src/infrastructure/eventbus/` |
 | Auto-complete orchestrator listener | `apps/api/src/infrastructure/listeners/orchestratorListener.ts` |
+| SLA listener (timer management) | `apps/api/src/infrastructure/listeners/slaListener.ts` |
+| Automation engine (multi-action) | `apps/api/src/utils/automationEngine.ts` |
+| SLA resolvers + typedefs | `apps/api/src/graphql/resolvers/sla.ts`, `typedefs/sla.ts` |
 | Auth context (JWT verify) | `apps/api/src/graphql/context.ts` |
 | DataLoaders (N+1, orgId-scoped) | `apps/api/src/graphql/loaders.ts` |
 | AES-256-GCM encryption util | `apps/api/src/utils/encryption.ts` |
@@ -156,6 +163,7 @@ Browser → Vite dev server (localhost:5173)
 - `LOG_LEVEL` — pino log level (defaults to `info`)
 - `SENTRY_DSN` — optional Sentry error tracking DSN
 - `AI_RATE_LIMIT_PER_HOUR` — per-org AI request limit (defaults to `60`)
+- `MAX_SESSIONS_PER_USER` — concurrent session limit (defaults to `5`)
 
 **Web** (`apps/web/.env`):
 - `VITE_API_URL` — set to `/api` in dev (Vite proxy strips prefix and forwards to `:3001`)
