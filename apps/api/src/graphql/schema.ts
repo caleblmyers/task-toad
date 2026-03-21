@@ -20,7 +20,7 @@ import { slackTypeDefs, slackQueryFields, slackMutationFields } from './typedefs
 import { templateTypeDefs, templateQueryFields, templateMutationFields } from './typedefs/template.js';
 import { taskActionTypeDefs, taskActionQueryFields, taskActionMutationFields } from './typedefs/taskaction.js';
 import { workflowTypeDefs, workflowQueryFields, workflowMutationFields } from './typedefs/workflow.js';
-import { releaseTypeDefs, releaseQueryFields, releaseMutationFields } from './typedefs/release.js';
+import { releaseTypeDefs, releaseQueryFields, releaseMutationFields, releaseBurndownTypeDefs } from './typedefs/release.js';
 import { timeEntryTypeDefs, timeEntryQueryFields, timeEntryMutationFields } from './typedefs/timeentry.js';
 import { capacityTypeDefs, capacityQueryFields, capacityMutationFields } from './typedefs/capacity.js';
 import { knowledgeBaseTypeDefs, knowledgeBaseQueryFields, knowledgeBaseMutationFields } from './typedefs/knowledgebase.js';
@@ -47,6 +47,7 @@ const typeDefs = /* GraphQL */ `
   ${taskActionTypeDefs}
   ${workflowTypeDefs}
   ${releaseTypeDefs}
+  ${releaseBurndownTypeDefs}
   ${timeEntryTypeDefs}
   ${capacityTypeDefs}
   ${knowledgeBaseTypeDefs}

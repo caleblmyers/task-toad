@@ -46,6 +46,92 @@ export const releaseQueries = {
     }
     return release;
   },
+
+  releaseBurndown: async (
+    _parent: unknown,
+    args: { releaseId: string },
+    context: Context
+  ) => {
+    const user = requireOrg(context);
+    const release = await context.prisma.release.findUnique({
+      where: { releaseId: args.releaseId },
+    });
+    if (!release || release.orgId !== user.orgId) {
+      throw new NotFoundError('Release not found');
+    }
+
+    // Load all tasks for this release
+    const releaseTasks = await context.prisma.releaseTask.findMany({
+      where: { releaseId: args.releaseId },
+      include: { task: { select: { taskId: true, status: true } } },
+    });
+
+    const totalTasks = releaseTasks.length;
+    if (totalTasks === 0) return [];
+
+    const taskIds = releaseTasks.map((rt) => rt.taskId);
+
+    // Load status_changed activities to 'done' for these tasks
+    const completionActivities = await context.prisma.activity.findMany({
+      where: {
+        taskId: { in: taskIds },
+        action: 'status_changed',
+        newValue: 'done',
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // Build a map of taskId -> earliest completion date (YYYY-MM-DD)
+    const taskCompletionDate = new Map<string, string>();
+    for (const act of completionActivities) {
+      if (!act.taskId) continue;
+      const dateStr = act.createdAt.toISOString().split('T')[0];
+      if (!taskCompletionDate.has(act.taskId)) {
+        taskCompletionDate.set(act.taskId, dateStr);
+      }
+    }
+
+    // For tasks currently done that have no activity record, check the most recent activity as fallback
+    for (const rt of releaseTasks) {
+      if (rt.task.status === 'done' && !taskCompletionDate.has(rt.task.taskId)) {
+        const lastActivity = await context.prisma.activity.findFirst({
+          where: { taskId: rt.task.taskId },
+          orderBy: { createdAt: 'desc' },
+          select: { createdAt: true },
+        });
+        const fallbackDate = lastActivity?.createdAt ?? rt.addedAt;
+        taskCompletionDate.set(rt.task.taskId, fallbackDate.toISOString().split('T')[0]);
+      }
+    }
+
+    // Build daily burndown from release creation to now (or releaseDate if released)
+    const startDate = release.createdAt;
+    const endDate = release.status === 'released' && release.releaseDate
+      ? new Date(release.releaseDate + 'T23:59:59')
+      : new Date();
+
+    const points: Array<{ date: string; totalTasks: number; completedTasks: number; remainingTasks: number }> = [];
+    const current = new Date(startDate);
+    current.setUTCHours(0, 0, 0, 0);
+
+    while (current <= endDate) {
+      const dateStr = current.toISOString().split('T')[0];
+      // Count completions on or before this date
+      let completedTasks = 0;
+      for (const [, compDate] of taskCompletionDate) {
+        if (compDate <= dateStr) completedTasks++;
+      }
+      points.push({
+        date: dateStr,
+        totalTasks,
+        completedTasks,
+        remainingTasks: totalTasks - completedTasks,
+      });
+      current.setDate(current.getDate() + 1);
+    }
+
+    return points;
+  },
 };
 
 // ── Mutations ──

@@ -346,6 +346,12 @@ export const REMOVE_TASK_FROM_RELEASE_MUTATION = `mutation RemoveTaskFromRelease
   removeTaskFromRelease(releaseId: $releaseId, taskId: $taskId)
 }`;
 
+export const RELEASE_BURNDOWN_QUERY = `query ReleaseBurndown($releaseId: ID!) {
+  releaseBurndown(releaseId: $releaseId) {
+    date totalTasks completedTasks remainingTasks
+  }
+}`;
+
 export const GENERATE_RELEASE_NOTES_MUTATION = `mutation GenerateReleaseNotes($releaseId: ID!) {
   generateReleaseNotes(releaseId: $releaseId) {
     releaseId name version status description releaseDate releaseNotes createdAt updatedAt tasks { taskId title status }

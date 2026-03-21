@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Release, Task } from '../types';
 import Button from './shared/Button';
+import ReleaseBurndownChart from './ReleaseBurndownChart';
 
 interface ReleaseDetailPanelProps {
   release: Release;
@@ -116,6 +117,13 @@ export default function ReleaseDetailPanel({
             <div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${completionPct}%` }} />
           </div>
         </div>
+
+        {/* Burndown Chart */}
+        {releaseTasks.length > 0 && (
+          <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3">
+            <ReleaseBurndownChart releaseId={release.releaseId} />
+          </div>
+        )}
 
         {/* Tasks */}
         <div>

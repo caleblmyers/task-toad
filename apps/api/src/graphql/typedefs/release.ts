@@ -26,6 +26,17 @@ export const releaseQueryFields = /* GraphQL */ `
   releases(projectId: ID!, status: String, limit: Int, cursor: String): ReleaseConnection!
   """Get a single release by ID."""
   release(releaseId: ID!): Release!
+  """Get daily burndown data for a release showing task completion over time."""
+  releaseBurndown(releaseId: ID!): [ReleaseBurndownPoint!]!
+`;
+
+export const releaseBurndownTypeDefs = /* GraphQL */ `
+  type ReleaseBurndownPoint {
+    date: String!
+    totalTasks: Int!
+    completedTasks: Int!
+    remainingTasks: Int!
+  }
 `;
 
 export const releaseMutationFields = /* GraphQL */ `
