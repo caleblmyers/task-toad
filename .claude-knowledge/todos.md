@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-Production deployed at `https://tasktoad-api-production.up.railway.app`. 49 swarm waves completed. Security: 38/39 (97%). All P1 complete. 11 P2 features shipped. Zero lint warnings. 314 tests.
+Production deployed at `https://tasktoad-api-production.up.railway.app`. 50 swarm waves completed. Security: 38/39 (97%). All P1 complete. 14 P2 features shipped. Zero lint warnings. 330 tests.
 
 ---
 
@@ -164,7 +164,7 @@ Full report: `.claude-knowledge/security-audit.md`
 
 - [x] Monte Carlo forecasting — velocity-based sprint completion probability *(Wave 46)*
 - [x] Cycle time scatter / control chart — percentile overlay lines *(Wave 47)*
-- [ ] Query language (TQL) — PEG parser → FilterGroup
+- [x] Query language (TQL) — recursive descent parser → FilterGroup *(Wave 50)*
 - [x] Approval workflows — Approval model, workflow transition triggers *(Wave 48)*
 - [x] Scheduled automation triggers — cron on AutomationRule *(Wave 46)*
 - [x] Workload heatmap — assignee × week calendar grid *(Wave 47)*
@@ -180,19 +180,24 @@ Full report: `.claude-knowledge/security-audit.md`
 - [x] Auto-tracking — tests for timeTrackingListener (mock event bus + prisma) *(Wave 48)*
 - [x] Timesheet — delete time entry when setting hours to 0 *(Wave 49)*
 - [x] Timesheet — keyboard navigation between cells (Tab/arrow keys) *(Wave 49)*
-- [ ] Timesheet — show display names in user filter dropdown (currently shows email)
+- [x] Timesheet — show display names in user filter dropdown *(Wave 50)*
 - [x] Approval workflows — SSE notification when approval is requested *(Wave 49)*
-- [ ] Approval workflows — approval history/audit log in task detail
-- [ ] Approval workflows — configurable approvers per transition (currently any MANAGE_PROJECT_SETTINGS user)
+- [x] Approval workflows — approval history/audit log in task detail *(Wave 50)*
+- [x] Approval workflows — configurable approvers per transition *(Wave 50)*
 - [x] Control chart — configurable rolling window size *(Wave 49)*
-- [ ] Initiative — update/edit modal (currently only create, no inline editing)
-- [ ] Initiative — DataLoader for initiative summary queries (currently N+1 per initiative on Portfolio load)
-- [ ] Initiative — dark mode support for CreateInitiativeModal (currently hardcoded white bg)
-- [ ] Field permissions — `estimatedHours` and `priority` not in fieldArgMapping (task-002 maps storyPoints, dueDate, assigneeId but misses priority/estimatedHours args)
-- [ ] Field permissions — DataLoader for fieldPermission lookups in updateTask (currently per-request query)
-- [ ] Approval SSE — include approver info in approval.decided event (who should review)
-- [ ] Timesheet keyboard nav — ArrowLeft/ArrowRight saves current cell on every keystroke (should only navigate, not save)
+- [x] Initiative — update/edit modal *(Wave 50)*
+- [x] Initiative — DataLoader for initiative summary queries *(Wave 50)*
+- [x] Initiative — dark mode support for Create/EditInitiativeModal *(Wave 50)*
+- [x] Field permissions — add `estimatedHours` and `priority` to fieldArgMapping *(Wave 50)*
+- [x] Field permissions — DataLoader for fieldPermission lookups in updateTask *(Wave 50)*
+- [x] Approval SSE — include approver info in approval.decided event *(Wave 50)*
+- [x] Timesheet keyboard nav — arrow keys navigate without saving *(Wave 50)*
 - [ ] Fix flaky integration tests — FK violations, deadlocks, unique constraints in e2e/notification/security/sprint tests
+- [ ] TQL — autocomplete/suggestions dropdown for field names as user types
+- [ ] TQL — saved TQL queries (bookmark common searches)
+- [ ] TQL — detection regex duplicated between SearchInput.tsx and useTaskFiltering.ts — extract to shared util
+- [ ] Approval history — show requester's reason/comment for requesting approval transition
+- [ ] Approval workflows — email/notification to designated approvers when approval is requested
 
 ---
 
@@ -217,5 +222,6 @@ Full report: `.claude-knowledge/security-audit.md`
 | 47 | 2026-03-21 | P2 features (cycle time scatter, release burndown, auto-tracking, workload heatmap), polish batch (cron shutdown, SLA checker, Monte Carlo tests, forecast skeleton, Sentry guard) |
 | 48 | 2026-03-21 | P2 features (timesheet view, approval workflows), follow-up polish (burndown tests, control chart, heatmap names, auto-tracking multi-assignee + tests) |
 | 49 | 2026-03-21 | P2 features (cross-project initiatives, workflow permissions, field-level restrictions), polish (timesheet delete/keyboard nav, approval SSE, control chart window, merge script fix) |
+| 50 | 2026-03-21 | TQL parser + frontend integration, follow-up fixes (field permissions, initiative edit/DataLoader, approval history, timesheet UX, configurable approvers, SSE approver info) |
 
 Full wave details in `changelog.md`.

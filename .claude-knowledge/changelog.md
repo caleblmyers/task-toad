@@ -4,6 +4,40 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-21 (TQL + follow-up fixes)
+
+### Wave 50: Task Query Language & Follow-up Fixes (3 workers, 3 tasks)
+
+**Worker 1 — task-001: Task Query Language (TQL):**
+- Recursive descent parser in `tqlParser.ts`: `parseTQL(query) → FilterGroupInput`. Supports field:value, negation (-field:value), multi-value (status:done,in_progress), comparisons (storyPoints>5), text search, OR grouping with parens, quoted values.
+- `TQLParseError` with position info for invalid fields/syntax.
+- `tql` parameter added to `tasks` query — parsed and merged with existing filterGroup via AND.
+- Frontend: search bar detects TQL syntax (contains `:`) and sends as `tql` param. Help tooltip with syntax reference. Parse errors shown inline.
+- 9+ unit tests in `tqlParser.test.ts`.
+
+**Worker 2 — task-002: Follow-up Fixes (6 items):**
+- Field permission mapping: added `priority` and `estimatedHours` to `fieldArgMapping` (was only 3/5 fields).
+- Field permission DataLoader: `fieldPermissionsByProject` batches lookups, replaces per-request query in updateTask.
+- Initiative edit modal: `EditInitiativeModal` with name/description/status/targetDate editing.
+- Initiative DataLoader: `initiativeProjectsByInitiative` batches join table lookups.
+- Initiative dark mode: Tailwind dark mode variants on Create/Edit modals.
+- Approval history: TaskDetailPanel shows past approvals as a log (pending at top with actions, decided below).
+
+**Worker 3 — task-003: Follow-up Fixes (5 items):**
+- Timesheet display names: user filter shows `displayName || email prefix`.
+- Timesheet arrow key bug: arrow keys now navigate without saving. Only blur/Enter/Tab save.
+- Configurable approvers: `approverUserIds` in WorkflowTransition condition JSON. Approval resolvers check designated approvers, fallback to MANAGE_PROJECT_SETTINGS. User picker in workflow settings.
+- Approval SSE approver info: `approval.decided` event includes `approverEmail` and `approverDisplayName`.
+- Keyboard nav verified: Enter still saves + moves down after arrow key refactor.
+
+**Process:** All 3 tasks merged cleanly. Flaky integration tests required one re-run during review.
+
+**Open follow-ups:**
+- TQL: autocomplete/suggestions dropdown, saved queries, shared regex util
+- Approval: show requester's comment, email notifications to designated approvers
+
+---
+
 ## 2026-03-21 (initiatives + access control + polish)
 
 ### Wave 49: Cross-Project Initiatives, Workflow Permissions & Polish (3 workers, 3 tasks)
@@ -130,55 +164,9 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-03-21 (P1 features + polish + L-5)
-
-### Wave 45: P1 Features, Polish & Session Limit (5 workers, 6 tasks)
-
-**Worker 1 — task-001 + task-002: Multi-Action Automation Rules:**
-- Backend: automation engine now processes action arrays (backward-compatible with single objects). 4 new action types: `send_webhook` (validated URL + webhookDispatcher), `add_label` (TaskLabel, skip if exists), `add_comment` (Comment record), `set_due_date` (daysFromNow calculation).
-- Compound conditions: `matchesCondition()` supports `{operator: "AND"|"OR", conditions: [{field, op, value}]}` in addition to simple `{key: value}`.
-- Zod validation for action types in createAutomationRule/updateAutomationRule resolvers.
-- Frontend: AutomationTab multi-action builder (dynamic add/remove rows, 8 action types with appropriate inputs), compound condition builder (AND/OR toggle, field/op/value rows).
-
-**Worker 2 — task-003: SLA Tracking (Full Vertical Slice):**
-- New `SLAPolicy` model (projectId, name, responseTimeHours, resolutionTimeHours, priority filter, enabled) and `SLATimer` model (taskId, policyId, startedAt, respondedAt, resolvedAt, responseBreached, resolutionBreached).
-- Migration: `add_sla_tracking`.
-- CRUD resolvers with permission checks. `taskSLAStatus` query returns timers with computed time-remaining fields.
-- `slaListener.ts`: creates timers on task.created, updates on status transitions (start→in_progress, respond→in_review, resolve→done), checks breach flags.
-- Frontend: `SLAStatusBadge.tsx` (green/amber/red) in task detail, SLA policy management in project settings.
-
-**Worker 3 — task-004: Backend Polish:**
-- TaskInsight sourceTask/targetTask field resolvers now use `context.loaders.taskById.load()` — eliminates N+1 queries.
-- `refreshRepoProfile` creates/updates `KnowledgeEntry` with source='learned' instead of only writing to legacy `project.knowledgeBase` field (backward compat preserved).
-- ManualTaskSpec acceptanceCriteria: removed unsafe double cast, uses direct property access.
-
-**Worker 4 — task-005: Frontend Polish:**
-- HierarchicalPlanEditor: `setExpandedIds` lint warning fixed (lazy initializer instead of effect). Lint warnings reduced from 3 to 1.
-- Extracted ~3 inline dynamic mutations from useTaskOperations.ts to `buildUpdateTaskMutation()` in queries.ts.
-- Insight duplicate fetch eliminated: TaskDetailPanel passes loaded insights to InsightPanel as initial data.
-- OnboardingWizard: Enter/Ctrl+Enter advances steps, Escape closes, auto-focus on primary inputs.
-
-**Worker 5 — task-006: L-5 Concurrent Session Limit:**
-- New `RefreshToken` model (userId, tokenHash, expiresAt, userAgent) in auth.prisma. Migration: `add_refresh_tokens`.
-- Login/acceptInvite/verifyEmail create RefreshToken records with hashed tokens.
-- Max 5 concurrent sessions per user (configurable via `MAX_SESSIONS_PER_USER`). Oldest sessions pruned on new login.
-- Refresh endpoint (`/api/auth/refresh`) validates token exists in DB, implements token rotation (delete old, create new).
-- Logout deletes specific RefreshToken record.
-- Expired token cleanup on server startup.
-
-**Process:** All 6 tasks merged with zero rejections. 44 pre-existing test failures on main (not from this wave) prevented test validation in merge pipeline.
-
-**Open follow-ups:**
-- Fix 44 pre-existing integration test failures (FK/DB state issues)
-- Remove `context.prisma as unknown as PrismaClient` casts in auth.ts (3 instances)
-- SLA: createSLAPolicy should use requirePermission('MANAGE_PROJECT_SETTINGS')
-- SLA: periodic breach-check job (currently only on status transitions)
-- SLA: paused time handling (reopened tasks, business hours)
-- AppLayout fetchCount lint warning (last remaining)
-
----
-
 ## Older Entries (one-line summaries)
+
+- **2026-03-21** — Wave 45: P1 features (multi-action automation, SLA tracking, compound conditions), L-5 concurrent session limit (RefreshToken model), backend polish (DataLoader N+1, KB refresh, cast fix), frontend polish (lint fixes, mutation extraction, insight dedup, onboarding keyboard nav).
 
 - **2026-03-21** — Wave 44: Security cleanup (M-4 magic bytes, L-6 homograph, L-11 null byte REST), data migration scripts, 19 security integration tests, auth follow-ups (verifyEmail cookies, SessionExpiredModal), frontend polish (permission disabling, BacklogView keyboard nav, lint fixes).
 - **2026-03-21** — Wave 43: Security Phase 3+4 — 9 Medium + 6 Low fixes (introspection, DataLoader orgId, input validation, AI rate limiter, audit logging, email anti-enum, GitHub path encoding, export redaction, webhook delivery ID, bulk cap).
