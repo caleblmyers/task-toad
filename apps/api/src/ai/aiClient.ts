@@ -19,7 +19,7 @@ const clientCache = new Map<string, Anthropic>();
 function getClient(apiKey: string): Anthropic {
   let client = clientCache.get(apiKey);
   if (!client) {
-    client = new Anthropic({ apiKey });
+    client = new Anthropic({ apiKey, maxRetries: 0 });
     clientCache.set(apiKey, client);
   }
   return client;

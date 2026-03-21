@@ -59,12 +59,11 @@ describe('signup', () => {
     expect(isHashed).toBe(true);
   });
 
-  it('rejects duplicate email with ConflictError', async () => {
+  it('returns success for duplicate email to prevent enumeration', async () => {
     await signupUser('dup@example.com', 'Password123');
 
-    await expect(
-      authMutations.signup(null, { email: 'dup@example.com', password: 'Password456' }, makeContext()),
-    ).rejects.toThrow('Email already in use');
+    const result = await authMutations.signup(null, { email: 'dup@example.com', password: 'Password456' }, makeContext());
+    expect(result).toBe(true);
   });
 
   it('rejects short password with ValidationError', async () => {

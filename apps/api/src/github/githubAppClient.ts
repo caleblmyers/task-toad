@@ -47,11 +47,12 @@ export async function githubRequest<T>(
         const resetHeader = response.headers.get('x-ratelimit-reset');
         let waitMs = RETRY_DELAY_MS * attempt;
 
+        const MAX_RETRY_WAIT_MS = 3600 * 1000; // Cap at 1 hour
         if (retryAfter) {
-          waitMs = parseInt(retryAfter, 10) * 1000;
+          waitMs = Math.min(parseInt(retryAfter, 10) * 1000, MAX_RETRY_WAIT_MS);
         } else if (resetHeader) {
           const resetTime = parseInt(resetHeader, 10) * 1000;
-          waitMs = Math.max(resetTime - Date.now(), 1000);
+          waitMs = Math.min(Math.max(resetTime - Date.now(), 1000), MAX_RETRY_WAIT_MS);
         }
 
         logApiError('rate_limited', new Error(`Rate limited on attempt ${attempt}`), {

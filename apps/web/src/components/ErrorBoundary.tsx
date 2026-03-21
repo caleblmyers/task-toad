@@ -21,7 +21,9 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    if (import.meta.env.DEV) {
+      console.error('ErrorBoundary caught an error:', error, errorInfo);
+    }
   }
 
   render(): ReactNode {
@@ -41,15 +43,17 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
           <p className="text-slate-500 mb-6">
             An unexpected error occurred. You can try reloading the page.
           </p>
-          <details className="mb-6 text-left">
-            <summary className="cursor-pointer text-sm text-slate-400 hover:text-slate-600">
-              Error details
-            </summary>
-            <pre className="mt-2 p-3 bg-slate-100 rounded-lg text-xs text-slate-600 overflow-auto max-h-40">
-              {this.state.error?.message}
-              {this.state.error?.stack && `\n\n${this.state.error.stack}`}
-            </pre>
-          </details>
+          {import.meta.env.DEV && (
+            <details className="mb-6 text-left">
+              <summary className="cursor-pointer text-sm text-slate-400 hover:text-slate-600">
+                Error details
+              </summary>
+              <pre className="mt-2 p-3 bg-slate-100 rounded-lg text-xs text-slate-600 overflow-auto max-h-40">
+                {this.state.error?.message}
+                {this.state.error?.stack && `\n\n${this.state.error.stack}`}
+              </pre>
+            </details>
+          )}
           <div className="flex gap-3 justify-center">
             <button
               onClick={() => window.location.reload()}

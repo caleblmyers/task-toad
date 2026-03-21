@@ -65,7 +65,8 @@ export async function fetchFileContent(
 ): Promise<string | null> {
   const token = await getInstallationToken(installationId);
   const refParam = ref ? `?ref=${encodeURIComponent(ref)}` : '';
-  const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${path}${refParam}`;
+  const encodedPath = path.split('/').map(encodeURIComponent).join('/');
+  const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encodedPath}${refParam}`;
 
   const response = await fetch(url, {
     headers: {

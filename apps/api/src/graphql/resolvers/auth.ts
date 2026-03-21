@@ -91,7 +91,10 @@ export const authMutations = {
       throw new ValidationError(pwResult.errors.join('; '));
     }
     const existing = await context.prisma.user.findUnique({ where: { email } });
-    if (existing) throw new ConflictError('Email already in use');
+    if (existing) {
+      // Return identical response to prevent email enumeration
+      return true;
+    }
     const passwordHash = await bcrypt.hash(args.password, 10);
     const rawToken = generateToken();
     const verificationToken = hashToken(rawToken);
