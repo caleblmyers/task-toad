@@ -25,6 +25,7 @@ import { timeEntryTypeDefs, timeEntryQueryFields, timeEntryMutationFields } from
 import { capacityTypeDefs, capacityQueryFields, capacityMutationFields } from './typedefs/capacity.js';
 import { knowledgeBaseTypeDefs, knowledgeBaseQueryFields, knowledgeBaseMutationFields } from './typedefs/knowledgebase.js';
 import { taskInsightTypeDefs, taskInsightQueryFields, taskInsightMutationFields } from './typedefs/taskinsight.js';
+import { slaTypeDefs, slaQueryFields, slaMutationFields } from './typedefs/sla.js';
 
 const typeDefs = /* GraphQL */ `
   ${authTypeDefs}
@@ -50,6 +51,7 @@ const typeDefs = /* GraphQL */ `
   ${capacityTypeDefs}
   ${knowledgeBaseTypeDefs}
   ${taskInsightTypeDefs}
+  ${slaTypeDefs}
 
   type Query {
     ${authQueryFields}
@@ -74,6 +76,7 @@ const typeDefs = /* GraphQL */ `
     ${capacityQueryFields}
     ${knowledgeBaseQueryFields}
     ${taskInsightQueryFields}
+    ${slaQueryFields}
   }
 
   type Mutation {
@@ -98,6 +101,7 @@ const typeDefs = /* GraphQL */ `
     ${capacityMutationFields}
     ${knowledgeBaseMutationFields}
     ${taskInsightMutationFields}
+    ${slaMutationFields}
   }
 `;
 

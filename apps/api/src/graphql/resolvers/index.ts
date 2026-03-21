@@ -18,6 +18,7 @@ import { timeEntryQueries, timeEntryMutations } from './timeentry.js';
 import { capacityQueries, capacityMutations } from './capacity.js';
 import { knowledgeBaseQueries, knowledgeBaseMutations, knowledgeBaseFieldResolvers } from './knowledgebase.js';
 import { taskInsightQueries, taskInsightMutations, taskInsightFieldResolvers } from './taskinsight.js';
+import { slaQueries, slaMutations, slaFieldResolvers } from './sla.js';
 
 export const resolvers = {
   Query: {
@@ -41,6 +42,7 @@ export const resolvers = {
     ...capacityQueries,
     ...knowledgeBaseQueries,
     ...taskInsightQueries,
+    ...slaQueries,
   },
   Mutation: {
     ...authMutations,
@@ -63,6 +65,7 @@ export const resolvers = {
     ...capacityMutations,
     ...knowledgeBaseMutations,
     ...taskInsightMutations,
+    ...slaMutations,
   },
   // Field resolvers
   User: { ...authFieldResolvers.User },
@@ -87,4 +90,5 @@ export const resolvers = {
   Release: { ...releaseFieldResolvers.Release },
   KnowledgeEntry: { ...knowledgeBaseFieldResolvers.KnowledgeEntry },
   TaskInsight: { ...taskInsightFieldResolvers.TaskInsight },
+  SLATimer: { ...slaFieldResolvers.SLATimer },
 };

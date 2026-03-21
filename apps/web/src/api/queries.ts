@@ -864,3 +864,35 @@ export const REVIEW_PR_MUTATION = `mutation ReviewPR($taskId: ID!, $prNumber: In
     suggestions
   }
 }`;
+
+// ── SLA ──
+
+export const SLA_POLICIES_QUERY = `query SLAPolicies($projectId: ID!) {
+  slaPolicies(projectId: $projectId) {
+    slaPolicyId projectId orgId name responseTimeHours resolutionTimeHours priority enabled createdAt
+  }
+}`;
+
+export const TASK_SLA_STATUS_QUERY = `query TaskSLAStatus($taskId: ID!) {
+  taskSLAStatus(taskId: $taskId) {
+    slaTimerId taskId policyId startedAt respondedAt resolvedAt
+    responseBreached resolutionBreached timeToResponseHours timeToResolutionHours
+    policy { slaPolicyId name responseTimeHours resolutionTimeHours priority }
+  }
+}`;
+
+export const CREATE_SLA_POLICY_MUTATION = `mutation CreateSLAPolicy($projectId: ID!, $name: String!, $responseTimeHours: Int!, $resolutionTimeHours: Int!, $priority: String) {
+  createSLAPolicy(projectId: $projectId, name: $name, responseTimeHours: $responseTimeHours, resolutionTimeHours: $resolutionTimeHours, priority: $priority) {
+    slaPolicyId projectId orgId name responseTimeHours resolutionTimeHours priority enabled createdAt
+  }
+}`;
+
+export const UPDATE_SLA_POLICY_MUTATION = `mutation UpdateSLAPolicy($slaPolicyId: ID!, $name: String, $responseTimeHours: Int, $resolutionTimeHours: Int, $priority: String, $enabled: Boolean) {
+  updateSLAPolicy(slaPolicyId: $slaPolicyId, name: $name, responseTimeHours: $responseTimeHours, resolutionTimeHours: $resolutionTimeHours, priority: $priority, enabled: $enabled) {
+    slaPolicyId projectId orgId name responseTimeHours resolutionTimeHours priority enabled createdAt
+  }
+}`;
+
+export const DELETE_SLA_POLICY_MUTATION = `mutation DeleteSLAPolicy($slaPolicyId: ID!) {
+  deleteSLAPolicy(slaPolicyId: $slaPolicyId)
+}`;

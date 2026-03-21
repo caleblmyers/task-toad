@@ -27,6 +27,7 @@ model Org {
   userTimeOffs     UserTimeOff[]
   knowledgeEntries KnowledgeEntry[]
   taskInsights     TaskInsight[]
+  slaPolicies      SLAPolicy[]
 
   @@map("orgs")
 }

@@ -21,6 +21,7 @@ import TaskAIReviewSection from './taskdetail/TaskAIReviewSection';
 import InsightPanel from './taskdetail/InsightPanel';
 import type { TaskInsight } from './taskdetail/InsightPanel';
 import Badge from './shared/Badge';
+import SLAStatusBadge from './taskdetail/SLAStatusBadge';
 
 interface TaskAncestor {
   taskId: string;
@@ -648,18 +649,23 @@ function PanelContent({
           <span className="text-slate-700 dark:text-slate-200 font-medium truncate max-w-[150px]">{task.title}</span>
         </nav>
       )}
-      <TaskTitleEditor
-        task={task}
-        editingTitle={editingTitle}
-        editTitleValue={editTitleValue}
-        titleEditRef={titleEditRef}
-        disabled={isDisabled}
-        onStartEdit={onStartEditTitle}
-        onChange={onTitleChange}
-        onSave={onTitleSave}
-        onKeyDown={onTitleKeyDown}
-        allTasks={allTasks}
-      />
+      <div className="flex items-start gap-2">
+        <div className="flex-1">
+          <TaskTitleEditor
+            task={task}
+            editingTitle={editingTitle}
+            editTitleValue={editTitleValue}
+            titleEditRef={titleEditRef}
+            disabled={isDisabled}
+            onStartEdit={onStartEditTitle}
+            onChange={onTitleChange}
+            onSave={onTitleSave}
+            onKeyDown={onTitleKeyDown}
+            allTasks={allTasks}
+          />
+        </div>
+        <SLAStatusBadge taskId={task.taskId} />
+      </div>
 
       <Tabs tabs={tabs} defaultTab="details" ariaLabel="Task detail sections" />
     </div>

@@ -1,0 +1,36 @@
+model SLAPolicy {
+  slaPolicyId       String     @id @default(uuid()) @map("sla_policy_id")
+  projectId         String     @map("project_id")
+  orgId             String     @map("org_id")
+  name              String
+  responseTimeHours Int        @map("response_time_hours")
+  resolutionTimeHours Int      @map("resolution_time_hours")
+  priority          String?    // null = applies to all priorities, or "high", "critical"
+  enabled           Boolean    @default(true)
+  createdAt         DateTime   @default(now()) @map("created_at")
+  project           Project    @relation(fields: [projectId], references: [projectId], onDelete: Cascade)
+  org               Org        @relation(fields: [orgId], references: [orgId], onDelete: Cascade)
+  timers            SLATimer[]
+
+  @@index([projectId])
+  @@index([orgId])
+  @@map("sla_policies")
+}
+
+model SLATimer {
+  slaTimerId         String    @id @default(uuid()) @map("sla_timer_id")
+  taskId             String    @map("task_id")
+  policyId           String    @map("policy_id")
+  orgId              String    @map("org_id")
+  startedAt          DateTime  @map("started_at")
+  respondedAt        DateTime? @map("responded_at")
+  resolvedAt         DateTime? @map("resolved_at")
+  responseBreached   Boolean   @default(false) @map("response_breached")
+  resolutionBreached Boolean   @default(false) @map("resolution_breached")
+  task               Task      @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
+  policy             SLAPolicy @relation(fields: [policyId], references: [slaPolicyId], onDelete: Cascade)
+
+  @@unique([taskId, policyId])
+  @@index([taskId])
+  @@map("sla_timers")
+}
