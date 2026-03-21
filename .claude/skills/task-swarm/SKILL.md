@@ -88,4 +88,4 @@ You are setting up a new swarm wave. Follow these steps precisely.
    | worker-3 | ... | task-005, task-006 | ... |
 
 10. **Remind the user of the post-wave flow:**
-    After workers and reviewer finish: `/task-cleanup` → `/task-release`
+    After workers and reviewer finish: `/task-release` (handles teardown, validation, docs, push, CI, and deploy verification in one step)

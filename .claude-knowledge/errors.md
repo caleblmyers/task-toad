@@ -104,3 +104,21 @@ Additionally, 3 orphaned DB-only migrations exist from a prior GitHub integratio
 2. Add connection pool monitoring via the existing Prisma metrics preview feature
 3. Consider adding a yoga `onError` plugin to catch and log errors that escape to Express
 4. Review if `compression()` middleware (registered before yoga) could interfere with error response streaming
+
+---
+
+### 2026-03-21 — file-type@16.5.4 named import crashes server at runtime (ESM compat)
+**Context:** Wave 44 added `file-type` package for magic byte validation. Worker used `import { fromBuffer } from 'file-type'`.
+**Error:** `SyntaxError: The requested module 'file-type' does not provide an export named 'fromBuffer'` — server crashes on startup in production (compiled `dist/` output).
+**Cause:** `file-type@16.5.4` is a CJS package that re-exports via `module.exports = { fromBuffer, fromFile, ... }`. When imported in ESM context (our compiled output uses `import` statements), Node.js wraps it as `{ default: module.exports }`. Named imports don't work — only `import fileType from 'file-type'` then `fileType.fromBuffer()`.
+**Why it wasn't caught earlier:**
+- `tsc` (TypeScript compiler) succeeded — the types declare named exports, so type-checking passes
+- `vitest` tests succeeded — `tsx` (dev-time loader) handles CJS↔ESM interop transparently, so tests pass
+- Only the production runtime (`node dist/index.js`) fails because Node.js ESM resolution is stricter than tsx
+- The release agent's health check hit the OLD production instance (still running Wave 43) and accepted it as healthy without verifying the deployed version
+**Fix:** Changed to `import fileType from 'file-type'` and `fileType.fromBuffer()` / `fileType.fromFile()`.
+**Prevention added:**
+1. Release agent now includes a runtime smoke test: builds, starts `node dist/index.js`, curls `/api/health`, kills — catches import crashes before pushing
+2. Health endpoint now includes `version` field (git commit SHA) — release agent verifies it matches the pushed commit
+3. Release agent checks Railway deploy trigger wasn't "skipped"
+**Rule:** When adding CJS packages to an ESM project, always test with `node dist/` after `tsc` build — don't rely on tsx/vitest for ESM compat validation.

@@ -86,6 +86,7 @@ app.get('/api/health', async (_req, res) => {
       status: 'ok',
       db: 'ok',
       s3: s3Status,
+      version: process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_COMMIT_SHA || 'dev',
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
     });

@@ -61,7 +61,7 @@ pnpm --filter web lint
 
 ### REST Endpoints
 
-- `GET /api/health` — Health check (database connectivity, uptime, timestamp)
+- `GET /api/health` — Health check (database connectivity, uptime, version/commit SHA, timestamp)
 - `GET /api/metrics` — Prometheus metrics (prom-client)
 - `GET /api/docs` — API documentation page
 - `GET /api/export/project/:projectId/{json,csv}` — Project data export
