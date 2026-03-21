@@ -40,7 +40,7 @@ interface Props {
 }
 
 type SortField = 'title' | 'leadTimeHours' | 'cycleTimeHours';
-type ViewMode = 'table' | 'scatter';
+type ViewMode = 'table' | 'scatter' | 'control';
 
 function formatHours(hours: number | null): string {
   if (hours === null) return '-';
@@ -237,11 +237,20 @@ export default function CycleTimePanel({ projectId, sprints, disabled, onClose }
                 >
                   Scatter
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('control')}
+                  className={`px-2.5 py-1 ${viewMode === 'control' ? 'bg-brand-green text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+                >
+                  Control
+                </button>
               </div>
             </div>
 
             {viewMode === 'scatter' ? (
               <CycleTimeScatter tasks={metrics.tasks} p50={metrics.p50CycleTimeHours} p85={metrics.p85CycleTimeHours} />
+            ) : viewMode === 'control' ? (
+              <CycleTimeControlChart tasks={metrics.tasks} />
             ) : sortedTasks.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -464,6 +473,209 @@ function CycleTimeScatter({ tasks, p50, p85 }: { tasks: TaskCycleMetrics[]; p50:
             <span className="w-3 h-0 inline-block border-t-2 border-dashed" style={{ borderColor: pl.color }} /> {pl.label}
           </span>
         ))}
+      </div>
+    </div>
+  );
+}
+
+const CONTROL_WINDOW = 10;
+
+function CycleTimeControlChart({ tasks }: { tasks: TaskCycleMetrics[] }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(500);
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (w && w > 0) setWidth(w);
+    });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  const validTasks = tasks
+    .filter((t) => t.cycleTimeHours !== null && t.completedAt !== null)
+    .sort((a, b) => new Date(a.completedAt!).getTime() - new Date(b.completedAt!).getTime());
+
+  if (validTasks.length === 0) {
+    return (
+      <div ref={containerRef} className="w-full text-center py-8 text-sm text-slate-400 dark:text-slate-500">
+        No completed tasks with cycle time data.
+      </div>
+    );
+  }
+
+  // Calculate rolling average and std dev bands
+  const rollingAvg: (number | null)[] = [];
+  const upperBand: (number | null)[] = [];
+  const lowerBand: (number | null)[] = [];
+
+  for (let i = 0; i < validTasks.length; i++) {
+    if (i < CONTROL_WINDOW - 1) {
+      rollingAvg.push(null);
+      upperBand.push(null);
+      lowerBand.push(null);
+      continue;
+    }
+    const windowSlice = validTasks.slice(i - CONTROL_WINDOW + 1, i + 1).map((t) => t.cycleTimeHours!);
+    const avg = windowSlice.reduce((s, v) => s + v, 0) / windowSlice.length;
+    const variance = windowSlice.reduce((s, v) => s + (v - avg) ** 2, 0) / windowSlice.length;
+    const stdDev = Math.sqrt(variance);
+    rollingAvg.push(avg);
+    upperBand.push(avg + 2 * stdDev);
+    lowerBand.push(Math.max(0, avg - 2 * stdDev));
+  }
+
+  // Axis ranges
+  const dates = validTasks.map((t) => new Date(t.completedAt!).getTime());
+  const minDate = Math.min(...dates);
+  const maxDate = Math.max(...dates);
+  const dateRange = maxDate - minDate || 86400000;
+
+  const allValues = [
+    ...validTasks.map((t) => t.cycleTimeHours!),
+    ...upperBand.filter((v): v is number => v !== null),
+  ];
+  const maxCycleTime = Math.max(...allValues) * 1.1;
+
+  const innerW = width - SCATTER_PAD.left - SCATTER_PAD.right;
+  const innerH = SCATTER_H - SCATTER_PAD.top - SCATTER_PAD.bottom;
+
+  const xScale = (timestamp: number) => SCATTER_PAD.left + ((timestamp - minDate) / dateRange) * innerW;
+  const yScale = (hours: number) => SCATTER_PAD.top + innerH - (maxCycleTime > 0 ? (hours / maxCycleTime) * innerH : 0);
+
+  const points = validTasks.map((t) => ({
+    x: xScale(new Date(t.completedAt!).getTime()),
+    y: yScale(t.cycleTimeHours!),
+    cycleTime: t.cycleTimeHours!,
+    title: t.title,
+    completedAt: t.completedAt!,
+  }));
+
+  // Build SVG path for rolling average line
+  const avgPoints = points
+    .map((p, i) => (rollingAvg[i] !== null ? { x: p.x, y: yScale(rollingAvg[i]!) } : null))
+    .filter((p): p is { x: number; y: number } => p !== null);
+
+  const avgLinePath = avgPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+
+  // Build area path for std dev bands
+  const bandPoints = points
+    .map((p, i) => {
+      if (upperBand[i] === null || lowerBand[i] === null) return null;
+      return { x: p.x, upper: yScale(upperBand[i]!), lower: yScale(lowerBand[i]!) };
+    })
+    .filter((p): p is { x: number; upper: number; lower: number } => p !== null);
+
+  const bandAreaPath = bandPoints.length > 0
+    ? `M ${bandPoints.map((p) => `${p.x} ${p.upper}`).join(' L ')} L ${[...bandPoints].reverse().map((p) => `${p.x} ${p.lower}`).join(' L ')} Z`
+    : '';
+
+  // Format date for labels
+  const fmtDate = (ts: number) => {
+    const d = new Date(ts);
+    return `${d.getMonth() + 1}/${d.getDate()}`;
+  };
+
+  // X-axis labels
+  const xLabelCount = Math.min(5, validTasks.length);
+  const xLabels = Array.from({ length: xLabelCount }, (_, i) => {
+    const ts = minDate + (i / Math.max(xLabelCount - 1, 1)) * dateRange;
+    return { x: xScale(ts), label: fmtDate(ts) };
+  });
+
+  // Y-axis ticks
+  const yTickCount = 4;
+  const yTicks = Array.from({ length: yTickCount + 1 }, (_, i) => {
+    const v = (maxCycleTime / yTickCount) * i;
+    return { v, label: formatHours(v) };
+  });
+
+  return (
+    <div ref={containerRef} className="w-full">
+      <svg width={width} height={SCATTER_H} className="select-none" onMouseLeave={() => setHoveredIdx(null)}>
+        {/* Grid lines */}
+        {yTicks.map((tick, i) => (
+          <line key={i} x1={SCATTER_PAD.left} y1={yScale(tick.v)} x2={SCATTER_PAD.left + innerW} y2={yScale(tick.v)} stroke="#e2e8f0" strokeWidth={1} />
+        ))}
+
+        {/* Y-axis labels */}
+        {yTicks.map((tick, i) => (
+          <text key={i} x={SCATTER_PAD.left - 6} y={yScale(tick.v) + 4} textAnchor="end" className="fill-slate-400" fontSize={10}>
+            {tick.label}
+          </text>
+        ))}
+
+        {/* X-axis labels */}
+        {xLabels.map((xl, i) => (
+          <text key={i} x={xl.x} y={SCATTER_H - 8} textAnchor="middle" className="fill-slate-400" fontSize={10}>
+            {xl.label}
+          </text>
+        ))}
+
+        {/* Standard deviation band */}
+        {bandAreaPath && (
+          <path d={bandAreaPath} fill="#3b82f6" fillOpacity={0.1} />
+        )}
+
+        {/* Rolling average line */}
+        {avgLinePath && (
+          <path d={avgLinePath} fill="none" stroke="#3b82f6" strokeWidth={2} />
+        )}
+
+        {/* Scatter dots */}
+        {points.map((p, i) => (
+          <circle
+            key={i}
+            cx={p.x}
+            cy={p.y}
+            r={hoveredIdx === i ? 6 : 4}
+            fill="#3b82f6"
+            fillOpacity={0.7}
+            stroke="white"
+            strokeWidth={1.5}
+            className="cursor-pointer"
+            onMouseEnter={() => setHoveredIdx(i)}
+          />
+        ))}
+
+        {/* Tooltip */}
+        {hoveredIdx !== null && (() => {
+          const p = points[hoveredIdx];
+          const line1 = p.title.length > 30 ? p.title.slice(0, 30) + '...' : p.title;
+          const line2 = `Cycle: ${formatHours(p.cycleTime)}`;
+          const boxW = Math.max(120, Math.max(line1.length, line2.length) * 6.5);
+          const boxH = 36;
+          const tx = Math.min(Math.max(p.x, SCATTER_PAD.left + boxW / 2), SCATTER_PAD.left + innerW - boxW / 2);
+          const ty = p.y - boxH - 8;
+          return (
+            <g>
+              <rect x={tx - boxW / 2} y={ty} width={boxW} height={boxH} rx={4} fill="#1e293b" opacity={0.9} />
+              <text x={tx} y={ty + 14} textAnchor="middle" fill="white" fontSize={10}>
+                {line1}
+              </text>
+              <text x={tx} y={ty + 28} textAnchor="middle" fill="#93c5fd" fontSize={10} fontWeight={500}>
+                {line2}
+              </text>
+            </g>
+          );
+        })()}
+      </svg>
+
+      {/* Legend */}
+      <div className="flex items-center gap-3 px-1 mt-1 flex-wrap">
+        <span className="flex items-center gap-1 text-[10px] text-slate-400">
+          <span className="w-2.5 h-2.5 rounded-full bg-blue-500 opacity-70 inline-block" /> Task
+        </span>
+        <span className="flex items-center gap-1 text-[10px] text-blue-500">
+          <span className="w-3 h-0 inline-block border-t-2" style={{ borderColor: '#3b82f6' }} /> Avg ({CONTROL_WINDOW}-task)
+        </span>
+        <span className="flex items-center gap-1 text-[10px] text-blue-300">
+          <span className="w-3 h-2 inline-block bg-blue-500 opacity-10 border border-blue-300 rounded-sm" /> &plusmn;2&sigma;
+        </span>
       </div>
     </div>
   );

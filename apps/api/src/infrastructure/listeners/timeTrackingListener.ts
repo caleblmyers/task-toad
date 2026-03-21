@@ -45,25 +45,56 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
 
       const today = endTime.toISOString().slice(0, 10);
 
-      // Use the task's assignee or the user who changed the status
-      const userId = e.task.assigneeId as string || e.userId;
-
-      await prisma.timeEntry.create({
-        data: {
-          orgId: e.orgId,
-          taskId: e.task.taskId,
-          userId,
-          durationMinutes,
-          loggedDate: today,
-          description: `Auto-tracked: ${oldStatus} → ${newStatus}`,
-          autoTracked: true,
-        },
+      // Check for multiple assignees via TaskAssignee join table
+      const taskAssignees = await prisma.taskAssignee.findMany({
+        where: { taskId: e.task.taskId },
+        select: { userId: true },
       });
 
-      logger.info(
-        { taskId: e.task.taskId, durationMinutes },
-        'Auto-tracked time entry created',
-      );
+      if (taskAssignees.length > 1) {
+        // Split duration evenly among all assignees (minimum 1 minute each)
+        const perAssignee = Math.max(1, Math.ceil(durationMinutes / taskAssignees.length));
+        await Promise.all(
+          taskAssignees.map((assignee) =>
+            prisma.timeEntry.create({
+              data: {
+                orgId: e.orgId,
+                taskId: e.task.taskId,
+                userId: assignee.userId,
+                durationMinutes: perAssignee,
+                loggedDate: today,
+                description: `Auto-tracked: ${oldStatus} → ${newStatus}`,
+                autoTracked: true,
+              },
+            }),
+          ),
+        );
+
+        logger.info(
+          { taskId: e.task.taskId, durationMinutes, assigneeCount: taskAssignees.length, perAssignee },
+          'Auto-tracked time entries created for multiple assignees',
+        );
+      } else {
+        // Single assignee or no assignees: use existing behavior
+        const userId = taskAssignees[0]?.userId ?? (e.task.assigneeId as string) ?? e.userId;
+
+        await prisma.timeEntry.create({
+          data: {
+            orgId: e.orgId,
+            taskId: e.task.taskId,
+            userId,
+            durationMinutes,
+            loggedDate: today,
+            description: `Auto-tracked: ${oldStatus} → ${newStatus}`,
+            autoTracked: true,
+          },
+        });
+
+        logger.info(
+          { taskId: e.task.taskId, durationMinutes },
+          'Auto-tracked time entry created',
+        );
+      }
     } catch (err) {
       logger.error(
         { taskId: e.task.taskId, err },

@@ -4,6 +4,7 @@ export const timeEntryTypeDefs = /* GraphQL */ `
     taskId: ID!
     userId: ID!
     userEmail: String!
+    userDisplayName: String
     durationMinutes: Int!
     description: String
     loggedDate: String!

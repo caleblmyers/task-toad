@@ -302,6 +302,7 @@ export interface TimeEntry {
   taskId: string;
   userId: string;
   userEmail: string;
+  userDisplayName: string | null;
   durationMinutes: number;
   description: string | null;
   loggedDate: string;

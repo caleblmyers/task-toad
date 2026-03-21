@@ -368,7 +368,7 @@ export const REPLAY_WEBHOOK_DELIVERY_MUTATION = `mutation ReplayWebhookDelivery(
 
 export const TIME_ENTRIES_QUERY = `query TimeEntries($taskId: ID!, $limit: Int, $cursor: String) {
   timeEntries(taskId: $taskId, limit: $limit, cursor: $cursor) {
-    entries { timeEntryId taskId userId userEmail durationMinutes description loggedDate billable autoTracked createdAt updatedAt }
+    entries { timeEntryId taskId userId userEmail userDisplayName durationMinutes description loggedDate billable autoTracked createdAt updatedAt }
     totalMinutes
   }
 }`;
@@ -376,7 +376,7 @@ export const TIME_ENTRIES_QUERY = `query TimeEntries($taskId: ID!, $limit: Int, 
 export const TASK_TIME_SUMMARY_QUERY = `query TaskTimeSummary($taskId: ID!) {
   taskTimeSummary(taskId: $taskId) {
     taskId totalMinutes estimatedHours
-    entries { timeEntryId taskId userId userEmail durationMinutes description loggedDate billable autoTracked createdAt updatedAt }
+    entries { timeEntryId taskId userId userEmail userDisplayName durationMinutes description loggedDate billable autoTracked createdAt updatedAt }
   }
 }`;
 
@@ -391,13 +391,13 @@ export const SPRINT_TIME_SUMMARY_QUERY = `query SprintTimeSummary($sprintId: ID!
 
 export const LOG_TIME_MUTATION = `mutation LogTime($taskId: ID!, $durationMinutes: Int!, $loggedDate: String!, $description: String, $billable: Boolean) {
   logTime(taskId: $taskId, durationMinutes: $durationMinutes, loggedDate: $loggedDate, description: $description, billable: $billable) {
-    timeEntryId taskId userId userEmail durationMinutes description loggedDate billable autoTracked createdAt updatedAt
+    timeEntryId taskId userId userEmail userDisplayName durationMinutes description loggedDate billable autoTracked createdAt updatedAt
   }
 }`;
 
 export const UPDATE_TIME_ENTRY_MUTATION = `mutation UpdateTimeEntry($timeEntryId: ID!, $durationMinutes: Int, $description: String, $billable: Boolean) {
   updateTimeEntry(timeEntryId: $timeEntryId, durationMinutes: $durationMinutes, description: $description, billable: $billable) {
-    timeEntryId taskId userId userEmail durationMinutes description loggedDate billable autoTracked createdAt updatedAt
+    timeEntryId taskId userId userEmail userDisplayName durationMinutes description loggedDate billable autoTracked createdAt updatedAt
   }
 }`;
 

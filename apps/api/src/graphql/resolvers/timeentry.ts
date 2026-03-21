@@ -20,7 +20,7 @@ interface TimeEntryRow {
   autoTracked: boolean;
   createdAt: Date;
   updatedAt: Date;
-  user: { email: string };
+  user: { email: string; displayName?: string | null };
 }
 
 function mapEntry(e: TimeEntryRow) {
@@ -29,6 +29,7 @@ function mapEntry(e: TimeEntryRow) {
     taskId: e.taskId,
     userId: e.userId,
     userEmail: e.user.email,
+    userDisplayName: e.user.displayName ?? null,
     durationMinutes: e.durationMinutes,
     description: e.description,
     loggedDate: e.loggedDate,
@@ -69,7 +70,7 @@ export const timeEntryQueries = {
           ? { cursor: { timeEntryId: args.cursor }, skip: 1 }
           : {}),
         orderBy: { createdAt: 'desc' as const },
-        include: { user: { select: { email: true } } },
+        include: { user: { select: { email: true, displayName: true } } },
       }),
       context.prisma.timeEntry.aggregate({
         where,
@@ -94,7 +95,7 @@ export const timeEntryQueries = {
       context.prisma.timeEntry.findMany({
         where: { taskId: args.taskId },
         orderBy: { createdAt: 'desc' as const },
-        include: { user: { select: { email: true } } },
+        include: { user: { select: { email: true, displayName: true } } },
       }),
       context.prisma.timeEntry.aggregate({
         where: { taskId: args.taskId },
@@ -136,7 +137,7 @@ export const timeEntryQueries = {
 
     const entries = await context.prisma.timeEntry.findMany({
       where: { taskId: { in: taskIds } },
-      include: { user: { select: { email: true } } },
+      include: { user: { select: { email: true, displayName: true } } },
     });
 
     // Aggregate by user
@@ -194,7 +195,7 @@ export const timeEntryQueries = {
         taskAssignees: {
           select: {
             userId: true,
-            user: { select: { email: true } },
+            user: { select: { email: true, displayName: true } },
           },
         },
       },
@@ -212,7 +213,7 @@ export const timeEntryQueries = {
             userId: true,
             durationMinutes: true,
             loggedDate: true,
-            user: { select: { email: true } },
+            user: { select: { email: true, displayName: true } },
           },
         })
       : [];
@@ -232,7 +233,7 @@ export const timeEntryQueries = {
       } else {
         cellMap.set(key, {
           userId: entry.userId,
-          userName: entry.user.email.split('@')[0],
+          userName: (entry.user as { displayName?: string | null; email: string }).displayName || entry.user.email.split('@')[0],
           week,
           totalHours: entry.durationMinutes / 60,
           taskCount: 0,
@@ -257,7 +258,7 @@ export const timeEntryQueries = {
         } else {
           cellMap.set(key, {
             userId: assignee.userId,
-            userName: assignee.user.email.split('@')[0],
+            userName: (assignee.user as { displayName?: string | null; email: string }).displayName || assignee.user.email.split('@')[0],
             week,
             totalHours: task.estimatedHours ?? 0,
             taskCount: 1,
@@ -432,7 +433,7 @@ export const timeEntryMutations = {
         description: args.description ?? null,
         billable: args.billable ?? false,
       },
-      include: { user: { select: { email: true } } },
+      include: { user: { select: { email: true, displayName: true } } },
     });
 
     logActivity(context.prisma, {
@@ -488,7 +489,7 @@ export const timeEntryMutations = {
           : {}),
         ...(args.billable !== undefined ? { billable: args.billable } : {}),
       },
-      include: { user: { select: { email: true } } },
+      include: { user: { select: { email: true, displayName: true } } },
     });
 
     return mapEntry(updated);

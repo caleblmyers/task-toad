@@ -43,7 +43,7 @@ export default function TimeEntryList({ entries, currentUserId, onDelete }: Time
             )}
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            <span className="text-slate-400 text-[10px]">{entry.userEmail.split('@')[0]}</span>
+            <span className="text-slate-400 text-[10px]">{entry.userDisplayName || entry.userEmail.split('@')[0]}</span>
             {currentUserId === entry.userId && (
               <button
                 onClick={() => onDelete(entry.timeEntryId)}
