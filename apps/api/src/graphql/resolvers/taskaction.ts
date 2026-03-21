@@ -87,6 +87,7 @@ export const taskActionQueries = {
         },
       },
       orderBy: { updatedAt: 'desc' },
+      take: 100,
     });
   },
 };

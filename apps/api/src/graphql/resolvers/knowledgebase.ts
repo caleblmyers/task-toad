@@ -17,6 +17,7 @@ export const knowledgeBaseQueries = {
     return context.prisma.knowledgeEntry.findMany({
       where: { projectId: args.projectId },
       orderBy: { createdAt: 'desc' },
+      take: 100,
     });
   },
 };

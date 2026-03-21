@@ -328,7 +328,7 @@ export const taskQueries = {
     context: Context
   ) => {
     await requireProjectAccess(context, args.projectId);
-    const limit = Math.max(0, Math.min(args.limit ?? 100, 1000));
+    const limit = Math.max(0, Math.min(args.limit ?? 50, 100));
     const offset = Math.max(0, args.offset ?? 0);
 
     const where = buildFilterWhere(args.projectId, args.filter, args.parentTaskId);
@@ -352,6 +352,7 @@ export const taskQueries = {
       where: { taskId: args.taskId, parentCommentId: null },
       include: { user: { select: { email: true } }, replies: { include: { user: { select: { email: true } } }, orderBy: { createdAt: 'asc' } } },
       orderBy: { createdAt: 'asc' },
+      take: 100,
     });
     return comments.map((c: typeof comments[number]) => ({
       ...c,
@@ -373,7 +374,7 @@ export const taskQueries = {
     const where: Record<string, unknown> = { orgId: user.orgId };
     if (args.projectId) where.projectId = args.projectId;
     if (args.taskId) where.taskId = args.taskId;
-    const limit = args.limit ?? 50;
+    const limit = Math.min(args.limit ?? 50, 100);
     const activities = await context.prisma.activity.findMany({
       where,
       include: { user: { select: { email: true } } },

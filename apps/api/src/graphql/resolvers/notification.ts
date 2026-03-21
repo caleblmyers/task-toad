@@ -16,7 +16,7 @@ export const notificationQueries = {
         ...(args.unreadOnly ? { isRead: false } : {}),
       },
       orderBy: { createdAt: 'desc' },
-      take: args.limit ?? 50,
+      take: Math.min(args.limit ?? 50, 100),
     });
   },
 

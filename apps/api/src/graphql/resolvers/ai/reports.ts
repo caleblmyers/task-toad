@@ -15,7 +15,7 @@ export const reportQueries = {
     context: Context
   ) => {
     await requireProject(context, args.projectId);
-    const limit = args.limit ?? 20;
+    const limit = Math.min(args.limit ?? 20, 100);
     const reports = await context.prisma.report.findMany({
       where: {
         projectId: args.projectId,
@@ -55,7 +55,7 @@ export const reportQueries = {
     const logs = await context.prisma.aIPromptLog.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      take: args.limit ?? 20,
+      take: Math.min(args.limit ?? 20, 100),
     });
     return logs.map((l: { id: string; feature: string; taskId: string | null; projectId: string | null; input: string; output: string; inputTokens: number; outputTokens: number; costUSD: number; latencyMs: number; model: string; cached: boolean; createdAt: Date }) => ({
       ...l,

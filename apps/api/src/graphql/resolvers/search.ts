@@ -8,7 +8,7 @@ import { requireTask } from '../../utils/resolverHelpers.js';
 export const searchQueries = {
   globalSearch: async (_parent: unknown, args: { query: string; limit?: number | null }, context: Context) => {
     const user = requireOrg(context);
-    const take = args.limit ?? 10;
+    const take = Math.min(args.limit ?? 10, 50);
     const [projects, tasks] = await Promise.all([
       context.prisma.project.findMany({
         where: { orgId: user.orgId, name: { contains: args.query, mode: 'insensitive' }, archived: false },

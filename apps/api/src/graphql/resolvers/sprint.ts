@@ -40,6 +40,7 @@ export const sprintQueries = {
     return context.prisma.sprint.findMany({
       where: { projectId: args.projectId, orgId: user.orgId },
       orderBy: { createdAt: 'asc' },
+      take: 100,
     });
   },
 

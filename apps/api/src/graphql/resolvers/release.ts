@@ -16,7 +16,7 @@ export const releaseQueries = {
     context: Context
   ) => {
     await requireProject(context, args.projectId);
-    const limit = args.limit ?? 20;
+    const limit = Math.min(args.limit ?? 20, 100);
     const releases = await context.prisma.release.findMany({
       where: {
         projectId: args.projectId,

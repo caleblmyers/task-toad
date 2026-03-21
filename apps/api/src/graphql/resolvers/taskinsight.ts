@@ -20,6 +20,7 @@ export const taskInsightQueries = {
     return context.prisma.taskInsight.findMany({
       where,
       orderBy: { createdAt: 'desc' },
+      take: 100,
     });
   },
 };

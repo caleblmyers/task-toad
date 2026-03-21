@@ -40,7 +40,7 @@ export const webhookQueries = {
       throw new NotFoundError('Webhook endpoint not found');
     }
 
-    const limit = args.limit ?? 50;
+    const limit = Math.min(args.limit ?? 50, 100);
     const deliveries = await context.prisma.webhookDelivery.findMany({
       where: { endpointId: args.endpointId },
       orderBy: { createdAt: 'desc' },
