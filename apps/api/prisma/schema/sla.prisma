@@ -27,6 +27,8 @@ model SLATimer {
   resolvedAt         DateTime? @map("resolved_at")
   responseBreached   Boolean   @default(false) @map("response_breached")
   resolutionBreached Boolean   @default(false) @map("resolution_breached")
+  pausedAt           DateTime? @map("paused_at")
+  totalPausedMs      Int       @default(0) @map("total_paused_ms")
   task               Task      @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
   policy             SLAPolicy @relation(fields: [policyId], references: [slaPolicyId], onDelete: Cascade)
 

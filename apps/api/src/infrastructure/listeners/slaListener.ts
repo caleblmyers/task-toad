@@ -56,20 +56,45 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
       for (const timer of timers) {
         const updates: Record<string, unknown> = {};
 
+        // Pause: task moves from in_progress back to todo/backlog
+        if (
+          oldStatus === 'in_progress' &&
+          (newStatus === 'todo' || newStatus === 'backlog') &&
+          !timer.pausedAt
+        ) {
+          updates.pausedAt = now;
+        }
+
+        // Resume: task moves back to in_progress while paused
+        if (newStatus === 'in_progress' && timer.pausedAt) {
+          const pausedMs = now.getTime() - timer.pausedAt.getTime();
+          updates.totalPausedMs = timer.totalPausedMs + pausedMs;
+          updates.pausedAt = null;
+        }
+
         // First move to in_progress: mark as "responded"
         if (oldStatus === 'todo' && newStatus === 'in_progress' && !timer.respondedAt) {
           updates.respondedAt = now;
-          const deadline = timer.startedAt.getTime() + timer.policy.responseTimeHours * 3600_000;
-          if (now.getTime() > deadline) {
+          const effectiveElapsed = now.getTime() - timer.startedAt.getTime() - timer.totalPausedMs;
+          const deadline = timer.policy.responseTimeHours * 3600_000;
+          if (effectiveElapsed > deadline) {
             updates.responseBreached = true;
           }
         }
 
         // Move to in_review or done: mark as "resolved"
         if ((newStatus === 'in_review' || newStatus === 'done') && !timer.resolvedAt) {
+          // If the timer was paused, accumulate remaining paused time
+          let currentPausedMs = timer.totalPausedMs;
+          if (timer.pausedAt) {
+            currentPausedMs += now.getTime() - timer.pausedAt.getTime();
+            updates.pausedAt = null;
+            updates.totalPausedMs = currentPausedMs;
+          }
           updates.resolvedAt = now;
-          const deadline = timer.startedAt.getTime() + timer.policy.resolutionTimeHours * 3600_000;
-          if (now.getTime() > deadline) {
+          const effectiveElapsed = now.getTime() - timer.startedAt.getTime() - currentPausedMs;
+          const deadline = timer.policy.resolutionTimeHours * 3600_000;
+          if (effectiveElapsed > deadline) {
             updates.resolutionBreached = true;
           }
         }

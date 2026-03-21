@@ -34,6 +34,7 @@ import {
   ManualTaskSpecSchema,
 } from './aiTypes.js';
 import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse, DriftAnalysis, TrendAnalysis, ActionPlanResponse, ReleaseNotes, OnboardingQuestionsResponse, HierarchicalPlanResponse, TaskInsightsResponse, ManualTaskSpec } from './aiTypes.js';
+import Anthropic from '@anthropic-ai/sdk';
 import { FEATURE_CONFIG } from './aiConfig.js';
 import { callAI, type PromptLogContext } from './aiClient.js';
 import { parseJSON } from './responseParser.js';
@@ -74,6 +75,35 @@ import {
 } from './promptBuilder.js';
 
 // ---------------------------------------------------------------------------
+// App-level retry for transient AI errors
+// ---------------------------------------------------------------------------
+
+function isTransientError(err: unknown): boolean {
+  if (err instanceof Anthropic.APIConnectionError) return true;
+  if (err instanceof Anthropic.InternalServerError) return true;
+  // 5xx mapped to GraphQLError with specific codes
+  if (err instanceof GraphQLError) {
+    const code = err.extensions?.code as string | undefined;
+    if (code === 'AI_SERVER_ERROR' || code === 'AI_UNAVAILABLE') return true;
+  }
+  return false;
+}
+
+async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 2): Promise<T> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (attempt === maxRetries || !isTransientError(err)) throw err;
+      const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
+      log.info({ attempt, delayMs: delay }, 'Retrying AI call after transient error');
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  throw new Error('unreachable');
+}
+
+// ---------------------------------------------------------------------------
 // Retry-on-validation-failure helper
 // ---------------------------------------------------------------------------
 
@@ -101,7 +131,7 @@ async function callAndParse<T>(
   }
 
   try {
-    const result = await callAI({
+    const result = await callWithRetry(() => callAI({
       apiKey,
       systemPrompt: prompt.systemPrompt,
       userPrompt: prompt.userPrompt,
@@ -110,7 +140,7 @@ async function callAndParse<T>(
       cacheTTLMs: config.cacheTTLMs,
       prefill,
       promptLogContext,
-    });
+    }));
 
     if (result.usage.stopReason === 'max_tokens') {
       log.warn({ feature, outputTokens: result.usage.outputTokens, maxTokens: config.maxTokens }, 'AI response truncated (hit max_tokens)');
@@ -124,7 +154,7 @@ async function callAndParse<T>(
     } catch (err) {
       if (config.retryOnValidationFailure && !result.cached) {
         log.warn({ feature }, 'Validation failed, retrying once');
-        const retry = await callAI({
+        const retry = await callWithRetry(() => callAI({
           apiKey,
           systemPrompt: prompt.systemPrompt,
           userPrompt: prompt.userPrompt,
@@ -133,7 +163,7 @@ async function callAndParse<T>(
           cacheTTLMs: 0, // skip cache on retry
           prefill,
           promptLogContext,
-        });
+        }));
 
         if (retry.usage.stopReason === 'max_tokens') {
           log.warn({ feature, outputTokens: retry.usage.outputTokens, maxTokens: config.maxTokens }, 'AI retry also truncated');
@@ -570,7 +600,25 @@ export async function planTaskActions(
   promptLogContext?: PromptLogContext
 ): Promise<ActionPlanResponse> {
   const p = buildPlanTaskActionsPrompt(data);
-  return callAndParse(apiKey, 'planTaskActions', p, ActionPlanResponseSchema, promptLogContext);
+  const result = await callAndParse(apiKey, 'planTaskActions', p, ActionPlanResponseSchema, promptLogContext);
+
+  // Validate source action ID references in the plan
+  const actionIds = new Set(result.actions.map((_a, i) => `action_${i}`));
+  for (const action of result.actions) {
+    const config = action.config as Record<string, unknown>;
+    for (const key of ['sourceActionId', 'sourcePRActionId', 'sourceMonitorActionId']) {
+      const ref = config[key] as string | undefined;
+      if (ref && !actionIds.has(ref)) {
+        log.warn(
+          { actionType: action.actionType, key, ref, validIds: [...actionIds] },
+          'Action plan references invalid source action ID — removing reference',
+        );
+        delete config[key];
+      }
+    }
+  }
+
+  return result;
 }
 
 export async function generateRepoProfile(

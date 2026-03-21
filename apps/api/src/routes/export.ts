@@ -6,7 +6,7 @@ import { JWT_SECRET, prisma } from '../graphql/context.js';
 const router: ReturnType<typeof Router> = Router();
 
 interface AuthRequest extends Request {
-  user?: { userId: string; email: string; orgId: string | null };
+  user?: { userId: string; email: string; orgId: string | null; role: string | null };
 }
 
 async function requireAuth(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
@@ -22,7 +22,7 @@ async function requireAuth(req: AuthRequest, res: Response, next: NextFunction):
       res.status(401).json({ error: 'User not found' });
       return;
     }
-    req.user = { userId: user.userId, email: user.email, orgId: user.orgId };
+    req.user = { userId: user.userId, email: user.email, orgId: user.orgId, role: user.role };
     next();
   } catch {
     res.status(401).json({ error: 'Invalid token' });
@@ -80,6 +80,16 @@ function redactEmail(email: string): string {
   const [local, domain] = email.split('@');
   if (!local || !domain) return '***';
   return `${local[0]}***@${domain}`;
+}
+
+function shouldRedactEmails(req: AuthRequest): boolean {
+  const isAdmin = req.user?.role === 'org:admin';
+  // Legacy opt-in redaction
+  if (req.query.redactEmails === 'true') return true;
+  // Admins can opt-in to include emails (default: redacted for non-admins)
+  if (isAdmin && req.query.includeEmails === 'true') return false;
+  // Non-admins always redact; admins redact by default unless includeEmails=true
+  return true;
 }
 
 interface TaskExportRow {
@@ -143,8 +153,8 @@ router.get('/project/:projectId/json', requireAuth, async (req: AuthRequest, res
     orderBy: { createdAt: 'asc' },
   });
 
-  const shouldRedact = req.query.redactEmails === 'true';
-  const maybeRedact = (email: string) => shouldRedact ? redactEmail(email) : email;
+  const redact = shouldRedactEmails(req);
+  const maybeRedact = (email: string) => redact ? redactEmail(email) : email;
   const filename = sanitizeFilename(project.name);
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}.json"`);
@@ -211,8 +221,8 @@ router.get('/project/:projectId/csv', requireAuth, async (req: AuthRequest, res:
     orderBy: { createdAt: 'asc' },
   });
 
-  const shouldRedactCsv = req.query.redactEmails === 'true';
-  const maybeRedactCsv = (email: string) => shouldRedactCsv ? redactEmail(email) : email;
+  const redactCsv = shouldRedactEmails(req);
+  const maybeRedactCsv = (email: string) => redactCsv ? redactEmail(email) : email;
   const rows: TaskExportRow[] = tasks.map((t) => ({
     taskId: t.taskId,
     title: t.title,
@@ -278,8 +288,8 @@ router.get('/project/:projectId/activity/json', requireAuth, async (req: AuthReq
     take: 10000,
   });
 
-  const shouldRedactActivity = req.query.redactEmails === 'true';
-  const maybeRedactActivity = (email: string) => shouldRedactActivity ? redactEmail(email) : email;
+  const redactActivity = shouldRedactEmails(req);
+  const maybeRedactActivity = (email: string) => redactActivity ? redactEmail(email) : email;
   const filename = sanitizeFilename(project.name);
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}-activity.json"`);
@@ -319,8 +329,8 @@ router.get('/project/:projectId/activity/csv', requireAuth, async (req: AuthRequ
     take: 10000,
   });
 
-  const shouldRedactActivityCsv = req.query.redactEmails === 'true';
-  const maybeRedactActivityCsv = (email: string) => shouldRedactActivityCsv ? redactEmail(email) : email;
+  const redactActivityCsv = shouldRedactEmails(req);
+  const maybeRedactActivityCsv = (email: string) => redactActivityCsv ? redactEmail(email) : email;
   const rows: ActivityExportRow[] = activities.map((a) => ({
     date: a.createdAt.toISOString(),
     user: maybeRedactActivityCsv(a.user.email),
