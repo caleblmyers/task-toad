@@ -176,7 +176,7 @@ app.use((req, _res, next) => {
   next();
 });
 
-// Refresh token endpoint — rotates access token using refresh cookie
+// Refresh token endpoint — rotates access + refresh tokens using refresh cookie
 app.post('/api/auth/refresh', async (req, res) => {
   const refreshToken = req.cookies?.['tt-refresh'];
   if (!refreshToken) { res.status(401).json({ error: 'No refresh token' }); return; }
@@ -194,17 +194,48 @@ app.post('/api/auth/refresh', async (req, res) => {
       res.status(401).json({ error: 'Token revoked' });
       return;
     }
+    // Validate refresh token exists in DB (session not pruned or logged out)
+    const oldTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    const existingRecord = await sharedPrisma.refreshToken.findUnique({ where: { tokenHash: oldTokenHash } });
+    if (!existingRecord) {
+      res.clearCookie('tt-access', { path: '/' });
+      res.clearCookie('tt-refresh', { path: '/api/auth/refresh' });
+      res.status(401).json({ error: 'Session expired or revoked' });
+      return;
+    }
     // Issue new access token
     const accessToken = await new SignJWT({ sub: user.userId, email: user.email, tv: user.tokenVersion })
       .setProtectedHeader({ alg: 'HS256' })
       .setExpirationTime('15m')
       .sign(JWT_SECRET);
+    // Token rotation: issue new refresh token, delete old record, create new record
+    const newRefreshToken = await new SignJWT({ sub: user.userId, type: 'refresh', tv: user.tokenVersion })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setExpirationTime('7d')
+      .sign(JWT_SECRET);
+    const newTokenHash = crypto.createHash('sha256').update(newRefreshToken).digest('hex');
+    await sharedPrisma.refreshToken.delete({ where: { id: existingRecord.id } });
+    await sharedPrisma.refreshToken.create({
+      data: {
+        userId: user.userId,
+        tokenHash: newTokenHash,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        userAgent: req.headers['user-agent'] ?? null,
+      },
+    });
     res.cookie('tt-access', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       maxAge: 15 * 60 * 1000,
       path: '/',
+    });
+    res.cookie('tt-refresh', newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/api/auth/refresh',
     });
     res.json({ ok: true });
   } catch {

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { SignJWT } from 'jose';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import {
   prisma,
   setupTestDatabase,
@@ -49,10 +50,20 @@ async function generateToken(sub: string, email: string, extra?: Record<string, 
 }
 
 async function generateRefreshToken(sub: string, tv: number): Promise<string> {
-  return new SignJWT({ sub, type: 'refresh', tv })
+  const jwt = await new SignJWT({ sub, type: 'refresh', tv })
     .setProtectedHeader({ alg: 'HS256' })
     .setExpirationTime('7d')
     .sign(JWT_SECRET);
+  // Create a matching RefreshToken record in the DB so the refresh endpoint accepts it
+  const tokenHash = crypto.createHash('sha256').update(jwt).digest('hex');
+  await prisma.refreshToken.create({
+    data: {
+      userId: sub,
+      tokenHash,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    },
+  });
+  return jwt;
 }
 
 async function signupAndVerify(email: string, password: string): Promise<string> {

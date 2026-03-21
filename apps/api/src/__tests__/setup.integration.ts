@@ -67,6 +67,7 @@ export async function cleanDatabase(): Promise<void> {
     'sprints',
     'projects',
     'org_invites',
+    'refresh_tokens',
     'users',
     'orgs',
   ];

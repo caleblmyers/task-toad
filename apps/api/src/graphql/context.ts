@@ -26,10 +26,12 @@ export interface Context {
   org: { orgId: string; name: string; anthropicApiKeyEncrypted: string | null; promptLoggingEnabled: boolean; monthlyBudgetCentsUSD: number | null; budgetAlertThreshold: number; createdAt: Date } | null;
   prisma: PrismaClient;
   loaders: Loaders;
+  req?: import('http').IncomingMessage & { cookies?: Record<string, string> };
   res?: import('express').Response;
 }
 
 export async function buildContext(ctx: { request: Request; req?: import('http').IncomingMessage & { cookies?: Record<string, string> }; res?: import('express').Response }): Promise<Context> {
+  const req = ctx.req;
   const res = ctx.res;
 
   // Read token from HttpOnly cookie first, fall back to Authorization header
@@ -39,27 +41,27 @@ export async function buildContext(ctx: { request: Request; req?: import('http')
 
   if (!token) {
     const loaders = createLoaders(prisma, null);
-    return { user: null, org: null, prisma, loaders, res };
+    return { user: null, org: null, prisma, loaders, req, res };
   }
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
     const userId = payload.sub;
     if (!userId) {
       const loaders = createLoaders(prisma, null);
-      return { user: null, org: null, prisma, loaders, res };
+      return { user: null, org: null, prisma, loaders, req, res };
     }
 
     const dbUser = await prisma.user.findUnique({ where: { userId } });
     if (!dbUser) {
       const loaders = createLoaders(prisma, null);
-      return { user: null, org: null, prisma, loaders, res };
+      return { user: null, org: null, prisma, loaders, req, res };
     }
 
     // Reject tokens with stale tokenVersion (revoked via logout or password reset)
     const tv = payload.tv as number | undefined;
     if (tv !== undefined && tv !== dbUser.tokenVersion) {
       const loaders = createLoaders(prisma, null);
-      return { user: null, org: null, prisma, loaders, res };
+      return { user: null, org: null, prisma, loaders, req, res };
     }
 
     let org: Context['org'] = null;
@@ -87,12 +89,13 @@ export async function buildContext(ctx: { request: Request; req?: import('http')
       org,
       prisma,
       loaders,
+      req,
       res,
     };
   } catch (err) {
     const code = err instanceof Error ? err.message : 'unknown';
     log.warn({ code }, 'JWT verification failed');
     const loaders = createLoaders(prisma, null);
-    return { user: null, org: null, prisma, loaders, res };
+    return { user: null, org: null, prisma, loaders, req, res };
   }
 }

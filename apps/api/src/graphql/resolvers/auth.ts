@@ -23,6 +23,46 @@ import {
 import { validatePassword } from '../../utils/passwordPolicy.js';
 import { getPermissionsForProject } from '../../auth/permissions.js';
 import { auditLog } from '../../utils/auditLog.js';
+import type { PrismaClient } from '@prisma/client';
+
+const MAX_SESSIONS = Number(process.env.MAX_SESSIONS_PER_USER) || 5;
+const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+/** Hash a JWT for storage in the refresh_tokens table. */
+function hashRefreshToken(jwt: string): string {
+  return crypto.createHash('sha256').update(jwt).digest('hex');
+}
+
+/** Store a refresh token record and prune oldest sessions if over the limit. */
+async function trackRefreshToken(
+  prisma: PrismaClient,
+  userId: string,
+  refreshJwt: string,
+  userAgent: string | undefined,
+): Promise<void> {
+  const tokenHash = hashRefreshToken(refreshJwt);
+  await prisma.refreshToken.create({
+    data: {
+      userId,
+      tokenHash,
+      expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+      userAgent: userAgent ?? null,
+    },
+  });
+
+  // Prune oldest sessions if over the limit
+  const activeTokens = await prisma.refreshToken.findMany({
+    where: { userId, expiresAt: { gt: new Date() } },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true },
+  });
+  if (activeTokens.length > MAX_SESSIONS) {
+    const tokensToDelete = activeTokens.slice(0, activeTokens.length - MAX_SESSIONS);
+    await prisma.refreshToken.deleteMany({
+      where: { id: { in: tokensToDelete.map((t) => t.id) } },
+    });
+  }
+}
 
 // ── Shared auth helpers (imported by other resolver modules) ──
 
@@ -131,6 +171,13 @@ export const authMutations = {
       .setProtectedHeader({ alg: 'HS256' })
       .setExpirationTime('7d')
       .sign(JWT_SECRET);
+    // Track refresh token server-side for session limiting
+    await trackRefreshToken(
+      context.prisma as unknown as PrismaClient,
+      user.userId,
+      refreshToken,
+      context.req?.headers['user-agent'] as string | undefined,
+    );
     // Set HttpOnly cookies
     if (context.res) {
       context.res.cookie('tt-access', accessToken, {
@@ -195,6 +242,13 @@ export const authMutations = {
       .setProtectedHeader({ alg: 'HS256' })
       .setExpirationTime('7d')
       .sign(JWT_SECRET);
+    // Track refresh token server-side for session limiting
+    await trackRefreshToken(
+      context.prisma as unknown as PrismaClient,
+      user.userId,
+      refreshToken,
+      context.req?.headers['user-agent'] as string | undefined,
+    );
     if (context.res) {
       context.res.cookie('tt-access', accessToken, {
         httpOnly: true,
@@ -353,6 +407,13 @@ export const authMutations = {
       .setProtectedHeader({ alg: 'HS256' })
       .setExpirationTime('7d')
       .sign(JWT_SECRET);
+    // Track refresh token server-side for session limiting
+    await trackRefreshToken(
+      context.prisma as unknown as PrismaClient,
+      updatedUser.userId,
+      refreshToken,
+      context.req?.headers['user-agent'] as string | undefined,
+    );
     // Set HttpOnly cookies
     if (context.res) {
       context.res.cookie('tt-access', accessToken, {
@@ -393,6 +454,12 @@ export const authMutations = {
       where: { userId: user.userId },
       data: { tokenVersion: { increment: 1 } },
     });
+    // Delete the specific refresh token record for this session
+    const refreshJwt = context.req?.cookies?.['tt-refresh'] as string | undefined;
+    if (refreshJwt) {
+      const tokenHash = hashRefreshToken(refreshJwt);
+      await context.prisma.refreshToken.deleteMany({ where: { tokenHash } });
+    }
     if (user.orgId) {
       auditLog(context.prisma, { orgId: user.orgId, userId: user.userId, action: 'user_logout' });
     }

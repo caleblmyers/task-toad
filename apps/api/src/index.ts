@@ -54,6 +54,11 @@ async function main() {
     }
   }
 
+  // Clean up expired refresh tokens on startup (fire-and-forget)
+  prisma.refreshToken.deleteMany({ where: { expiresAt: { lt: new Date() } } })
+    .then((result) => logger.info({ count: result.count }, 'Cleaned up expired refresh tokens'))
+    .catch((err) => logger.warn({ err }, 'Failed to clean up expired refresh tokens'));
+
   // Initialize event bus + job queue infrastructure
   const { jobQueue } = createInfrastructure(prisma);
   jobQueue.start();
