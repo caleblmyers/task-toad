@@ -4,6 +4,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import rateLimit from 'express-rate-limit';
 import { jwtVerify } from 'jose';
+import { fromBuffer as fileTypeFromBuffer, fromFile as fileTypeFromFile } from 'file-type';
 import { JWT_SECRET } from '../graphql/context.js';
 import { getPrisma } from './sharedPrisma.js';
 import {
@@ -71,6 +72,19 @@ function sanitizeFilename(name: string): string {
     .slice(0, 200);                        // length limit
 }
 
+// Detect filenames mixing Latin with Cyrillic/Greek scripts (homograph attack vector)
+function hasHomoglyphRisk(name: string): boolean {
+  const hasLatin = /[a-zA-Z]/.test(name);
+  const hasCyrillic = /[\u0400-\u04FF]/.test(name);
+  const hasGreek = /[\u0370-\u03FF]/.test(name);
+  return hasLatin && (hasCyrillic || hasGreek);
+}
+
+// MIME types that have no magic bytes (text-based formats) — skip magic byte validation
+const TEXT_MIME_TYPES = new Set([
+  'text/plain', 'text/csv', 'text/markdown', 'application/json',
+]);
+
 // --- Storage configuration ---
 // S3 mode: use memory storage (buffer available as req.file.buffer)
 // Local mode: use disk storage (file written to uploads/ directory)
@@ -125,6 +139,30 @@ router.post('/:taskId', requireAuth, uploadLimiter, upload.single('file'), async
     if (!req.file) {
       res.status(400).json({ error: 'No file provided' });
       return;
+    }
+
+    // L-6: Reject filenames with mixed-script unicode (homograph attack)
+    if (hasHomoglyphRisk(req.file.originalname)) {
+      res.status(400).json({ error: 'Filename contains mixed-script characters' });
+      return;
+    }
+
+    // M-4: Validate file magic bytes against declared MIME type
+    if (!TEXT_MIME_TYPES.has(req.file.mimetype)) {
+      const detectedType = req.file.buffer
+        ? await fileTypeFromBuffer(req.file.buffer)
+        : req.file.path
+          ? await fileTypeFromFile(req.file.path)
+          : undefined;
+
+      if (detectedType) {
+        const normalizedDeclared = req.file.mimetype.replace('jpg', 'jpeg');
+        const normalizedDetected = detectedType.mime.replace('jpg', 'jpeg');
+        if (normalizedDeclared !== normalizedDetected) {
+          res.status(400).json({ error: 'File content does not match declared type' });
+          return;
+        }
+      }
     }
 
     const sanitizedName = sanitizeFilename(req.file.originalname);

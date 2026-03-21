@@ -168,6 +168,13 @@ app.use(compression());
 // Body size limit
 app.use(express.json({ limit: '1mb' }));
 
+// L-11: Strip null bytes from REST request bodies and query params
+app.use((req, _res, next) => {
+  if (req.body) req.body = stripNullBytes(req.body);
+  if (req.query) req.query = stripNullBytes(req.query) as typeof req.query;
+  next();
+});
+
 // Refresh token endpoint — rotates access token using refresh cookie
 app.post('/api/auth/refresh', async (req, res) => {
   const refreshToken = req.cookies?.['tt-refresh'];

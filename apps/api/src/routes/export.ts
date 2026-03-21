@@ -66,6 +66,13 @@ function toCSV(rows: object[]): string {
 }
 
 function sanitizeFilename(name: string): string {
+  // Defense-in-depth: reject mixed-script names (homograph attack) before sanitizing
+  const hasLatin = /[a-zA-Z]/.test(name);
+  const hasCyrillic = /[\u0400-\u04FF]/.test(name);
+  const hasGreek = /[\u0370-\u03FF]/.test(name);
+  if (hasLatin && (hasCyrillic || hasGreek)) {
+    return 'export';
+  }
   return name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100);
 }
 
