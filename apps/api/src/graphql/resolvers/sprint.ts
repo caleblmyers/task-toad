@@ -5,7 +5,7 @@ import {
 } from '../../ai/index.js';
 import { NotFoundError, ValidationError } from '../errors.js';
 import { requireOrg, requireProjectAccess, requireApiKey } from './auth.js';
-import { requireProject } from '../../utils/resolverHelpers.js';
+import { requireProject, parseInput, CreateSprintInput } from '../../utils/resolverHelpers.js';
 import { requirePermission, Permission } from '../../auth/permissions.js';
 import { StringArraySchema } from '../../utils/zodSchemas.js';
 import { createChildLogger } from '../../utils/logger.js';
@@ -442,9 +442,7 @@ export const sprintQueries = {
 
 export const sprintMutations = {
   createSprint: async (_parent: unknown, args: { projectId: string; name: string; goal?: string | null; columns?: string | null; startDate?: string | null; endDate?: string | null; wipLimits?: string | null }, context: Context) => {
-    if (!args.name.trim()) {
-      throw new ValidationError('Name is required');
-    }
+    parseInput(CreateSprintInput, { name: args.name });
     if (args.wipLimits) validateWipLimits(args.wipLimits);
     await requirePermission(context, args.projectId, Permission.MANAGE_SPRINTS);
     const { user } = await requireProject(context, args.projectId);

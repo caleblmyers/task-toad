@@ -66,7 +66,13 @@ function toCSV(rows: object[]): string {
 }
 
 function sanitizeFilename(name: string): string {
-  return name.replace(/[^a-zA-Z0-9_-]/g, '_');
+  return name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100);
+}
+
+function redactEmail(email: string): string {
+  const [local, domain] = email.split('@');
+  if (!local || !domain) return '***';
+  return `${local[0]}***@${domain}`;
 }
 
 interface TaskExportRow {
@@ -130,6 +136,8 @@ router.get('/project/:projectId/json', requireAuth, async (req: AuthRequest, res
     orderBy: { createdAt: 'asc' },
   });
 
+  const shouldRedact = req.query.redactEmails === 'true';
+  const maybeRedact = (email: string) => shouldRedact ? redactEmail(email) : email;
   const filename = sanitizeFilename(project.name);
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}.json"`);
@@ -147,7 +155,7 @@ router.get('/project/:projectId/json', requireAuth, async (req: AuthRequest, res
       status: t.status,
       priority: t.priority,
       taskType: t.taskType,
-      assignee: t.assignee?.email ?? null,
+      assignee: t.assignee ? maybeRedact(t.assignee.email) : null,
       sprintId: t.sprintId,
       sprintColumn: t.sprintColumn,
       dueDate: t.dueDate,
@@ -155,7 +163,7 @@ router.get('/project/:projectId/json', requireAuth, async (req: AuthRequest, res
       estimatedHours: t.estimatedHours,
       labels: t.labels.map((tl) => tl.label.name),
       comments: t.comments.map((c) => ({
-        user: c.user.email,
+        user: maybeRedact(c.user.email),
         content: c.content,
         createdAt: c.createdAt,
       })),
@@ -196,13 +204,15 @@ router.get('/project/:projectId/csv', requireAuth, async (req: AuthRequest, res:
     orderBy: { createdAt: 'asc' },
   });
 
+  const shouldRedactCsv = req.query.redactEmails === 'true';
+  const maybeRedactCsv = (email: string) => shouldRedactCsv ? redactEmail(email) : email;
   const rows: TaskExportRow[] = tasks.map((t) => ({
     taskId: t.taskId,
     title: t.title,
     description: t.description ?? '',
     status: t.status,
     priority: t.priority,
-    assignee: t.assignee?.email ?? '',
+    assignee: t.assignee ? maybeRedactCsv(t.assignee.email) : '',
     sprint: t.sprint?.name ?? '',
     dueDate: t.dueDate ?? '',
     storyPoints: t.storyPoints ?? '',
@@ -261,13 +271,15 @@ router.get('/project/:projectId/activity/json', requireAuth, async (req: AuthReq
     take: 10000,
   });
 
+  const shouldRedactActivity = req.query.redactEmails === 'true';
+  const maybeRedactActivity = (email: string) => shouldRedactActivity ? redactEmail(email) : email;
   const filename = sanitizeFilename(project.name);
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}-activity.json"`);
   res.json(activities.map((a) => ({
     activityId: a.activityId,
     date: a.createdAt.toISOString(),
-    user: a.user.email,
+    user: maybeRedactActivity(a.user.email),
     action: a.action,
     field: a.field,
     oldValue: a.oldValue,
@@ -300,9 +312,11 @@ router.get('/project/:projectId/activity/csv', requireAuth, async (req: AuthRequ
     take: 10000,
   });
 
+  const shouldRedactActivityCsv = req.query.redactEmails === 'true';
+  const maybeRedactActivityCsv = (email: string) => shouldRedactActivityCsv ? redactEmail(email) : email;
   const rows: ActivityExportRow[] = activities.map((a) => ({
     date: a.createdAt.toISOString(),
-    user: a.user.email,
+    user: maybeRedactActivityCsv(a.user.email),
     action: a.action,
     field: a.field ?? '',
     oldValue: a.oldValue ?? '',

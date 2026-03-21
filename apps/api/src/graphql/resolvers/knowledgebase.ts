@@ -1,7 +1,7 @@
 import type { Context } from '../context.js';
 import { NotFoundError, ValidationError } from '../errors.js';
 import { requireOrg } from './auth.js';
-import { requireProject } from '../../utils/resolverHelpers.js';
+import { requireProject, parseInput, CreateKnowledgeEntryInput } from '../../utils/resolverHelpers.js';
 import { requirePermission, Permission } from '../../auth/permissions.js';
 
 const VALID_SOURCES = ['upload', 'onboarding', 'learned'];
@@ -28,10 +28,9 @@ export const knowledgeBaseMutations = {
     args: { projectId: string; title: string; content: string; source?: string; category?: string },
     context: Context
   ) => {
+    parseInput(CreateKnowledgeEntryInput, { title: args.title, content: args.content });
     const { user } = await requireProject(context, args.projectId);
     await requirePermission(context, args.projectId, Permission.MANAGE_PROJECT_SETTINGS);
-    if (!args.title.trim()) throw new ValidationError('Title is required');
-    if (!args.content.trim()) throw new ValidationError('Content is required');
     const source = args.source ?? 'upload';
     if (!VALID_SOURCES.includes(source)) {
       throw new ValidationError(`Invalid source "${source}". Valid: ${VALID_SOURCES.join(', ')}`);

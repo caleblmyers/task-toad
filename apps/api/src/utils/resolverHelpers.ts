@@ -96,6 +96,27 @@ export const CreateProjectInput = z.object({
   name: z.string().min(1, 'Name is required').max(200, 'Name must be 200 characters or less'),
 });
 
+export const CreateSprintInput = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(200, 'Name must be 200 characters or less'),
+});
+
+export const CreateLabelInput = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(100, 'Name must be 100 characters or less'),
+});
+
+export const CreateCustomFieldInput = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(200, 'Name must be 200 characters or less'),
+});
+
+export const CreateKnowledgeEntryInput = z.object({
+  title: z.string().trim().min(1, 'Title is required').max(200, 'Title must be 200 characters or less'),
+  content: z.string().max(50000, 'Content must be 50000 characters or less'),
+});
+
+export const CreateAutomationRuleInput = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(200, 'Name must be 200 characters or less'),
+});
+
 /**
  * Parse a Zod schema and throw a ValidationError on failure.
  */

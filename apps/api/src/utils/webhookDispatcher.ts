@@ -56,6 +56,7 @@ async function attemptDelivery(
         'Content-Type': 'application/json',
         'X-Webhook-Signature': `sha256=${signature}`,
         'X-Webhook-Event': event,
+        'X-Webhook-Delivery-ID': deliveryId,
       },
       body,
       signal: controller.signal,

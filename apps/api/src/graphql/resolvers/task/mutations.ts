@@ -1,7 +1,7 @@
 import type { Context } from '../../context.js';
 import { NotFoundError, ValidationError, AuthorizationError } from '../../errors.js';
 import { requireAuth, requireOrg, requireProjectAccess } from '../auth.js';
-import { requireTask, requireProject, requireOrgUser, requireProjectField, validateStatus, parseInput, CreateTaskInput, UpdateTaskInput, CreateCommentInput } from '../../../utils/resolverHelpers.js';
+import { requireTask, requireProject, requireOrgUser, requireProjectField, validateStatus, parseInput, CreateTaskInput, UpdateTaskInput, CreateCommentInput, CreateCustomFieldInput } from '../../../utils/resolverHelpers.js';
 import { requirePermission, Permission } from '../../../auth/permissions.js';
 import { StringArraySchema } from '../../../utils/zodSchemas.js';
 import { createChildLogger } from '../../../utils/logger.js';
@@ -247,6 +247,9 @@ export const taskMutations = {
     args: { taskIds: string[]; status?: string | null; assigneeId?: string | null; sprintId?: string | null; archived?: boolean | null },
     context: Context
   ) => {
+    if (args.taskIds.length > 100) {
+      throw new ValidationError('Cannot update more than 100 tasks at once');
+    }
     const user = requireOrg(context);
     const tasks = await context.prisma.task.findMany({
       where: { taskId: { in: args.taskIds }, orgId: user.orgId },
@@ -442,6 +445,7 @@ export const taskMutations = {
     args: { projectId: string; name: string; fieldType: string; options?: string | null; required?: boolean | null },
     context: Context
   ) => {
+    parseInput(CreateCustomFieldInput, { name: args.name });
     const user = requireOrg(context);
     await requireProjectAccess(context, args.projectId);
     const validTypes = ['TEXT', 'NUMBER', 'DATE', 'DROPDOWN'];

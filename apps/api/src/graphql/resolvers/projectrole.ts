@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { Context } from '../context.js';
 import { NotFoundError, ValidationError, AuthorizationError } from '../errors.js';
 import { requireProjectAccess } from './auth.js';
+import { parseInput, CreateAutomationRuleInput } from '../../utils/resolverHelpers.js';
 
 const VALID_ROLES: readonly string[] = ['viewer', 'editor', 'admin'];
 
@@ -162,6 +163,7 @@ export const projectRoleMutations = {
     args: { projectId: string; name: string; trigger: string; action: string },
     context: Context,
   ) => {
+    parseInput(CreateAutomationRuleInput, { name: args.name });
     const { user } = await requireProjectAdmin(context, args.projectId);
     // Validate JSON structure
     const triggerResult = TriggerSchema.safeParse(safeParseJSON(args.trigger, 'trigger'));

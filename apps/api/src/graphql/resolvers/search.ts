@@ -1,7 +1,7 @@
 import type { Context } from '../context.js';
-import { NotFoundError, ConflictError, ValidationError } from '../errors.js';
+import { NotFoundError, ConflictError } from '../errors.js';
 import { requireOrg } from './auth.js';
-import { requireTask } from '../../utils/resolverHelpers.js';
+import { requireTask, parseInput, CreateLabelInput } from '../../utils/resolverHelpers.js';
 
 // ── Search queries ──
 
@@ -48,9 +48,7 @@ export const searchQueries = {
 
 export const searchMutations = {
   createLabel: async (_parent: unknown, args: { name: string; color?: string | null }, context: Context) => {
-    if (!args.name.trim()) {
-      throw new ValidationError('Name is required');
-    }
+    parseInput(CreateLabelInput, { name: args.name });
     const user = requireOrg(context);
     const existing = await context.prisma.label.findUnique({
       where: { orgId_name: { orgId: user.orgId, name: args.name } },
