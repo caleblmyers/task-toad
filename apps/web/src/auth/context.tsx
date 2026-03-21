@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { gql, TOKEN_KEY } from '../api/client';
+import { gql } from '../api/client';
 import { ME_QUERY, LOGIN_MUTATION, SIGNUP_MUTATION, LOGOUT_MUTATION } from '../api/queries';
 import type { MeResponse } from '../types';
 
@@ -21,8 +21,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchMe = useCallback(async (): Promise<MeResponse | null> => {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) return null;
+    // Cookie is sent automatically — just call the me query
     try {
       const data = await gql<{ me: MeResponse | null }>(ME_QUERY);
       return data.me;
@@ -47,11 +46,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (email: string, password: string) => {
       setError(null);
       try {
-        const data = await gql<{ login: { token: string } }>(
+        await gql<{ login: { token: string } }>(
           LOGIN_MUTATION,
           { email, password }
         );
-        localStorage.setItem(TOKEN_KEY, data.login.token);
+        // Cookie is set automatically by the server response
         const me = await fetchMe();
         setUser(me);
       } catch (err) {
@@ -81,9 +80,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await gql<{ logout: boolean }>(LOGOUT_MUTATION);
     } catch {
-      // Still clear localStorage even if mutation fails (e.g., network error)
+      // Cookies are cleared by the server response
     }
-    localStorage.removeItem(TOKEN_KEY);
     setUser(null);
   }, []);
 

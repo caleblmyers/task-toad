@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { Task, Sprint, OrgUser, Comment, Activity, Label, CodeReview, Attachment, TaskActionPlan } from '../types';
 import type { TaskTimeSummary } from '@tasktoad/shared-types';
 import ActionProgressPanel from './ActionProgressPanel';
-import { gql, TOKEN_KEY } from '../api/client';
+import { gql } from '../api/client';
 import { TASK_ANCESTORS_QUERY, TASK_INSIGHTS_QUERY, GENERATE_MANUAL_TASK_SPEC_MUTATION } from '../api/queries';
 import ManualTaskSpecView from './taskdetail/ManualTaskSpecView';
 import type { ManualTaskSpec } from './taskdetail/ManualTaskSpecView';
@@ -157,12 +157,11 @@ function PanelContent({
     if (!file) return;
     setUploading(true);
     try {
-      const token = localStorage.getItem(TOKEN_KEY);
       const formData = new FormData();
       formData.append('file', file);
       const res = await fetch(`/api/uploads/${task.taskId}`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
         body: formData,
       });
       if (res.ok) {

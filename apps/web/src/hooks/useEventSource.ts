@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef, createContext, useContext, createElement } from 'react';
 import type { ReactNode } from 'react';
-import { TOKEN_KEY } from '../api/client';
 
 const SSE_EVENTS = [
   'task.created',
@@ -61,9 +60,6 @@ export function SSEProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) return;
-
     let aborted = false;
     let reconnectTimeout: ReturnType<typeof setTimeout>;
     const eventNames = new Set<string>(SSE_EVENTS);
@@ -72,7 +68,7 @@ export function SSEProvider({ children }: { children: ReactNode }) {
       if (aborted) return;
       try {
         const response = await fetch('/api/events', {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
         });
         if (!response.ok || !response.body) {
           setConnected(false);
@@ -172,9 +168,6 @@ export function useEventSource(onEvent: SSEEventHandler): { connected: boolean }
   }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) return;
-
     let aborted = false;
     let reconnectTimeout: ReturnType<typeof setTimeout>;
     const eventNames = new Set<string>(SSE_EVENTS);
@@ -183,7 +176,7 @@ export function useEventSource(onEvent: SSEEventHandler): { connected: boolean }
       if (aborted) return;
       try {
         const response = await fetch('/api/events', {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
         });
         if (!response.ok || !response.body) {
           setConnected(false);

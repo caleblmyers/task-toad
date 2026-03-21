@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { gql, TOKEN_KEY } from '../api/client';
+import { gql } from '../api/client';
 import { useAuth } from '../auth/context';
 import Button from '../components/shared/Button';
 import Input from '../components/shared/Input';
@@ -30,13 +30,13 @@ export default function AcceptInvite() {
     setLoading(true);
     setErr(null);
     try {
-      const data = await gql<{ acceptInvite: { token: string } }>(
+      await gql<{ acceptInvite: { token: string } }>(
         `mutation AcceptInvite($token: String!, $password: String) {
           acceptInvite(token: $token, password: $password) { token }
         }`,
         { token, password: password || null }
       );
-      localStorage.setItem(TOKEN_KEY, data.acceptInvite.token);
+      // Cookie is set automatically by the server response
       await refreshMe();
       navigate('/app', { replace: true });
     } catch (error) {

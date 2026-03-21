@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useConfirmDialog } from './shared/ConfirmDialog';
 import { Link } from 'react-router-dom';
-import { gql, TOKEN_KEY } from '../api/client';
+import { gql } from '../api/client';
 import { AUTO_START_PROJECT_MUTATION } from '../api/queries';
 import type { ProjectData } from '../hooks/useProjectData';
 import type { TaskFiltering } from '../hooks/useTaskFiltering';
@@ -156,9 +156,8 @@ export default function ProjectToolbar({
   };
 
   const downloadExport = async (path: string, filename: string) => {
-    const token = localStorage.getItem(TOKEN_KEY);
     const res = await fetch(`/api/export/${path}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
     });
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
