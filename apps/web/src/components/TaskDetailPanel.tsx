@@ -124,6 +124,9 @@ function PanelContent({
   timeSummary, onLogTime, onDeleteTimeEntry,
   onSelectTask,
 }: Omit<TaskDetailPanelProps, 'onClose' | 'isDrawer'>) {
+  // Disable editing when user lacks EDIT_TASKS permission
+  const canEdit = canDo ? canDo('EDIT_TASKS') : true;
+  const isDisabled = disabled || !canEdit;
   const tools = parseTools(task.suggestedTools);
   const [ancestors, setAncestors] = useState<TaskAncestor[]>([]);
 
@@ -194,7 +197,7 @@ function PanelContent({
         orgUsers={orgUsers}
         statuses={statuses}
         labels={labels}
-        disabled={disabled}
+        disabled={isDisabled}
         currentUserId={currentUserId}
         onStatusChange={onStatusChange}
         onAssignSprint={onAssignSprint}
@@ -227,7 +230,7 @@ function PanelContent({
               );
             }
           }}
-          disabled={disabled}
+          disabled={isDisabled}
           className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 bg-white dark:bg-slate-800 dark:text-slate-200"
         >
           <option value="">None</option>
@@ -258,8 +261,8 @@ function PanelContent({
           <button
             type="button"
             className="w-full text-left cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded p-1 -m-1"
-            onClick={() => { if (!disabled) { setEditDescValue(task.description ?? ''); setEditingDescription(true); } }}
-            disabled={disabled}
+            onClick={() => { if (!isDisabled) { setEditDescValue(task.description ?? ''); setEditingDescription(true); } }}
+            disabled={isDisabled}
             aria-label="Edit description"
           >
             <MarkdownRenderer content={task.description} />
@@ -268,7 +271,7 @@ function PanelContent({
           <button
             onClick={() => { setEditDescValue(''); setEditingDescription(true); }}
             className="text-xs text-slate-500 hover:text-slate-600"
-            disabled={disabled}
+            disabled={isDisabled}
           >
             + Add description
           </button>
@@ -296,8 +299,8 @@ function PanelContent({
           <button
             type="button"
             className="w-full text-left cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded p-1 -m-1"
-            onClick={() => { if (!disabled) { setEditACValue(task.acceptanceCriteria ?? ''); setEditingAC(true); } }}
-            disabled={disabled}
+            onClick={() => { if (!isDisabled) { setEditACValue(task.acceptanceCriteria ?? ''); setEditingAC(true); } }}
+            disabled={isDisabled}
             aria-label="Edit acceptance criteria"
           >
             <MarkdownRenderer content={task.acceptanceCriteria} />
@@ -306,7 +309,7 @@ function PanelContent({
           <button
             onClick={() => { setEditACValue(''); setEditingAC(true); }}
             className="text-xs text-slate-500 hover:text-slate-600"
-            disabled={disabled}
+            disabled={isDisabled}
           >
             + Add acceptance criteria
           </button>
@@ -332,8 +335,8 @@ function PanelContent({
           <button
             type="button"
             className="w-full text-left bg-slate-50 dark:bg-slate-800 rounded-lg p-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700"
-            onClick={() => { if (!disabled) { setEditInstrValue(task.instructions ?? ''); setEditingInstructions(true); } }}
-            disabled={disabled}
+            onClick={() => { if (!isDisabled) { setEditInstrValue(task.instructions ?? ''); setEditingInstructions(true); } }}
+            disabled={isDisabled}
             aria-label="Edit instructions"
           >
             <MarkdownRenderer content={task.instructions} />
@@ -343,7 +346,7 @@ function PanelContent({
             <button
               type="button"
               onClick={() => onGenerateInstructions(task)}
-              disabled={disabled || generatingInstructions === task.taskId}
+              disabled={isDisabled || generatingInstructions === task.taskId}
               className="px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 dark:text-slate-200"
             >
               {generatingInstructions === task.taskId ? 'Generating…' : '✦ Generate instructions'}
@@ -351,7 +354,7 @@ function PanelContent({
             <button
               onClick={() => { setEditInstrValue(''); setEditingInstructions(true); }}
               className="text-xs text-slate-500 hover:text-slate-600 px-2"
-              disabled={disabled}
+              disabled={isDisabled}
             >
               Write manually
             </button>
@@ -382,7 +385,7 @@ function PanelContent({
       <TaskGitHubSection
         task={task}
         projectHasRepo={projectHasRepo}
-        disabled={disabled}
+        disabled={isDisabled}
         onSyncToGitHub={onSyncToGitHub}
       />
     </section>
@@ -421,7 +424,7 @@ function PanelContent({
       <TaskDependenciesSection
         task={task}
         allTasks={allTasks}
-        disabled={disabled}
+        disabled={isDisabled}
         onAddDependency={onAddDependency}
         onRemoveDependency={onRemoveDependency}
       />
@@ -431,7 +434,7 @@ function PanelContent({
         subtasks={subtasks}
         statuses={statuses}
         generatingInstructions={generatingInstructions}
-        disabled={disabled}
+        disabled={isDisabled}
         onSubtaskStatusChange={onSubtaskStatusChange}
         onGenerateInstructions={onGenerateInstructions}
         onCreateSubtask={onCreateSubtask}
@@ -459,7 +462,7 @@ function PanelContent({
                   <button
                     onClick={() => handleDeleteAttachment(a.attachmentId)}
                     className="text-red-400 hover:text-red-600"
-                    disabled={disabled}
+                    disabled={isDisabled}
                     aria-label={`Delete attachment ${a.fileName}`}
                   >
                     ✕
@@ -469,9 +472,9 @@ function PanelContent({
             ))}
           </ul>
         )}
-        <label className={`inline-flex items-center gap-1 text-xs px-2 py-1 border border-slate-300 dark:border-slate-600 rounded cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 ${disabled || uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+        <label className={`inline-flex items-center gap-1 text-xs px-2 py-1 border border-slate-300 dark:border-slate-600 rounded cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 ${isDisabled || uploading ? 'opacity-50 pointer-events-none' : ''}`}>
           {uploading ? 'Uploading…' : '+ Attach file'}
-          <input type="file" className="hidden" onChange={handleUpload} disabled={disabled || uploading} />
+          <input type="file" className="hidden" onChange={handleUpload} disabled={isDisabled || uploading} />
         </label>
       </div>
 
@@ -503,7 +506,7 @@ function PanelContent({
           <button
             type="button"
             onClick={() => onReviewPR(task.taskId, task.pullRequests![0].prNumber)}
-            disabled={disabled || reviewLoading}
+            disabled={isDisabled || reviewLoading}
             className="px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 dark:text-slate-200"
           >
             {reviewLoading ? 'Reviewing…' : '✦ AI Review'}
@@ -519,7 +522,7 @@ function PanelContent({
           <button
             type="button"
             onClick={() => onAutoComplete(task)}
-            disabled={disabled || autoCompleteLoading}
+            disabled={isDisabled || autoCompleteLoading}
             className="px-3 py-1.5 text-sm border border-indigo-300 dark:border-indigo-600 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/30 disabled:opacity-50"
           >
             {autoCompleteLoading ? 'Planning…' : '⚡ Auto-Complete'}
@@ -543,7 +546,7 @@ function PanelContent({
           <button
             type="button"
             onClick={() => onArchiveTask(task.taskId, !task.archived)}
-            disabled={disabled || (canDo ? !canDo('DELETE_TASKS') : false)}
+            disabled={isDisabled || (canDo ? !canDo('DELETE_TASKS') : false)}
             title={canDo && !canDo('DELETE_TASKS') ? "You don't have permission to archive tasks" : undefined}
             className={`text-sm px-3 py-1.5 rounded border ${
               task.archived
@@ -642,7 +645,7 @@ function PanelContent({
         editingTitle={editingTitle}
         editTitleValue={editTitleValue}
         titleEditRef={titleEditRef}
-        disabled={disabled}
+        disabled={isDisabled}
         onStartEdit={onStartEditTitle}
         onChange={onTitleChange}
         onSave={onTitleSave}

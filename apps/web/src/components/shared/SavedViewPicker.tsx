@@ -29,7 +29,8 @@ export default function SavedViewPicker({
   const [open, setOpen] = useState(false);
   const [showSave, setShowSave] = useState(false);
   const [saveName, setSaveName] = useState('');
-  const [saveViewType, setSaveViewType] = useState(currentViewType ?? 'list');
+  const [saveViewTypeOverride, setSaveViewTypeOverride] = useState<string | null>(null);
+  const saveViewType = saveViewTypeOverride ?? currentViewType ?? 'list';
   const [saveSortBy, setSaveSortBy] = useState('');
   const [saveSortOrder, setSaveSortOrder] = useState('asc');
   const [saveGroupBy, setSaveGroupBy] = useState('');
@@ -37,11 +38,6 @@ export default function SavedViewPicker({
   const [sharedViews, setSharedViews] = useState<SavedFilter[]>([]);
   const [error, setError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Update saveViewType when currentViewType changes
-  useEffect(() => {
-    if (currentViewType) setSaveViewType(currentViewType);
-  }, [currentViewType]);
 
   // Fetch shared views when opening
   const fetchSharedViews = useCallback(async () => {
@@ -55,6 +51,7 @@ export default function SavedViewPicker({
   }, [projectId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching on open is valid
     if (open) fetchSharedViews();
   }, [open, fetchSharedViews]);
 
@@ -104,6 +101,7 @@ export default function SavedViewPicker({
       );
       onSavedFiltersChange([...savedFilters, saveFilter]);
       setSaveName('');
+      setSaveViewTypeOverride(null);
       setShowSave(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save view');
@@ -221,7 +219,7 @@ export default function SavedViewPicker({
                   <label className="text-[10px] text-slate-400 uppercase">View Type</label>
                   <select
                     value={saveViewType}
-                    onChange={(e) => setSaveViewType(e.target.value)}
+                    onChange={(e) => setSaveViewTypeOverride(e.target.value)}
                     className="w-full text-xs border border-slate-300 dark:border-slate-600 rounded px-1.5 py-1 dark:bg-slate-700 dark:text-slate-200"
                   >
                     <option value="list">List</option>
