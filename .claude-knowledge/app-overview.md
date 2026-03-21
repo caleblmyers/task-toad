@@ -13,8 +13,10 @@ Multi-tenant SaaS project management MVP. Users belong to orgs; orgs own project
 5. `context.ts` verifies token, loads user, checks `tokenVersion` matches JWT `tv` claim
 6. CSRF protection: `POST /graphql` requires `X-Requested-With` header (any value); requests without it get 403
 7. Token refresh: `POST /api/auth/refresh` validates refresh token cookie, issues new access + refresh tokens, rotates refresh token in DB
-8. `logout` mutation increments `tokenVersion`, clears cookies, invalidates refresh token
-9. Sensitive operations (e.g., `setOrgApiKey`) require `confirmPassword` argument for re-authentication
+8. `verifyEmail` mutation sets cookies on success — auto-login after email verification
+9. `logout` mutation increments `tokenVersion`, clears cookies, invalidates refresh token
+10. Sensitive operations (e.g., `setOrgApiKey`) require `confirmPassword` argument for re-authentication
+11. Session expiry: frontend shows `SessionExpiredModal` instead of hard-redirecting to /login (preserves unsaved work)
 
 ## Data Model (Prisma)
 
@@ -95,6 +97,7 @@ Browser → Vite dev server (localhost:5173)
 | AES-256-GCM encryption util | `apps/api/src/utils/encryption.ts` |
 | Per-org AI rate limiter | `apps/api/src/utils/aiRateLimiter.ts` |
 | Audit logging (fire-and-forget) | `apps/api/src/utils/auditLog.ts` |
+| Data migration scripts | `apps/api/scripts/migrate-encrypt-secrets.ts`, `migrate-hash-invite-tokens.ts` |
 | Prometheus metrics (prom-client) | `apps/api/src/utils/metrics.ts` |
 | Structured logging (pino) | `apps/api/src/utils/logger.ts` |
 | SSE manager (real-time events) | `apps/api/src/utils/sseManager.ts` |

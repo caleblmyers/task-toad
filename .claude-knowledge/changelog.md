@@ -4,6 +4,52 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-21 (security cleanup + tests + polish)
+
+### Wave 44: Security Cleanup, Integration Tests & Auth Follow-ups (3 workers, 5 tasks)
+
+**Worker 1 — task-001: Remaining Security Fixes (M-4, L-6, L-11):**
+- M-4: File upload magic byte validation via `file-type@16.5.4`. Validates uploaded file content against declared MIME type; rejects mismatches with 400. Text files (no magic bytes) skip validation.
+- L-6: Unicode homograph detection — `hasHomoglyphRisk()` rejects filenames mixing Latin with Cyrillic/Greek scripts.
+- L-11: Null byte stripping middleware added before all REST routes in app.ts via `stripNullBytes()` on req.body and req.query.
+
+**Worker 1 — task-002: Data Migration Scripts:**
+- `apps/api/scripts/migrate-encrypt-secrets.ts` — encrypts plaintext webhook secrets and Slack URLs using `encryptApiKey()`, skips already-encrypted values.
+- `apps/api/scripts/migrate-hash-invite-tokens.ts` — hashes plaintext invite tokens via `hashToken()`, requires `--confirm` flag (warns about invalidating active invites).
+- Both scripts load `.env` for DATABASE_URL and ENCRYPTION_MASTER_KEY.
+
+**Worker 2 — task-003: Security Integration Tests (~19 tests):**
+- New `security.integration.test.ts` covering 8 test groups:
+  - Cookie auth flow (login sets cookies, logout clears, refresh works, revoked token rejected)
+  - CSRF protection (403 without X-Requested-With, 200 with it)
+  - AI rate limiter (throws when over limit, passes when under)
+  - Audit logging (Activity records for setOrgApiKey, inviteOrgMember)
+  - Email anti-enumeration (signup returns same response for existing email)
+  - Export email redaction (?redactEmails=true masks emails)
+  - Bulk update cap (101 items throws ValidationError)
+  - Input validation (sprint name >200, label name >100 rejected)
+
+**Worker 3 — task-004: Auth Follow-ups:**
+- `verifyEmail` mutation now sets HttpOnly cookies (tt-access, tt-refresh) on success — auto-login after email verification.
+- New `VerifyEmailResult` type in typedefs/auth.ts returning `{ success, token }`.
+- Frontend VerifyEmail page handles new response — redirects to `/app` on success.
+- `SessionExpiredModal` — replaces hard redirect to /login on refresh failure. Dispatches `session-expired` CustomEvent from client.ts, AuthProvider listens and shows modal overlay.
+
+**Worker 3 — task-005: Frontend Polish:**
+- Permission-based field disabling in TaskDetailPanel — fields disabled when user lacks EDIT_TASKS permission via existing PermissionContext.
+- SavedViewPicker lint warnings fixed (lines 43, 58) — reduced total warnings from 5 to 3.
+- BacklogView keyboard navigation — Enter/Space to select task, Arrow Up/Down to navigate, ARIA roles (listbox/option).
+
+**Process:** All 5 tasks merged cleanly. No issues logged.
+
+**Open follow-ups:**
+- Run data migration scripts in production (migrate-encrypt-secrets.ts, migrate-hash-invite-tokens.ts)
+- L-5 (concurrent session limit) still open — needs RefreshToken model design
+- L-12 (test DB credentials in CI) — CI config, not code
+- Integration tests for verifyEmail cookie-setting (new behavior)
+
+---
+
 ## 2026-03-21 (security phase 3+4)
 
 ### Wave 43: Security Phase 3+4 — Medium & Low Fixes (3 workers, 4 tasks)
@@ -156,44 +202,9 @@ Full pipeline: KB context → onboarding interview → hierarchical planning →
 
 ---
 
-### Wave 39: Auto-Complete Redesign — Execution Pipeline + Follow-ups (3 workers, 5 tasks)
-
-**Worker 1 — 4-A + 4-B: Project Orchestrator + Parallel Execution:**
-- New `orchestratorListener.ts` — registers on `task.action_plan_completed` and `task.updated` events
-- Finds auto-eligible tasks (`autoComplete=true`, `status=todo`, all blockers `done`), generates action plans, enqueues first action
-- Advisory lock per project (`PROJECT_ORCHESTRATOR` in LOCK_IDS) prevents concurrent orchestration
-- Concurrency limit of 3 executing plans per project
-- Enqueues ALL eligible tasks up to remaining concurrency slots (parallel, not sequential)
-- Branch naming changed from `task-{taskId}-ai` to `task-{taskId}-{slug}` (title-derived, lowercase, max 30 chars)
-- Branch conflict retry with random 4-char suffix on 422
-- `registerListeners` updated to accept `prisma` param for orchestrator
-
-**Worker 2 — 4-C: AI-Enriched PR Descriptions:**
-- `buildEnrichPRDescriptionPrompt` expanded: project name/description, KB entries, parent task/epic context, acceptance criteria, code summary
-- `enrichPRDescription` AI service function accepts new optional context params
-- `createPR` executor passes full ActionContext (knowledgeContext, project info, codeSummary from generate_code result, parent task title)
-- `createPullRequestFromTask` in githubService accepts `enrichContext` with all new fields
-- PR sections: Summary, Changes, Context (task/epic rationale), Testing (from acceptance criteria)
-
-**Worker 3 — Follow-ups from Waves 37-38:**
-- PlanDependencyEditor wired into HierarchicalPlanEditor — clicking dep badge toggles inline editor below node, `updateNodeDeps` callback updates plan state immutably
-- HierarchicalPlanDialog: regenerate button now reveals feedback textarea in editing state instead of returning to prompt
-- Aria labels on expand/collapse (`aria-expanded`) and delete buttons (`aria-label="Delete epic '...'"`)
-- Exhaustive-deps lint warning fixed (reduced warnings 5→4)
-- "Run Interview" button added to KnowledgeBasePanel header, wired to onboarding modal in ProjectDetail
-
-**Process:** Zero code quality rejections. Worker-1 sequential tasks merged as single branch (same issue as Wave 38). Pre-existing test isolation issue in `export.integration.test.ts` blocked merge validation script.
-
-**Open follow-ups:**
-- Fix flaky `export.integration.test.ts` (401s in full suite, passes individually)
-- `setExpandedIds` in useEffect still triggers `react-hooks/set-state-in-effect` warning
-- Orchestrator observability/metrics not yet added
-- PlanDependencyEditor doesn't render for subtask-level nodes
-
----
-
 ## Older Entries (one-line summaries)
 
+- **2026-03-20** — Wave 39: Project orchestrator (parallel execution, advisory locks, concurrency limit), AI-enriched PR descriptions, plan dependency editor wiring, HierarchicalPlanDialog feedback.
 - **2026-03-20** — Wave 38: Hierarchical plan generation (3-level epics→tasks→subtasks), batch cycle detection, plan editor UI (tree view, drag-to-reorder, dependency picker).
 
 - **2026-03-20** — Wave 37: KB panel (CRUD + file upload), onboarding interview wizard, KB context injection into action pipeline.

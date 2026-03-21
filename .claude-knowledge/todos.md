@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-Production deployed at `https://tasktoad-api-production.up.railway.app`. 43 swarm waves completed. All P0 and most P1 competitive gap items done. All Critical and High security findings fixed. Auto-Complete Pipeline Redesign complete (Waves 36-41). Security Phase 2 complete (Wave 42). Security Phase 3 (Medium) + Phase 4 partial (Low) complete (Wave 43).
+Production deployed at `https://tasktoad-api-production.up.railway.app`. 44 swarm waves completed. All P0 and most P1 competitive gap items done. All Critical, High, and Medium security findings fixed (37 of 39). Auto-Complete Pipeline Redesign complete (Waves 36-41). Security Phases 2-4 complete (Waves 42-44). 19 security integration tests added.
 
 ---
 
@@ -122,7 +122,8 @@ Full report: `.claude-knowledge/security-audit.md` (2026-03-20, 39 findings tota
 
 **Resolved (Wave 35):** C-1, C-2, C-3, C-4, C-5, H-5, H-7, H-8, H-11 — 9 of 39 findings fixed.
 **Resolved (Wave 42):** H-1, H-2, H-3, H-4, H-6, H-9, H-10, H-12 — all 8 High items fixed. Also resolves L-1 (JWT expiry) and L-9 (SameSite cookie).
-**Resolved (Wave 43):** M-1, M-2, M-3, M-5, M-6, M-7, M-8, M-9, M-10 (9 of 10 Medium), L-2, L-3, L-4, L-7, L-8, L-10 (6 Low). Only M-4, L-5, L-6, L-11, L-12 remain.
+**Resolved (Wave 43):** M-1, M-2, M-3, M-5, M-6, M-7, M-8, M-9, M-10 (9 of 10 Medium), L-2, L-3, L-4, L-7, L-8, L-10 (6 Low).
+**Resolved (Wave 44):** M-4, L-6, L-11. Only L-5 (session limit) and L-12 (CI credentials) remain.
 
 ### Phase 2 — High (Auth Hardening) ✅ Complete
 
@@ -140,7 +141,7 @@ Full report: `.claude-knowledge/security-audit.md` (2026-03-20, 39 findings tota
 - [x] **M-1:** Disable GraphQL introspection in production *(Wave 43)*
 - [x] **M-2:** Per-org AI rate limiting (60 AI requests/hour, configurable) *(Wave 43)*
 - [x] **M-3:** Content-Disposition header injection — filename sanitization *(Wave 43)*
-- [ ] **M-4:** File upload magic byte validation (`file-type` library)
+- [x] **M-4:** File upload magic byte validation (`file-type` library) *(Wave 44)*
 - [x] **M-5:** Scope DataLoaders by orgId *(Wave 43)*
 - [x] **M-6:** Audit logging for sensitive operations *(Wave 43)*
 - [x] **M-7:** Redact emails in exports (opt-in via ?redactEmails=true) *(Wave 43)*
@@ -155,12 +156,12 @@ Full report: `.claude-knowledge/security-audit.md` (2026-03-20, 39 findings tota
 - [x] **L-3:** URL-encode GitHub file paths *(Wave 43)*
 - [x] **L-4:** Remove console.error in production ErrorBoundary → dev-only *(Wave 43)*
 - [ ] **L-5:** Concurrent session limit *(depends on H-1)*
-- [ ] **L-6:** Unicode homograph in filenames
+- [x] **L-6:** Unicode homograph in filenames *(Wave 44)*
 - [x] **L-7:** Bulk mutation item count limit (cap 100) *(Wave 43)*
 - [x] **L-8:** Reduce GraphQL depth limit (10 → 7) *(Wave 43)*
 - [x] **L-9:** SameSite cookie attribute *(resolved by H-1 in Wave 42)*
 - [x] **L-10:** Cap Retry-After parsing (max 1 hour) + disable SDK auto-retries *(Wave 43)*
-- [ ] **L-11:** Null byte stripping on REST endpoints
+- [x] **L-11:** Null byte stripping on REST endpoints *(Wave 44)*
 - [ ] **L-12:** Test database credentials in CI/CD
 
 ---
@@ -192,25 +193,23 @@ Pipeline complete (Waves 36-41). These are deferred polish items:
 - [ ] cancelActionPlan: verify it interrupts actively executing actions (currently only updates status)
 - [ ] Planning prompt: validate monitor_ci/fix_ci source action IDs in schema
 
-### Security Wave 43 Follow-ups
-- [ ] Integration tests for per-org AI rate limiter (checkAIRateLimit)
-- [ ] Integration tests for audit logging (verify Activity records created for setOrgApiKey, inviteOrgMember, etc.)
-- [ ] Integration test for email anti-enumeration (signup with existing email returns same response)
-- [ ] Tests for export email redaction (?redactEmails=true parameter)
-- [ ] Tests for bulkUpdateTasks 100-item limit validation
-- [ ] M-7 design choice: redaction is opt-in (?redactEmails=true) — consider making it default with opt-out for admin roles
-- [ ] Sentry integration for web frontend ErrorBoundary (currently just suppresses console.error in prod, no remote reporting)
-- [ ] AI rate limiter uses COUNT query per request — consider in-memory cache/sliding window for high-throughput orgs
-- [ ] Anthropic SDK maxRetries=0 means no automatic retry on transient 5xx — consider adding app-level retry with capped backoff
-
-### Security Wave 42 Follow-ups
-- [ ] Data migration script for existing plaintext webhook secrets and Slack URLs → encrypt in place
-- [ ] Data migration script for existing plaintext invite tokens → hash in place (invalidates active invites)
-- [ ] L-5: Concurrent session limit — now feasible with tokenVersion + refresh tokens
-- [ ] Signup mutation should also set HttpOnly cookies (currently only login and resetPassword do)
-- [ ] Integration tests for cookie-based auth flow (login → cookie set → me query → refresh → logout)
-- [ ] Integration test for CSRF protection (POST /graphql without X-Requested-With returns 403)
-- [ ] Auto-refresh loop protection: current redirect to /login on failed refresh could lose unsaved work — consider showing modal instead
+### Security Follow-ups (Waves 42-44)
+- [x] Integration tests for per-org AI rate limiter *(Wave 44 — security.integration.test.ts)*
+- [x] Integration tests for audit logging *(Wave 44)*
+- [x] Integration test for email anti-enumeration *(Wave 44)*
+- [x] Tests for export email redaction *(Wave 44)*
+- [x] Tests for bulkUpdateTasks 100-item limit *(Wave 44)*
+- [x] Integration tests for cookie-based auth flow *(Wave 44)*
+- [x] Integration test for CSRF protection *(Wave 44)*
+- [x] Data migration script for webhook secrets and Slack URLs *(Wave 44 — scripts/migrate-encrypt-secrets.ts)*
+- [x] Data migration script for invite tokens *(Wave 44 — scripts/migrate-hash-invite-tokens.ts)*
+- [x] Auto-refresh modal instead of hard redirect *(Wave 44 — SessionExpiredModal)*
+- [x] verifyEmail sets HttpOnly cookies *(Wave 44)*
+- [ ] L-5: Concurrent session limit — needs RefreshToken model design
+- [ ] M-7 design choice: consider making email redaction default with admin opt-out
+- [ ] Sentry integration for web frontend ErrorBoundary (currently suppresses console.error in prod)
+- [ ] AI rate limiter: consider in-memory cache/sliding window for high-throughput orgs
+- [ ] Anthropic SDK maxRetries=0 — consider app-level retry with capped backoff
 
 ### Tooling
 - [ ] merge-worker.sh: fix script treating lint warnings (exit 0 with warnings) as failures
@@ -225,10 +224,10 @@ Pipeline complete (Waves 36-41). These are deferred polish items:
 - [ ] useAsyncData adoption — migrate components with inline fetch-in-useEffect
 - [ ] Release burndown chart — task completion over time for releases
 - [ ] Unit tests for `urlValidator.ts` — private IP ranges, DNS mocking, protocol/port blocking
-- [ ] Frontend: disable task field editing when user lacks EDIT_TASKS permission
-- [ ] BacklogView keyboard navigation (Enter/Space to select task)
+- [x] Frontend: disable task field editing when user lacks EDIT_TASKS permission *(Wave 44)*
+- [x] BacklogView keyboard navigation (Enter/Space to select task) *(Wave 44)*
 - [ ] ~3 dynamic mutations remain inline in useTaskOperations.ts
-- [ ] SavedViewPicker lint warning: setState in useEffect
+- [x] SavedViewPicker lint warning: setState in useEffect *(Wave 44 — reduced warnings 5→3)*
 
 ---
 
@@ -272,5 +271,6 @@ Pipeline complete (Waves 36-41). These are deferred polish items:
 | 36-41 | 2026-03-20 | Auto-Complete Pipeline Redesign (KB, planning, execution, insights, dashboard) |
 | 42 | 2026-03-21 | Security Phase 2 — Auth Hardening (H-1/H-2/H-3/H-4/H-6/H-9/H-10/H-12) |
 | 43 | 2026-03-21 | Security Phase 3+4 — Medium fixes (M-1/M-2/M-3/M-5-M-10) + Low fixes (L-2/L-3/L-4/L-7/L-8/L-10) |
+| 44 | 2026-03-21 | Security cleanup (M-4/L-6/L-11), integration tests, auth follow-ups, frontend polish |
 
 Full wave details in `changelog.md`.
