@@ -47,6 +47,7 @@ const ReleaseListPanel = lazyWithRetry(() => import('../components/ReleaseListPa
 const ReleaseModal = lazyWithRetry(() => import('../components/ReleaseModal'));
 const ExecutionDashboard = lazyWithRetry(() => import('../components/ExecutionDashboard'));
 const TimesheetView = lazyWithRetry(() => import('../components/TimesheetView'));
+const PendingApprovalsPanel = lazyWithRetry(() => import('../components/PendingApprovalsPanel'));
 import { TaskListSkeleton, KanbanBoardSkeleton } from '../components/Skeleton';
 import ToastContainer from '../components/shared/ToastContainer';
 import KeyboardShortcutHelp from '../components/shared/KeyboardShortcutHelp';
@@ -922,6 +923,21 @@ export default function ProjectDetail() {
             onSubmit={d.createRelease}
             onClose={() => d.setShowReleaseCreateModal(false)}
           />
+        </Suspense>
+      )}
+
+      {/* Pending approvals panel */}
+      {activeModal === 'approvals' && d.projectId && (
+        <Suspense fallback={lazyFallback}>
+          <div className="fixed inset-0 z-50 flex items-start justify-center pt-20">
+            <div className="absolute inset-0 bg-black/30" onClick={() => setActiveModal(null)} />
+            <div className="relative z-10">
+              <PendingApprovalsPanel
+                projectId={d.projectId}
+                onClose={() => setActiveModal(null)}
+              />
+            </div>
+          </div>
         </Suspense>
       )}
 

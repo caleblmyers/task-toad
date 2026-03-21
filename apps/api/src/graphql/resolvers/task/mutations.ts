@@ -98,13 +98,36 @@ export const taskMutations = {
           where: { projectId: task.projectId },
         });
         if (transitions.length > 0) {
-          const allowed = transitions.some(
+          const matchingTransition = transitions.find(
             t => t.fromStatus === task.status && t.toStatus === args.status
           );
-          if (!allowed) {
+          if (!matchingTransition) {
             throw new ValidationError(
               `Status transition from '${task.status}' to '${args.status}' is not allowed by the project workflow`
             );
+          }
+          // Check if transition requires approval
+          if (matchingTransition.condition) {
+            try {
+              const condition = JSON.parse(matchingTransition.condition) as Record<string, unknown>;
+              if (condition.requiresApproval) {
+                // Create an approval record instead of changing status
+                await context.prisma.approval.create({
+                  data: {
+                    taskId: args.taskId,
+                    orgId: user.orgId,
+                    requestedById: user.userId,
+                    fromStatus: task.status,
+                    toStatus: args.status,
+                  },
+                });
+                warnings.push(`Status change requires approval`);
+                // Return early — don't change the status
+                return { task, warnings };
+              }
+            } catch {
+              // Invalid JSON in condition — ignore and proceed
+            }
           }
         }
       }

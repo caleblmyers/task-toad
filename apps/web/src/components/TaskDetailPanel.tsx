@@ -22,6 +22,7 @@ import InsightPanel from './taskdetail/InsightPanel';
 import type { TaskInsight } from './taskdetail/InsightPanel';
 import Badge from './shared/Badge';
 import SLAStatusBadge from './taskdetail/SLAStatusBadge';
+import ApprovalBadge from './taskdetail/ApprovalBadge';
 
 interface TaskAncestor {
   taskId: string;
@@ -214,6 +215,11 @@ function PanelContent({
         timeSummary={timeSummary}
         onLogTime={canDo && !canDo('LOG_TIME') ? undefined : onLogTime}
         onDeleteTimeEntry={onDeleteTimeEntry}
+      />
+
+      <ApprovalBadge
+        taskId={task.taskId}
+        canManage={canDo ? canDo('MANAGE_PROJECT_SETTINGS') : isAdmin}
       />
 
       {/* Recurrence */}

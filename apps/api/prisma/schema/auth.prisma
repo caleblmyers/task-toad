@@ -33,6 +33,8 @@ model User {
   userTimeOffs      UserTimeOff[]
   tokenVersion      Int            @default(0) @map("token_version")
   refreshTokens     RefreshToken[]
+  approvalRequests  Approval[]     @relation("ApprovalRequester")
+  approvalDecisions Approval[]     @relation("ApprovalApprover")
 
   @@index([orgId])
   @@map("users")

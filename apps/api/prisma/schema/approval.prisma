@@ -1,0 +1,20 @@
+model Approval {
+  approvalId    String    @id @default(uuid()) @map("approval_id")
+  taskId        String    @map("task_id")
+  orgId         String    @map("org_id")
+  requestedById String    @map("requested_by_id")
+  approverId    String?   @map("approver_id")
+  fromStatus    String    @map("from_status")
+  toStatus      String    @map("to_status")
+  status        String    @default("pending") // pending, approved, rejected
+  comment       String?
+  decidedAt     DateTime? @map("decided_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  task          Task      @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
+  requestedBy   User      @relation("ApprovalRequester", fields: [requestedById], references: [userId])
+  approver      User?     @relation("ApprovalApprover", fields: [approverId], references: [userId])
+
+  @@index([taskId])
+  @@index([approverId, status])
+  @@map("approvals")
+}

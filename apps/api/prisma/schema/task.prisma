@@ -49,6 +49,7 @@ model Task {
   insightsAsSource     TaskInsight[] @relation("InsightSource")
   insightsAsTarget     TaskInsight[] @relation("InsightTarget")
   slaTimers            SLATimer[]
+  approvals            Approval[]
 
   @@index([projectId])
   @@index([parentTaskId])

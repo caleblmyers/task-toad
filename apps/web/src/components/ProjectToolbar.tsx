@@ -382,6 +382,7 @@ export default function ProjectToolbar({
             items={[
               { label: 'Template', onClick: () => { previousFocusRef.current = document.activeElement as HTMLElement; setShowTemplateMenu((v) => { if (!v) loadTemplates(); return !v; }); setShowExportMenu(false); }, disabled: d.isGenerating },
               { label: 'Import/Export', onClick: () => { previousFocusRef.current = document.activeElement as HTMLElement; setShowExportMenu((v) => !v); setShowTemplateMenu(false); } },
+              { label: 'Approvals', onClick: () => onOpenModal('approvals') },
               { label: 'Project Settings', onClick: () => onOpenModal('project-settings'), disabled: !d.can('MANAGE_PROJECT_SETTINGS') },
               { label: 'Knowledge Base', onClick: () => onOpenModal('knowledge-base') },
               { label: 'Onboarding Interview', icon: <IconSparkle className="w-3.5 h-3.5" />, onClick: () => onOpenModal('onboarding') },
