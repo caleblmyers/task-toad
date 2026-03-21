@@ -3,6 +3,7 @@ import type { Context } from '../context.js';
 import { encryptApiKey, decryptApiKey } from '../../utils/encryption.js';
 import { AuthenticationError, AuthorizationError, ValidationError } from '../errors.js';
 import { requireAuth, requireOrg } from './auth.js';
+import { auditLog } from '../../utils/auditLog.js';
 
 // ── Org queries ──
 
@@ -68,10 +69,12 @@ export const orgMutations = {
     if (!dbUser) throw new AuthenticationError('User not found');
     const valid = await bcrypt.compare(args.confirmPassword, dbUser.passwordHash);
     if (!valid) throw new AuthenticationError('Invalid password');
-    return context.prisma.org.update({
+    const result = await context.prisma.org.update({
       where: { orgId: user.orgId },
       data: { anthropicApiKeyEncrypted: encryptApiKey(args.apiKey) },
     });
+    auditLog(context.prisma, { orgId: user.orgId, userId: user.userId, action: 'api_key_changed' });
+    return result;
   },
 };
 

@@ -37,6 +37,7 @@ import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupRepo
 import { FEATURE_CONFIG } from './aiConfig.js';
 import { callAI, type PromptLogContext } from './aiClient.js';
 import { parseJSON } from './responseParser.js';
+import { checkAIRateLimit } from '../utils/aiRateLimiter.js';
 import {
   buildProjectOptionsPrompt,
   buildTaskPlanPrompt,
@@ -94,6 +95,11 @@ async function callAndParse<T>(
 ): Promise<T> {
   const config = FEATURE_CONFIG[feature];
   const prefill = isArraySchema(schema as z.ZodType<unknown>) ? '[' : '{';
+
+  if (promptLogContext?.orgId) {
+    await checkAIRateLimit(promptLogContext.prisma, promptLogContext.orgId);
+  }
+
   try {
     const result = await callAI({
       apiKey,

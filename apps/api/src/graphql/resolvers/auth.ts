@@ -22,6 +22,7 @@ import {
 } from '../errors.js';
 import { validatePassword } from '../../utils/passwordPolicy.js';
 import { getPermissionsForProject } from '../../auth/permissions.js';
+import { auditLog } from '../../utils/auditLog.js';
 
 // ── Shared auth helpers (imported by other resolver modules) ──
 
@@ -267,6 +268,7 @@ export const authMutations = {
       inviteText(org?.name ?? 'TaskToad', rawToken),
       buildInviteHtml(org?.name ?? 'TaskToad', rawToken)
     );
+    auditLog(context.prisma, { orgId: user.orgId, userId: user.userId, action: 'member_invited', field: 'email', newValue: args.email });
     return true;
   },
 
@@ -353,6 +355,7 @@ export const authMutations = {
       throw new NotFoundError('Invite not found');
     }
     await context.prisma.orgInvite.delete({ where: { inviteId: args.inviteId } });
+    auditLog(context.prisma, { orgId: user.orgId, userId: user.userId, action: 'invite_revoked' });
     return true;
   },
 
@@ -362,6 +365,9 @@ export const authMutations = {
       where: { userId: user.userId },
       data: { tokenVersion: { increment: 1 } },
     });
+    if (user.orgId) {
+      auditLog(context.prisma, { orgId: user.orgId, userId: user.userId, action: 'user_logout' });
+    }
     // Clear auth cookies
     if (context.res) {
       context.res.clearCookie('tt-access', { path: '/' });

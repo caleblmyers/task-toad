@@ -3,6 +3,7 @@ import type { PromptLogContext } from '../../../ai/index.js';
 import { AuthorizationError, ValidationError } from '../../errors.js';
 import { requireOrg } from '../auth.js';
 import { checkBudget, type BudgetStatus } from '../../../ai/aiUsageTracker.js';
+import { auditLog } from '../../../utils/auditLog.js';
 
 /**
  * Prisma filter for "display-level" tasks: root tasks OR children of epics.
@@ -46,7 +47,11 @@ export const helperMutations = {
     if (args.budgetEnforcement != null && !['soft', 'hard'].includes(args.budgetEnforcement)) {
       throw new ValidationError('Budget enforcement must be "soft" or "hard"');
     }
-    return context.prisma.org.update({
+    const oldOrg = await context.prisma.org.findUnique({
+      where: { orgId: user.orgId },
+      select: { monthlyBudgetCentsUSD: true },
+    });
+    const result = await context.prisma.org.update({
       where: { orgId: user.orgId },
       data: {
         ...(args.monthlyBudgetCentsUSD !== undefined && { monthlyBudgetCentsUSD: args.monthlyBudgetCentsUSD ?? null }),
@@ -55,5 +60,14 @@ export const helperMutations = {
         ...(args.promptLoggingEnabled != null && { promptLoggingEnabled: args.promptLoggingEnabled }),
       },
     });
+    auditLog(context.prisma, {
+      orgId: user.orgId,
+      userId: user.userId,
+      action: 'ai_budget_changed',
+      field: 'monthlyBudgetCentsUSD',
+      oldValue: String(oldOrg?.monthlyBudgetCentsUSD ?? ''),
+      newValue: String(args.monthlyBudgetCentsUSD ?? ''),
+    });
+    return result;
   },
 };
