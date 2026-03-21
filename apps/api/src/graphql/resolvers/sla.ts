@@ -2,6 +2,7 @@ import type { SLAPolicy, SLATimer } from '@prisma/client';
 import type { Context } from '../context.js';
 import { NotFoundError, ValidationError } from '../errors.js';
 import { requireOrg, requireProjectAccess } from './auth.js';
+import { requirePermission, Permission } from '../../auth/permissions.js';
 
 export const slaQueries = {
   slaPolicies: async (
@@ -48,7 +49,8 @@ export const slaMutations = {
     },
     context: Context,
   ) => {
-    const { user } = await requireProjectAccess(context, args.projectId);
+    await requirePermission(context, args.projectId, Permission.MANAGE_PROJECT_SETTINGS);
+    const user = requireOrg(context);
     if (args.responseTimeHours < 1) throw new ValidationError('responseTimeHours must be at least 1');
     if (args.resolutionTimeHours < 1) throw new ValidationError('resolutionTimeHours must be at least 1');
     if (args.resolutionTimeHours < args.responseTimeHours) {
@@ -86,6 +88,7 @@ export const slaMutations = {
       where: { slaPolicyId: args.slaPolicyId, orgId: user.orgId },
     });
     if (!existing) throw new NotFoundError('SLA policy not found');
+    await requirePermission(context, existing.projectId, Permission.MANAGE_PROJECT_SETTINGS);
 
     const data: Record<string, unknown> = {};
     if (args.name != null) data.name = args.name;
@@ -117,6 +120,7 @@ export const slaMutations = {
       where: { slaPolicyId: args.slaPolicyId, orgId: user.orgId },
     });
     if (!existing) throw new NotFoundError('SLA policy not found');
+    await requirePermission(context, existing.projectId, Permission.MANAGE_PROJECT_SETTINGS);
 
     await context.prisma.sLAPolicy.delete({
       where: { slaPolicyId: args.slaPolicyId },

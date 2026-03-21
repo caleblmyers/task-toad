@@ -175,7 +175,7 @@ export default function AppLayout() {
 
   // Poll unread count every 60s as SSE fallback
   useEffect(() => {
-    void fetchCount();
+    void fetchCount(); // eslint-disable-line react-hooks/set-state-in-effect -- legitimate polling side effect
     const interval = setInterval(() => void fetchCount(), 60000);
     return () => clearInterval(interval);
   }, [fetchCount]);

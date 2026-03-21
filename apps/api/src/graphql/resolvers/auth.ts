@@ -23,7 +23,7 @@ import {
 import { validatePassword } from '../../utils/passwordPolicy.js';
 import { getPermissionsForProject } from '../../auth/permissions.js';
 import { auditLog } from '../../utils/auditLog.js';
-import type { PrismaClient } from '@prisma/client';
+
 
 const MAX_SESSIONS = Number(process.env.MAX_SESSIONS_PER_USER) || 5;
 const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -35,7 +35,7 @@ function hashRefreshToken(jwt: string): string {
 
 /** Store a refresh token record and prune oldest sessions if over the limit. */
 async function trackRefreshToken(
-  prisma: PrismaClient,
+  prisma: Context['prisma'],
   userId: string,
   refreshJwt: string,
   userAgent: string | undefined,
@@ -173,7 +173,7 @@ export const authMutations = {
       .sign(JWT_SECRET);
     // Track refresh token server-side for session limiting
     await trackRefreshToken(
-      context.prisma as unknown as PrismaClient,
+      context.prisma,
       user.userId,
       refreshToken,
       context.req?.headers['user-agent'] as string | undefined,
@@ -244,7 +244,7 @@ export const authMutations = {
       .sign(JWT_SECRET);
     // Track refresh token server-side for session limiting
     await trackRefreshToken(
-      context.prisma as unknown as PrismaClient,
+      context.prisma,
       user.userId,
       refreshToken,
       context.req?.headers['user-agent'] as string | undefined,
@@ -409,7 +409,7 @@ export const authMutations = {
       .sign(JWT_SECRET);
     // Track refresh token server-side for session limiting
     await trackRefreshToken(
-      context.prisma as unknown as PrismaClient,
+      context.prisma,
       updatedUser.userId,
       refreshToken,
       context.req?.headers['user-agent'] as string | undefined,
