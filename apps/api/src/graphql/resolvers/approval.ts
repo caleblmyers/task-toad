@@ -3,6 +3,7 @@ import { NotFoundError, ValidationError } from '../errors.js';
 import { requireOrg, requireProjectAccess } from './auth.js';
 import { requirePermission, Permission } from '../../auth/permissions.js';
 import { getEventBus } from '../../infrastructure/eventbus/index.js';
+import { sseManager } from '../../utils/sseManager.js';
 
 export const approvalQueries = {
   pendingApprovals: async (
@@ -120,6 +121,16 @@ export const approvalMutations = {
       },
     });
 
+    sseManager.broadcast(user.orgId, 'approval.decided', {
+      approvalId: args.approvalId,
+      taskId: approval.taskId,
+      taskTitle: approval.task.title,
+      decision: 'approved',
+      decidedBy: user.email,
+      fromStatus: approval.fromStatus,
+      toStatus: approval.toStatus,
+    });
+
     return {
       ...updated,
       decidedAt: updated.decidedAt?.toISOString() ?? null,
@@ -158,6 +169,16 @@ export const approvalMutations = {
         requestedBy: { select: { userId: true, email: true, displayName: true } },
         approver: { select: { userId: true, email: true, displayName: true } },
       },
+    });
+
+    sseManager.broadcast(user.orgId, 'approval.decided', {
+      approvalId: args.approvalId,
+      taskId: approval.taskId,
+      taskTitle: approval.task.title,
+      decision: 'rejected',
+      decidedBy: user.email,
+      fromStatus: approval.fromStatus,
+      toStatus: approval.toStatus,
     });
 
     return {

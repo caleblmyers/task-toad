@@ -127,7 +127,7 @@ export default function ProjectDetail() {
 
   // SSE: refresh action plan when action events arrive for the selected task + toast notifications
   useSSEListener(
-    ['task.action_completed', 'task.action_plan_completed', 'task.action_plan_failed', 'task.blocked', 'task.unblocked', 'task.updated'],
+    ['task.action_completed', 'task.action_plan_completed', 'task.action_plan_failed', 'task.blocked', 'task.unblocked', 'task.updated', 'approval.requested', 'approval.decided'],
     (event: string, data: unknown) => {
       if (event === 'task.action_completed' || event === 'task.action_plan_completed') {
         const payload = data as { taskId?: string; taskTitle?: string };
@@ -155,6 +155,19 @@ export default function ProjectDetail() {
         const payload = data as { taskId?: string };
         if (payload?.taskId) {
           void d.loadTasks(filterInput);
+        }
+      }
+      if (event === 'approval.requested') {
+        const payload = data as { taskTitle?: string; fromStatus?: string; toStatus?: string };
+        if (payload?.taskTitle) {
+          addToast('info', `Approval requested: ${payload.taskTitle} (${payload.fromStatus} \u2192 ${payload.toStatus})`);
+        }
+      }
+      if (event === 'approval.decided') {
+        const payload = data as { taskTitle?: string; decision?: string; fromStatus?: string; toStatus?: string };
+        if (payload?.taskTitle) {
+          const verb = payload.decision === 'approved' ? 'Approved' : 'Rejected';
+          addToast(payload.decision === 'approved' ? 'success' : 'info', `${verb}: ${payload.taskTitle} (${payload.fromStatus} \u2192 ${payload.toStatus})`);
         }
       }
     },

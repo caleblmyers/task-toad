@@ -9,6 +9,7 @@ import { reviewCode } from '../../../ai/aiService.js';
 import { decryptApiKey } from '../../../utils/encryption.js';
 import { getPullRequestDiff } from '../../../github/index.js';
 import { getEventBus } from '../../../infrastructure/eventbus/index.js';
+import { sseManager } from '../../../utils/sseManager.js';
 import { logActivity } from '../../../utils/activity.js';
 import { detectCycle } from '../../../utils/cyclicDependencyCheck.js';
 import fs from 'node:fs';
@@ -112,7 +113,7 @@ export const taskMutations = {
               const condition = JSON.parse(matchingTransition.condition) as Record<string, unknown>;
               if (condition.requiresApproval) {
                 // Create an approval record instead of changing status
-                await context.prisma.approval.create({
+                const approval = await context.prisma.approval.create({
                   data: {
                     taskId: args.taskId,
                     orgId: user.orgId,
@@ -120,6 +121,15 @@ export const taskMutations = {
                     fromStatus: task.status,
                     toStatus: args.status,
                   },
+                });
+                // Notify potential approvers via SSE
+                sseManager.broadcast(user.orgId, 'approval.requested', {
+                  approvalId: approval.approvalId,
+                  taskId: args.taskId,
+                  taskTitle: task.title,
+                  fromStatus: task.status,
+                  toStatus: args.status,
+                  requestedBy: user.email,
                 });
                 warnings.push(`Status change requires approval`);
                 // Return early — don't change the status

@@ -59,6 +59,7 @@ export default function CycleTimePanel({ projectId, sprints, disabled, onClose }
   const [sortField, setSortField] = useState<SortField>('leadTimeHours');
   const [sortAsc, setSortAsc] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [controlWindow, setControlWindow] = useState(10);
 
   const dateError = fromDate && toDate && fromDate > toDate ? 'From date must be before To date' : null;
 
@@ -250,7 +251,7 @@ export default function CycleTimePanel({ projectId, sprints, disabled, onClose }
             {viewMode === 'scatter' ? (
               <CycleTimeScatter tasks={metrics.tasks} p50={metrics.p50CycleTimeHours} p85={metrics.p85CycleTimeHours} />
             ) : viewMode === 'control' ? (
-              <CycleTimeControlChart tasks={metrics.tasks} />
+              <CycleTimeControlChart tasks={metrics.tasks} windowSize={controlWindow} onWindowChange={setControlWindow} />
             ) : sortedTasks.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -478,9 +479,10 @@ function CycleTimeScatter({ tasks, p50, p85 }: { tasks: TaskCycleMetrics[]; p50:
   );
 }
 
-const CONTROL_WINDOW = 10;
+const CONTROL_WINDOW_OPTIONS = [5, 10, 15, 20] as const;
 
-function CycleTimeControlChart({ tasks }: { tasks: TaskCycleMetrics[] }) {
+function CycleTimeControlChart({ tasks, windowSize, onWindowChange }: { tasks: TaskCycleMetrics[]; windowSize: number; onWindowChange: (v: number) => void }) {
+  const controlWindow = windowSize;
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(500);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
@@ -514,13 +516,13 @@ function CycleTimeControlChart({ tasks }: { tasks: TaskCycleMetrics[] }) {
   const lowerBand: (number | null)[] = [];
 
   for (let i = 0; i < validTasks.length; i++) {
-    if (i < CONTROL_WINDOW - 1) {
+    if (i < controlWindow - 1) {
       rollingAvg.push(null);
       upperBand.push(null);
       lowerBand.push(null);
       continue;
     }
-    const windowSlice = validTasks.slice(i - CONTROL_WINDOW + 1, i + 1).map((t) => t.cycleTimeHours!);
+    const windowSlice = validTasks.slice(i - controlWindow + 1, i + 1).map((t) => t.cycleTimeHours!);
     const avg = windowSlice.reduce((s, v) => s + v, 0) / windowSlice.length;
     const variance = windowSlice.reduce((s, v) => s + (v - avg) ** 2, 0) / windowSlice.length;
     const stdDev = Math.sqrt(variance);
@@ -665,16 +667,28 @@ function CycleTimeControlChart({ tasks }: { tasks: TaskCycleMetrics[] }) {
         })()}
       </svg>
 
-      {/* Legend */}
+      {/* Legend + window selector */}
       <div className="flex items-center gap-3 px-1 mt-1 flex-wrap">
         <span className="flex items-center gap-1 text-[10px] text-slate-400">
           <span className="w-2.5 h-2.5 rounded-full bg-blue-500 opacity-70 inline-block" /> Task
         </span>
         <span className="flex items-center gap-1 text-[10px] text-blue-500">
-          <span className="w-3 h-0 inline-block border-t-2" style={{ borderColor: '#3b82f6' }} /> Avg ({CONTROL_WINDOW}-task)
+          <span className="w-3 h-0 inline-block border-t-2" style={{ borderColor: '#3b82f6' }} /> Avg ({controlWindow}-task)
         </span>
         <span className="flex items-center gap-1 text-[10px] text-blue-300">
           <span className="w-3 h-2 inline-block bg-blue-500 opacity-10 border border-blue-300 rounded-sm" /> &plusmn;2&sigma;
+        </span>
+        <span className="ml-auto flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400">
+          Window:
+          <select
+            value={controlWindow}
+            onChange={(e) => onWindowChange(Number(e.target.value))}
+            className="text-[10px] border border-slate-200 dark:border-slate-600 rounded px-1 py-0.5 bg-white dark:bg-slate-800 dark:text-slate-200"
+          >
+            {CONTROL_WINDOW_OPTIONS.map((w) => (
+              <option key={w} value={w}>{w}</option>
+            ))}
+          </select>
         </span>
       </div>
     </div>

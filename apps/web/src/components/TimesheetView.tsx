@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { gql } from '../api/client';
-import { TIMESHEET_DATA_QUERY, LOG_TIME_MUTATION, UPDATE_TIME_ENTRY_MUTATION } from '../api/queries';
+import { TIMESHEET_DATA_QUERY, LOG_TIME_MUTATION, UPDATE_TIME_ENTRY_MUTATION, DELETE_TIME_ENTRY_MUTATION } from '../api/queries';
 import { useAuth } from '../auth/context';
 import type { OrgUser } from '../types';
 
@@ -111,7 +111,24 @@ export default function TimesheetView({ projectId, orgUsers }: TimesheetViewProp
     setEditValue(currentMinutes > 0 ? (currentMinutes / 60).toString() : '');
   };
 
-  const handleCellSave = async () => {
+  const getRowIndex = useCallback((taskId: string): number => {
+    if (!data) return -1;
+    return data.rows.findIndex((r) => r.taskId === taskId);
+  }, [data]);
+
+  const focusCell = useCallback((rowIndex: number, colIndex: number) => {
+    if (!data) return;
+    const clampedRow = Math.max(0, Math.min(rowIndex, data.rows.length - 1));
+    const clampedCol = Math.max(0, Math.min(colIndex, 6));
+    const row = data.rows[clampedRow];
+    if (row) {
+      const entry = row.entries[clampedCol];
+      setEditingCell({ taskId: row.taskId, dateIndex: clampedCol });
+      setEditValue(entry && entry.minutes > 0 ? (entry.minutes / 60).toString() : '');
+    }
+  }, [data]);
+
+  const handleCellSave = async (nextCell?: { rowIndex: number; colIndex: number }) => {
     if (!editingCell || !data) return;
 
     const { taskId, dateIndex } = editingCell;
@@ -123,7 +140,12 @@ export default function TimesheetView({ projectId, orgUsers }: TimesheetViewProp
     const row = data.rows.find((r) => r.taskId === taskId);
     const entry = row?.entries[dateIndex];
 
-    setEditingCell(null);
+    // Move to next cell if specified, otherwise clear editing
+    if (nextCell) {
+      focusCell(nextCell.rowIndex, nextCell.colIndex);
+    } else {
+      setEditingCell(null);
+    }
 
     if (entry?.timeEntryId && minutes > 0) {
       // Update existing entry
@@ -141,17 +163,55 @@ export default function TimesheetView({ projectId, orgUsers }: TimesheetViewProp
       });
       await loadData();
     } else if (entry?.timeEntryId && minutes === 0) {
-      // Update to minimum (1 minute) or we could delete — for simplicity update to cleared
-      // Since we can't set to 0, just reload without change
+      // Delete entry when set to 0 or cleared
+      await gql<{ deleteTimeEntry: boolean }>(DELETE_TIME_ENTRY_MUTATION, {
+        timeEntryId: entry.timeEntryId,
+      });
       await loadData();
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!editingCell || !data) return;
+    const rowIndex = getRowIndex(editingCell.taskId);
+    const colIndex = editingCell.dateIndex;
+
     if (e.key === 'Enter') {
-      handleCellSave();
+      e.preventDefault();
+      // Save and move down
+      handleCellSave({ rowIndex: rowIndex + 1, colIndex });
     } else if (e.key === 'Escape') {
+      e.preventDefault();
       setEditingCell(null);
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        // Previous cell
+        if (colIndex > 0) {
+          handleCellSave({ rowIndex, colIndex: colIndex - 1 });
+        } else if (rowIndex > 0) {
+          handleCellSave({ rowIndex: rowIndex - 1, colIndex: 6 });
+        }
+      } else {
+        // Next cell
+        if (colIndex < 6) {
+          handleCellSave({ rowIndex, colIndex: colIndex + 1 });
+        } else if (rowIndex < data.rows.length - 1) {
+          handleCellSave({ rowIndex: rowIndex + 1, colIndex: 0 });
+        }
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      handleCellSave({ rowIndex: rowIndex - 1, colIndex });
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      handleCellSave({ rowIndex: rowIndex + 1, colIndex });
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      handleCellSave({ rowIndex, colIndex: colIndex - 1 });
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      handleCellSave({ rowIndex, colIndex: colIndex + 1 });
     }
   };
 
@@ -278,7 +338,7 @@ export default function TimesheetView({ projectId, orgUsers }: TimesheetViewProp
                               min="0"
                               value={editValue}
                               onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={handleCellSave}
+                              onBlur={() => handleCellSave()}
                               onKeyDown={handleKeyDown}
                               className="w-16 text-center text-sm border border-blue-400 rounded px-1 py-0.5 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-400"
                             />

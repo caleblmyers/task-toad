@@ -14,6 +14,8 @@ const SSE_EVENTS = [
   'sprint.updated',
   'sprint.closed',
   'notification.created',
+  'approval.requested',
+  'approval.decided',
 ] as const;
 
 type SSEEventHandler = (event: string, data: unknown) => void;

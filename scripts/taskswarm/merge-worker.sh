@@ -89,12 +89,31 @@ if [ "$VALIDATE" = true ]; then
   git -C "$MAIN_REPO" merge --abort
 fi
 
-# Squash merge
-git -C "$MAIN_REPO" merge --squash "$BRANCH" || {
-  echo "Error: merge conflicts. Resolve manually or ask the worker to rebase."
-  git -C "$MAIN_REPO" merge --abort 2>/dev/null || true
-  exit 1
-}
+# Check if worker branch has diverged from main (main has commits not in worker branch)
+DIVERGED=$(git -C "$MAIN_REPO" rev-list --count "$BRANCH"..HEAD 2>/dev/null || echo "0")
+
+if [ "$DIVERGED" -gt 0 ]; then
+  echo "Worker branch is behind main by $DIVERGED commit(s) — using cherry-pick to avoid overwriting."
+  COMMITS=$(git -C "$MAIN_REPO" rev-list --reverse "main..$BRANCH")
+  if [ -z "$COMMITS" ]; then
+    echo "No commits to cherry-pick."
+    exit 0
+  fi
+  for COMMIT in $COMMITS; do
+    git -C "$MAIN_REPO" cherry-pick --no-commit "$COMMIT" || {
+      echo "Error: cherry-pick conflict on $COMMIT. Resolve manually."
+      git -C "$MAIN_REPO" cherry-pick --abort 2>/dev/null || true
+      exit 1
+    }
+  done
+else
+  # Worker branch is up-to-date — safe to squash merge
+  git -C "$MAIN_REPO" merge --squash "$BRANCH" || {
+    echo "Error: merge conflicts. Resolve manually or ask the worker to rebase."
+    git -C "$MAIN_REPO" merge --abort 2>/dev/null || true
+    exit 1
+  }
+fi
 
 # Strip swarm role content from CLAUDE.md if present
 CLAUDE_MD="$MAIN_REPO/CLAUDE.md"
