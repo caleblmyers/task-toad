@@ -143,6 +143,7 @@ function PanelContent({
   }, [task.taskId, task.parentTaskId]);
 
   const [insightCount, setInsightCount] = useState(0);
+  const [fetchedInsights, setFetchedInsights] = useState<TaskInsight[]>([]);
 
   const [editingDescription, setEditingDescription] = useState(false);
   const [editDescValue, setEditDescValue] = useState('');
@@ -561,16 +562,22 @@ function PanelContent({
     </section>
   );
 
-  // Fetch insight count for tab badge
+  // Fetch insights for tab badge count + pass to InsightPanel
   useEffect(() => {
     if (!task.autoComplete) {
       setInsightCount(0);
+      setFetchedInsights([]);
       return;
     }
     let cancelled = false;
-    gql<{ taskInsights: Array<{ taskInsightId: string }> }>(TASK_INSIGHTS_QUERY, { projectId: task.projectId, taskId: task.taskId })
-      .then((data) => { if (!cancelled) setInsightCount(data.taskInsights.length); })
-      .catch(() => { if (!cancelled) setInsightCount(0); });
+    gql<{ taskInsights: TaskInsight[] }>(TASK_INSIGHTS_QUERY, { projectId: task.projectId, taskId: task.taskId })
+      .then((data) => {
+        if (!cancelled) {
+          setInsightCount(data.taskInsights.length);
+          setFetchedInsights(data.taskInsights);
+        }
+      })
+      .catch(() => { if (!cancelled) { setInsightCount(0); setFetchedInsights([]); } });
     return () => { cancelled = true; };
   }, [task.taskId, task.projectId, task.autoComplete]);
 
@@ -589,6 +596,7 @@ function PanelContent({
       <InsightPanel
         projectId={task.projectId}
         taskId={task.taskId}
+        initialInsights={fetchedInsights}
         onApplyInsight={onUpdateTask ? handleApplyInsight : undefined}
       />
     </section>
@@ -617,7 +625,7 @@ function PanelContent({
     editingInstructions, editInstrValue, editingAC, editACValue,
     uploading, localAttachments, reviewResult, reviewLoading,
     autoCompleteLoading, actionPlan, timeSummary, tools.length, ancestors,
-    showInsightsTab, insightCount, manualSpec, specLoading,
+    showInsightsTab, insightCount, fetchedInsights, manualSpec, specLoading,
   ]);
 
   return (

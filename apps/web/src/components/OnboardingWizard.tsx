@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import Modal from './shared/Modal';
 import Button from './shared/Button';
 import { gql } from '../api/client';
@@ -124,9 +124,33 @@ export default function OnboardingWizard({ isOpen, onClose, projectId }: Onboard
     onClose();
   };
 
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-focus the textarea when question changes
+  useEffect(() => {
+    if (step === 'questions') {
+      setTimeout(() => textareaRef.current?.focus(), 0);
+    }
+  }, [step, currentIdx]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Don't intercept Enter when inside the textarea (allow newlines with Shift+Enter or plain Enter)
+    if (e.key === 'Enter' && !e.shiftKey && !(e.target instanceof HTMLTextAreaElement)) {
+      e.preventDefault();
+      if (step === 'welcome' && !loading) {
+        void handleStartInterview();
+      } else if (step === 'review' && done) {
+        handleClose();
+      } else if (step === 'review' && !saving && answeredEntries.length > 0) {
+        void handleSave();
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, loading, done, saving, answeredEntries.length]);
+
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Project Onboarding Interview" size="lg">
-      <div className="p-6">
+      <div className="p-6" onKeyDown={handleKeyDown}>
         {step === 'welcome' && (
           <div className="text-center space-y-4">
             <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-200">
@@ -185,12 +209,19 @@ export default function OnboardingWizard({ isOpen, onClose, projectId }: Onboard
             </div>
 
             <textarea
+              ref={textareaRef}
               value={answers[currentIdx]?.answer ?? ''}
               onChange={(e) => handleAnswerChange(e.target.value)}
-              placeholder="Type your answer here..."
+              onKeyDown={(e) => {
+                // Ctrl/Cmd+Enter advances to next question
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                  e.preventDefault();
+                  handleNext();
+                }
+              }}
+              placeholder="Type your answer here... (Ctrl+Enter to advance)"
               rows={5}
               className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm dark:bg-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 resize-y"
-              autoFocus
             />
 
             <div className="flex justify-between">

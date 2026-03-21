@@ -6,6 +6,7 @@ import {
   UPDATE_TASK_STATUS_MUTATION, UPDATE_TASK_SPRINT_MUTATION, UPDATE_TASK_ASSIGNEE_MUTATION,
   UPDATE_TASK_DUEDATE_MUTATION, UPDATE_TASK_TITLE_MUTATION, UPDATE_TASK_ARCHIVED_MUTATION,
   UPDATE_TASK_POSITION_MUTATION, ADD_TASK_DEPENDENCY_MUTATION, REMOVE_TASK_DEPENDENCY_MUTATION,
+  buildStatusChangeMutation, buildSprintColumnChangeMutation, buildUpdateTaskFieldsMutation,
 } from '../api/queries';
 import { columnToStatus, statusToColumn } from '../utils/taskHelpers';
 import { parseColumns } from '../utils/jsonHelpers';
@@ -131,11 +132,8 @@ export function useTaskOperations({ projectId, userId, sprints, onWarnings }: Us
     );
 
     try {
-      // Dynamic mutation — conditionally includes sprintColumn and assigneeId fields
       const data = await gql<{ updateTask: UpdateTaskResult }>(
-        `mutation UpdateTask($taskId: ID!, $status: String!${newColumn !== undefined ? ', $sprintColumn: String' : ''}${autoAssign ? ', $assigneeId: ID' : ''}) {
-          updateTask(taskId: $taskId, status: $status${newColumn !== undefined ? ', sprintColumn: $sprintColumn' : ''}${autoAssign ? ', assigneeId: $assigneeId' : ''}) { task { taskId } warnings }
-        }`,
+        buildStatusChangeMutation({ sprintColumn: newColumn !== undefined, assigneeId: !!autoAssign }),
         { taskId, status, ...(newColumn !== undefined ? { sprintColumn: newColumn } : {}), ...(autoAssign ? { assigneeId: autoAssign } : {}) },
       );
       if (data.updateTask.warnings.length > 0) onWarnings?.(data.updateTask.warnings);
@@ -178,11 +176,8 @@ export function useTaskOperations({ projectId, userId, sprints, onWarnings }: Us
       : t
     );
     try {
-      // Dynamic mutation — conditionally includes status and assigneeId fields
       const data = await gql<{ updateTask: UpdateTaskResult }>(
-        `mutation UpdateTask($taskId: ID!, $sprintColumn: String${newStatus ? ', $status: String!' : ''}${autoAssign ? ', $assigneeId: ID' : ''}) {
-          updateTask(taskId: $taskId, sprintColumn: $sprintColumn${newStatus ? ', status: $status' : ''}${autoAssign ? ', assigneeId: $assigneeId' : ''}) { task { taskId } warnings }
-        }`,
+        buildSprintColumnChangeMutation({ status: !!newStatus, assigneeId: !!autoAssign }),
         { taskId, sprintColumn, ...(newStatus ? { status: newStatus } : {}), ...(autoAssign ? { assigneeId: autoAssign } : {}) },
       );
       if (data.updateTask.warnings.length > 0) onWarnings?.(data.updateTask.warnings);
@@ -402,23 +397,18 @@ export function useTaskOperations({ projectId, userId, sprints, onWarnings }: Us
     taskId: string,
     updates: { description?: string; instructions?: string; acceptanceCriteria?: string; storyPoints?: number | null },
   ) => {
-    const mutationParts: string[] = ['$taskId: ID!'];
-    const vars: Record<string, unknown> = { taskId };
-    if (updates.description !== undefined) { mutationParts.push('$description: String'); vars.description = updates.description; }
-    if (updates.instructions !== undefined) { mutationParts.push('$instructions: String'); vars.instructions = updates.instructions; }
-    if (updates.acceptanceCriteria !== undefined) { mutationParts.push('$acceptanceCriteria: String'); vars.acceptanceCriteria = updates.acceptanceCriteria; }
-    if (updates.storyPoints !== undefined) { mutationParts.push('$storyPoints: Int'); vars.storyPoints = updates.storyPoints; }
-
-    const argsPart = Object.keys(updates).map((k) => `${k}: $${k}`).join(', ');
-
     setTasks((prev) => prev.map((t) => t.taskId === taskId ? { ...t, ...updates } : t));
     setSelectedTask((t) => t?.taskId === taskId ? { ...t, ...updates } : t);
 
     try {
-      // Dynamic mutation — fields vary based on which updates are provided
       await gql<{ updateTask: UpdateTaskResult }>(
-        `mutation UpdateTask(${mutationParts.join(', ')}) { updateTask(taskId: $taskId, ${argsPart}) { task { taskId } warnings } }`,
-        vars,
+        buildUpdateTaskFieldsMutation({
+          description: updates.description !== undefined,
+          instructions: updates.instructions !== undefined,
+          acceptanceCriteria: updates.acceptanceCriteria !== undefined,
+          storyPoints: updates.storyPoints !== undefined,
+        }),
+        { taskId, ...updates },
       );
     } catch {
       loadTasks();

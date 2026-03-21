@@ -671,6 +671,34 @@ export const UPDATE_TASK_POSITION_MUTATION = `mutation UpdateTask($taskId: ID!, 
   updateTask(taskId: $taskId, position: $position, sprintId: $sprintId, sprintColumn: $sprintColumn) { task { taskId } warnings }
 }`;
 
+// ── Dynamic Task Update Builders ──
+
+export function buildStatusChangeMutation(opts: { sprintColumn?: boolean; assigneeId?: boolean }): string {
+  const vars = ['$taskId: ID!', '$status: String!'];
+  const args = ['taskId: $taskId', 'status: $status'];
+  if (opts.sprintColumn) { vars.push('$sprintColumn: String'); args.push('sprintColumn: $sprintColumn'); }
+  if (opts.assigneeId) { vars.push('$assigneeId: ID'); args.push('assigneeId: $assigneeId'); }
+  return `mutation UpdateTask(${vars.join(', ')}) { updateTask(${args.join(', ')}) { task { taskId } warnings } }`;
+}
+
+export function buildSprintColumnChangeMutation(opts: { status?: boolean; assigneeId?: boolean }): string {
+  const vars = ['$taskId: ID!', '$sprintColumn: String'];
+  const args = ['taskId: $taskId', 'sprintColumn: $sprintColumn'];
+  if (opts.status) { vars.push('$status: String!'); args.push('status: $status'); }
+  if (opts.assigneeId) { vars.push('$assigneeId: ID'); args.push('assigneeId: $assigneeId'); }
+  return `mutation UpdateTask(${vars.join(', ')}) { updateTask(${args.join(', ')}) { task { taskId } warnings } }`;
+}
+
+export function buildUpdateTaskFieldsMutation(fields: { description?: boolean; instructions?: boolean; acceptanceCriteria?: boolean; storyPoints?: boolean }): string {
+  const vars = ['$taskId: ID!'];
+  const args = ['taskId: $taskId'];
+  if (fields.description) { vars.push('$description: String'); args.push('description: $description'); }
+  if (fields.instructions) { vars.push('$instructions: String'); args.push('instructions: $instructions'); }
+  if (fields.acceptanceCriteria) { vars.push('$acceptanceCriteria: String'); args.push('acceptanceCriteria: $acceptanceCriteria'); }
+  if (fields.storyPoints) { vars.push('$storyPoints: Int'); args.push('storyPoints: $storyPoints'); }
+  return `mutation UpdateTask(${vars.join(', ')}) { updateTask(${args.join(', ')}) { task { taskId } warnings } }`;
+}
+
 // ── Task Dependencies ──
 
 export const ADD_TASK_DEPENDENCY_MUTATION = `mutation AddDep($sourceTaskId: ID!, $targetTaskId: ID!, $linkType: DependencyLinkType!) {

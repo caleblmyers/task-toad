@@ -113,19 +113,21 @@ export function HierarchicalPlanEditor({
   onChange,
 }: HierarchicalPlanEditorProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
-    // Default: all epics expanded
     const ids = new Set<string>();
     plan.epics.forEach((_, i) => ids.add(makeKey(i)));
     return ids;
   });
 
-  // Reset expanded when plan changes (e.g. regenerate)
-  const epicCount = plan.epics.length;
+  // Reset expanded when epic count changes (e.g. regenerate)
+  // The ref guards against the initial run — only resets on actual count change.
+  const epicCountRef = useRef(plan.epics.length);
   useEffect(() => {
+    if (plan.epics.length === epicCountRef.current) return;
+    epicCountRef.current = plan.epics.length;
     const ids = new Set<string>();
-    Array.from({ length: epicCount }, (_, i) => ids.add(makeKey(i)));
-    setExpandedIds(ids);
-  }, [epicCount]);
+    plan.epics.forEach((_, i) => ids.add(makeKey(i)));
+    setExpandedIds(ids); // eslint-disable-line react-hooks/set-state-in-effect -- intentional sync: regenerated plan resets UI
+  }, [plan.epics.length]); // eslint-disable-line react-hooks/exhaustive-deps -- intentionally keyed on count only
 
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');

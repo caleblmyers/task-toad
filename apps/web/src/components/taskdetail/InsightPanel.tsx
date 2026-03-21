@@ -37,14 +37,15 @@ function relativeTime(isoString: string): string {
 interface Props {
   projectId: string;
   taskId: string;
+  initialInsights?: TaskInsight[];
   onApplyInsight?: (insight: TaskInsight) => void;
 }
 
 export type { TaskInsight };
 
-export default function InsightPanel({ projectId, taskId, onApplyInsight }: Props) {
-  const [insights, setInsights] = useState<TaskInsight[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function InsightPanel({ projectId, taskId, initialInsights, onApplyInsight }: Props) {
+  const [insights, setInsights] = useState<TaskInsight[]>(initialInsights ?? []);
+  const [loading, setLoading] = useState(!initialInsights);
 
   const fetchInsights = useCallback(() => {
     setLoading(true);
@@ -55,8 +56,11 @@ export default function InsightPanel({ projectId, taskId, onApplyInsight }: Prop
   }, [projectId, taskId]);
 
   useEffect(() => {
-    fetchInsights();
-  }, [fetchInsights]);
+    if (!initialInsights) {
+      fetchInsights();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, taskId]);
 
   const handleDismiss = (taskInsightId: string) => {
     gql<{ dismissInsight: boolean }>(DISMISS_INSIGHT_MUTATION, { taskInsightId })
