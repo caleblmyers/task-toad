@@ -2,6 +2,18 @@ import { GraphQLError } from 'graphql';
 import type { Context } from '../../context.js';
 import { requireOrg, requireProjectAccess } from '../auth.js';
 import { requireTask } from '../../../utils/resolverHelpers.js';
+import { parseTQL, TQLParseError } from '../../../utils/tqlParser.js';
+import type { FilterGroupInput as TQLFilterGroupInput } from '../../../utils/tqlParser.js';
+
+/** Convert TQL FilterGroupInput (uses `op`) to resolver FilterGroupInput (uses `operator`) */
+function convertTQLGroups(tqlGroup: TQLFilterGroupInput): FilterGroupInput[] | undefined {
+  if (!tqlGroup.groups || tqlGroup.groups.length === 0) return undefined;
+  return tqlGroup.groups.map(g => ({
+    operator: g.operator,
+    conditions: g.conditions?.map(c => ({ field: c.field, operator: c.op, value: c.value })),
+    groups: convertTQLGroups(g),
+  }));
+}
 
 // ── Filter types ──
 
@@ -324,6 +336,7 @@ export const taskQueries = {
       parentTaskId?: string | null;
       limit?: number | null;
       offset?: number | null;
+      tql?: string | null;
     },
     context: Context
   ) => {
@@ -331,7 +344,39 @@ export const taskQueries = {
     const limit = Math.max(0, Math.min(args.limit ?? 50, 100));
     const offset = Math.max(0, args.offset ?? 0);
 
-    const where = buildFilterWhere(args.projectId, args.filter, args.parentTaskId);
+    // Parse TQL and merge into filter if provided
+    let filter = args.filter ?? undefined;
+    if (args.tql) {
+      try {
+        const tqlGroup = parseTQL(args.tql) as unknown as TQLFilterGroupInput;
+        // Convert TQL FilterGroupInput to resolver's FilterGroupInput
+        const tqlFilterGroup: FilterGroupInput = {
+          operator: tqlGroup.operator,
+          conditions: tqlGroup.conditions?.map(c => ({ field: c.field, operator: c.op, value: c.value })),
+          groups: convertTQLGroups(tqlGroup),
+        };
+        if (!filter) filter = {};
+        if (filter.filterGroup) {
+          // Merge: AND the existing filterGroup with the TQL result
+          filter = {
+            ...filter,
+            filterGroup: {
+              operator: 'AND',
+              groups: [filter.filterGroup, tqlFilterGroup],
+            },
+          };
+        } else {
+          filter = { ...filter, filterGroup: tqlFilterGroup };
+        }
+      } catch (err) {
+        if (err instanceof TQLParseError) {
+          throw new GraphQLError(err.message);
+        }
+        throw err;
+      }
+    }
+
+    const where = buildFilterWhere(args.projectId, filter, args.parentTaskId);
     const orderBy = buildOrderBy(args.filter);
 
     const [tasks, total] = await Promise.all([

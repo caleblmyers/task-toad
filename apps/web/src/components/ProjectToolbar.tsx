@@ -28,6 +28,7 @@ interface ProjectToolbarProps {
   addToast: (type: 'success' | 'error', message: string) => void;
   onOpenModal: (modal: string) => void;
   onLoadProjectActivities: () => void;
+  tqlError?: string | null;
 }
 
 export default function ProjectToolbar({
@@ -40,6 +41,7 @@ export default function ProjectToolbar({
   addToast,
   onOpenModal,
   onLoadProjectActivities,
+  tqlError,
 }: ProjectToolbarProps) {
   const { confirm, ConfirmDialogPortal } = useConfirmDialog();
   const [editingProjectName, setEditingProjectName] = useState(false);
@@ -286,6 +288,7 @@ export default function ProjectToolbar({
               onChange={filtering.setSearchQuery}
               placeholder="Search tasks…"
               className="w-48"
+              tqlError={tqlError}
             />
           </div>
           <button

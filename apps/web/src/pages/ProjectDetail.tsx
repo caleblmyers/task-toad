@@ -397,6 +397,7 @@ export default function ProjectDetail() {
         addToast={addToast}
         onOpenModal={handleOpenModal}
         onLoadProjectActivities={loadProjectActivities}
+        tqlError={d.err && d.err.includes('TQL parse error') ? d.err : null}
       />
 
       {/* Inline add form */}

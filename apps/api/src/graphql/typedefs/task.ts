@@ -322,7 +322,7 @@ export const taskFilterInputDef = /* GraphQL */ `
 
 export const taskQueryFields = /* GraphQL */ `
   """List tasks for a project with optional pagination, parent filter, and server-side filtering."""
-  tasks(projectId: ID!, filter: TaskFilterInput, parentTaskId: ID, limit: Int, offset: Int): TaskConnection!
+  tasks(projectId: ID!, filter: TaskFilterInput, parentTaskId: ID, limit: Int, offset: Int, tql: String): TaskConnection!
   """List epic-type tasks for a project."""
   epics(projectId: ID!): [Task!]!
   """List all labels in the organization."""

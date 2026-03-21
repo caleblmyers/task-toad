@@ -18,6 +18,7 @@ export interface TaskFilterInput {
   sortBy?: string;
   sortOrder?: string;
   filterGroup?: FilterGroupInput | null;
+  tql?: string;
 }
 
 export interface ViewConfig {
@@ -117,7 +118,13 @@ export function useTaskFiltering(tasks: Task[]): TaskFiltering {
     }
 
     if (debouncedSearch.trim()) {
-      filter.search = debouncedSearch.trim();
+      // Detect TQL syntax: if the search contains a field:value pattern, treat as TQL
+      const isTQL = /(?:^|\s)(?:NOT\s+)?-?[a-zA-Z]+[:><=]/.test(debouncedSearch.trim());
+      if (isTQL) {
+        filter.tql = debouncedSearch.trim();
+      } else {
+        filter.search = debouncedSearch.trim();
+      }
     }
 
     if (showArchived) {

@@ -55,10 +55,14 @@ export function useTaskOperations({ projectId, userId, sprints, onWarnings }: Us
     if (!projectId) return [];
     currentFilterRef.current = filter;
     try {
+      const tql = filter?.tql;
+      const filterWithoutTql = filter ? (({ tql: _tql, ...rest }) => rest)(filter) : undefined;
       const data = await gql<{ tasks: TaskConnection }>(TASKS_QUERY, {
         projectId,
-        ...(filter && Object.keys(filter).length > 0 ? { filter } : {}),
+        ...(filterWithoutTql && Object.keys(filterWithoutTql).length > 0 ? { filter: filterWithoutTql } : {}),
+        ...(tql ? { tql } : {}),
       });
+      setErr(null);
       setTasks(data.tasks.tasks);
       setHasMore(data.tasks.hasMore);
       setTaskOffset(0);
@@ -68,7 +72,11 @@ export function useTaskOperations({ projectId, userId, sprints, onWarnings }: Us
         return refreshed ?? prev;
       });
       return data.tasks.tasks;
-    } catch {
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes('TQL parse error')) {
+        setErr(msg);
+      }
       return [];
     } finally {
       setLoading(false);
@@ -80,10 +88,13 @@ export function useTaskOperations({ projectId, userId, sprints, onWarnings }: Us
     const newOffset = taskOffset + 100;
     const filter = currentFilterRef.current;
     try {
+      const tql = filter?.tql;
+      const filterWithoutTql = filter ? (({ tql: _tql, ...rest }) => rest)(filter) : undefined;
       const data = await gql<{ tasks: TaskConnection }>(
         TASKS_PAGINATED_QUERY, {
           projectId, limit: 100, offset: newOffset,
-          ...(filter && Object.keys(filter).length > 0 ? { filter } : {}),
+          ...(filterWithoutTql && Object.keys(filterWithoutTql).length > 0 ? { filter: filterWithoutTql } : {}),
+          ...(tql ? { tql } : {}),
         },
       );
       setTasks((prev) => [...prev, ...data.tasks.tasks]);

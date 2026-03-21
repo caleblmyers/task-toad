@@ -12,12 +12,12 @@ export const PROJECT_QUERY = `query Project($projectId: ID!) {
   project(projectId: $projectId) { projectId name description prompt knowledgeBase statuses createdAt orgId archived githubRepositoryName githubRepositoryOwner }
 }`;
 
-export const TASKS_QUERY = `query Tasks($projectId: ID!, $filter: TaskFilterInput) {
-  tasks(projectId: $projectId, filter: $filter) { tasks { ${TASK_FIELDS} } hasMore total }
+export const TASKS_QUERY = `query Tasks($projectId: ID!, $filter: TaskFilterInput, $tql: String) {
+  tasks(projectId: $projectId, filter: $filter, tql: $tql) { tasks { ${TASK_FIELDS} } hasMore total }
 }`;
 
-export const TASKS_PAGINATED_QUERY = `query Tasks($projectId: ID!, $filter: TaskFilterInput, $limit: Int, $offset: Int) {
-  tasks(projectId: $projectId, filter: $filter, limit: $limit, offset: $offset) { tasks { ${TASK_FIELDS} } hasMore total }
+export const TASKS_PAGINATED_QUERY = `query Tasks($projectId: ID!, $filter: TaskFilterInput, $limit: Int, $offset: Int, $tql: String) {
+  tasks(projectId: $projectId, filter: $filter, limit: $limit, offset: $offset, tql: $tql) { tasks { ${TASK_FIELDS} } hasMore total }
 }`;
 
 export const SUBTASKS_QUERY = `query Subtasks($projectId: ID!, $parentTaskId: ID) {
