@@ -25,7 +25,11 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
     if (import.meta.env.DEV) {
       console.error('ErrorBoundary caught an error:', error, errorInfo);
     }
-    Sentry.captureException(error, { extra: { componentStack: errorInfo.componentStack } });
+    try {
+      Sentry.captureException(error, { extra: { componentStack: errorInfo.componentStack } });
+    } catch {
+      // Sentry may not be initialized — don't break error handling
+    }
   }
 
   render(): ReactNode {

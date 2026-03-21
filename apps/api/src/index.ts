@@ -60,9 +60,10 @@ async function main() {
     .catch((err) => logger.warn({ err }, 'Failed to clean up expired refresh tokens'));
 
   // Initialize event bus + job queue + cron scheduler infrastructure
-  const { jobQueue, cronScheduler } = createInfrastructure(prisma);
+  const { jobQueue, cronScheduler, slaBreachChecker } = createInfrastructure(prisma);
   jobQueue.start();
   cronScheduler.start();
+  slaBreachChecker.start();
 
   const server = app.listen(PORT, () => {
     logger.info({ port: PORT }, `TaskToad API listening on http://localhost:${PORT}`);
@@ -79,7 +80,8 @@ async function main() {
     }, 10_000);
     forceKillTimeout.unref();
 
-    cronScheduler.stop();
+    await cronScheduler.stop();
+    slaBreachChecker.stop();
     await jobQueue.shutdown();
     sseManager.closeAllConnections();
 

@@ -38,6 +38,30 @@ function gaugeColor(p: number): string {
   return 'bg-red-500';
 }
 
+function ForecastSkeleton() {
+  return (
+    <div className="space-y-3 animate-pulse">
+      <div className="flex items-center gap-3">
+        <div className="flex-1 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="h-3 w-24 rounded bg-slate-200 dark:bg-slate-700" />
+            <div className="h-5 w-10 rounded bg-slate-200 dark:bg-slate-700" />
+          </div>
+          <div className="w-full h-2.5 rounded-full bg-slate-200 dark:bg-slate-700" />
+        </div>
+      </div>
+      <div className="space-y-2">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="flex justify-between">
+            <div className="h-3 w-20 rounded bg-slate-200 dark:bg-slate-700" />
+            <div className="h-3 w-12 rounded bg-slate-200 dark:bg-slate-700" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function SprintForecastPanel({ projectId, sprintId, closedSprintCount }: Props) {
   const [forecast, setForecast] = useState<SprintForecast | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +75,7 @@ export default function SprintForecastPanel({ projectId, sprintId, closedSprintC
 
   if (closedSprintCount < 3) return null;
   if (error) return <p className="text-xs text-red-500">{error}</p>;
-  if (!forecast) return <p className="text-xs text-slate-400">Loading forecast...</p>;
+  if (!forecast) return <ForecastSkeleton />;
 
   const prob = forecast.completionProbability;
 

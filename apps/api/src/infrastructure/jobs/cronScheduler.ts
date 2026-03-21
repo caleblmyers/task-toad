@@ -9,28 +9,41 @@ const CHECK_INTERVAL_MS = 60_000; // Check every minute
 
 export class CronScheduler {
   private intervalId: ReturnType<typeof setInterval> | null = null;
+  private activeExecution: Promise<void> | null = null;
 
   constructor(private prisma: PrismaClient) {}
 
   start(): void {
     log.info('Cron scheduler started');
     // Run immediately on startup, then every minute
-    this.checkDueRules().catch((err) => {
-      log.error({ err }, 'Error in initial cron check');
-    });
+    this.runCheck();
     this.intervalId = setInterval(() => {
-      this.checkDueRules().catch((err) => {
-        log.error({ err }, 'Error checking cron rules');
-      });
+      this.runCheck();
     }, CHECK_INTERVAL_MS);
   }
 
-  stop(): void {
+  async stop(): Promise<void> {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
-      log.info('Cron scheduler stopped');
     }
+    if (this.activeExecution) {
+      log.info('Waiting for in-flight cron execution to finish...');
+      await this.activeExecution;
+    }
+    log.info('Cron scheduler stopped');
+  }
+
+  private runCheck(): void {
+    const execution = this.checkDueRules().catch((err) => {
+      log.error({ err }, 'Error checking cron rules');
+    });
+    this.activeExecution = execution;
+    execution.finally(() => {
+      if (this.activeExecution === execution) {
+        this.activeExecution = null;
+      }
+    });
   }
 
   private async checkDueRules(): Promise<void> {

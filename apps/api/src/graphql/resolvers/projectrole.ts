@@ -215,6 +215,21 @@ export const projectRoleMutations = {
       throw new ValidationError(`Invalid action: ${actionResult.error.message}`);
     }
 
+    // Validate cron expression for scheduled triggers
+    const triggerData = triggerResult.data;
+    if (triggerData.event === 'scheduled') {
+      if (!args.cronExpression) {
+        throw new ValidationError('Scheduled rules require a cron expression');
+      }
+    }
+    if (args.cronExpression) {
+      try {
+        CronExpressionParser.parse(args.cronExpression);
+      } catch {
+        throw new ValidationError(`Invalid cron expression: ${args.cronExpression}`);
+      }
+    }
+
     // Compute nextRunAt if cron expression is provided
     const tz = args.timezone ?? 'UTC';
     let nextRunAt: Date | null = null;
