@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-Production deployed at `https://tasktoad-api-production.up.railway.app`. 48 swarm waves completed. Security: 38/39 (97%). All P1 complete. 8 P2 features shipped (timesheet, approvals, charts, tracking, heatmap). Zero lint warnings. 314 tests.
+Production deployed at `https://tasktoad-api-production.up.railway.app`. 49 swarm waves completed. Security: 38/39 (97%). All P1 complete. 11 P2 features shipped. Zero lint warnings. 314 tests.
 
 ---
 
@@ -150,10 +150,7 @@ Full report: `.claude-knowledge/security-audit.md`
 - [ ] M-7: consider making email redaction default with admin opt-out
 
 ### Tooling
-- [ ] merge-worker.sh: fix squash merge deleting files from previously-merged tasks (use cherry-pick instead when worker has diverged)
-- [ ] merge-worker.sh: fix script treating lint warnings as failures
-- [ ] Swarm task descriptions: call out "update existing tests" when changing observable API behavior
-- [ ] Swarm planning: when multiple tasks touch shared layout files (ProjectDetail, ProjectToolbar), set up dependencies or assign to same worker
+- [ ] Swarm planning: when two tasks add Prisma models, they conflict in shared import files — note dependency or have workers rebase
 
 ---
 
@@ -171,23 +168,30 @@ Full report: `.claude-knowledge/security-audit.md`
 - [x] Approval workflows — Approval model, workflow transition triggers *(Wave 48)*
 - [x] Scheduled automation triggers — cron on AutomationRule *(Wave 46)*
 - [x] Workload heatmap — assignee × week calendar grid *(Wave 47)*
-- [ ] Cross-project initiatives — Initiative model + portfolio tracking
+- [x] Cross-project initiatives — Initiative model + portfolio tracking *(Wave 49)*
 - [x] Auto-tracking from status transitions — TimeEntry with autoTracked *(Wave 47)*
 - [x] Timesheet view — weekly grid *(Wave 48)*
-- [ ] Workflow-based permissions — allowedRoles on WorkflowTransition
-- [ ] Field-level edit restrictions — FieldPermission per project
+- [x] Workflow-based permissions — allowedRoles on WorkflowTransition *(Wave 49)*
+- [x] Field-level edit restrictions — FieldPermission per project *(Wave 49)*
 - [x] Release burndown — tests for releaseBurndown resolver (edge cases: no tasks, all done, release with no activities) *(Wave 48)*
 - [x] Cycle time scatter — control chart mode (rolling average line, standard deviation bands) *(Wave 48)*
 - [x] Workload heatmap — use display name instead of email prefix for userName *(Wave 48)*
 - [x] Auto-tracking — handle re-assignment during in_progress (multi-assignee split) *(Wave 48)*
 - [x] Auto-tracking — tests for timeTrackingListener (mock event bus + prisma) *(Wave 48)*
-- [ ] Timesheet — delete time entry when setting hours to 0 (currently no-op)
-- [ ] Timesheet — keyboard navigation between cells (Tab/arrow keys)
+- [x] Timesheet — delete time entry when setting hours to 0 *(Wave 49)*
+- [x] Timesheet — keyboard navigation between cells (Tab/arrow keys) *(Wave 49)*
 - [ ] Timesheet — show display names in user filter dropdown (currently shows email)
-- [ ] Approval workflows — SSE notification when approval is requested
+- [x] Approval workflows — SSE notification when approval is requested *(Wave 49)*
 - [ ] Approval workflows — approval history/audit log in task detail
 - [ ] Approval workflows — configurable approvers per transition (currently any MANAGE_PROJECT_SETTINGS user)
-- [ ] Control chart — configurable rolling window size (currently hardcoded to 10)
+- [x] Control chart — configurable rolling window size *(Wave 49)*
+- [ ] Initiative — update/edit modal (currently only create, no inline editing)
+- [ ] Initiative — DataLoader for initiative summary queries (currently N+1 per initiative on Portfolio load)
+- [ ] Initiative — dark mode support for CreateInitiativeModal (currently hardcoded white bg)
+- [ ] Field permissions — `estimatedHours` and `priority` not in fieldArgMapping (task-002 maps storyPoints, dueDate, assigneeId but misses priority/estimatedHours args)
+- [ ] Field permissions — DataLoader for fieldPermission lookups in updateTask (currently per-request query)
+- [ ] Approval SSE — include approver info in approval.decided event (who should review)
+- [ ] Timesheet keyboard nav — ArrowLeft/ArrowRight saves current cell on every keystroke (should only navigate, not save)
 - [ ] Fix flaky integration tests — FK violations, deadlocks, unique constraints in e2e/notification/security/sprint tests
 
 ---
@@ -212,5 +216,6 @@ Full report: `.claude-knowledge/security-audit.md`
 | 46 | 2026-03-21 | Code quality (SLA perms, prisma casts, Sentry web, 0 lint warnings), unit tests (3 suites), P2 (Monte Carlo forecasting, cron automation) |
 | 47 | 2026-03-21 | P2 features (cycle time scatter, release burndown, auto-tracking, workload heatmap), polish batch (cron shutdown, SLA checker, Monte Carlo tests, forecast skeleton, Sentry guard) |
 | 48 | 2026-03-21 | P2 features (timesheet view, approval workflows), follow-up polish (burndown tests, control chart, heatmap names, auto-tracking multi-assignee + tests) |
+| 49 | 2026-03-21 | P2 features (cross-project initiatives, workflow permissions, field-level restrictions), polish (timesheet delete/keyboard nav, approval SSE, control chart window, merge script fix) |
 
 Full wave details in `changelog.md`.

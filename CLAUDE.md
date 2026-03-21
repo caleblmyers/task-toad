@@ -119,6 +119,8 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 - **SLA:** `slaPolicies`, `taskSLAStatus`
 - **Approval:** `pendingApprovals`, `taskApprovals`
 - **Timesheet:** `timesheetData`
+- **Initiative:** `initiatives`, `initiative`, `initiativeSummary`
+- **FieldPermission:** `fieldPermissions`
 - **Webhook:** `webhookEndpoints`, `webhookDeliveries`
 - **Slack:** `slackIntegrations`, `slackUserMappings`
 
@@ -136,6 +138,8 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 - **ProjectRole:** `addProjectMember`, `removeProjectMember`, `updateProjectMemberRole`, `createAutomationRule`, `updateAutomationRule`, `deleteAutomationRule`
 - **SLA:** `createSLAPolicy`, `updateSLAPolicy`, `deleteSLAPolicy`
 - **Approval:** `approveTransition`, `rejectTransition`
+- **Initiative:** `createInitiative`, `updateInitiative`, `deleteInitiative`, `addProjectToInitiative`, `removeProjectFromInitiative`
+- **FieldPermission:** `setFieldPermission`, `deleteFieldPermission`
 - **Webhook:** `createWebhookEndpoint`, `updateWebhookEndpoint`, `deleteWebhookEndpoint`, `testWebhookEndpoint`, `replayWebhookDelivery`
 - **KnowledgeBase:** `createKnowledgeEntry`, `updateKnowledgeEntry`, `deleteKnowledgeEntry`
 - **Slack:** `connectSlack`, `updateSlackIntegration`, `disconnectSlack`, `testSlackIntegration`, `mapSlackUser`, `unmapSlackUser`

@@ -4,6 +4,38 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-21 (initiatives + access control + polish)
+
+### Wave 49: Cross-Project Initiatives, Workflow Permissions & Polish (3 workers, 3 tasks)
+
+**Worker 1 — task-001: Cross-Project Initiatives:**
+- New `Initiative` + `InitiativeProject` models (many-to-many with Project). Migration: `add_initiatives`.
+- CRUD resolvers: `createInitiative`, `updateInitiative`, `deleteInitiative`, `addProjectToInitiative`, `removeProjectFromInitiative`.
+- `initiativeSummary` query aggregates stats (totalTasks, completedTasks, completionPercent, healthScore, projectCount) across initiative's projects.
+- Portfolio page: initiatives section with rollup cards, click-to-filter project grid, create initiative modal.
+
+**Worker 2 — task-002: Workflow Permissions + Field Restrictions:**
+- WorkflowTransition `allowedRoles` now enforced in `updateTask` — forbidden roles get `ForbiddenError`. Workflow settings UI has multi-select for `allowedRoles` per transition.
+- New `FieldPermission` model (projectId, fieldName, allowedRoles JSON). Migration: `add_field_permissions`.
+- `updateTask` checks field permissions before applying changes — restricted fields return warnings. Maps storyPoints, dueDate, assigneeId (priority and estimatedHours mapping incomplete — follow-up).
+- `setFieldPermission`/`deleteFieldPermission` mutations with `MANAGE_PROJECT_SETTINGS`. Field permissions table in project settings.
+
+**Worker 3 — task-003: Polish Batch (5 items):**
+- Timesheet: setting cell to 0 deletes the entry. Tab/Shift+Tab/Arrow/Enter/Escape keyboard navigation between cells.
+- Approval SSE: `approval.requested` and `approval.decided` events broadcast via sseManager. Frontend toast on approval request.
+- Control chart: configurable rolling window size (5/10/15/20 dropdown).
+- merge-worker.sh: cherry-pick path when worker branch has diverged from main. Lint check uses exit code not output.
+
+**Process:** task-002 sent back once for rebase conflict with task-001 in shared import files (both added Prisma models). Cherry-pick merge fix from task-003 was immediately useful.
+
+**Open follow-ups:**
+- Field permissions: priority and estimatedHours not in fieldArgMapping (3/5 fields enforced)
+- Field permissions: DataLoader for lookups in updateTask
+- Initiative: update/edit modal, DataLoader for summary queries, dark mode modal
+- Approval SSE: include approver info in decided event
+
+---
+
 ## 2026-03-21 (timesheet + approvals + follow-up polish)
 
 ### Wave 48: Timesheet, Approval Workflows & Follow-up Polish (3 workers, 3 tasks)
@@ -146,54 +178,9 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-03-21 (security cleanup + tests + polish)
-
-### Wave 44: Security Cleanup, Integration Tests & Auth Follow-ups (3 workers, 5 tasks)
-
-**Worker 1 — task-001: Remaining Security Fixes (M-4, L-6, L-11):**
-- M-4: File upload magic byte validation via `file-type@16.5.4`. Validates uploaded file content against declared MIME type; rejects mismatches with 400. Text files (no magic bytes) skip validation.
-- L-6: Unicode homograph detection — `hasHomoglyphRisk()` rejects filenames mixing Latin with Cyrillic/Greek scripts.
-- L-11: Null byte stripping middleware added before all REST routes in app.ts via `stripNullBytes()` on req.body and req.query.
-
-**Worker 1 — task-002: Data Migration Scripts:**
-- `apps/api/scripts/migrate-encrypt-secrets.ts` — encrypts plaintext webhook secrets and Slack URLs using `encryptApiKey()`, skips already-encrypted values.
-- `apps/api/scripts/migrate-hash-invite-tokens.ts` — hashes plaintext invite tokens via `hashToken()`, requires `--confirm` flag (warns about invalidating active invites).
-- Both scripts load `.env` for DATABASE_URL and ENCRYPTION_MASTER_KEY.
-
-**Worker 2 — task-003: Security Integration Tests (~19 tests):**
-- New `security.integration.test.ts` covering 8 test groups:
-  - Cookie auth flow (login sets cookies, logout clears, refresh works, revoked token rejected)
-  - CSRF protection (403 without X-Requested-With, 200 with it)
-  - AI rate limiter (throws when over limit, passes when under)
-  - Audit logging (Activity records for setOrgApiKey, inviteOrgMember)
-  - Email anti-enumeration (signup returns same response for existing email)
-  - Export email redaction (?redactEmails=true masks emails)
-  - Bulk update cap (101 items throws ValidationError)
-  - Input validation (sprint name >200, label name >100 rejected)
-
-**Worker 3 — task-004: Auth Follow-ups:**
-- `verifyEmail` mutation now sets HttpOnly cookies (tt-access, tt-refresh) on success — auto-login after email verification.
-- New `VerifyEmailResult` type in typedefs/auth.ts returning `{ success, token }`.
-- Frontend VerifyEmail page handles new response — redirects to `/app` on success.
-- `SessionExpiredModal` — replaces hard redirect to /login on refresh failure. Dispatches `session-expired` CustomEvent from client.ts, AuthProvider listens and shows modal overlay.
-
-**Worker 3 — task-005: Frontend Polish:**
-- Permission-based field disabling in TaskDetailPanel — fields disabled when user lacks EDIT_TASKS permission via existing PermissionContext.
-- SavedViewPicker lint warnings fixed (lines 43, 58) — reduced total warnings from 5 to 3.
-- BacklogView keyboard navigation — Enter/Space to select task, Arrow Up/Down to navigate, ARIA roles (listbox/option).
-
-**Process:** All 5 tasks merged cleanly. No issues logged.
-
-**Open follow-ups:**
-- Run data migration scripts in production (migrate-encrypt-secrets.ts, migrate-hash-invite-tokens.ts)
-- L-5 (concurrent session limit) still open — needs RefreshToken model design
-- L-12 (test DB credentials in CI) — CI config, not code
-- Integration tests for verifyEmail cookie-setting (new behavior)
-
----
-
 ## Older Entries (one-line summaries)
 
+- **2026-03-21** — Wave 44: Security cleanup (M-4 magic bytes, L-6 homograph, L-11 null byte REST), data migration scripts, 19 security integration tests, auth follow-ups (verifyEmail cookies, SessionExpiredModal), frontend polish (permission disabling, BacklogView keyboard nav, lint fixes).
 - **2026-03-21** — Wave 43: Security Phase 3+4 — 9 Medium + 6 Low fixes (introspection, DataLoader orgId, input validation, AI rate limiter, audit logging, email anti-enum, GitHub path encoding, export redaction, webhook delivery ID, bulk cap).
 
 - **2026-03-21** — Wave 42: Security Phase 2 — JWT→HttpOnly cookies, CSRF protection, webhook/Slack encryption, invite token hashing, pagination caps, re-auth for sensitive ops. All 8 High items resolved.
