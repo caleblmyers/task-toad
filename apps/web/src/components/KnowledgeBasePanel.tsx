@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import Modal from './shared/Modal';
 import { gql } from '../api/client';
 
@@ -84,6 +84,7 @@ export default function KnowledgeBasePanel({
   const [formContent, setFormContent] = useState('');
   const [formCategory, setFormCategory] = useState<Category>('standard');
   const [saving, setSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchEntries = useCallback(async () => {
     setLoading(true);
@@ -247,6 +248,35 @@ export default function KnowledgeBasePanel({
     );
   };
 
+  const filteredEntries = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return entries;
+    return entries.filter(
+      (e) =>
+        e.title.toLowerCase().includes(q) ||
+        e.content.toLowerCase().includes(q),
+    );
+  }, [entries, searchQuery]);
+
+  const highlightMatch = useCallback(
+    (text: string) => {
+      const q = searchQuery.trim();
+      if (!q) return text;
+      const idx = text.toLowerCase().indexOf(q.toLowerCase());
+      if (idx === -1) return text;
+      return (
+        <>
+          {text.slice(0, idx)}
+          <mark className="bg-yellow-200 dark:bg-yellow-700/50 rounded px-0.5">
+            {text.slice(idx, idx + q.length)}
+          </mark>
+          {text.slice(idx + q.length)}
+        </>
+      );
+    },
+    [searchQuery],
+  );
+
   const getSourceBadge = (source: string) => {
     const badge = SOURCE_BADGES[source];
     if (!badge) return null;
@@ -381,6 +411,19 @@ export default function KnowledgeBasePanel({
           </div>
         )}
 
+        {/* Search */}
+        {!loading && entries.length > 0 && (
+          <div className="mb-3">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search entries by title or content…"
+              className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-green"
+            />
+          </div>
+        )}
+
         {/* Entry List */}
         {loading ? (
           <div className="space-y-3">
@@ -391,19 +434,21 @@ export default function KnowledgeBasePanel({
               />
             ))}
           </div>
-        ) : entries.length === 0 ? (
+        ) : filteredEntries.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-4xl mb-3 opacity-40">&#128218;</div>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">
-              No knowledge entries yet
+              {searchQuery.trim() ? 'No matching entries' : 'No knowledge entries yet'}
             </p>
             <p className="text-xs text-slate-400 dark:text-slate-500">
-              Add entries to give your AI better context about this project.
+              {searchQuery.trim()
+                ? 'Try a different search term.'
+                : 'Add entries to give your AI better context about this project.'}
             </p>
           </div>
         ) : (
           <div className="space-y-2">
-            {entries.map((entry) => (
+            {filteredEntries.map((entry) => (
               <div
                 key={entry.knowledgeEntryId}
                 className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
@@ -412,13 +457,13 @@ export default function KnowledgeBasePanel({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium text-sm text-slate-800 dark:text-slate-200 truncate">
-                        {entry.title}
+                        {highlightMatch(entry.title)}
                       </span>
                       {getCategoryBadge(entry.category)}
                       {getSourceBadge(entry.source)}
                     </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
-                      {entry.content}
+                      {highlightMatch(entry.content)}
                     </p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">

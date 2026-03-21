@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
 import { ANALYZE_PROJECT_HEALTH_QUERY } from '../api/queries';
+import useAsyncData from '../hooks/useAsyncData';
 import { IconClose } from './shared/Icons';
 import Badge from './shared/Badge';
 
@@ -49,30 +49,16 @@ function scoreTrackColor(score: number): string {
 }
 
 export default function ProjectHealthPanel({ projectId, disabled, onClose }: Props) {
-  const [health, setHealth] = useState<ProjectHealth | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const generate = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await gql<{ analyzeProjectHealth: ProjectHealth }>(
-        ANALYZE_PROJECT_HEALTH_QUERY,
-        { projectId }
-      );
-      setHealth(data.analyzeProjectHealth);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to analyze project health');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!disabled) generate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId]);
+  const { data: health, loading, error, retry } = useAsyncData(
+    () =>
+      disabled
+        ? Promise.resolve(null)
+        : gql<{ analyzeProjectHealth: ProjectHealth }>(
+            ANALYZE_PROJECT_HEALTH_QUERY,
+            { projectId },
+          ).then((d) => d.analyzeProjectHealth),
+    [projectId, disabled],
+  );
 
   return (
     <div className="flex-1 flex items-center justify-center px-8">
@@ -109,7 +95,7 @@ export default function ProjectHealthPanel({ projectId, disabled, onClose }: Pro
         {error && (
           <div className="text-sm text-red-600 bg-red-50 rounded-lg p-3">
             {error}
-            <button onClick={generate} className="ml-2 text-red-500 underline hover:text-red-700">Retry</button>
+            <button onClick={retry} className="ml-2 text-red-500 underline hover:text-red-700">Retry</button>
           </div>
         )}
 

@@ -5,6 +5,7 @@ import {
   DeleteObjectCommand,
   HeadBucketCommand,
 } from '@aws-sdk/client-s3';
+import { Upload } from '@aws-sdk/lib-storage';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { logger } from './logger.js';
 
@@ -48,21 +49,36 @@ export function buildS3Key(
   return `attachments/${orgId}/${taskId}/${Date.now()}-${sanitizedFilename}`;
 }
 
-/** Upload a file buffer to S3. */
+const MULTIPART_THRESHOLD = 10 * 1024 * 1024; // 10MB
+
+/** Upload a file buffer to S3. Uses multipart upload for files >10MB. */
 export async function uploadToS3(
   key: string,
   body: Buffer,
   contentType: string,
 ): Promise<void> {
   const client = getS3Client();
-  await client.send(
-    new PutObjectCommand({
-      Bucket: S3_BUCKET!,
-      Key: key,
-      Body: body,
-      ContentType: contentType,
-    }),
-  );
+  if (body.length > MULTIPART_THRESHOLD) {
+    const upload = new Upload({
+      client,
+      params: {
+        Bucket: S3_BUCKET!,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+      },
+    });
+    await upload.done();
+  } else {
+    await client.send(
+      new PutObjectCommand({
+        Bucket: S3_BUCKET!,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+      }),
+    );
+  }
 }
 
 /** Generate a presigned download URL (default from ATTACHMENT_URL_EXPIRY_SECONDS or 900s). */

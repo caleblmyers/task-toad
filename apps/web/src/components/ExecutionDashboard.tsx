@@ -4,6 +4,12 @@ import { PROJECT_ACTION_PLANS_QUERY, EXECUTE_ACTION_PLAN_MUTATION, CANCEL_ACTION
 import { useSSEListener } from '../hooks/useEventSource';
 import type { TaskActionPlan, TaskActionType } from '../types';
 
+interface PlanDependency {
+  taskId: string;
+  title: string;
+  linkType: string;
+}
+
 interface ActionPlanWithTask extends TaskActionPlan {
   task?: {
     taskId: string;
@@ -12,6 +18,7 @@ interface ActionPlanWithTask extends TaskActionPlan {
     taskType: string | null;
     autoComplete: boolean;
     parentTaskTitle: string | null;
+    blockedBy?: PlanDependency[];
   } | null;
 }
 
@@ -127,6 +134,21 @@ function PlanCard({ plan, onRetry, onCancel }: {
         </span>
       </div>
 
+      {/* Dependency badges */}
+      {plan.task?.blockedBy && plan.task.blockedBy.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {plan.task.blockedBy.map((dep) => (
+            <span
+              key={dep.taskId}
+              className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+              title={`${dep.linkType}: ${dep.title}`}
+            >
+              Blocked by: {dep.title.length > 30 ? dep.title.slice(0, 30) + '…' : dep.title}
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Progress bar */}
       <div className="mt-3">
         <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
@@ -192,9 +214,11 @@ interface ExecutionDashboardProps {
 
 export default function ExecutionDashboard({ projectId, onClose }: ExecutionDashboardProps) {
   const [plans, setPlans] = useState<ActionPlanWithTask[]>([]);
+  const [allPlans, setAllPlans] = useState<ActionPlanWithTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterStatus>('all');
 
+  // Fetch filtered plans for the list
   const fetchPlans = useCallback(async () => {
     try {
       const statusParam = filter === 'all' ? undefined : filter;
@@ -210,15 +234,33 @@ export default function ExecutionDashboard({ projectId, onClose }: ExecutionDash
     }
   }, [projectId, filter]);
 
+  // Fetch all plans (unfiltered) for stat card counts
+  const fetchAllPlans = useCallback(async () => {
+    try {
+      const data = await gql<{ projectActionPlans: ActionPlanWithTask[] }>(
+        PROJECT_ACTION_PLANS_QUERY,
+        { projectId },
+      );
+      setAllPlans(data.projectActionPlans);
+    } catch {
+      // silently fail
+    }
+  }, [projectId]);
+
   useEffect(() => {
     setLoading(true);
     fetchPlans();
   }, [fetchPlans]);
 
+  useEffect(() => {
+    fetchAllPlans();
+  }, [fetchAllPlans]);
+
   // SSE: auto-refresh on action plan events
   useSSEListener(SSE_REFRESH_EVENTS, useCallback(() => {
     void fetchPlans();
-  }, [fetchPlans]));
+    void fetchAllPlans();
+  }, [fetchPlans, fetchAllPlans]));
 
   const handleRetry = useCallback(async (planId: string) => {
     await gql<{ executeActionPlan: TaskActionPlan }>(
@@ -226,7 +268,8 @@ export default function ExecutionDashboard({ projectId, onClose }: ExecutionDash
       { planId },
     );
     void fetchPlans();
-  }, [fetchPlans]);
+    void fetchAllPlans();
+  }, [fetchPlans, fetchAllPlans]);
 
   const handleCancel = useCallback(async (planId: string) => {
     await gql<{ cancelActionPlan: TaskActionPlan }>(
@@ -234,15 +277,14 @@ export default function ExecutionDashboard({ projectId, onClose }: ExecutionDash
       { planId },
     );
     void fetchPlans();
-  }, [fetchPlans]);
+    void fetchAllPlans();
+  }, [fetchPlans, fetchAllPlans]);
 
-  // Counts are computed from the full list (filter='all'), but when a filter is active
-  // the plans array is already filtered by the backend. For stat cards, we always show
-  // counts from the currently-loaded plans.
-  const executingCount = plans.filter((p) => p.status === 'executing').length;
-  const queuedCount = plans.filter((p) => p.status === 'approved' || p.status === 'draft').length;
-  const completedCount = plans.filter((p) => p.status === 'completed').length;
-  const failedCount = plans.filter((p) => p.status === 'failed').length;
+  // Stat card counts always come from the unfiltered list
+  const executingCount = allPlans.filter((p) => p.status === 'executing').length;
+  const queuedCount = allPlans.filter((p) => p.status === 'approved' || p.status === 'draft').length;
+  const completedCount = allPlans.filter((p) => p.status === 'completed').length;
+  const failedCount = allPlans.filter((p) => p.status === 'failed').length;
 
   const filters: Array<{ label: string; value: FilterStatus }> = [
     { label: 'All', value: 'all' },

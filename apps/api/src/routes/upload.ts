@@ -103,7 +103,7 @@ const storage = isS3Configured
 
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB max (files >10MB use multipart upload)
   fileFilter: (_req, file, cb) => {
     if (!ALLOWED_UPLOAD_MIME_TYPES.has(file.mimetype)) {
       cb(new Error(`File type ${file.mimetype} is not allowed`));

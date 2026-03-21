@@ -295,7 +295,7 @@ export const PROJECT_ACTION_PLANS_QUERY = `query ProjectActionPlans($projectId: 
   projectActionPlans(projectId: $projectId, status: $status) {
     id taskId status summary createdAt updatedAt
     actions { id planId actionType label config position status requiresApproval result errorMessage startedAt completedAt createdAt }
-    task { taskId title status taskType autoComplete parentTaskTitle }
+    task { taskId title status taskType autoComplete parentTaskTitle blockedBy { taskId title linkType } }
   }
 }`;
 

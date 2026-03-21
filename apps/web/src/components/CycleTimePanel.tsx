@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { gql } from '../api/client';
 import { CYCLE_TIME_METRICS_QUERY } from '../api/queries';
+import useAsyncData from '../hooks/useAsyncData';
 import { IconClose } from './shared/Icons';
 
 interface TaskCycleMetrics {
@@ -50,9 +51,6 @@ function formatHours(hours: number | null): string {
 }
 
 export default function CycleTimePanel({ projectId, sprints, disabled, onClose }: Props) {
-  const [metrics, setMetrics] = useState<ProjectCycleMetrics | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [sprintFilter, setSprintFilter] = useState<string>('');
   const [fromDate, setFromDate] = useState<string>('');
   const [toDate, setToDate] = useState<string>('');
@@ -63,26 +61,21 @@ export default function CycleTimePanel({ projectId, sprints, disabled, onClose }
 
   const dateError = fromDate && toDate && fromDate > toDate ? 'From date must be before To date' : null;
 
-  const load = async (sprintId?: string, from?: string, to?: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await gql<{ cycleTimeMetrics: ProjectCycleMetrics }>(
-        CYCLE_TIME_METRICS_QUERY,
-        { projectId, sprintId: sprintId || undefined, fromDate: from || undefined, toDate: to || undefined }
-      );
-      setMetrics(data.cycleTimeMetrics);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load metrics');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!disabled && !dateError) load(sprintFilter || undefined, fromDate, toDate);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, sprintFilter, fromDate, toDate]);
+  const { data: metrics, loading, error, retry } = useAsyncData(
+    () =>
+      disabled || dateError
+        ? Promise.resolve(null)
+        : gql<{ cycleTimeMetrics: ProjectCycleMetrics }>(
+            CYCLE_TIME_METRICS_QUERY,
+            {
+              projectId,
+              sprintId: sprintFilter || undefined,
+              fromDate: fromDate || undefined,
+              toDate: toDate || undefined,
+            },
+          ).then((d) => d.cycleTimeMetrics),
+    [projectId, sprintFilter, fromDate, toDate, disabled, dateError],
+  );
 
   const activeSprint = sprints?.find((s) => s.isActive);
 
@@ -207,7 +200,7 @@ export default function CycleTimePanel({ projectId, sprints, disabled, onClose }
         {error && (
           <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg p-3">
             {error}
-            <button onClick={() => load(sprintFilter || undefined)} className="ml-2 text-red-500 underline hover:text-red-700">Retry</button>
+            <button onClick={retry} className="ml-2 text-red-500 underline hover:text-red-700">Retry</button>
           </div>
         )}
 

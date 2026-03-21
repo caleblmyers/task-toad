@@ -83,6 +83,12 @@ export const taskActionQueries = {
             taskType: true,
             autoComplete: true,
             parentTask: { select: { title: true } },
+            dependenciesAsTarget: {
+              select: {
+                linkType: true,
+                sourceTask: { select: { taskId: true, title: true } },
+              },
+            },
           },
         },
       },
@@ -404,7 +410,7 @@ export const taskActionFieldResolvers = {
   TaskActionPlan: {
     createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
     updatedAt: (parent: { updatedAt: Date }) => parent.updatedAt.toISOString(),
-    task: (parent: { task?: { taskId: string; title: string; status: string; taskType: string | null; autoComplete: boolean; parentTask?: { title: string } | null } }) => {
+    task: (parent: { task?: { taskId: string; title: string; status: string; taskType: string | null; autoComplete: boolean; parentTask?: { title: string } | null; dependenciesAsTarget?: Array<{ linkType: string; sourceTask: { taskId: string; title: string } }> } }) => {
       if (!parent.task) return null;
       return {
         taskId: parent.task.taskId,
@@ -413,6 +419,11 @@ export const taskActionFieldResolvers = {
         taskType: parent.task.taskType,
         autoComplete: parent.task.autoComplete,
         parentTaskTitle: parent.task.parentTask?.title ?? null,
+        blockedBy: (parent.task.dependenciesAsTarget ?? []).map((d) => ({
+          taskId: d.sourceTask.taskId,
+          title: d.sourceTask.title,
+          linkType: d.linkType,
+        })),
       };
     },
   },

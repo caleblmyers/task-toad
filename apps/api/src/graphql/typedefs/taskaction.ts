@@ -1,4 +1,10 @@
 export const taskActionTypeDefs = /* GraphQL */ `
+  type TaskActionPlanDependency {
+    taskId: ID!
+    title: String!
+    linkType: String!
+  }
+
   type TaskActionPlanTask {
     taskId: ID!
     title: String!
@@ -6,6 +12,7 @@ export const taskActionTypeDefs = /* GraphQL */ `
     taskType: String
     autoComplete: Boolean!
     parentTaskTitle: String
+    blockedBy: [TaskActionPlanDependency!]!
   }
 
   type TaskActionPlan {

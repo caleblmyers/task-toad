@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
 import { GENERATE_STANDUP_REPORT_QUERY } from '../api/queries';
+import useAsyncData from '../hooks/useAsyncData';
 import { IconClose } from './shared/Icons';
 
 interface StandupReport {
@@ -17,30 +17,16 @@ interface Props {
 }
 
 export default function StandupReportPanel({ projectId, disabled, onClose }: Props) {
-  const [report, setReport] = useState<StandupReport | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const generate = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await gql<{ generateStandupReport: StandupReport }>(
-        GENERATE_STANDUP_REPORT_QUERY,
-        { projectId }
-      );
-      setReport(data.generateStandupReport);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate standup report');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!disabled) generate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId]);
+  const { data: report, loading, error, retry } = useAsyncData(
+    () =>
+      disabled
+        ? Promise.resolve(null)
+        : gql<{ generateStandupReport: StandupReport }>(
+            GENERATE_STANDUP_REPORT_QUERY,
+            { projectId },
+          ).then((d) => d.generateStandupReport),
+    [projectId, disabled],
+  );
 
   return (
     <div className="flex-1 flex items-center justify-center px-8">
@@ -71,7 +57,7 @@ export default function StandupReportPanel({ projectId, disabled, onClose }: Pro
         {error && (
           <div className="text-sm text-red-600 bg-red-50 rounded-lg p-3">
             {error}
-            <button onClick={generate} className="ml-2 text-red-500 underline hover:text-red-700">Retry</button>
+            <button onClick={retry} className="ml-2 text-red-500 underline hover:text-red-700">Retry</button>
           </div>
         )}
 
