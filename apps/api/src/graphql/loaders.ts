@@ -27,32 +27,38 @@ export interface Loaders {
   knowledgeEntriesByProject: DataLoader<string, KnowledgeEntry[]>;
 }
 
-export function createLoaders(prisma: PrismaClient): Loaders {
+export function createLoaders(prisma: PrismaClient, orgId: string | null): Loaders {
+  const orgFilter = orgId ? { orgId } : {};
+
   return {
     taskById: new DataLoader(async (ids) => {
-      const tasks = await prisma.task.findMany({ where: { taskId: { in: [...ids] } } });
+      const tasks = await prisma.task.findMany({ where: { taskId: { in: [...ids] }, ...orgFilter } });
       const map = new Map(tasks.map(t => [t.taskId, t]));
       return ids.map(id => map.get(id) ?? null);
     }),
 
     projectById: new DataLoader(async (ids) => {
-      const projects = await prisma.project.findMany({ where: { projectId: { in: [...ids] } } });
+      const projects = await prisma.project.findMany({ where: { projectId: { in: [...ids] }, ...orgFilter } });
       const map = new Map(projects.map(p => [p.projectId, p]));
       return ids.map(id => map.get(id) ?? null);
     }),
 
     sprintById: new DataLoader(async (ids) => {
-      const sprints = await prisma.sprint.findMany({ where: { sprintId: { in: [...ids] } } });
+      const sprints = await prisma.sprint.findMany({ where: { sprintId: { in: [...ids] }, ...orgFilter } });
       const map = new Map(sprints.map(s => [s.sprintId, s]));
       return ids.map(id => map.get(id) ?? null);
     }),
 
     userById: new DataLoader(async (ids) => {
-      const users = await prisma.user.findMany({ where: { userId: { in: [...ids] } } });
+      const users = await prisma.user.findMany({ where: { userId: { in: [...ids] }, ...orgFilter } });
       const map = new Map(users.map(u => [u.userId, u]));
       return ids.map(id => map.get(id) ?? null);
     }),
 
+    // Join-table loaders (taskLabels, taskAssignees, taskWatchers, taskPullRequests,
+    // taskCommits, taskDependencies, taskDependents, customFieldValuesByTask,
+    // taskAttachments) skip orgId filtering — they are always accessed via parent
+    // entities that were already org-validated by resolvers.
     taskLabels: new DataLoader(async (taskIds) => {
       const taskLabels = await prisma.taskLabel.findMany({
         where: { taskId: { in: [...taskIds] } },
@@ -92,7 +98,7 @@ export function createLoaders(prisma: PrismaClient): Loaders {
 
     taskChildren: new DataLoader(async (parentIds) => {
       const children = await prisma.task.findMany({
-        where: { parentTaskId: { in: [...parentIds] }, archived: false },
+        where: { parentTaskId: { in: [...parentIds] }, archived: false, ...orgFilter },
         orderBy: { position: 'asc' },
       });
       const map = new Map<string, Task[]>();
@@ -116,7 +122,7 @@ export function createLoaders(prisma: PrismaClient): Loaders {
 
       while (currentParentIds.length > 0) {
         const children = await prisma.task.findMany({
-          where: { parentTaskId: { in: currentParentIds }, archived: false },
+          where: { parentTaskId: { in: currentParentIds }, archived: false, ...orgFilter },
           select: { taskId: true, parentTaskId: true, status: true },
         });
         if (children.length === 0) break;
@@ -142,7 +148,7 @@ export function createLoaders(prisma: PrismaClient): Loaders {
 
     sprintTasks: new DataLoader(async (sprintIds) => {
       const tasks = await prisma.task.findMany({
-        where: { sprintId: { in: [...sprintIds] }, parentTaskId: null },
+        where: { sprintId: { in: [...sprintIds] }, parentTaskId: null, ...orgFilter },
       });
       const map = new Map<string, Task[]>();
       for (const t of tasks) {
@@ -220,7 +226,7 @@ export function createLoaders(prisma: PrismaClient): Loaders {
 
     knowledgeEntriesByProject: new DataLoader(async (projectIds) => {
       const entries = await prisma.knowledgeEntry.findMany({
-        where: { projectId: { in: [...projectIds] } },
+        where: { projectId: { in: [...projectIds] }, ...orgFilter },
         orderBy: { createdAt: 'desc' },
       });
       const map = new Map<string, KnowledgeEntry[]>();

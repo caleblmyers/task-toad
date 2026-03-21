@@ -21,7 +21,7 @@ function makeContext(): Context {
     user: { userId, email: 'notif-test@example.com', orgId, role: 'org:admin', emailVerifiedAt: null },
     org: { orgId, name: 'Test Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, createdAt: new Date() },
     prisma,
-    loaders: createLoaders(prisma),
+    loaders: createLoaders(prisma, null),
   };
 }
 
@@ -48,7 +48,7 @@ beforeEach(async () => {
 
   // Create user + org
   await authMutations.signup(null, { email: 'notif-test@example.com', password: 'Password123' }, {
-    user: null, org: null, prisma, loaders: createLoaders(prisma),
+    user: null, org: null, prisma, loaders: createLoaders(prisma, null),
   } as Context);
 
   const user = await prisma.user.findUniqueOrThrow({ where: { email: 'notif-test@example.com' } });
@@ -124,7 +124,7 @@ describe('markNotificationRead', () => {
   it('throws NotFoundError for another user\'s notification', async () => {
     // Create another user
     await authMutations.signup(null, { email: 'other@example.com', password: 'Password123' }, {
-      user: null, org: null, prisma, loaders: createLoaders(prisma),
+      user: null, org: null, prisma, loaders: createLoaders(prisma, null),
     } as Context);
     const otherUser = await prisma.user.findUniqueOrThrow({ where: { email: 'other@example.com' } });
     await prisma.user.update({ where: { userId: otherUser.userId }, data: { orgId, role: 'org:member' } });

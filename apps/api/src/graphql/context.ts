@@ -30,7 +30,6 @@ export interface Context {
 }
 
 export async function buildContext(ctx: { request: Request; req?: import('http').IncomingMessage & { cookies?: Record<string, string> }; res?: import('express').Response }): Promise<Context> {
-  const loaders = createLoaders(prisma);
   const res = ctx.res;
 
   // Read token from HttpOnly cookie first, fall back to Authorization header
@@ -39,19 +38,27 @@ export async function buildContext(ctx: { request: Request; req?: import('http')
   const token = cookieToken || (auth?.startsWith('Bearer ') ? auth.slice(7) : undefined);
 
   if (!token) {
+    const loaders = createLoaders(prisma, null);
     return { user: null, org: null, prisma, loaders, res };
   }
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
     const userId = payload.sub;
-    if (!userId) return { user: null, org: null, prisma, loaders, res };
+    if (!userId) {
+      const loaders = createLoaders(prisma, null);
+      return { user: null, org: null, prisma, loaders, res };
+    }
 
     const dbUser = await prisma.user.findUnique({ where: { userId } });
-    if (!dbUser) return { user: null, org: null, prisma, loaders, res };
+    if (!dbUser) {
+      const loaders = createLoaders(prisma, null);
+      return { user: null, org: null, prisma, loaders, res };
+    }
 
     // Reject tokens with stale tokenVersion (revoked via logout or password reset)
     const tv = payload.tv as number | undefined;
     if (tv !== undefined && tv !== dbUser.tokenVersion) {
+      const loaders = createLoaders(prisma, null);
       return { user: null, org: null, prisma, loaders, res };
     }
 
@@ -65,6 +72,9 @@ export async function buildContext(ctx: { request: Request; req?: import('http')
 
     // Set Sentry user context for error attribution
     Sentry.setUser({ id: dbUser.userId, email: dbUser.email });
+
+    // Create loaders scoped to the user's org for tenant isolation
+    const loaders = createLoaders(prisma, dbUser.orgId);
 
     return {
       user: {
@@ -82,6 +92,7 @@ export async function buildContext(ctx: { request: Request; req?: import('http')
   } catch (err) {
     const code = err instanceof Error ? err.message : 'unknown';
     log.warn({ code }, 'JWT verification failed');
+    const loaders = createLoaders(prisma, null);
     return { user: null, org: null, prisma, loaders, res };
   }
 }

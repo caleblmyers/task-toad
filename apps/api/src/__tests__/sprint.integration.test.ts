@@ -21,7 +21,7 @@ function makeContext(): Context {
     user: { userId, email: 'sprint-test@example.com', orgId, role: 'org:admin', emailVerifiedAt: null },
     org: { orgId, name: 'Test Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, createdAt: new Date() },
     prisma,
-    loaders: createLoaders(prisma),
+    loaders: createLoaders(prisma, null),
   };
 }
 
@@ -35,7 +35,7 @@ beforeEach(async () => {
   await cleanDatabase();
 
   await authMutations.signup(null, { email: 'sprint-test@example.com', password: 'Password123' }, {
-    user: null, org: null, prisma, loaders: createLoaders(prisma),
+    user: null, org: null, prisma, loaders: createLoaders(prisma, null),
   } as Context);
 
   const user = await prisma.user.findUniqueOrThrow({ where: { email: 'sprint-test@example.com' } });

@@ -17,7 +17,7 @@ import { createLoaders } from '../graphql/loaders.js';
 // ── Helpers ──
 
 function noAuthContext(): Context {
-  return { user: null, org: null, prisma, loaders: createLoaders(prisma) } as Context;
+  return { user: null, org: null, prisma, loaders: createLoaders(prisma, null) } as Context;
 }
 
 function makeContext(user: { userId: string; email: string; orgId: string; role: string }, orgName: string): Context {
@@ -25,7 +25,7 @@ function makeContext(user: { userId: string; email: string; orgId: string; role:
     user: { ...user, emailVerifiedAt: new Date() },
     org: { orgId: user.orgId, name: orgName, anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, createdAt: new Date() },
     prisma,
-    loaders: createLoaders(prisma),
+    loaders: createLoaders(prisma, null),
   };
 }
 
@@ -71,7 +71,7 @@ describe('E2E happy path: signup through export', () => {
       user: { userId, email, orgId: null, role: null, emailVerifiedAt: new Date() },
       org: null,
       prisma,
-      loaders: createLoaders(prisma),
+      loaders: createLoaders(prisma, null),
     };
     const org = await orgMutations.createOrg(null, { name: 'E2E Org' }, userCtxNoOrg);
     expect(org).toHaveProperty('orgId');

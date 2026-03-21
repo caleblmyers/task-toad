@@ -21,7 +21,7 @@ function makeContext(): Context {
     user: { userId, email: 'task-test@example.com', orgId, role: 'org:admin', emailVerifiedAt: null },
     org: { orgId, name: 'Test Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, createdAt: new Date() },
     prisma,
-    loaders: createLoaders(prisma),
+    loaders: createLoaders(prisma, null),
   };
 }
 
@@ -36,7 +36,7 @@ beforeEach(async () => {
 
   // Create user + org + project
   await authMutations.signup(null, { email: 'task-test@example.com', password: 'Password123' }, {
-    user: null, org: null, prisma, loaders: createLoaders(prisma),
+    user: null, org: null, prisma, loaders: createLoaders(prisma, null),
   } as Context);
 
   const user = await prisma.user.findUniqueOrThrow({ where: { email: 'task-test@example.com' } });

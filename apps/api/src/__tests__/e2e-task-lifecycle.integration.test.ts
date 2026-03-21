@@ -17,7 +17,7 @@ let orgId: string;
 let userId: string;
 let projectId: string;
 
-const noAuthCtx = () => ({ user: null, org: null, prisma, loaders: createLoaders(prisma) }) as Context;
+const noAuthCtx = () => ({ user: null, org: null, prisma, loaders: createLoaders(prisma, null) }) as Context;
 
 function makeContext(overrides?: { userId?: string; email?: string }): Context {
   return {
@@ -30,7 +30,7 @@ function makeContext(overrides?: { userId?: string; email?: string }): Context {
     },
     org: { orgId, name: 'Test Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, createdAt: new Date() },
     prisma,
-    loaders: createLoaders(prisma),
+    loaders: createLoaders(prisma, null),
   };
 }
 

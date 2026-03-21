@@ -9,6 +9,7 @@ import rateLimit from 'express-rate-limit';
 import * as Sentry from '@sentry/node';
 import { createYoga } from 'graphql-yoga';
 import { z } from 'zod';
+import { NoSchemaIntrospectionCustomRule } from 'graphql';
 import { schema, depthLimitRule, costLimitRule } from './graphql/schema.js';
 import { buildContext } from './graphql/context.js';
 import { handleGitHubWebhook } from './github/index.js';
@@ -318,12 +319,15 @@ function stripNullBytes(obj: unknown): unknown {
   return obj;
 }
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 const yoga = createYoga({
   schema,
   context: buildContext,
   graphqlEndpoint: '/graphql',
+  graphiql: !isProduction,
   maskedErrors: {
-    isDev: process.env.NODE_ENV !== 'production',
+    isDev: !isProduction,
   },
   plugins: [
     {
@@ -341,8 +345,11 @@ const yoga = createYoga({
       },
     },
     { onValidate({ addValidationRule }: { addValidationRule: (rule: unknown) => void }) {
-      addValidationRule(depthLimitRule(10));
+      addValidationRule(depthLimitRule(7));
       addValidationRule(costLimitRule(Number(process.env.MAX_QUERY_COST) || 100000));
+      if (isProduction) {
+        addValidationRule(NoSchemaIntrospectionCustomRule);
+      }
     } },
     {
       onExecute() {

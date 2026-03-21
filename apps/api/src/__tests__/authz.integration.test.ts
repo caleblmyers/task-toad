@@ -26,7 +26,7 @@ function makeContext1(): Context {
     user: { userId: user1Id, email: 'user1@example.com', orgId: org1Id, role: 'org:admin', emailVerifiedAt: null },
     org: { orgId: org1Id, name: 'Org 1', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, createdAt: new Date() },
     prisma,
-    loaders: createLoaders(prisma),
+    loaders: createLoaders(prisma, null),
   };
 }
 
@@ -35,7 +35,7 @@ function makeContext2(): Context {
     user: { userId: user2Id, email: 'user2@example.com', orgId: org2Id, role: 'org:admin', emailVerifiedAt: null },
     org: { orgId: org2Id, name: 'Org 2', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, createdAt: new Date() },
     prisma,
-    loaders: createLoaders(prisma),
+    loaders: createLoaders(prisma, null),
   };
 }
 
@@ -48,7 +48,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   await cleanDatabase();
 
-  const noAuthCtx = { user: null, org: null, prisma, loaders: createLoaders(prisma) } as Context;
+  const noAuthCtx = { user: null, org: null, prisma, loaders: createLoaders(prisma, null) } as Context;
 
   // Create user 1 via signup
   await authMutations.signup(null, { email: 'user1@example.com', password: 'Password1' }, noAuthCtx);

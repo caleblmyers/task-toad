@@ -20,7 +20,7 @@ function makeContext(overrides?: Partial<Context['user']>): Context {
     user: { userId, email: 'proj-test@example.com', orgId, role: 'org:admin', emailVerifiedAt: null, ...overrides },
     org: { orgId, name: 'Test Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, createdAt: new Date() },
     prisma,
-    loaders: createLoaders(prisma),
+    loaders: createLoaders(prisma, null),
   };
 }
 
@@ -29,7 +29,7 @@ function makeMemberContext(memberId: string, memberEmail: string): Context {
     user: { userId: memberId, email: memberEmail, orgId, role: 'org:member', emailVerifiedAt: null },
     org: { orgId, name: 'Test Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, createdAt: new Date() },
     prisma,
-    loaders: createLoaders(prisma),
+    loaders: createLoaders(prisma, null),
   };
 }
 
@@ -44,7 +44,7 @@ beforeEach(async () => {
 
   // Create user + org
   await authMutations.signup(null, { email: 'proj-test@example.com', password: 'Password123' }, {
-    user: null, org: null, prisma, loaders: createLoaders(prisma),
+    user: null, org: null, prisma, loaders: createLoaders(prisma, null),
   } as Context);
 
   const user = await prisma.user.findUniqueOrThrow({ where: { email: 'proj-test@example.com' } });
@@ -75,7 +75,7 @@ describe('createProject', () => {
   it('rejects non-admin users with AuthorizationError', async () => {
     // Create a member user
     await authMutations.signup(null, { email: 'member@example.com', password: 'Password123' }, {
-      user: null, org: null, prisma, loaders: createLoaders(prisma),
+      user: null, org: null, prisma, loaders: createLoaders(prisma, null),
     } as Context);
     const member = await prisma.user.findUniqueOrThrow({ where: { email: 'member@example.com' } });
     await prisma.user.update({ where: { userId: member.userId }, data: { orgId, role: 'org:member' } });
@@ -167,7 +167,7 @@ describe('project query', () => {
 
     // Create a second org + user
     await authMutations.signup(null, { email: 'other@example.com', password: 'Password123' }, {
-      user: null, org: null, prisma, loaders: createLoaders(prisma),
+      user: null, org: null, prisma, loaders: createLoaders(prisma, null),
     } as Context);
     const otherUser = await prisma.user.findUniqueOrThrow({ where: { email: 'other@example.com' } });
     const otherOrg = await prisma.org.create({ data: { name: 'Other Org' } });
@@ -177,7 +177,7 @@ describe('project query', () => {
       user: { userId: otherUser.userId, email: 'other@example.com', orgId: otherOrg.orgId, role: 'org:admin', emailVerifiedAt: null },
       org: { orgId: otherOrg.orgId, name: 'Other Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, createdAt: new Date() },
       prisma,
-      loaders: createLoaders(prisma),
+      loaders: createLoaders(prisma, null),
     };
 
     const result = await projectQueries.project(null, { projectId: project.projectId }, otherCtx);
