@@ -14,17 +14,41 @@ function safeParseJSON(value: string, fieldName: string): unknown {
   }
 }
 
-const TriggerSchema = z.object({
-  event: z.string(),
-  condition: z.record(z.string(), z.unknown()).optional(),
+const CompoundConditionEntrySchema = z.object({
+  field: z.string(),
+  op: z.enum(['eq', 'not_eq']),
+  value: z.unknown(),
 });
 
-const ActionSchema = z.object({
-  type: z.enum(['notify_assignee', 'move_to_column', 'set_status', 'assign_to']),
+const CompoundConditionSchema: z.ZodType<{ operator: 'AND' | 'OR'; conditions: unknown[] }> = z.object({
+  operator: z.enum(['AND', 'OR']),
+  conditions: z.lazy(() => z.array(z.union([CompoundConditionEntrySchema, CompoundConditionSchema]))),
+});
+
+const TriggerSchema = z.object({
+  event: z.string(),
+  condition: z.union([
+    z.record(z.string(), z.unknown()),
+    CompoundConditionSchema,
+  ]).optional(),
+});
+
+const SingleActionSchema = z.object({
+  type: z.enum([
+    'notify_assignee', 'move_to_column', 'set_status', 'assign_to',
+    'send_webhook', 'add_label', 'add_comment', 'set_due_date',
+  ]),
   column: z.string().optional(),
   status: z.string().optional(),
   userId: z.string().optional(),
+  url: z.string().url().optional(),
+  labelId: z.string().optional(),
+  content: z.string().optional(),
+  daysFromNow: z.number().int().min(0).optional(),
 });
+
+/** Accepts a single action object or an array of action objects. */
+const ActionSchema = z.union([SingleActionSchema, z.array(SingleActionSchema)]);
 
 async function requireProjectAdmin(context: Context, projectId: string) {
   const { user, project } = await requireProjectAccess(context, projectId);
