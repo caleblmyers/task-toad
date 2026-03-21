@@ -14,7 +14,9 @@ interface Approval {
   toStatus: string;
   status: string;
   createdAt: string;
+  decidedAt: string | null;
   requestedBy: ApprovalUser;
+  approver: ApprovalUser | null;
 }
 
 const TASK_APPROVALS_QUERY = `
@@ -25,7 +27,9 @@ const TASK_APPROVALS_QUERY = `
       toStatus
       status
       createdAt
+      decidedAt
       requestedBy { userId email displayName }
+      approver { userId email displayName }
     }
   }
 `;
@@ -62,7 +66,7 @@ export default function ApprovalBadge({ taskId, canManage }: ApprovalBadgeProps)
   const loadApprovals = useCallback(async () => {
     try {
       const data = await gql<{ taskApprovals: Approval[] }>(TASK_APPROVALS_QUERY, { taskId });
-      setApprovals(data.taskApprovals.filter(a => a.status === 'pending'));
+      setApprovals(data.taskApprovals);
     } catch {
       // ignore
     }
@@ -99,11 +103,18 @@ export default function ApprovalBadge({ taskId, canManage }: ApprovalBadgeProps)
     }
   };
 
+  const pendingApprovals = approvals.filter(a => a.status === 'pending');
+  const decidedApprovals = approvals.filter(a => a.status !== 'pending');
+
   if (approvals.length === 0) return null;
+
+  const displayName = (u: ApprovalUser | null) =>
+    u ? (u.displayName || u.email.split('@')[0]) : 'Unknown';
 
   return (
     <div className="mb-4">
-      {approvals.map(a => (
+      {/* Pending approvals */}
+      {pendingApprovals.map(a => (
         <div
           key={a.approvalId}
           className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 mb-2"
@@ -112,7 +123,7 @@ export default function ApprovalBadge({ taskId, canManage }: ApprovalBadgeProps)
             Pending approval: {statusLabel(a.fromStatus)} → {statusLabel(a.toStatus)}
           </p>
           <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-            Requested by {a.requestedBy.displayName || a.requestedBy.email.split('@')[0]}
+            Requested by {displayName(a.requestedBy)}
           </p>
 
           {canManage && (
@@ -167,6 +178,32 @@ export default function ApprovalBadge({ taskId, canManage }: ApprovalBadgeProps)
           )}
         </div>
       ))}
+
+      {/* Approval history */}
+      {decidedApprovals.length > 0 && (
+        <div className="mt-2">
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Approval History</p>
+          <div className="space-y-1">
+            {decidedApprovals.map(a => (
+              <div
+                key={a.approvalId}
+                className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 rounded px-2 py-1.5"
+              >
+                <span className={`font-medium ${a.status === 'approved' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {a.status === 'approved' ? 'Approved' : 'Rejected'}
+                </span>
+                <span>{statusLabel(a.fromStatus)} → {statusLabel(a.toStatus)}</span>
+                <span className="text-slate-400 dark:text-slate-500">by {displayName(a.approver)}</span>
+                {a.decidedAt && (
+                  <span className="text-slate-400 dark:text-slate-500 ml-auto">
+                    {new Date(a.decidedAt).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -38,11 +38,11 @@ export const initiativeQueries = {
     const user = requireOrg(context);
     const initiative = await context.prisma.initiative.findFirst({
       where: { initiativeId: args.initiativeId, orgId: user.orgId },
-      include: { projects: { select: { projectId: true } } },
     });
     if (!initiative) throw new NotFoundError('Initiative not found');
 
-    const projectIds = initiative.projects.map((ip) => ip.projectId);
+    const initiativeProjects = await context.loaders.initiativeProjectsByInitiative.load(args.initiativeId);
+    const projectIds = initiativeProjects.map((ip) => ip.projectId);
 
     if (projectIds.length === 0) {
       return {

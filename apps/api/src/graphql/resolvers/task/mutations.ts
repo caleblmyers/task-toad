@@ -89,9 +89,7 @@ export const taskMutations = {
     // ── Field-level permission checks ──
     // Check FieldPermission restrictions for each field being updated
     if (user.role !== 'org:admin') {
-      const fieldPermissions = await context.prisma.fieldPermission.findMany({
-        where: { projectId: task.projectId },
-      });
+      const fieldPermissions = await context.loaders.fieldPermissionsByProject.load(task.projectId);
       if (fieldPermissions.length > 0) {
         const membership = await context.prisma.projectMember.findUnique({
           where: { projectId_userId: { projectId: task.projectId, userId: user.userId } },
@@ -105,6 +103,8 @@ export const taskMutations = {
           storyPoints: 'storyPoints',
           dueDate: 'dueDate',
           assigneeId: 'assigneeId',
+          priority: 'priority',
+          estimatedHours: 'estimatedHours',
         };
         for (const [argName, fieldName] of Object.entries(fieldArgMapping)) {
           if ((args as Record<string, unknown>)[argName] !== undefined) {

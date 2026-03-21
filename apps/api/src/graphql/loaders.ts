@@ -1,5 +1,5 @@
 import DataLoader from 'dataloader';
-import type { PrismaClient, Task, Project, Sprint, User, Label, GitHubPullRequestLink, GitHubCommitLink, CustomFieldValue, CustomField, TaskAssignee, TaskWatcher, Attachment, TaskDependency, KnowledgeEntry } from '@prisma/client';
+import type { PrismaClient, Task, Project, Sprint, User, Label, GitHubPullRequestLink, GitHubCommitLink, CustomFieldValue, CustomField, TaskAssignee, TaskWatcher, Attachment, TaskDependency, KnowledgeEntry, FieldPermission, InitiativeProject } from '@prisma/client';
 
 export type CustomFieldValueWithField = CustomFieldValue & { customField: CustomField };
 export type TaskAssigneeWithUser = TaskAssignee & { user: User };
@@ -25,6 +25,8 @@ export interface Loaders {
   taskDependencies: DataLoader<string, TaskDependencyWithTask[]>;
   taskDependents: DataLoader<string, TaskDependentWithTask[]>;
   knowledgeEntriesByProject: DataLoader<string, KnowledgeEntry[]>;
+  fieldPermissionsByProject: DataLoader<string, FieldPermission[]>;
+  initiativeProjectsByInitiative: DataLoader<string, InitiativeProject[]>;
 }
 
 export function createLoaders(prisma: PrismaClient, orgId: string | null): Loaders {
@@ -233,6 +235,30 @@ export function createLoaders(prisma: PrismaClient, orgId: string | null): Loade
       for (const e of entries) {
         if (!map.has(e.projectId)) map.set(e.projectId, []);
         map.get(e.projectId)!.push(e);
+      }
+      return projectIds.map(id => map.get(id) ?? []);
+    }),
+
+    initiativeProjectsByInitiative: new DataLoader(async (initiativeIds) => {
+      const ips = await prisma.initiativeProject.findMany({
+        where: { initiativeId: { in: [...initiativeIds] } },
+      });
+      const map = new Map<string, InitiativeProject[]>();
+      for (const ip of ips) {
+        if (!map.has(ip.initiativeId)) map.set(ip.initiativeId, []);
+        map.get(ip.initiativeId)!.push(ip);
+      }
+      return initiativeIds.map(id => map.get(id) ?? []);
+    }),
+
+    fieldPermissionsByProject: new DataLoader(async (projectIds) => {
+      const perms = await prisma.fieldPermission.findMany({
+        where: { projectId: { in: [...projectIds] }, ...(orgId ? { orgId } : {}) },
+      });
+      const map = new Map<string, FieldPermission[]>();
+      for (const p of perms) {
+        if (!map.has(p.projectId)) map.set(p.projectId, []);
+        map.get(p.projectId)!.push(p);
       }
       return projectIds.map(id => map.get(id) ?? []);
     }),

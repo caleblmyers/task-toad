@@ -5,6 +5,7 @@ import {
   PORTFOLIO_OVERVIEW_QUERY,
   INITIATIVES_QUERY,
   CREATE_INITIATIVE_MUTATION,
+  UPDATE_INITIATIVE_MUTATION,
   DELETE_INITIATIVE_MUTATION,
   ADD_PROJECT_TO_INITIATIVE_MUTATION,
   REMOVE_PROJECT_FROM_INITIATIVE_MUTATION,
@@ -162,36 +163,36 @@ function CreateInitiativeModal({ onClose, onCreated }: { onClose: () => void; on
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
       <form
-        className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md"
+        className="bg-white dark:bg-slate-800 rounded-xl shadow-xl p-6 w-full max-w-md"
         onClick={(e) => e.stopPropagation()}
         onSubmit={handleSubmit}
       >
-        <h2 className="text-lg font-semibold text-slate-800 mb-4">Create Initiative</h2>
-        <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
+        <h2 className="text-lg font-semibold text-slate-800 dark:text-white mb-4">Create Initiative</h2>
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Name</label>
         <input
-          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm mb-3 bg-white dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Initiative name"
           autoFocus
         />
-        <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
         <textarea
-          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm mb-3 bg-white dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Optional description"
           rows={2}
         />
-        <label className="block text-sm font-medium text-slate-700 mb-1">Target Date</label>
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Target Date</label>
         <input
           type="date"
-          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm mb-4 bg-white dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           value={targetDate}
           onChange={(e) => setTargetDate(e.target.value)}
         />
         <div className="flex justify-end gap-2">
-          <button type="button" className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800" onClick={onClose}>
+          <button type="button" className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200" onClick={onClose}>
             Cancel
           </button>
           <button
@@ -200,6 +201,102 @@ function CreateInitiativeModal({ onClose, onCreated }: { onClose: () => void; on
             className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
           >
             {saving ? 'Creating...' : 'Create'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+// ── Edit Initiative Modal ──
+
+function EditInitiativeModal({
+  initiative,
+  onClose,
+  onUpdated,
+}: {
+  initiative: Initiative;
+  onClose: () => void;
+  onUpdated: () => void;
+}) {
+  const [name, setName] = useState(initiative.name);
+  const [description, setDescription] = useState(initiative.description ?? '');
+  const [status, setStatus] = useState(initiative.status);
+  const [targetDate, setTargetDate] = useState(
+    initiative.targetDate ? initiative.targetDate.slice(0, 10) : '',
+  );
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setSaving(true);
+    try {
+      await gql(UPDATE_INITIATIVE_MUTATION, {
+        initiativeId: initiative.initiativeId,
+        name: name.trim(),
+        description: description.trim() || null,
+        status,
+        targetDate: targetDate || null,
+      });
+      onUpdated();
+      onClose();
+    } catch {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
+      <form
+        className="bg-white dark:bg-slate-800 rounded-xl shadow-xl p-6 w-full max-w-md"
+        onClick={(e) => e.stopPropagation()}
+        onSubmit={handleSubmit}
+      >
+        <h2 className="text-lg font-semibold text-slate-800 dark:text-white mb-4">Edit Initiative</h2>
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Name</label>
+        <input
+          className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm mb-3 bg-white dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Initiative name"
+          autoFocus
+        />
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
+        <textarea
+          className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm mb-3 bg-white dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Optional description"
+          rows={2}
+        />
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Status</label>
+        <select
+          className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm mb-3 bg-white dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+        >
+          <option value="active">Active</option>
+          <option value="completed">Completed</option>
+          <option value="archived">Archived</option>
+        </select>
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Target Date</label>
+        <input
+          type="date"
+          className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm mb-4 bg-white dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={targetDate}
+          onChange={(e) => setTargetDate(e.target.value)}
+        />
+        <div className="flex justify-end gap-2">
+          <button type="button" className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={!name.trim() || saving}
+            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            {saving ? 'Saving...' : 'Save'}
           </button>
         </div>
       </form>
@@ -262,6 +359,7 @@ function InitiativeCard({
   isSelected,
   onSelect,
   onRefresh,
+  onEdit,
 }: {
   initiative: Initiative;
   summary: InitiativeSummaryData | null;
@@ -269,6 +367,7 @@ function InitiativeCard({
   isSelected: boolean;
   onSelect: (id: string | null) => void;
   onRefresh: () => void;
+  onEdit: (initiative: Initiative) => void;
 }) {
   const health = summary ? healthInfo(summary.healthScore) : { label: 'N/A', variant: 'neutral' as const };
   const linkedProjectIds = new Set(initiative.projects.map((p) => p.projectId));
@@ -300,6 +399,13 @@ function InitiativeCard({
         <h3 className="text-sm font-semibold text-slate-800 truncate">{initiative.name}</h3>
         <div className="flex items-center gap-2">
           <Badge variant={health.variant} size="sm">{health.label}</Badge>
+          <button
+            className="text-slate-400 hover:text-blue-500 text-xs"
+            onClick={(e) => { e.stopPropagation(); onEdit(initiative); }}
+            title="Edit initiative"
+          >
+            &#9998;
+          </button>
           <button
             className="text-slate-400 hover:text-red-500 text-xs"
             onClick={handleDelete}
@@ -366,6 +472,7 @@ export default function Portfolio() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingInitiative, setEditingInitiative] = useState<Initiative | null>(null);
   const [selectedInitiativeId, setSelectedInitiativeId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
@@ -511,6 +618,7 @@ export default function Portfolio() {
                 isSelected={selectedInitiativeId === init.initiativeId}
                 onSelect={setSelectedInitiativeId}
                 onRefresh={loadData}
+                onEdit={setEditingInitiative}
               />
             ))}
           </div>
@@ -589,6 +697,14 @@ export default function Portfolio() {
         <CreateInitiativeModal
           onClose={() => setShowCreateModal(false)}
           onCreated={loadData}
+        />
+      )}
+
+      {editingInitiative && (
+        <EditInitiativeModal
+          initiative={editingInitiative}
+          onClose={() => setEditingInitiative(null)}
+          onUpdated={loadData}
         />
       )}
     </div>
