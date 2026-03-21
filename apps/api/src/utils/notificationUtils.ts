@@ -2,6 +2,7 @@ import type { PrismaClient, SlackIntegration } from '@prisma/client';
 import { sendSlackWebhook, formatTaskEvent } from '../slack/slackClient.js';
 import { createChildLogger } from './logger.js';
 import { StringArraySchema } from './zodSchemas.js';
+import { decryptIfEncrypted } from './encryption.js';
 
 const log = createChildLogger('slack-dispatch');
 
@@ -48,7 +49,7 @@ async function doDispatch(
   await Promise.allSettled(
     matching.map(async (integration: SlackIntegration) => {
       try {
-        await sendSlackWebhook(integration.webhookUrl, message);
+        await sendSlackWebhook(decryptIfEncrypted(integration.webhookUrl), message);
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Unknown error';
         log.warn({ integrationId: integration.id, event, error: msg }, 'Slack dispatch failed');

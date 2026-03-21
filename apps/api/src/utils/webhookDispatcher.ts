@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { createChildLogger } from './logger.js';
 import { webhookDeliveryTotal } from './metrics.js';
 import { StringArraySchema } from './zodSchemas.js';
+import { decryptIfEncrypted } from './encryption.js';
 
 const log = createChildLogger('webhooks');
 
@@ -169,7 +170,7 @@ export async function dispatchWebhooks(
         prisma,
         delivery.id,
         endpoint.url,
-        endpoint.secret,
+        decryptIfEncrypted(endpoint.secret),
         body,
         event,
         endpoint.id
@@ -198,7 +199,7 @@ export async function processRetryQueue(prisma: PrismaClient): Promise<void> {
         prisma,
         delivery.id,
         delivery.endpoint.url,
-        delivery.endpoint.secret,
+        decryptIfEncrypted(delivery.endpoint.secret),
         delivery.payload,
         delivery.event,
         delivery.endpointId
@@ -237,7 +238,7 @@ export async function replayDelivery(
     prisma,
     delivery.id,
     delivery.endpoint.url,
-    delivery.endpoint.secret,
+    decryptIfEncrypted(delivery.endpoint.secret),
     delivery.payload,
     delivery.event,
     delivery.endpointId

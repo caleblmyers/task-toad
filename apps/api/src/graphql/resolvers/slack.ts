@@ -5,6 +5,7 @@ import { isValidWebhookEvent } from '../../utils/webhookDispatcher.js';
 import { sendSlackWebhook, buildTestMessage } from '../../slack/slackClient.js';
 import { StringArraySchema } from '../../utils/zodSchemas.js';
 import { createChildLogger } from '../../utils/logger.js';
+import { encryptApiKey, decryptIfEncrypted } from '../../utils/encryption.js';
 
 const log = createChildLogger('slack');
 
@@ -21,10 +22,15 @@ function requireAdmin(context: Context) {
 export const slackQueries = {
   slackIntegrations: async (_parent: unknown, _args: unknown, context: Context) => {
     const user = requireAdmin(context);
-    return context.prisma.slackIntegration.findMany({
+    const integrations = await context.prisma.slackIntegration.findMany({
       where: { orgId: user.orgId },
       orderBy: { createdAt: 'desc' },
     });
+    return integrations.map((int) => ({
+      ...int,
+      // Mask the webhook URL — show only last 8 chars as a hint
+      webhookUrl: 'https://hooks.slack.com/••••' + decryptIfEncrypted(int.webhookUrl).slice(-8),
+    }));
   },
 
   slackUserMappings: async (_parent: unknown, args: { integrationId: string }, context: Context) => {
@@ -87,17 +93,25 @@ export const slackMutations = {
       throw new ValidationError('Team ID, team name, channel ID, and channel name are required');
     }
 
-    return context.prisma.slackIntegration.create({
+    const encryptedUrl = encryptApiKey(args.webhookUrl.trim());
+
+    const integration = await context.prisma.slackIntegration.create({
       data: {
         orgId: user.orgId,
         teamId: args.teamId.trim(),
         teamName: args.teamName.trim(),
-        webhookUrl: args.webhookUrl.trim(),
+        webhookUrl: encryptedUrl,
         channelId: args.channelId.trim(),
         channelName: args.channelName.trim(),
         events: JSON.stringify(args.events),
       },
     });
+
+    return {
+      ...integration,
+      // Mask the URL in the response
+      webhookUrl: 'https://hooks.slack.com/••••' + args.webhookUrl.trim().slice(-8),
+    };
   },
 
   updateSlackIntegration: async (
@@ -155,7 +169,8 @@ export const slackMutations = {
     }
 
     const message = buildTestMessage();
-    return sendSlackWebhook(integration.webhookUrl, message);
+    const url = decryptIfEncrypted(integration.webhookUrl);
+    return sendSlackWebhook(url, message);
   },
 
   mapSlackUser: async (

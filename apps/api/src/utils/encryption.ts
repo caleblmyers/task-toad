@@ -34,6 +34,27 @@ export function encryptApiKey(apiKey: string): string {
  * Throws if the master key is wrong or the ciphertext has been tampered with.
  * Never logs the plaintext key.
  */
+/**
+ * Check whether a string looks like an AES-256-GCM encrypted value
+ * produced by encryptApiKey (format: "<iv_hex>:<tag_hex>:<ciphertext_hex>").
+ */
+export function isEncrypted(value: string): boolean {
+  const parts = value.split(':');
+  if (parts.length !== 3) return false;
+  const [ivHex, tagHex] = parts;
+  // IV = 12 bytes = 24 hex chars; tag = 16 bytes = 32 hex chars
+  return ivHex.length === IV_BYTES * 2 && tagHex.length === TAG_BYTES * 2;
+}
+
+/**
+ * Decrypt a value if it is encrypted; return as-is if plaintext.
+ * Useful for backward compatibility with existing unencrypted records.
+ */
+export function decryptIfEncrypted(value: string): string {
+  if (!isEncrypted(value)) return value;
+  return decryptApiKey(value);
+}
+
 export function decryptApiKey(encrypted: string): string {
   const key = getMasterKey();
   const parts = encrypted.split(':');

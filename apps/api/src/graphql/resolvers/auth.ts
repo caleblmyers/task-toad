@@ -235,16 +235,17 @@ export const authMutations = {
     if (existingUser?.orgId) {
       throw new ConflictError('This email already belongs to an org member');
     }
-    const token = generateToken();
+    const rawToken = generateToken();
+    const hashedToken = hashToken(rawToken);
     const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
     const role = args.role ?? 'org:member';
     await context.prisma.orgInvite.upsert({
-      where: { token },
+      where: { token: hashedToken },
       update: {},
       create: {
         orgId: user.orgId,
         email: args.email,
-        token,
+        token: hashedToken,
         role,
         expiresAt,
       },
@@ -255,21 +256,23 @@ export const authMutations = {
         orgId: user.orgId,
         email: args.email,
         acceptedAt: null,
-        token: { not: token },
+        token: { not: hashedToken },
       },
     });
     const org = await context.prisma.org.findUnique({ where: { orgId: user.orgId } });
+    // Send the raw (unhashed) token to the user via email
     await sendEmail(
       args.email,
       `You're invited to join ${org?.name ?? 'TaskToad'}`,
-      inviteText(org?.name ?? 'TaskToad', token),
-      buildInviteHtml(org?.name ?? 'TaskToad', token)
+      inviteText(org?.name ?? 'TaskToad', rawToken),
+      buildInviteHtml(org?.name ?? 'TaskToad', rawToken)
     );
     return true;
   },
 
   acceptInvite: async (_parent: unknown, args: { token: string; password?: string | null }, context: Context) => {
-    const invite = await context.prisma.orgInvite.findUnique({ where: { token: args.token } });
+    const hashedToken = hashToken(args.token);
+    const invite = await context.prisma.orgInvite.findUnique({ where: { token: hashedToken } });
     if (!invite || invite.acceptedAt || invite.expiresAt < new Date()) {
       throw new ValidationError('Invalid or expired invite');
     }

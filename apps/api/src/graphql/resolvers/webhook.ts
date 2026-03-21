@@ -4,6 +4,7 @@ import { requireOrg } from './auth.js';
 import { ValidationError, NotFoundError, AuthorizationError } from '../errors.js';
 import { isValidWebhookEvent, replayDelivery } from '../../utils/webhookDispatcher.js';
 import { validateWebhookUrl } from '../../utils/urlValidator.js';
+import { encryptApiKey, decryptIfEncrypted } from '../../utils/encryption.js';
 
 function requireAdmin(context: Context) {
   const user = requireOrg(context);
@@ -22,6 +23,8 @@ export const webhookQueries = {
     });
     return endpoints.map((ep) => ({
       ...ep,
+      // Mask stored secret — show only last 8 chars as a hint
+      secret: '••••' + decryptIfEncrypted(ep.secret).slice(-8),
       createdAt: ep.createdAt.toISOString(),
       lastFiredAt: ep.lastFiredAt?.toISOString() ?? null,
     }));
@@ -112,13 +115,14 @@ export const webhookMutations = {
       throw new ValidationError('At least one event is required');
     }
 
-    const secret = crypto.randomBytes(32).toString('hex');
+    const rawSecret = crypto.randomBytes(32).toString('hex');
+    const encryptedSecret = encryptApiKey(rawSecret);
 
     const endpoint = await context.prisma.webhookEndpoint.create({
       data: {
         orgId: user.orgId,
         url: args.url,
-        secret,
+        secret: encryptedSecret,
         events: JSON.stringify(args.events),
         description: args.description ?? null,
       },
@@ -126,8 +130,8 @@ export const webhookMutations = {
 
     return {
       ...endpoint,
-      // Include secret only on creation so the client can show it once
-      secret,
+      // Include raw secret only on creation so the client can show it once
+      secret: rawSecret,
       createdAt: endpoint.createdAt.toISOString(),
       lastFiredAt: null,
     };
@@ -171,6 +175,7 @@ export const webhookMutations = {
 
     return {
       ...updated,
+      secret: '••••' + decryptIfEncrypted(updated.secret).slice(-8),
       createdAt: updated.createdAt.toISOString(),
       lastFiredAt: updated.lastFiredAt?.toISOString() ?? null,
     };
@@ -210,8 +215,9 @@ export const webhookMutations = {
       data: { message: 'Webhook test from TaskToad' },
     };
     const body = JSON.stringify(payload);
+    const secret = decryptIfEncrypted(endpoint.secret);
     const signature = crypto
-      .createHmac('sha256', endpoint.secret)
+      .createHmac('sha256', secret)
       .update(body)
       .digest('hex');
 
