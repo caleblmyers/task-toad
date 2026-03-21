@@ -306,6 +306,7 @@ export interface TimeEntry {
   description: string | null;
   loggedDate: string;
   billable: boolean;
+  autoTracked: boolean;
   createdAt: string;
   updatedAt: string;
 }

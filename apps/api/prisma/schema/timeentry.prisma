@@ -7,6 +7,7 @@ model TimeEntry {
   description     String?
   loggedDate      String   @map("logged_date")
   billable        Boolean  @default(false)
+  autoTracked     Boolean  @default(false) @map("auto_tracked")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 

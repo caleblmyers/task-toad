@@ -8,6 +8,7 @@ export const timeEntryTypeDefs = /* GraphQL */ `
     description: String
     loggedDate: String!
     billable: Boolean!
+    autoTracked: Boolean!
     createdAt: String!
     updatedAt: String!
   }
@@ -35,6 +36,14 @@ export const timeEntryTypeDefs = /* GraphQL */ `
     totalMinutes: Int!
     byUser: [UserTimeSummary!]!
   }
+
+  type WorkloadCell {
+    userId: String!
+    userName: String!
+    week: String!
+    totalHours: Float!
+    taskCount: Int!
+  }
 `;
 
 export const timeEntryQueryFields = /* GraphQL */ `
@@ -44,6 +53,8 @@ export const timeEntryQueryFields = /* GraphQL */ `
   taskTimeSummary(taskId: ID!): TaskTimeSummary!
   """Get time summary for a sprint grouped by user."""
   sprintTimeSummary(sprintId: ID!): SprintTimeSummary!
+  """Get workload heatmap data for a project within a date range."""
+  workloadHeatmap(projectId: ID!, startDate: String!, endDate: String!): [WorkloadCell!]!
 `;
 
 export const timeEntryMutationFields = /* GraphQL */ `

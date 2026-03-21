@@ -17,6 +17,7 @@ interface TimeEntryRow {
   description: string | null;
   loggedDate: string;
   billable: boolean;
+  autoTracked: boolean;
   createdAt: Date;
   updatedAt: Date;
   user: { email: string };
@@ -32,9 +33,19 @@ function mapEntry(e: TimeEntryRow) {
     description: e.description,
     loggedDate: e.loggedDate,
     billable: e.billable,
+    autoTracked: e.autoTracked,
     createdAt: e.createdAt.toISOString(),
     updatedAt: e.updatedAt.toISOString(),
   };
+}
+
+function getISOWeek(dateStr: string): string {
+  const date = new Date(dateStr + 'T00:00:00Z');
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
 }
 
 // ── Queries ──
@@ -153,6 +164,112 @@ export const timeEntryQueries = {
     );
 
     return { sprintId: args.sprintId, totalMinutes, byUser };
+  },
+
+  workloadHeatmap: async (
+    _parent: unknown,
+    args: { projectId: string; startDate: string; endDate: string },
+    context: Context,
+  ) => {
+    const user = requireOrg(context);
+
+    const project = await context.prisma.project.findUnique({
+      where: { projectId: args.projectId },
+    });
+    if (!project || project.orgId !== user.orgId) {
+      throw new NotFoundError('Project not found');
+    }
+
+    // Load tasks with assignees and their estimated hours
+    const tasks = await context.prisma.task.findMany({
+      where: {
+        projectId: args.projectId,
+        archived: false,
+      },
+      select: {
+        taskId: true,
+        estimatedHours: true,
+        dueDate: true,
+        createdAt: true,
+        taskAssignees: {
+          select: {
+            userId: true,
+            user: { select: { email: true } },
+          },
+        },
+      },
+    });
+
+    // Load time entries for actual hours
+    const taskIds = tasks.map((t) => t.taskId);
+    const timeEntries = taskIds.length > 0
+      ? await context.prisma.timeEntry.findMany({
+          where: {
+            taskId: { in: taskIds },
+            loggedDate: { gte: args.startDate, lte: args.endDate },
+          },
+          select: {
+            userId: true,
+            durationMinutes: true,
+            loggedDate: true,
+            user: { select: { email: true } },
+          },
+        })
+      : [];
+
+    // Build map: (userId, week) → { totalHours, taskCount, userName }
+    const cellMap = new Map<string, { userId: string; userName: string; week: string; totalHours: number; taskCount: number }>();
+
+    const getKey = (userId: string, week: string) => `${userId}::${week}`;
+
+    // Add time entries (actual hours)
+    for (const entry of timeEntries) {
+      const week = getISOWeek(entry.loggedDate);
+      const key = getKey(entry.userId, week);
+      const existing = cellMap.get(key);
+      if (existing) {
+        existing.totalHours += entry.durationMinutes / 60;
+      } else {
+        cellMap.set(key, {
+          userId: entry.userId,
+          userName: entry.user.email.split('@')[0],
+          week,
+          totalHours: entry.durationMinutes / 60,
+          taskCount: 0,
+        });
+      }
+    }
+
+    // Count tasks per user per week (using dueDate or createdAt for week assignment)
+    for (const task of tasks) {
+      const taskDate = task.dueDate ?? task.createdAt.toISOString().slice(0, 10);
+      if (taskDate < args.startDate || taskDate > args.endDate) continue;
+      const week = getISOWeek(taskDate);
+      for (const assignee of task.taskAssignees) {
+        const key = getKey(assignee.userId, week);
+        const existing = cellMap.get(key);
+        if (existing) {
+          existing.taskCount += 1;
+          // Add estimated hours if no actual time entries exist for this user/week combo
+          if (existing.totalHours === 0 && task.estimatedHours) {
+            existing.totalHours += task.estimatedHours;
+          }
+        } else {
+          cellMap.set(key, {
+            userId: assignee.userId,
+            userName: assignee.user.email.split('@')[0],
+            week,
+            totalHours: task.estimatedHours ?? 0,
+            taskCount: 1,
+          });
+        }
+      }
+    }
+
+    return Array.from(cellMap.values()).map((c) => ({
+      ...c,
+      totalHours: Math.round(c.totalHours * 100) / 100,
+    }));
   },
 };
 
