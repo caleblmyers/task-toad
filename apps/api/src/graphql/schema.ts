@@ -188,7 +188,7 @@ const SINGLE_OBJECT_FIELDS = new Set([
   // Scalar object returns
   'user', 'project', 'org', 'sprint', 'task', 'field',
   'me', 'aiUsage', 'unreadNotificationCount',
-  'projectStats', 'sprintVelocity', 'sprintBurndown', 'cycleTimeMetrics', 'cumulativeFlow', 'portfolioRollup',
+  'projectStats', 'sprintVelocity', 'sprintBurndown', 'sprintForecast', 'cycleTimeMetrics', 'cumulativeFlow', 'portfolioRollup',
   // Connection wrappers (return {items[], hasMore, total}, not a list directly)
   'tasks',
 ]);

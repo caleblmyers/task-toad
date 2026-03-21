@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CronExpressionParser } from 'cron-parser';
 import type { Context } from '../context.js';
 import { NotFoundError, ValidationError, AuthorizationError } from '../errors.js';
 import { requireProjectAccess } from './auth.js';
@@ -64,6 +65,19 @@ async function requireProjectAdmin(context: Context, projectId: string) {
   return { user, project };
 }
 
+function computeNextRunAt(cronExpression: string, timezone: string): Date {
+  try {
+    const expr = CronExpressionParser.parse(cronExpression, { tz: timezone });
+    return expr.next().toDate();
+  } catch {
+    throw new ValidationError(`Invalid cron expression: ${cronExpression}`);
+  }
+}
+
+function formatRuleDate(d: Date | null): string | null {
+  return d ? d.toISOString() : null;
+}
+
 // ── Project role queries ──
 
 export const projectRoleQueries = {
@@ -91,6 +105,8 @@ export const projectRoleQueries = {
     });
     return rules.map((r: typeof rules[number]) => ({
       ...r,
+      nextRunAt: formatRuleDate(r.nextRunAt),
+      lastRunAt: formatRuleDate(r.lastRunAt),
       createdAt: r.createdAt.toISOString(),
     }));
   },
@@ -184,7 +200,7 @@ export const projectRoleMutations = {
 
   createAutomationRule: async (
     _parent: unknown,
-    args: { projectId: string; name: string; trigger: string; action: string },
+    args: { projectId: string; name: string; trigger: string; action: string; cronExpression?: string | null; timezone?: string | null },
     context: Context,
   ) => {
     parseInput(CreateAutomationRuleInput, { name: args.name });
@@ -198,6 +214,14 @@ export const projectRoleMutations = {
     if (!actionResult.success) {
       throw new ValidationError(`Invalid action: ${actionResult.error.message}`);
     }
+
+    // Compute nextRunAt if cron expression is provided
+    const tz = args.timezone ?? 'UTC';
+    let nextRunAt: Date | null = null;
+    if (args.cronExpression) {
+      nextRunAt = computeNextRunAt(args.cronExpression, tz);
+    }
+
     const rule = await context.prisma.automationRule.create({
       data: {
         projectId: args.projectId,
@@ -205,14 +229,17 @@ export const projectRoleMutations = {
         name: args.name,
         trigger: args.trigger,
         action: args.action,
+        cronExpression: args.cronExpression ?? null,
+        timezone: tz,
+        nextRunAt,
       },
     });
-    return { ...rule, createdAt: rule.createdAt.toISOString() };
+    return { ...rule, nextRunAt: formatRuleDate(rule.nextRunAt), lastRunAt: formatRuleDate(rule.lastRunAt), createdAt: rule.createdAt.toISOString() };
   },
 
   updateAutomationRule: async (
     _parent: unknown,
-    args: { ruleId: string; name?: string | null; trigger?: string | null; action?: string | null; enabled?: boolean | null },
+    args: { ruleId: string; name?: string | null; trigger?: string | null; action?: string | null; enabled?: boolean | null; cronExpression?: string | null; timezone?: string | null },
     context: Context,
   ) => {
     const rule = await context.prisma.automationRule.findUnique({ where: { id: args.ruleId } });
@@ -235,16 +262,35 @@ export const projectRoleMutations = {
       }
     }
 
+    // Handle cron expression update
+    const data: Record<string, unknown> = {
+      ...(args.name !== undefined && args.name !== null ? { name: args.name } : {}),
+      ...(args.trigger !== undefined && args.trigger !== null ? { trigger: args.trigger } : {}),
+      ...(args.action !== undefined && args.action !== null ? { action: args.action } : {}),
+      ...(args.enabled !== undefined && args.enabled !== null ? { enabled: args.enabled } : {}),
+    };
+
+    if (args.cronExpression !== undefined) {
+      data.cronExpression = args.cronExpression;
+      const tz = args.timezone ?? rule.timezone ?? 'UTC';
+      data.timezone = tz;
+      if (args.cronExpression) {
+        data.nextRunAt = computeNextRunAt(args.cronExpression, tz);
+      } else {
+        data.nextRunAt = null;
+      }
+    } else if (args.timezone !== undefined && args.timezone !== null) {
+      data.timezone = args.timezone;
+      if (rule.cronExpression) {
+        data.nextRunAt = computeNextRunAt(rule.cronExpression, args.timezone);
+      }
+    }
+
     const updated = await context.prisma.automationRule.update({
       where: { id: args.ruleId },
-      data: {
-        ...(args.name !== undefined && args.name !== null ? { name: args.name } : {}),
-        ...(args.trigger !== undefined && args.trigger !== null ? { trigger: args.trigger } : {}),
-        ...(args.action !== undefined && args.action !== null ? { action: args.action } : {}),
-        ...(args.enabled !== undefined && args.enabled !== null ? { enabled: args.enabled } : {}),
-      },
+      data,
     });
-    return { ...updated, createdAt: updated.createdAt.toISOString() };
+    return { ...updated, nextRunAt: formatRuleDate(updated.nextRunAt), lastRunAt: formatRuleDate(updated.lastRunAt), createdAt: updated.createdAt.toISOString() };
   },
 
   deleteAutomationRule: async (

@@ -7,6 +7,7 @@ import ActivityFeed from './ActivityFeed';
 import VelocityChart from './VelocityChart';
 import BurndownChart from './BurndownChart';
 import CumulativeFlowChart from './CumulativeFlowChart';
+import SprintForecastPanel from './SprintForecastPanel';
 
 const statusColors: Record<string, string> = {
   todo: 'bg-slate-400',
@@ -195,6 +196,18 @@ export default function ProjectDashboard({ stats, activities, loading, projectId
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Sprint Velocity</p>
             <VelocityChart data={velocityData} />
+          </div>
+        )}
+
+        {/* Sprint Forecast */}
+        {closedSprints.length >= 3 && activeSprint && (
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Sprint Forecast</p>
+            <SprintForecastPanel
+              projectId={projectId}
+              sprintId={activeSprint.sprintId}
+              closedSprintCount={closedSprints.length}
+            />
           </div>
         )}
 

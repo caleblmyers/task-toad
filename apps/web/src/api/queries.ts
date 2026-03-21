@@ -439,14 +439,14 @@ export const REMOVE_TIME_OFF_MUTATION = `mutation RemoveTimeOff($userTimeOffId: 
 
 // ── Automation Rules ──
 
-export const AUTOMATION_RULES_QUERY = `query AutomationRules($projectId: ID!) { automationRules(projectId: $projectId) { id name trigger action enabled createdAt } }`;
+export const AUTOMATION_RULES_QUERY = `query AutomationRules($projectId: ID!) { automationRules(projectId: $projectId) { id name trigger action enabled cronExpression timezone nextRunAt lastRunAt createdAt } }`;
 
-export const CREATE_AUTOMATION_RULE_MUTATION = `mutation CreateRule($projectId: ID!, $name: String!, $trigger: String!, $action: String!) {
-  createAutomationRule(projectId: $projectId, name: $name, trigger: $trigger, action: $action) { id name trigger action enabled createdAt }
+export const CREATE_AUTOMATION_RULE_MUTATION = `mutation CreateRule($projectId: ID!, $name: String!, $trigger: String!, $action: String!, $cronExpression: String, $timezone: String) {
+  createAutomationRule(projectId: $projectId, name: $name, trigger: $trigger, action: $action, cronExpression: $cronExpression, timezone: $timezone) { id name trigger action enabled cronExpression timezone nextRunAt lastRunAt createdAt }
 }`;
 
 export const UPDATE_AUTOMATION_RULE_MUTATION = `mutation ToggleRule($ruleId: ID!, $enabled: Boolean) {
-  updateAutomationRule(ruleId: $ruleId, enabled: $enabled) { id name trigger action enabled createdAt }
+  updateAutomationRule(ruleId: $ruleId, enabled: $enabled) { id name trigger action enabled cronExpression timezone nextRunAt lastRunAt createdAt }
 }`;
 
 export const DELETE_AUTOMATION_RULE_MUTATION = `mutation DeleteRule($ruleId: ID!) { deleteAutomationRule(ruleId: $ruleId) }`;

@@ -82,6 +82,17 @@ export const sprintTypeDefs = /* GraphQL */ `
     days: [CumulativeFlowDay!]!
     statuses: [String!]!
   }
+
+  type ForecastPercentile {
+    percentile: Int!
+    daysRemaining: Float!
+  }
+
+  type SprintForecast {
+    completionProbability: Float!
+    percentiles: [ForecastPercentile!]!
+    historicalVelocity: [Float!]!
+  }
 `;
 
 export const sprintQueryFields = /* GraphQL */ `
@@ -95,6 +106,8 @@ export const sprintQueryFields = /* GraphQL */ `
   cycleTimeMetrics(projectId: ID!, sprintId: ID, fromDate: String, toDate: String): ProjectCycleMetrics!
   """Get WIP status for each column in a sprint."""
   sprintWipStatus(sprintId: ID!): [WipStatus!]!
+  """Get Monte Carlo sprint completion forecast."""
+  sprintForecast(projectId: ID!, sprintId: ID!, simulationCount: Int): SprintForecast!
   """Get cumulative flow diagram data for a project."""
   cumulativeFlow(projectId: ID!, sprintId: ID, fromDate: String, toDate: String): CumulativeFlowData!
 `;

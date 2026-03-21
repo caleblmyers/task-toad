@@ -10,6 +10,7 @@ import { requirePermission, Permission } from '../../auth/permissions.js';
 import { StringArraySchema } from '../../utils/zodSchemas.js';
 import { createChildLogger } from '../../utils/logger.js';
 import { getEventBus } from '../../infrastructure/eventbus/index.js';
+import { runMonteCarloForecast } from '../../utils/monteCarloForecast.js';
 
 const log = createChildLogger('sprint');
 
@@ -67,6 +68,75 @@ export const sprintQueries = {
         pointsTotal: tasks.reduce((s: number, t: { storyPoints: number | null }) => s + (t.storyPoints ?? 0), 0),
       };
     });
+  },
+
+  sprintForecast: async (
+    _parent: unknown,
+    args: { projectId: string; sprintId: string; simulationCount?: number | null },
+    context: Context,
+  ) => {
+    const { user } = await requireProjectAccess(context, args.projectId);
+
+    // Load the target sprint
+    const sprint = await context.prisma.sprint.findUnique({ where: { sprintId: args.sprintId } });
+    if (!sprint || sprint.orgId !== user.orgId || sprint.projectId !== args.projectId) {
+      throw new NotFoundError('Sprint not found');
+    }
+    if (!sprint.endDate) {
+      throw new ValidationError('Sprint must have an end date for forecasting');
+    }
+
+    // Remaining work in the sprint (story points, fallback to task count)
+    const sprintTasks = await context.prisma.task.findMany({
+      where: { sprintId: args.sprintId, taskType: { not: 'epic' }, OR: [{ parentTaskId: null }, { parentTask: { taskType: 'epic' } }] },
+      select: { status: true, storyPoints: true },
+    });
+    const incompleteTasks = sprintTasks.filter((t) => t.status !== 'done');
+    const usePoints = sprintTasks.some((t) => t.storyPoints != null && t.storyPoints > 0);
+    const remainingWork = usePoints
+      ? incompleteTasks.reduce((s, t) => s + (t.storyPoints ?? 0), 0)
+      : incompleteTasks.length;
+
+    // Days left until sprint end
+    const now = new Date();
+    const endDate = new Date(sprint.endDate + 'T23:59:59');
+    const daysLeft = Math.max(0, Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+
+    // Load historical velocity from closed sprints
+    const closedSprints = await context.prisma.sprint.findMany({
+      where: { projectId: args.projectId, orgId: user.orgId, closedAt: { not: null }, sprintId: { not: args.sprintId } },
+      orderBy: { closedAt: 'desc' },
+      take: 20,
+    });
+
+    const velocities: number[] = [];
+    const sprintLengths: number[] = [];
+
+    for (const cs of closedSprints) {
+      const tasks = await context.loaders.sprintTasks.load(cs.sprintId);
+      const doneTasks = (tasks ?? []).filter((t: { status: string }) => t.status === 'done');
+      const velocity = usePoints
+        ? doneTasks.reduce((s: number, t: { storyPoints: number | null }) => s + (t.storyPoints ?? 0), 0)
+        : doneTasks.length;
+      velocities.push(velocity);
+
+      // Calculate sprint length in days
+      if (cs.startDate && cs.endDate) {
+        const start = new Date(cs.startDate);
+        const end = new Date(cs.endDate);
+        sprintLengths.push(Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))));
+      } else {
+        sprintLengths.push(14); // default 2 weeks
+      }
+    }
+
+    return runMonteCarloForecast(
+      remainingWork,
+      daysLeft,
+      velocities,
+      sprintLengths,
+      args.simulationCount ?? 1000,
+    );
   },
 
   cycleTimeMetrics: async (

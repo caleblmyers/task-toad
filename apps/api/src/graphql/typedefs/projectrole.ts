@@ -31,6 +31,10 @@ export const projectRoleTypeDefs = /* GraphQL */ `
     trigger: String!
     action: String!
     enabled: Boolean!
+    cronExpression: String
+    timezone: String
+    nextRunAt: String
+    lastRunAt: String
     createdAt: String!
   }
 `;
@@ -50,9 +54,9 @@ export const projectRoleMutationFields = /* GraphQL */ `
   """Update a project member's role."""
   updateProjectMemberRole(projectId: ID!, userId: ID!, role: String!): ProjectMember!
   """Create a new automation rule for a project."""
-  createAutomationRule(projectId: ID!, name: String!, trigger: String!, action: String!): AutomationRule!
+  createAutomationRule(projectId: ID!, name: String!, trigger: String!, action: String!, cronExpression: String, timezone: String): AutomationRule!
   """Update an existing automation rule's properties."""
-  updateAutomationRule(ruleId: ID!, name: String, trigger: String, action: String, enabled: Boolean): AutomationRule!
+  updateAutomationRule(ruleId: ID!, name: String, trigger: String, action: String, enabled: Boolean, cronExpression: String, timezone: String): AutomationRule!
   """Delete an automation rule."""
   deleteAutomationRule(ruleId: ID!): Boolean!
 `;
