@@ -693,7 +693,7 @@ export const generationMutations = {
       taskTitle: task.title,
       taskDescription: task.description ?? '',
       taskInstructions: task.instructions ?? undefined,
-      acceptanceCriteria: (task as Record<string, unknown>).acceptanceCriteria as string | undefined,
+      acceptanceCriteria: task.acceptanceCriteria ?? undefined,
       diff,
       projectName: project.name,
       repoContext: relevantFiles,
@@ -869,7 +869,7 @@ export const generationMutations = {
   },
 
   refreshRepoProfile: async (_parent: unknown, args: { projectId: string }, context: Context) => {
-    const { project: _project } = await requireProject(context, args.projectId);
+    const { user, project: _project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
     await enforceBudget(context);
     const repo = await getProjectRepo(args.projectId);
@@ -894,6 +894,33 @@ export const generationMutations = {
       languages: [...languageSet],
     }, plc);
 
+    // Store as KnowledgeEntry (primary) — upsert by finding existing auto-generated profile
+    const existingEntry = await context.prisma.knowledgeEntry.findFirst({
+      where: {
+        projectId: args.projectId,
+        source: 'learned',
+        title: 'Repository Profile (auto-generated)',
+      },
+    });
+    if (existingEntry) {
+      await context.prisma.knowledgeEntry.update({
+        where: { knowledgeEntryId: existingEntry.knowledgeEntryId },
+        data: { content: profile },
+      });
+    } else {
+      await context.prisma.knowledgeEntry.create({
+        data: {
+          projectId: args.projectId,
+          orgId: user.orgId,
+          title: 'Repository Profile (auto-generated)',
+          content: profile,
+          source: 'learned',
+          category: 'standard',
+        },
+      });
+    }
+
+    // Still update legacy field for backward compat
     return context.prisma.project.update({
       where: { projectId: args.projectId },
       data: { knowledgeBase: profile },
@@ -1014,7 +1041,7 @@ export const generationMutations = {
       project.description ?? '',
       knowledgeBase,
       repoFiles,
-      (task as Record<string, unknown>).acceptanceCriteria as string | undefined,
+      task.acceptanceCriteria ?? undefined,
       plc
     );
   },

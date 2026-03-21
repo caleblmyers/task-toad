@@ -53,9 +53,7 @@ export const taskInsightFieldResolvers = {
       _args: unknown,
       context: Context
     ) => {
-      return context.prisma.task.findUnique({
-        where: { taskId: parent.sourceTaskId },
-      });
+      return context.loaders.taskById.load(parent.sourceTaskId);
     },
     targetTask: async (
       parent: { targetTaskId: string | null },
@@ -63,9 +61,7 @@ export const taskInsightFieldResolvers = {
       context: Context
     ) => {
       if (!parent.targetTaskId) return null;
-      return context.prisma.task.findUnique({
-        where: { taskId: parent.targetTaskId },
-      });
+      return context.loaders.taskById.load(parent.targetTaskId);
     },
   },
 };
