@@ -4,6 +4,39 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-21 (timesheet + approvals + follow-up polish)
+
+### Wave 48: Timesheet, Approval Workflows & Follow-up Polish (3 workers, 3 tasks)
+
+**Worker 1 — task-001: Timesheet View:**
+- `timesheetData(projectId, userId?, weekStart)` query returns weekly grid with per-task per-day time entries, row/column totals.
+- `TimesheetView.tsx` — 7-day grid (task rows × Mon-Sun columns + Total), inline hour editing (click cell → input → blur upserts TimeEntry), week navigation (prev/next), user filter dropdown, today column highlight.
+- Wired into ProjectDetail as a lazy-loaded "Timesheet" tab.
+
+**Worker 2 — task-002: Approval Workflows:**
+- New `Approval` model (taskId, orgId, requestedById, approverId?, fromStatus, toStatus, status pending/approved/rejected, comment?, decidedAt?). Migration: `add_approvals`.
+- `updateTask` resolver checks WorkflowTransition conditions — if `requiresApproval: true`, creates Approval record instead of changing status, returns warning.
+- `approveTransition` mutation: marks approved, executes the pending status change. `rejectTransition`: marks rejected, task stays.
+- `pendingApprovals(projectId)` and `taskApprovals(taskId)` queries.
+- TaskDetailPanel shows pending approval badge with approve/reject for authorized users. `PendingApprovalsPanel.tsx` accessible from project toolbar.
+
+**Worker 3 — task-003: Follow-up Polish (5 items):**
+- Release burndown tests: `releaseBurndown.test.ts` — 5+ edge case tests (no tasks, all done, no activities, mixed status, released release).
+- Cycle time control chart mode: Table/Scatter/Control toggle — rolling 10-task average line + ±2σ standard deviation bands.
+- Workload heatmap display names: resolver + TimeEntryList use `user.displayName || email.split('@')[0]`.
+- Auto-tracking multi-assignee: duration split evenly across all TaskAssignee entries.
+- Auto-tracking listener tests: `timeTrackingListener.test.ts` — 5+ tests (in_progress→done, todo→in_progress no-op, revert, multi-assignee split, no activity graceful).
+
+**Process:** task-002 sent back once for rebase conflict with task-001 in ProjectDetail.tsx. All tasks passed typecheck/lint/build on first attempt. Pre-existing integration test flakiness noted (FK violations, deadlocks) — not from Wave 48.
+
+**Open follow-ups:**
+- Timesheet: delete entry on 0 hours, keyboard cell navigation, display names in user filter
+- Approval workflows: SSE notification, approval history/audit log, configurable approvers per transition
+- Control chart: configurable rolling window size
+- Fix flaky integration tests (FK violations, deadlocks, unique constraints)
+
+---
+
 ## 2026-03-21 (P2 visualizations + productivity + polish)
 
 ### Wave 47: P2 Charts, Auto-Tracking, Workload Heatmap & Polish (3 workers, 3 tasks)
@@ -159,45 +192,9 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-03-21 (security phase 3+4)
-
-### Wave 43: Security Phase 3+4 — Medium & Low Fixes (3 workers, 4 tasks)
-
-**Worker 1 — task-001: GraphQL Security Hardening (M-1, M-5, M-8, L-8):**
-- M-1: Disabled GraphQL introspection in production via `NoSchemaIntrospectionCustomRule` from `graphql` package, conditionally added when `NODE_ENV=production`. GraphiQL UI also disabled in prod.
-- L-8: Reduced depth limit from 10 to 7 in `depthLimitRule()`.
-- M-5: Scoped DataLoaders by orgId — changed `createLoaders(prisma)` to `createLoaders(prisma, orgId)`. Added orgId filtering to 8 loaders (taskById, projectById, sprintById, userById, taskChildren, taskProgress, sprintTasks, knowledgeEntriesByProject). Join-table loaders skipped (documented as defense-in-depth via parent entity validation). Context.ts restructured to create loaders after user is determined.
-- M-8: Added orgId validation to `updateFilter` and `deleteFilter` — queries now include `project: { orgId: user.orgId }` in WHERE clause.
-
-**Worker 2 — task-002: Export, Webhook & Input Validation (M-3, M-7, M-9, M-10, L-7):**
-- M-3: Sanitized Content-Disposition filenames via `sanitizeFilename()` — strips non-alphanumeric chars, caps at 100 chars. Applied to all 4 export endpoints.
-- M-7: Added `?redactEmails=true` query param to export endpoints — masks emails as `u***@domain.com`. Default behavior unchanged (full emails).
-- M-9: Added Zod input validation schemas for 5 mutations lacking them: `CreateSprintInput`, `CreateLabelInput`, `CreateCustomFieldInput`, `CreateKnowledgeEntryInput`, `CreateAutomationRuleInput`. Wired via `parseInput()` in respective resolvers.
-- M-10: Added `X-Webhook-Delivery-ID` header (delivery UUID) to outgoing webhook requests in `webhookDispatcher.ts`.
-- L-7: Added 100-item cap to `bulkUpdateTasks` — throws `ValidationError` if `taskIds.length > 100`.
-
-**Worker 3 — task-003: AI Rate Limiting + Audit Logging (M-2, M-6):**
-- M-2: Created `utils/aiRateLimiter.ts` — counts `AIPromptLog` entries per org in last hour, throws if exceeding limit (default 60/hour, configurable via `AI_RATE_LIMIT_PER_HOUR`). Wired into `callAndParse` in aiService.ts before AI API call.
-- M-6: Created `utils/auditLog.ts` — fire-and-forget Activity creation for sensitive ops. Added to: `setOrgApiKey`, `setAIBudget`, `inviteOrgMember` (org.ts), `revokeInvite`, `logout` (auth.ts). Failures caught and logged, never break the operation.
-
-**Worker 3 — task-004: Auth & Low Fixes (L-2, L-3, L-4, L-10):**
-- L-2: Signup returns identical response whether email exists or not — prevents email enumeration. Verification email only sent for new accounts. Updated integration test that previously asserted `ConflictError` for duplicates.
-- L-3: URL-encoded GitHub file path segments in API calls (`path.split('/').map(encodeURIComponent).join('/')`).
-- L-4: ErrorBoundary `console.error` now dev-only (`import.meta.env.DEV`). Production errors silently caught (Sentry frontend not yet configured).
-- L-10: Disabled Anthropic SDK auto-retries (`maxRetries: 0`) and/or capped any Retry-After parsing to 3600 seconds max.
-
-**Process:** 3 independent tasks merged on first try with no conflicts. task-004 rejected once — worker changed signup behavior without updating the existing test that asserted the old behavior. Fixed and re-merged with ~5 min delay.
-
-**Open follow-ups:**
-- Integration tests for AI rate limiter, audit logging, email anti-enumeration, export redaction, bulk cap
-- M-7: Consider making email redaction default with admin opt-out
-- Sentry frontend integration for ErrorBoundary (currently just suppresses console.error in prod)
-- AI rate limiter uses COUNT query per request — consider in-memory cache for high-throughput orgs
-- Anthropic SDK maxRetries=0 disables automatic retry on transient errors — consider app-level retry with capped backoff
-
----
-
 ## Older Entries (one-line summaries)
+
+- **2026-03-21** — Wave 43: Security Phase 3+4 — 9 Medium + 6 Low fixes (introspection, DataLoader orgId, input validation, AI rate limiter, audit logging, email anti-enum, GitHub path encoding, export redaction, webhook delivery ID, bulk cap).
 
 - **2026-03-21** — Wave 42: Security Phase 2 — JWT→HttpOnly cookies, CSRF protection, webhook/Slack encryption, invite token hashing, pagination caps, re-auth for sensitive ops. All 8 High items resolved.
 - **2026-03-20** — Wave 41: Execution dashboard (plan list, stat cards, SSE real-time), insight review UI + toast notifications, manual task specs + auto-start project.

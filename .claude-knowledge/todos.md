@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-Production deployed at `https://tasktoad-api-production.up.railway.app`. 47 swarm waves completed. Security audit: 38 of 39 findings resolved (97%). All P1 features complete. 5 P2 features shipped. Zero lint warnings. 299 tests.
+Production deployed at `https://tasktoad-api-production.up.railway.app`. 48 swarm waves completed. Security: 38/39 (97%). All P1 complete. 8 P2 features shipped (timesheet, approvals, charts, tracking, heatmap). Zero lint warnings. 314 tests.
 
 ---
 
@@ -153,6 +153,7 @@ Full report: `.claude-knowledge/security-audit.md`
 - [ ] merge-worker.sh: fix squash merge deleting files from previously-merged tasks (use cherry-pick instead when worker has diverged)
 - [ ] merge-worker.sh: fix script treating lint warnings as failures
 - [ ] Swarm task descriptions: call out "update existing tests" when changing observable API behavior
+- [ ] Swarm planning: when multiple tasks touch shared layout files (ProjectDetail, ProjectToolbar), set up dependencies or assign to same worker
 
 ---
 
@@ -167,19 +168,27 @@ Full report: `.claude-knowledge/security-audit.md`
 - [x] Monte Carlo forecasting — velocity-based sprint completion probability *(Wave 46)*
 - [x] Cycle time scatter / control chart — percentile overlay lines *(Wave 47)*
 - [ ] Query language (TQL) — PEG parser → FilterGroup
-- [ ] Approval workflows — Approval model, workflow transition triggers
+- [x] Approval workflows — Approval model, workflow transition triggers *(Wave 48)*
 - [x] Scheduled automation triggers — cron on AutomationRule *(Wave 46)*
 - [x] Workload heatmap — assignee × week calendar grid *(Wave 47)*
 - [ ] Cross-project initiatives — Initiative model + portfolio tracking
 - [x] Auto-tracking from status transitions — TimeEntry with autoTracked *(Wave 47)*
-- [ ] Timesheet view — weekly grid
+- [x] Timesheet view — weekly grid *(Wave 48)*
 - [ ] Workflow-based permissions — allowedRoles on WorkflowTransition
 - [ ] Field-level edit restrictions — FieldPermission per project
-- [ ] Release burndown — tests for releaseBurndown resolver (edge cases: no tasks, all done, release with no activities)
-- [ ] Cycle time scatter — control chart mode (rolling average line, standard deviation bands)
-- [ ] Workload heatmap — use display name instead of email prefix for userName
-- [ ] Auto-tracking — handle re-assignment during in_progress (currently uses single assigneeId, should respect multi-assignee)
-- [ ] Auto-tracking — tests for timeTrackingListener (mock event bus + prisma)
+- [x] Release burndown — tests for releaseBurndown resolver (edge cases: no tasks, all done, release with no activities) *(Wave 48)*
+- [x] Cycle time scatter — control chart mode (rolling average line, standard deviation bands) *(Wave 48)*
+- [x] Workload heatmap — use display name instead of email prefix for userName *(Wave 48)*
+- [x] Auto-tracking — handle re-assignment during in_progress (multi-assignee split) *(Wave 48)*
+- [x] Auto-tracking — tests for timeTrackingListener (mock event bus + prisma) *(Wave 48)*
+- [ ] Timesheet — delete time entry when setting hours to 0 (currently no-op)
+- [ ] Timesheet — keyboard navigation between cells (Tab/arrow keys)
+- [ ] Timesheet — show display names in user filter dropdown (currently shows email)
+- [ ] Approval workflows — SSE notification when approval is requested
+- [ ] Approval workflows — approval history/audit log in task detail
+- [ ] Approval workflows — configurable approvers per transition (currently any MANAGE_PROJECT_SETTINGS user)
+- [ ] Control chart — configurable rolling window size (currently hardcoded to 10)
+- [ ] Fix flaky integration tests — FK violations, deadlocks, unique constraints in e2e/notification/security/sprint tests
 
 ---
 
@@ -202,5 +211,6 @@ Full report: `.claude-knowledge/security-audit.md`
 | 45 | 2026-03-21 | P1 features (SLA, multi-action automation, compound conditions), L-5 session limit, backend+frontend polish |
 | 46 | 2026-03-21 | Code quality (SLA perms, prisma casts, Sentry web, 0 lint warnings), unit tests (3 suites), P2 (Monte Carlo forecasting, cron automation) |
 | 47 | 2026-03-21 | P2 features (cycle time scatter, release burndown, auto-tracking, workload heatmap), polish batch (cron shutdown, SLA checker, Monte Carlo tests, forecast skeleton, Sentry guard) |
+| 48 | 2026-03-21 | P2 features (timesheet view, approval workflows), follow-up polish (burndown tests, control chart, heatmap names, auto-tracking multi-assignee + tests) |
 
 Full wave details in `changelog.md`.
