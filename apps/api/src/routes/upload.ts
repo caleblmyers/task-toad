@@ -4,7 +4,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import rateLimit from 'express-rate-limit';
 import { jwtVerify } from 'jose';
-import { fromBuffer as fileTypeFromBuffer, fromFile as fileTypeFromFile } from 'file-type';
+import fileType from 'file-type';
 import { JWT_SECRET } from '../graphql/context.js';
 import { getPrisma } from './sharedPrisma.js';
 import {
@@ -150,9 +150,9 @@ router.post('/:taskId', requireAuth, uploadLimiter, upload.single('file'), async
     // M-4: Validate file magic bytes against declared MIME type
     if (!TEXT_MIME_TYPES.has(req.file.mimetype)) {
       const detectedType = req.file.buffer
-        ? await fileTypeFromBuffer(req.file.buffer)
+        ? await fileType.fromBuffer(req.file.buffer)
         : req.file.path
-          ? await fileTypeFromFile(req.file.path)
+          ? await fileType.fromFile(req.file.path)
           : undefined;
 
       if (detectedType) {
