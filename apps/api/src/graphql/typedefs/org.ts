@@ -25,6 +25,6 @@ export const orgQueryFields = /* GraphQL */ `
 
 export const orgMutationFields = /* GraphQL */ `
   createOrg(name: String!, apiKey: String): Org!
-  setOrgApiKey(apiKey: String!): Org!
+  setOrgApiKey(apiKey: String!, confirmPassword: String!): Org!
   setAIBudget(monthlyBudgetCentsUSD: Int, alertThreshold: Int, budgetEnforcement: String, promptLoggingEnabled: Boolean): Org!
 `;

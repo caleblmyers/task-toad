@@ -36,12 +36,12 @@ export default function OrgSettings() {
 
   // API Key form
   const apiKeyForm = useFormState(
-    { apiKey: '' as string },
+    { apiKey: '' as string, confirmPassword: '' as string },
     async (values) => {
-      if (!values.apiKey.trim()) return;
+      if (!values.apiKey.trim() || !values.confirmPassword) return;
       const data = await gql<{ setOrgApiKey: Org }>(
         SET_ORG_API_KEY_MUTATION,
-        { apiKey: values.apiKey.trim() }
+        { apiKey: values.apiKey.trim(), confirmPassword: values.confirmPassword }
       );
       setOrg(data.setOrgApiKey);
     },
@@ -219,10 +219,17 @@ export default function OrgSettings() {
                     error={apiKeyForm.error ?? undefined}
                     className="font-mono"
                   />
+                  <Input
+                    label="Confirm your password"
+                    type="password"
+                    placeholder="Enter your password"
+                    value={apiKeyForm.values.confirmPassword}
+                    onChange={(e) => apiKeyForm.setValue('confirmPassword', e.target.value)}
+                  />
                   {apiKeyForm.success && <p className="text-sm text-green-600">API key saved.</p>}
                   <button
                     type="submit"
-                    disabled={apiKeyForm.loading || !apiKeyForm.values.apiKey.trim()}
+                    disabled={apiKeyForm.loading || !apiKeyForm.values.apiKey.trim() || !apiKeyForm.values.confirmPassword}
                     className="px-4 py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {apiKeyForm.loading ? 'Saving…' : 'Save'}

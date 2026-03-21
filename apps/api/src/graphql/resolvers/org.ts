@@ -1,6 +1,7 @@
+import bcrypt from 'bcryptjs';
 import type { Context } from '../context.js';
 import { encryptApiKey, decryptApiKey } from '../../utils/encryption.js';
-import { AuthorizationError, ValidationError } from '../errors.js';
+import { AuthenticationError, AuthorizationError, ValidationError } from '../errors.js';
 import { requireAuth, requireOrg } from './auth.js';
 
 // ── Org queries ──
@@ -55,11 +56,18 @@ export const orgMutations = {
     return org;
   },
 
-  setOrgApiKey: async (_parent: unknown, args: { apiKey: string }, context: Context) => {
+  setOrgApiKey: async (_parent: unknown, args: { apiKey: string; confirmPassword: string }, context: Context) => {
     const user = requireOrg(context);
     if (user.role !== 'org:admin') {
       throw new AuthorizationError('Admin role required');
     }
+    const dbUser = await context.prisma.user.findUnique({
+      where: { userId: user.userId },
+      select: { passwordHash: true },
+    });
+    if (!dbUser) throw new AuthenticationError('User not found');
+    const valid = await bcrypt.compare(args.confirmPassword, dbUser.passwordHash);
+    if (!valid) throw new AuthenticationError('Invalid password');
     return context.prisma.org.update({
       where: { orgId: user.orgId },
       data: { anthropicApiKeyEncrypted: encryptApiKey(args.apiKey) },

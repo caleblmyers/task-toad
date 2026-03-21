@@ -21,9 +21,7 @@ export const LOCK_IDS = {
  */
 export async function tryAdvisoryLock(prisma: PrismaClient, lockId: number): Promise<boolean> {
   try {
-    const result = await prisma.$queryRawUnsafe<Array<{ pg_try_advisory_lock: boolean }>>(
-      `SELECT pg_try_advisory_lock(${lockId})`,
-    );
+    const result = await prisma.$queryRaw<Array<{ pg_try_advisory_lock: boolean }>>`SELECT pg_try_advisory_lock(${lockId})`;
     return result[0]?.pg_try_advisory_lock === true;
   } catch (err) {
     log.warn({ err, lockId }, 'Failed to acquire advisory lock');
@@ -36,7 +34,7 @@ export async function tryAdvisoryLock(prisma: PrismaClient, lockId: number): Pro
  */
 export async function releaseAdvisoryLock(prisma: PrismaClient, lockId: number): Promise<void> {
   try {
-    await prisma.$queryRawUnsafe(`SELECT pg_advisory_unlock(${lockId})`);
+    await prisma.$queryRaw`SELECT pg_advisory_unlock(${lockId})`;
   } catch (err) {
     log.warn({ err, lockId }, 'Failed to release advisory lock');
   }

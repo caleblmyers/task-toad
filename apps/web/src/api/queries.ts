@@ -639,7 +639,7 @@ export const ORG_INVITES_QUERY = `query { orgInvites { inviteId email role expir
 
 export const GITHUB_INSTALLATIONS_QUERY = `query { githubInstallations { installationId accountLogin accountType orgId createdAt } }`;
 
-export const SET_ORG_API_KEY_MUTATION = `mutation SetOrgApiKey($apiKey: String!) { setOrgApiKey(apiKey: $apiKey) { orgId name hasApiKey apiKeyHint } }`;
+export const SET_ORG_API_KEY_MUTATION = `mutation SetOrgApiKey($apiKey: String!, $confirmPassword: String!) { setOrgApiKey(apiKey: $apiKey, confirmPassword: $confirmPassword) { orgId name hasApiKey apiKeyHint } }`;
 
 export const INVITE_ORG_MEMBER_MUTATION = `mutation InviteOrgMember($email: String!, $role: String) {
   inviteOrgMember(email: $email, role: $role)
