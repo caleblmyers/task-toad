@@ -91,8 +91,10 @@ Browser → Vite dev server (localhost:5173)
 | Event bus (typed domain events) | `apps/api/src/infrastructure/eventbus/` |
 | Auto-complete orchestrator listener | `apps/api/src/infrastructure/listeners/orchestratorListener.ts` |
 | Auth context (JWT verify) | `apps/api/src/graphql/context.ts` |
-| DataLoaders (N+1 prevention) | `apps/api/src/graphql/loaders.ts` |
+| DataLoaders (N+1, orgId-scoped) | `apps/api/src/graphql/loaders.ts` |
 | AES-256-GCM encryption util | `apps/api/src/utils/encryption.ts` |
+| Per-org AI rate limiter | `apps/api/src/utils/aiRateLimiter.ts` |
+| Audit logging (fire-and-forget) | `apps/api/src/utils/auditLog.ts` |
 | Prometheus metrics (prom-client) | `apps/api/src/utils/metrics.ts` |
 | Structured logging (pino) | `apps/api/src/utils/logger.ts` |
 | SSE manager (real-time events) | `apps/api/src/utils/sseManager.ts` |
@@ -150,6 +152,7 @@ Browser → Vite dev server (localhost:5173)
 - `CORS_ORIGINS` — comma-separated allowed origins (defaults to `http://localhost:5173`)
 - `LOG_LEVEL` — pino log level (defaults to `info`)
 - `SENTRY_DSN` — optional Sentry error tracking DSN
+- `AI_RATE_LIMIT_PER_HOUR` — per-org AI request limit (defaults to `60`)
 
 **Web** (`apps/web/.env`):
 - `VITE_API_URL` — set to `/api` in dev (Vite proxy strips prefix and forwards to `:3001`)

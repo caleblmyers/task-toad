@@ -4,6 +4,44 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-21 (security phase 3+4)
+
+### Wave 43: Security Phase 3+4 — Medium & Low Fixes (3 workers, 4 tasks)
+
+**Worker 1 — task-001: GraphQL Security Hardening (M-1, M-5, M-8, L-8):**
+- M-1: Disabled GraphQL introspection in production via `NoSchemaIntrospectionCustomRule` from `graphql` package, conditionally added when `NODE_ENV=production`. GraphiQL UI also disabled in prod.
+- L-8: Reduced depth limit from 10 to 7 in `depthLimitRule()`.
+- M-5: Scoped DataLoaders by orgId — changed `createLoaders(prisma)` to `createLoaders(prisma, orgId)`. Added orgId filtering to 8 loaders (taskById, projectById, sprintById, userById, taskChildren, taskProgress, sprintTasks, knowledgeEntriesByProject). Join-table loaders skipped (documented as defense-in-depth via parent entity validation). Context.ts restructured to create loaders after user is determined.
+- M-8: Added orgId validation to `updateFilter` and `deleteFilter` — queries now include `project: { orgId: user.orgId }` in WHERE clause.
+
+**Worker 2 — task-002: Export, Webhook & Input Validation (M-3, M-7, M-9, M-10, L-7):**
+- M-3: Sanitized Content-Disposition filenames via `sanitizeFilename()` — strips non-alphanumeric chars, caps at 100 chars. Applied to all 4 export endpoints.
+- M-7: Added `?redactEmails=true` query param to export endpoints — masks emails as `u***@domain.com`. Default behavior unchanged (full emails).
+- M-9: Added Zod input validation schemas for 5 mutations lacking them: `CreateSprintInput`, `CreateLabelInput`, `CreateCustomFieldInput`, `CreateKnowledgeEntryInput`, `CreateAutomationRuleInput`. Wired via `parseInput()` in respective resolvers.
+- M-10: Added `X-Webhook-Delivery-ID` header (delivery UUID) to outgoing webhook requests in `webhookDispatcher.ts`.
+- L-7: Added 100-item cap to `bulkUpdateTasks` — throws `ValidationError` if `taskIds.length > 100`.
+
+**Worker 3 — task-003: AI Rate Limiting + Audit Logging (M-2, M-6):**
+- M-2: Created `utils/aiRateLimiter.ts` — counts `AIPromptLog` entries per org in last hour, throws if exceeding limit (default 60/hour, configurable via `AI_RATE_LIMIT_PER_HOUR`). Wired into `callAndParse` in aiService.ts before AI API call.
+- M-6: Created `utils/auditLog.ts` — fire-and-forget Activity creation for sensitive ops. Added to: `setOrgApiKey`, `setAIBudget`, `inviteOrgMember` (org.ts), `revokeInvite`, `logout` (auth.ts). Failures caught and logged, never break the operation.
+
+**Worker 3 — task-004: Auth & Low Fixes (L-2, L-3, L-4, L-10):**
+- L-2: Signup returns identical response whether email exists or not — prevents email enumeration. Verification email only sent for new accounts. Updated integration test that previously asserted `ConflictError` for duplicates.
+- L-3: URL-encoded GitHub file path segments in API calls (`path.split('/').map(encodeURIComponent).join('/')`).
+- L-4: ErrorBoundary `console.error` now dev-only (`import.meta.env.DEV`). Production errors silently caught (Sentry frontend not yet configured).
+- L-10: Disabled Anthropic SDK auto-retries (`maxRetries: 0`) and/or capped any Retry-After parsing to 3600 seconds max.
+
+**Process:** 3 independent tasks merged on first try with no conflicts. task-004 rejected once — worker changed signup behavior without updating the existing test that asserted the old behavior. Fixed and re-merged with ~5 min delay.
+
+**Open follow-ups:**
+- Integration tests for AI rate limiter, audit logging, email anti-enumeration, export redaction, bulk cap
+- M-7: Consider making email redaction default with admin opt-out
+- Sentry frontend integration for ErrorBoundary (currently just suppresses console.error in prod)
+- AI rate limiter uses COUNT query per request — consider in-memory cache for high-throughput orgs
+- Anthropic SDK maxRetries=0 disables automatic retry on transient errors — consider app-level retry with capped backoff
+
+---
+
 ## 2026-03-21 (security phase 2)
 
 ### Wave 42: Security Phase 2 — Auth Hardening (3 workers, 5 tasks)
@@ -154,36 +192,9 @@ Full pipeline: KB context → onboarding interview → hierarchical planning →
 
 ---
 
-### Wave 38: Auto-Complete Redesign — Intelligent Planning (3 workers, 6 tasks)
-
-**Worker 1 — 3-A: Hierarchical Plan Generation:**
-- `HierarchicalPlanResponseSchema` Zod schema: 3-level structure (epics→tasks→subtasks) with `dependsOn: Array<{title, linkType}>` for typed dependency inference
-- `buildHierarchicalPlanPrompt` prompt builder with `userInput()` safety, deduplication, KB context
-- `generateHierarchicalPlan` AI service function + `generateHierarchicalPlan` AIFeature + FEATURE_CONFIG (32K tokens, 24h cache)
-- `previewHierarchicalPlan` GraphQL query — loads project, fetches KB via `retrieveRelevantKnowledge`, calls AI, returns preview
-- `HierarchicalEpicPreview`, `HierarchicalTaskPreview`, `HierarchicalSubtaskPreview`, `DependencyRef` GraphQL types
-
-**Worker 2 — 3-B: Plan Commit + Batch Cycle Detection:**
-- `batchDetectCycles()` in `cyclicDependencyCheck.ts` — validates all proposed edges against existing graph + each other in-memory, normalizes `is_blocked_by` to `blocks` direction, skips non-blocking types
-- `commitHierarchicalPlan` mutation — creates 3-level hierarchy in `prisma.$transaction`, resolves `dependsOn` titles to IDs, calls `batchDetectCycles` before creating `TaskDependency` records, respects `autoComplete` toggles
-- `CommitHierarchicalEpicInput`, `CommitHierarchicalTaskInput`, `CommitHierarchicalSubtaskInput`, `DependencyRefInput` GraphQL input types
-
-**Worker 3 — 3-C: Plan Editor UI:**
-- `HierarchicalPlanEditor.tsx` — recursive tree view with depth-based indentation, expand/collapse, inline title editing (click→input→blur/Enter/Escape), autoComplete toggle checkboxes, priority badges, dependency count badges, delete buttons, HTML5 drag-to-reorder within same level
-- `HierarchicalPlanDialog.tsx` — 3-state modal (prompt input → editing → committing), Generate/Regenerate/Commit flow
-- `PlanDependencyEditor.tsx` — inline dependency picker with search, link type dropdown (blocks/informs)
-- GraphQL queries added to `queries.ts`, triggered from ProjectToolbar overflow menu
-
-**Process:** One rebase needed (task-004 conflicted with task-002 in typedefs). Zero code quality rejections. Worker-3 defined local TypeScript interfaces to avoid backend dependency — merged independently.
-
-**Open follow-ups:**
-- PlanDependencyEditor not wired into node rendering (badges show count but don't open editor on click)
-- HierarchicalPlanDialog missing feedback textarea for "Regenerate with feedback"
-- Exhaustive-deps lint warning in HierarchicalPlanEditor useEffect
-- Missing aria-labels on expand/collapse and delete buttons
-- No integration tests for preview/commit resolvers or unit tests for batchDetectCycles
-
 ## Older Entries (one-line summaries)
+
+- **2026-03-20** — Wave 38: Hierarchical plan generation (3-level epics→tasks→subtasks), batch cycle detection, plan editor UI (tree view, drag-to-reorder, dependency picker).
 
 - **2026-03-20** — Wave 37: KB panel (CRUD + file upload), onboarding interview wizard, KB context injection into action pipeline.
 - **2026-03-20** — Wave 36: KnowledgeEntry model + CRUD, AI-based KB retrieval, autoComplete flag + informs link type.
