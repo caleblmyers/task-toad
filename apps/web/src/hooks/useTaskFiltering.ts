@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Task } from '../types';
 import type { FilterGroupInput } from '../components/shared/FilterBuilder';
+import { isTQLQuery } from '../utils/tqlHelpers';
 
 export type { FilterGroupInput };
 
@@ -118,9 +119,7 @@ export function useTaskFiltering(tasks: Task[]): TaskFiltering {
     }
 
     if (debouncedSearch.trim()) {
-      // Detect TQL syntax: if the search contains a field:value pattern, treat as TQL
-      const isTQL = /(?:^|\s)(?:NOT\s+)?-?[a-zA-Z]+[:><=]/.test(debouncedSearch.trim());
-      if (isTQL) {
+      if (isTQLQuery(debouncedSearch.trim())) {
         filter.tql = debouncedSearch.trim();
       } else {
         filter.search = debouncedSearch.trim();

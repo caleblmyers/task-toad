@@ -13,6 +13,7 @@ interface Approval {
   fromStatus: string;
   toStatus: string;
   status: string;
+  comment: string | null;
   createdAt: string;
   decidedAt: string | null;
   requestedBy: ApprovalUser;
@@ -26,6 +27,7 @@ const TASK_APPROVALS_QUERY = `
       fromStatus
       toStatus
       status
+      comment
       createdAt
       decidedAt
       requestedBy { userId email displayName }
@@ -125,6 +127,11 @@ export default function ApprovalBadge({ taskId, canManage }: ApprovalBadgeProps)
           <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
             Requested by {displayName(a.requestedBy)}
           </p>
+          {a.comment && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5 italic">
+              &ldquo;{a.comment}&rdquo;
+            </p>
+          )}
 
           {canManage && (
             rejectingId === a.approvalId ? (
@@ -187,17 +194,24 @@ export default function ApprovalBadge({ taskId, canManage }: ApprovalBadgeProps)
             {decidedApprovals.map(a => (
               <div
                 key={a.approvalId}
-                className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 rounded px-2 py-1.5"
+                className="text-xs text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 rounded px-2 py-1.5"
               >
-                <span className={`font-medium ${a.status === 'approved' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {a.status === 'approved' ? 'Approved' : 'Rejected'}
-                </span>
-                <span>{statusLabel(a.fromStatus)} → {statusLabel(a.toStatus)}</span>
-                <span className="text-slate-400 dark:text-slate-500">by {displayName(a.approver)}</span>
-                {a.decidedAt && (
-                  <span className="text-slate-400 dark:text-slate-500 ml-auto">
-                    {new Date(a.decidedAt).toLocaleDateString()}
+                <div className="flex items-center gap-2">
+                  <span className={`font-medium ${a.status === 'approved' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {a.status === 'approved' ? 'Approved' : 'Rejected'}
                   </span>
+                  <span>{statusLabel(a.fromStatus)} → {statusLabel(a.toStatus)}</span>
+                  <span className="text-slate-400 dark:text-slate-500">by {displayName(a.approver)}</span>
+                  {a.decidedAt && (
+                    <span className="text-slate-400 dark:text-slate-500 ml-auto">
+                      {new Date(a.decidedAt).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+                {a.comment && (
+                  <p className="mt-1 text-slate-500 dark:text-slate-400 italic pl-1">
+                    &ldquo;{a.comment}&rdquo;
+                  </p>
                 )}
               </div>
             ))}

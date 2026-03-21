@@ -83,4 +83,22 @@ export const aiCallDuration = new promClient.Histogram({
   registers: [register],
 });
 
+export const orchestratorTasksEnqueued = new promClient.Counter({
+  name: 'tasktoad_orchestrator_tasks_enqueued_total',
+  help: 'Total tasks auto-enqueued by the orchestrator',
+  registers: [register],
+});
+
+export const orchestratorFailures = new promClient.Counter({
+  name: 'tasktoad_orchestrator_failures_total',
+  help: 'Total orchestration errors',
+  registers: [register],
+});
+
+export const orchestratorConcurrencyLimitHits = new promClient.Counter({
+  name: 'tasktoad_orchestrator_concurrency_limit_hits_total',
+  help: 'Total times concurrency limit prevented enqueueing',
+  registers: [register],
+});
+
 export { register };

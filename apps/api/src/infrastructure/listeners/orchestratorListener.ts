@@ -9,6 +9,7 @@ import { retrieveRelevantKnowledge } from '../../ai/knowledgeRetrieval.js';
 import { decryptApiKey } from '../../utils/encryption.js';
 import { availableTypes } from '../../actions/index.js';
 import { getEventBus } from '../eventbus/index.js';
+import { orchestratorTasksEnqueued, orchestratorFailures, orchestratorConcurrencyLimitHits } from '../../utils/metrics.js';
 
 const log = createChildLogger('orchestrator-listener');
 
@@ -76,6 +77,7 @@ async function orchestrateProject(
   });
   const slots = MAX_CONCURRENT_PER_PROJECT - executing;
   if (slots <= 0) {
+    orchestratorConcurrencyLimitHits.inc();
     log.info({ projectId, executing }, 'Concurrency limit reached, skipping orchestration');
     return;
   }
@@ -188,6 +190,7 @@ async function orchestrateProject(
           orgId,
           userId,
         });
+        orchestratorTasksEnqueued.inc();
         log.info({ taskId: task.taskId, planId: plan.id }, 'Auto-enqueued action plan for task');
 
         // Emit SSE event so frontend updates in real-time
@@ -208,6 +211,7 @@ async function orchestrateProject(
         });
       }
     } catch (err) {
+      orchestratorFailures.inc();
       log.error({ err, taskId: task.taskId }, 'Failed to orchestrate auto-complete task');
       // Continue with next task — don't let one failure block others
     }

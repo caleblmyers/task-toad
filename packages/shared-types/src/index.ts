@@ -386,3 +386,11 @@ export interface TeamCapacitySummary {
   totalHoursPerWeek: number;
   availableHoursInRange: number;
 }
+
+export interface Report {
+  reportId: string;
+  projectId: string;
+  type: string;
+  data: Record<string, unknown>;
+  createdAt: string;
+}

@@ -1,5 +1,7 @@
-import { forwardRef, useState, useRef, useEffect } from 'react';
+import { forwardRef, useState, useRef, useEffect, useMemo } from 'react';
 import { IconSearch, IconClose } from './Icons';
+import { isTQLQuery } from '../../utils/tqlHelpers';
+import type { SavedFilter } from '@tasktoad/shared-types';
 
 interface SearchInputProps {
   value: string;
@@ -7,6 +9,8 @@ interface SearchInputProps {
   placeholder?: string;
   className?: string;
   tqlError?: string | null;
+  savedFilters?: SavedFilter[];
+  onSaveQuery?: (name: string, tql: string) => void;
 }
 
 const TQL_HELP_CONTENT = [
@@ -57,27 +61,125 @@ function TQLHelpPopover({ onClose }: { onClose: () => void }) {
   );
 }
 
+/** Extract the word fragment immediately before the cursor that has no `:` yet */
+function getWordBeforeCursor(value: string, cursorPos: number): string {
+  const before = value.slice(0, cursorPos);
+  const match = before.match(/(?:^|\s)([a-zA-Z]+)$/);
+  return match ? match[1] : '';
+}
+
 const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
-  ({ value, onChange, placeholder = 'Search...', className = '', tqlError }, ref) => {
+  ({ value, onChange, placeholder = 'Search...', className = '', tqlError, savedFilters, onSaveQuery }, ref) => {
     const [showHelp, setShowHelp] = useState(false);
-    const isTQL = /(?:^|\s)(?:NOT\s+)?-?[a-zA-Z]+[:><=]/.test(value);
+    const [cursorPos, setCursorPos] = useState(0);
+    const [showSaveDialog, setShowSaveDialog] = useState(false);
+    const [saveName, setSaveName] = useState('');
+    const [showSavedDropdown, setShowSavedDropdown] = useState(false);
+    const autocompleteRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement | null>(null);
+    const isTQL = isTQLQuery(value);
+
+    // Merge forwarded ref with local ref
+    const setRefs = (el: HTMLInputElement | null) => {
+      inputRef.current = el;
+      if (typeof ref === 'function') ref(el);
+      else if (ref) (ref as React.MutableRefObject<HTMLInputElement | null>).current = el;
+    };
+
+    // TQL autocomplete suggestions
+    const wordBeforeCursor = getWordBeforeCursor(value, cursorPos);
+    const suggestions = useMemo(() => {
+      if (!wordBeforeCursor || wordBeforeCursor.length < 1) return [];
+      const lower = wordBeforeCursor.toLowerCase();
+      return VALID_FIELDS.filter((f) => f.toLowerCase().startsWith(lower) && f.toLowerCase() !== lower);
+    }, [wordBeforeCursor]);
+
+    const showAutocomplete = suggestions.length > 0;
+
+    // Close autocomplete on outside click
+    useEffect(() => {
+      if (!showAutocomplete) return;
+      const handler = (e: MouseEvent) => {
+        if (autocompleteRef.current && !autocompleteRef.current.contains(e.target as Node)) {
+          // no-op — suggestions will hide when word changes
+        }
+      };
+      document.addEventListener('mousedown', handler);
+      return () => document.removeEventListener('mousedown', handler);
+    }, [showAutocomplete]);
+
+    const handleSelectField = (field: string) => {
+      // Replace the partial word before cursor with the full field name + ':'
+      const before = value.slice(0, cursorPos);
+      const after = value.slice(cursorPos);
+      const match = before.match(/(?:^|\s)([a-zA-Z]+)$/);
+      if (match) {
+        const start = before.length - match[1].length;
+        const newValue = before.slice(0, start) + field + ':' + after;
+        onChange(newValue);
+        // Set cursor after the colon
+        const newPos = start + field.length + 1;
+        setCursorPos(newPos);
+        requestAnimationFrame(() => {
+          inputRef.current?.setSelectionRange(newPos, newPos);
+          inputRef.current?.focus();
+        });
+      }
+    };
+
+    const handleSave = () => {
+      if (saveName.trim() && onSaveQuery && value.trim()) {
+        onSaveQuery(saveName.trim(), value.trim());
+        setSaveName('');
+        setShowSaveDialog(false);
+      }
+    };
+
+    const tqlSavedFilters = savedFilters?.filter((f) => f.viewType === 'tql') ?? [];
 
     return (
       <div className={`relative ${className}`}>
         <IconSearch className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
         <input
-          ref={ref}
+          ref={setRefs}
           type="text"
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => {
+            onChange(e.target.value);
+            setCursorPos(e.target.selectionStart ?? e.target.value.length);
+          }}
+          onKeyUp={(e) => setCursorPos((e.target as HTMLInputElement).selectionStart ?? cursorPos)}
+          onClick={(e) => setCursorPos((e.target as HTMLInputElement).selectionStart ?? cursorPos)}
           placeholder={placeholder}
-          className={`w-full pl-8 pr-14 py-1.5 text-sm border rounded-md bg-white dark:bg-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand-green focus:border-brand-green ${
+          className={`w-full pl-8 pr-20 py-1.5 text-sm border rounded-md bg-white dark:bg-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand-green focus:border-brand-green ${
             tqlError
               ? 'border-red-400 dark:border-red-500'
               : 'border-slate-200 dark:border-slate-600'
           } ${isTQL ? 'font-mono text-xs' : ''}`}
         />
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+          {isTQL && onSaveQuery && value.trim() && (
+            <button
+              type="button"
+              onClick={() => setShowSaveDialog(true)}
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-[10px] px-1"
+              aria-label="Save TQL query"
+              title="Save query"
+            >
+              Save
+            </button>
+          )}
+          {tqlSavedFilters.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowSavedDropdown((v) => !v)}
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-[10px] px-1"
+              aria-label="Saved TQL queries"
+              title="Saved queries"
+            >
+              Saved
+            </button>
+          )}
           {value && (
             <button
               type="button"
@@ -97,8 +199,87 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
             ?
           </button>
         </div>
+
+        {/* TQL field autocomplete dropdown */}
+        {showAutocomplete && (
+          <div
+            ref={autocompleteRef}
+            className="absolute top-full left-0 mt-0.5 z-50 w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-md shadow-lg overflow-hidden"
+          >
+            {suggestions.map((field) => (
+              <button
+                key={field}
+                type="button"
+                onClick={() => handleSelectField(field)}
+                className="w-full text-left text-xs px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-mono"
+              >
+                {field}<span className="text-slate-400">:</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Saved TQL queries dropdown */}
+        {showSavedDropdown && tqlSavedFilters.length > 0 && (
+          <div className="absolute top-full right-0 mt-0.5 z-50 w-56 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-md shadow-lg overflow-hidden">
+            <div className="px-2 py-1 text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide border-b border-slate-100 dark:border-slate-700">
+              Saved Queries
+            </div>
+            {tqlSavedFilters.map((sf) => {
+              const tql = (() => { try { const p = JSON.parse(sf.filters); return typeof p === 'string' ? p : (p.tql ?? sf.filters); } catch { return sf.filters; } })();
+              return (
+                <button
+                  key={sf.savedFilterId}
+                  type="button"
+                  onClick={() => {
+                    onChange(tql);
+                    setShowSavedDropdown(false);
+                  }}
+                  className="w-full text-left text-xs px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
+                >
+                  <div className="font-medium truncate">{sf.name}</div>
+                  <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono truncate">{tql}</div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Save TQL query dialog */}
+        {showSaveDialog && (
+          <div className="absolute top-full left-0 mt-0.5 z-50 w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-md shadow-lg p-3">
+            <div className="text-xs font-medium text-slate-700 dark:text-slate-200 mb-2">Save TQL Query</div>
+            <input
+              type="text"
+              value={saveName}
+              onChange={(e) => setSaveName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setShowSaveDialog(false); }}
+              placeholder="Query name..."
+              className="w-full text-xs px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 dark:text-slate-200 mb-2 focus:outline-none focus:ring-1 focus:ring-brand-green"
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={!saveName.trim()}
+                className="text-xs px-2 py-1 bg-brand-green text-white rounded hover:bg-green-600 disabled:opacity-50"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowSaveDialog(false); setSaveName(''); }}
+                className="text-xs px-2 py-1 text-slate-500 hover:text-slate-700"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
         {showHelp && <TQLHelpPopover onClose={() => setShowHelp(false)} />}
-        {tqlError && (
+        {tqlError && !showAutocomplete && (
           <div className="absolute top-full left-0 mt-0.5 text-xs text-red-500 dark:text-red-400 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-700 rounded px-2 py-1 shadow-sm z-40 max-w-full truncate">
             {tqlError}
           </div>

@@ -12,6 +12,7 @@ import { getEventBus } from '../../../infrastructure/eventbus/index.js';
 import { sseManager } from '../../../utils/sseManager.js';
 import { logActivity } from '../../../utils/activity.js';
 import { detectCycle } from '../../../utils/cyclicDependencyCheck.js';
+import { sendEmail } from '../../../utils/email.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -185,6 +186,25 @@ export const taskMutations = {
                   toStatus: args.status,
                   requestedBy: user.email,
                 });
+
+                // Email designated approvers (fire-and-forget)
+                const approverIds = (Array.isArray(condition.approverUserIds) ? condition.approverUserIds : []) as string[];
+                if (approverIds.length > 0) {
+                  const approvers = await context.prisma.user.findMany({
+                    where: { userId: { in: approverIds } },
+                    select: { email: true },
+                  });
+                  for (const approver of approvers) {
+                    sendEmail(
+                      approver.email,
+                      `Approval requested: ${task.title}`,
+                      `An approval has been requested for task "${task.title}": ${task.status} → ${args.status}.\n\nRequested by: ${user.email}`,
+                    ).catch((err) => log.warn({ err, email: approver.email }, 'Failed to send approval notification email'));
+                  }
+                } else {
+                  log.info({ approvalId: approval.approvalId, taskId: args.taskId }, 'Approval requested — no designated approvers for email notification');
+                }
+
                 warnings.push(`Status change requires approval`);
                 // Return early — don't change the status
                 return { task, warnings };

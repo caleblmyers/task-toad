@@ -334,10 +334,17 @@ export function HierarchicalPlanEditor({
   // ── Collect all node titles for dependency display ─────────────────────
 
   const allTitles = new Set<string>();
+  const nodeLevels = new Map<string, 'epic' | 'task' | 'subtask'>();
   for (const epic of plan.epics) {
     allTitles.add(epic.title);
+    nodeLevels.set(epic.title, 'epic');
     for (const task of epic.tasks ?? []) {
       allTitles.add(task.title);
+      nodeLevels.set(task.title, 'task');
+      for (const subtask of task.subtasks ?? []) {
+        allTitles.add(subtask.title);
+        nodeLevels.set(subtask.title, 'subtask');
+      }
     }
   }
 
@@ -488,6 +495,7 @@ export function HierarchicalPlanEditor({
             allTitles={Array.from(allTitles)}
             nodeTitle={title}
             onChange={(newDeps) => updateNodeDeps(key, newDeps)}
+            nodeLevels={nodeLevels}
           />
         </div>
       )}

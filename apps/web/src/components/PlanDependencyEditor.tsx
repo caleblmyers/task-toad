@@ -6,13 +6,28 @@ interface PlanDependencyEditorProps {
   allTitles: string[];
   nodeTitle: string;
   onChange: (deps: DependencyRef[]) => void;
+  /** Optional map of title → node type for visual hierarchy */
+  nodeLevels?: Map<string, 'epic' | 'task' | 'subtask'>;
 }
+
+const LEVEL_INDENT: Record<string, string> = {
+  epic: '',
+  task: '\u00A0\u00A0',
+  subtask: '\u00A0\u00A0\u00A0\u00A0',
+};
+
+const LEVEL_BADGE: Record<string, { bg: string; text: string }> = {
+  epic: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400' },
+  task: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-400' },
+  subtask: { bg: 'bg-slate-100 dark:bg-slate-700', text: 'text-slate-600 dark:text-slate-300' },
+};
 
 export default function PlanDependencyEditor({
   dependsOn,
   allTitles,
   nodeTitle,
   onChange,
+  nodeLevels,
 }: PlanDependencyEditorProps) {
   const [search, setSearch] = useState('');
   const [linkType, setLinkType] = useState<'blocks' | 'informs'>('blocks');
@@ -79,15 +94,26 @@ export default function PlanDependencyEditor({
 
       {search && available.length > 0 && (
         <div className="max-h-32 overflow-y-auto border border-slate-200 dark:border-slate-600 rounded">
-          {available.slice(0, 10).map((title) => (
-            <button
-              key={title}
-              onClick={() => handleAdd(title)}
-              className="w-full text-left text-xs px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 truncate"
-            >
-              {title}
-            </button>
-          ))}
+          {available.slice(0, 10).map((title) => {
+            const level = nodeLevels?.get(title);
+            const indent = level ? LEVEL_INDENT[level] : '';
+            const badge = level ? LEVEL_BADGE[level] : null;
+            return (
+              <button
+                key={title}
+                onClick={() => handleAdd(title)}
+                className="w-full text-left text-xs px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 truncate flex items-center gap-1"
+              >
+                {indent}
+                {badge && (
+                  <span className={`${badge.bg} ${badge.text} text-[9px] px-1 rounded flex-shrink-0`}>
+                    {level}
+                  </span>
+                )}
+                <span className="truncate">{title}</span>
+              </button>
+            );
+          })}
         </div>
       )}
 
