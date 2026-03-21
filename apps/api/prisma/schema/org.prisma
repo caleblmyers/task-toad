@@ -28,6 +28,7 @@ model Org {
   knowledgeEntries KnowledgeEntry[]
   taskInsights     TaskInsight[]
   slaPolicies      SLAPolicy[]
+  initiatives      Initiative[]
 
   @@map("orgs")
 }

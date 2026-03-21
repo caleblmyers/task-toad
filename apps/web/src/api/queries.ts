@@ -762,6 +762,52 @@ export const PORTFOLIO_OVERVIEW_QUERY = `query PortfolioOverview {
   }
 }`;
 
+// ── Initiatives ──
+
+export const INITIATIVES_QUERY = `query Initiatives {
+  initiatives {
+    initiativeId name description status targetDate
+    projects { projectId name }
+  }
+}`;
+
+export const INITIATIVE_SUMMARY_QUERY = `query InitiativeSummary($initiativeId: ID!) {
+  initiativeSummary(initiativeId: $initiativeId) {
+    initiativeId name status targetDate projectCount
+    totalTasks completedTasks completionPercent healthScore
+  }
+}`;
+
+export const CREATE_INITIATIVE_MUTATION = `mutation CreateInitiative($name: String!, $description: String, $targetDate: String) {
+  createInitiative(name: $name, description: $description, targetDate: $targetDate) {
+    initiativeId name description status targetDate
+    projects { projectId name }
+  }
+}`;
+
+export const UPDATE_INITIATIVE_MUTATION = `mutation UpdateInitiative($initiativeId: ID!, $name: String, $description: String, $status: String, $targetDate: String) {
+  updateInitiative(initiativeId: $initiativeId, name: $name, description: $description, status: $status, targetDate: $targetDate) {
+    initiativeId name description status targetDate
+    projects { projectId name }
+  }
+}`;
+
+export const DELETE_INITIATIVE_MUTATION = `mutation DeleteInitiative($initiativeId: ID!) {
+  deleteInitiative(initiativeId: $initiativeId)
+}`;
+
+export const ADD_PROJECT_TO_INITIATIVE_MUTATION = `mutation AddProjectToInitiative($initiativeId: ID!, $projectId: ID!) {
+  addProjectToInitiative(initiativeId: $initiativeId, projectId: $projectId) {
+    initiativeId name projects { projectId name }
+  }
+}`;
+
+export const REMOVE_PROJECT_FROM_INITIATIVE_MUTATION = `mutation RemoveProjectFromInitiative($initiativeId: ID!, $projectId: ID!) {
+  removeProjectFromInitiative(initiativeId: $initiativeId, projectId: $projectId) {
+    initiativeId name projects { projectId name }
+  }
+}`;
+
 // ── Profile ──
 
 export const ME_PROFILE_QUERY = `query MeProfile {

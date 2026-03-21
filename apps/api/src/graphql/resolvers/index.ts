@@ -20,6 +20,7 @@ import { knowledgeBaseQueries, knowledgeBaseMutations, knowledgeBaseFieldResolve
 import { taskInsightQueries, taskInsightMutations, taskInsightFieldResolvers } from './taskinsight.js';
 import { slaQueries, slaMutations, slaFieldResolvers } from './sla.js';
 import { approvalQueries, approvalMutations } from './approval.js';
+import { initiativeQueries, initiativeMutations, initiativeFieldResolvers } from './initiative.js';
 
 export const resolvers = {
   Query: {
@@ -45,6 +46,7 @@ export const resolvers = {
     ...taskInsightQueries,
     ...slaQueries,
     ...approvalQueries,
+    ...initiativeQueries,
   },
   Mutation: {
     ...authMutations,
@@ -69,6 +71,7 @@ export const resolvers = {
     ...taskInsightMutations,
     ...slaMutations,
     ...approvalMutations,
+    ...initiativeMutations,
   },
   // Field resolvers
   User: { ...authFieldResolvers.User },
@@ -94,4 +97,5 @@ export const resolvers = {
   KnowledgeEntry: { ...knowledgeBaseFieldResolvers.KnowledgeEntry },
   TaskInsight: { ...taskInsightFieldResolvers.TaskInsight },
   SLATimer: { ...slaFieldResolvers.SLATimer },
+  Initiative: { ...initiativeFieldResolvers.Initiative },
 };

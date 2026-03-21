@@ -27,6 +27,7 @@ model Project {
   knowledgeEntries      KnowledgeEntry[]
   taskInsights          TaskInsight[]
   slaPolicies           SLAPolicy[]
+  initiativeProjects    InitiativeProject[]
 
   @@index([orgId])
   @@map("projects")

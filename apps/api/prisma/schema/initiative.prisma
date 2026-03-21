@@ -1,0 +1,25 @@
+model Initiative {
+  initiativeId  String   @id @default(uuid()) @map("initiative_id")
+  orgId         String   @map("org_id")
+  name          String
+  description   String?
+  status        String   @default("active") // active, completed, archived
+  targetDate    DateTime? @map("target_date")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  org           Org      @relation(fields: [orgId], references: [orgId], onDelete: Cascade)
+  projects      InitiativeProject[]
+  @@index([orgId])
+  @@map("initiatives")
+}
+
+model InitiativeProject {
+  id            String   @id @default(uuid())
+  initiativeId  String   @map("initiative_id")
+  projectId     String   @map("project_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  initiative    Initiative @relation(fields: [initiativeId], references: [initiativeId], onDelete: Cascade)
+  project       Project  @relation(fields: [projectId], references: [projectId], onDelete: Cascade)
+  @@unique([initiativeId, projectId])
+  @@map("initiative_projects")
+}
