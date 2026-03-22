@@ -232,10 +232,10 @@ export const CYCLE_TIME_METRICS_QUERY = `query CycleTimeMetrics($projectId: ID!,
 
 export const EPICS_QUERY = `query Epics($projectId: ID!) {
   epics(projectId: $projectId) {
-    taskId title description status priority taskType position createdAt
+    ${TASK_FIELDS}
     progress { total completed percentage }
     children {
-      taskId title description status priority taskType position createdAt
+      ${TASK_FIELDS}
       progress { total completed percentage }
     }
   }

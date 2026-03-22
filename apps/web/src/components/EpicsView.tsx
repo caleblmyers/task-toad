@@ -11,9 +11,10 @@ function priorityVariant(p: string): 'danger' | 'warning' | 'info' | 'neutral' {
 }
 
 const TYPE_COLOR: Record<string, string> = {
-  initiative: 'bg-amber-500',
   epic: 'bg-purple-500',
   story: 'bg-blue-500',
+  task: 'bg-green-500',
+  bug: 'bg-red-500',
 };
 
 interface TaskTreeNodeProps {

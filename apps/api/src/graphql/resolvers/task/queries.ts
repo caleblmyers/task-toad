@@ -444,7 +444,7 @@ export const taskQueries = {
   epics: async (_parent: unknown, args: { projectId: string }, context: Context) => {
     await requireProjectAccess(context, args.projectId);
     return context.prisma.task.findMany({
-      where: { projectId: args.projectId, taskType: { in: ['epic', 'initiative'] }, parentTaskId: null, archived: false },
+      where: { projectId: args.projectId, taskType: 'epic', parentTaskId: null, archived: false },
       orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
     });
   },
