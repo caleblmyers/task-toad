@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, type KeyboardEvent } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import { List } from 'react-window';
 import type { Task, Sprint, OrgUser } from '../types';
 import SprintReportPanel from './SprintReportPanel';
@@ -39,20 +39,6 @@ function BacklogSection({
   const sectionIds = sectionTasks.map((t) => t.taskId);
   const allChecked = sectionIds.length > 0 && sectionIds.every((id) => selectedTaskIds.has(id));
 
-  const handleListKeyDown = useCallback((e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
-    e.preventDefault();
-    const rows = Array.from(e.currentTarget.querySelectorAll('[role="option"]')) as HTMLElement[];
-    const currentIndex = rows.indexOf(e.target as HTMLElement);
-    let nextIndex: number;
-    if (e.key === 'ArrowDown') {
-      nextIndex = currentIndex < rows.length - 1 ? currentIndex + 1 : 0;
-    } else {
-      nextIndex = currentIndex > 0 ? currentIndex - 1 : rows.length - 1;
-    }
-    rows[nextIndex]?.focus();
-  }, []);
-
   const renderDropIndicator = (index: number) => {
     if (dragOverInfo?.sectionId === null && dragOverInfo?.index === index) {
       return <div className="h-0.5 bg-blue-400 rounded mx-1 my-0.5" />;
@@ -74,13 +60,11 @@ function BacklogSection({
       </div>
       <div
         ref={containerRef}
-        role="listbox"
         aria-label="Backlog tasks"
         className="px-3 py-2 space-y-0 min-h-[2.5rem]"
         onDragOver={(e) => onDragOver(e, null)}
         onDragLeave={(e) => onDragLeave(e, null)}
         onDrop={(e) => onDrop(e, null, sectionTasks)}
-        onKeyDown={handleListKeyDown}
       >
         {sectionTasks.length === 0 && dragOverInfo?.sectionId !== null ? (
           <p className="text-xs text-slate-500 py-2 px-1">No unassigned tasks.</p>
@@ -92,7 +76,7 @@ function BacklogSection({
             rowComponent={({ index, style: rowStyle }) => {
               const task = sectionTasks[index];
               return (
-                <div style={rowStyle} role="option" aria-selected={selectedTask?.taskId === task.taskId}>
+                <div style={rowStyle}>
                   <TaskRow
                     task={task}
                     orgUsers={orgUsers}
@@ -116,7 +100,7 @@ function BacklogSection({
           <>
             {renderDropIndicator(0)}
             {sectionTasks.map((task, i) => (
-              <div key={task.taskId} role="option" aria-selected={selectedTask?.taskId === task.taskId}>
+              <div key={task.taskId}>
                 <TaskRow
                   task={task}
                   orgUsers={orgUsers}

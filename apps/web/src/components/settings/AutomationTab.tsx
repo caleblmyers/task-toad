@@ -32,7 +32,6 @@ interface Label {
 const TRIGGER_EVENTS = [
   { value: 'task.status_changed', label: 'Status changed' },
   { value: 'task.assigned', label: 'Task assigned' },
-  { value: 'scheduled', label: 'Scheduled (cron)' },
 ];
 
 const ACTION_TYPES = [
@@ -142,8 +141,6 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
   const [conditions, setConditions] = useState<ConditionRow[]>([]);
   const [conditionsOpen, setConditionsOpen] = useState(false);
   const [actions, setActions] = useState<ActionRow[]>([{ type: 'notify_assignee', param: '' }]);
-  const [cronExpression, setCronExpression] = useState('');
-  const [timezone, setTimezone] = useState('UTC');
 
   const loadRules = useCallback(async () => {
     setLoading(true);
@@ -180,10 +177,6 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
       const trigger = serializeTrigger(triggerEvent, conditionOp, conditions);
       const action = serializeActions(actions);
       const vars: Record<string, unknown> = { projectId, name: name.trim(), trigger, action };
-      if (triggerEvent === 'scheduled' && cronExpression.trim()) {
-        vars.cronExpression = cronExpression.trim();
-        vars.timezone = timezone;
-      }
       const { createAutomationRule } = await gql<{ createAutomationRule: AutomationRule }>(
         CREATE_AUTOMATION_RULE_MUTATION,
         vars,
@@ -193,8 +186,6 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
       setActions([{ type: 'notify_assignee', param: '' }]);
       setConditions([]);
       setConditionsOpen(false);
-      setCronExpression('');
-      setTimezone('UTC');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create rule');
     } finally {
@@ -404,44 +395,6 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
             {TRIGGER_EVENTS.map((e) => <option key={e.value} value={e.value}>{e.label}</option>)}
           </select>
         </div>
-
-        {/* Schedule (when trigger is scheduled) */}
-        {triggerEvent === 'scheduled' && (
-          <div className="space-y-2 border border-slate-200 dark:border-slate-600 rounded p-2">
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Schedule</p>
-            <div className="flex items-center gap-2 flex-wrap">
-              {[
-                { label: 'Every hour', value: '0 * * * *' },
-                { label: 'Daily at 9am', value: '0 9 * * *' },
-                { label: 'Weekly Monday', value: '0 9 * * 1' },
-              ].map((preset) => (
-                <button
-                  key={preset.value}
-                  type="button"
-                  onClick={() => setCronExpression(preset.value)}
-                  className={`text-xs px-2 py-1 rounded border ${cronExpression === preset.value ? 'border-blue-500 bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300' : 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
-                >
-                  {preset.label}
-                </button>
-              ))}
-            </div>
-            <input
-              type="text"
-              value={cronExpression}
-              onChange={(e) => setCronExpression(e.target.value)}
-              placeholder="Cron expression (e.g. 0 9 * * 1)"
-              className={`w-full ${inputClass}`}
-            />
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-slate-500 dark:text-slate-400 shrink-0">Timezone:</label>
-              <select value={timezone} onChange={(e) => setTimezone(e.target.value)} className={`flex-1 ${selectClass}`}>
-                {['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Europe/London', 'Europe/Berlin', 'Asia/Tokyo', 'Asia/Shanghai', 'Australia/Sydney'].map((tz) => (
-                  <option key={tz} value={tz}>{tz}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
 
         {/* Conditions (collapsible) */}
         <div className="border border-slate-200 dark:border-slate-600 rounded">

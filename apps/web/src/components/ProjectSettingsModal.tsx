@@ -7,7 +7,6 @@ import CustomFieldsTab from './settings/CustomFieldsTab';
 import TemplatesTab from './settings/TemplatesTab';
 import WorkflowTab from './settings/WorkflowTab';
 import FieldPermissionsTab from './settings/FieldPermissionsTab';
-import SLATab from './settings/SLATab';
 
 interface Props {
   projectId: string;
@@ -15,7 +14,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = 'members' | 'automation' | 'fields' | 'templates' | 'workflow' | 'permissions' | 'sla';
+type Tab = 'members' | 'automation' | 'fields' | 'templates' | 'workflow' | 'permissions';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'members', label: 'Members' },
@@ -24,7 +23,6 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'templates', label: 'Templates' },
   { key: 'workflow', label: 'Workflow' },
   { key: 'permissions', label: 'Field Permissions' },
-  { key: 'sla', label: 'SLA' },
 ];
 
 export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: Props) {
@@ -55,9 +53,8 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
         {tab === 'automation' && <AutomationTab projectId={projectId} orgUsers={orgUsers} />}
         {tab === 'fields' && <CustomFieldsTab projectId={projectId} />}
         {tab === 'templates' && <TemplatesTab projectId={projectId} />}
-        {tab === 'workflow' && <WorkflowTab projectId={projectId} orgUsers={orgUsers} />}
+        {tab === 'workflow' && <WorkflowTab projectId={projectId} />}
         {tab === 'permissions' && <FieldPermissionsTab projectId={projectId} />}
-        {tab === 'sla' && <SLATab projectId={projectId} />}
       </div>
     </Modal>
   );
