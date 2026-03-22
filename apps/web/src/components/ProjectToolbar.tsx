@@ -300,7 +300,7 @@ export default function ProjectToolbar({
               ref={searchRef as React.RefObject<HTMLInputElement>}
               value={filtering.searchQuery}
               onChange={filtering.setSearchQuery}
-              placeholder="Search tasks…"
+              placeholder="Search or TQL (e.g. status:done)"
               className="w-48"
               tqlError={tqlError}
               savedFilters={savedFilters}

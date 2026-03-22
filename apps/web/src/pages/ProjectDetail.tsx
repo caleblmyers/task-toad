@@ -126,7 +126,7 @@ export default function ProjectDetail() {
 
   // SSE: refresh action plan when action events arrive for the selected task + toast notifications
   useSSEListener(
-    ['task.action_completed', 'task.action_plan_completed', 'task.action_plan_failed', 'task.blocked', 'task.unblocked', 'task.updated', 'approval.requested', 'approval.decided'],
+    ['task.action_completed', 'task.action_plan_completed', 'task.action_plan_failed', 'task.blocked', 'task.unblocked', 'task.created', 'task.updated', 'tasks.bulk_updated', 'approval.requested', 'approval.decided'],
     (event: string, data: unknown) => {
       if (event === 'task.action_completed' || event === 'task.action_plan_completed') {
         const payload = data as { taskId?: string; taskTitle?: string };
@@ -150,11 +150,8 @@ export default function ProjectDetail() {
           addToast('info', `"${payload.taskTitle}" is now blocked`);
         }
       }
-      if (event === 'task.updated') {
-        const payload = data as { taskId?: string };
-        if (payload?.taskId) {
-          void d.loadTasks(filterInput);
-        }
+      if (event === 'task.created' || event === 'task.updated' || event === 'tasks.bulk_updated') {
+        void d.loadTasks(filterInput);
       }
       if (event === 'approval.requested') {
         const payload = data as { taskTitle?: string; fromStatus?: string; toStatus?: string };

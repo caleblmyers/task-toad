@@ -231,11 +231,13 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
             <button
               type="button"
               onClick={() => setShowSaveDialog(true)}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-[10px] px-1"
+              className="text-slate-400 hover:text-brand-green dark:hover:text-green-400 p-0.5"
               aria-label="Save TQL query"
               title="Save query"
             >
-              Save
+              <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M3 2h10v12l-5-3-5 3V2z" strokeLinejoin="round" />
+              </svg>
             </button>
           )}
           {tqlSavedFilters.length > 0 && (
