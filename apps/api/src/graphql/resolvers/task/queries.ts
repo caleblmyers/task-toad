@@ -232,15 +232,15 @@ function buildFilterWhere(
     return { projectId, parentTaskId };
   }
 
-  const where: Record<string, unknown> = { projectId, taskType: { notIn: ['epic', 'initiative'] } };
+  const where: Record<string, unknown> = { projectId, taskType: { notIn: ['epic', 'initiative'] }, archived: false };
   // Collect AND conditions — used for label AND logic and combining OR groups
   const andConditions: Record<string, unknown>[] = [];
 
   if (!filter) return where;
 
-  // Archived filter — default: exclude archived
-  if (!filter.showArchived) {
-    where.archived = false;
+  // Archived filter — allow showing archived when explicitly toggled
+  if (filter.showArchived) {
+    delete where.archived;
   }
 
   // Status filter

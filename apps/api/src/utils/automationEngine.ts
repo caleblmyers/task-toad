@@ -193,6 +193,14 @@ async function executeAction(
     }
     case 'add_label': {
       if (!taskId || !action.labelId) return;
+      // Verify label exists in the org before applying
+      const label = await prisma.label.findFirst({
+        where: { labelId: action.labelId, orgId },
+      });
+      if (!label) {
+        log.warn({ labelId: action.labelId, orgId }, 'Automation add_label: label not found in org');
+        return;
+      }
       // Skip if label already applied
       const existing = await prisma.taskLabel.findUnique({
         where: { taskId_labelId: { taskId, labelId: action.labelId } },

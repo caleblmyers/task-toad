@@ -10,8 +10,10 @@ interface MentionAutocompleteProps {
 
 export default function MentionAutocomplete({ query, users, onSelect, anchorRect }: MentionAutocompleteProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const q = query.toLowerCase();
   const filtered = users.filter((u) =>
-    u.email.toLowerCase().includes(query.toLowerCase())
+    u.email.toLowerCase().includes(q) ||
+    (u.displayName && u.displayName.toLowerCase().includes(q))
   ).slice(0, 6);
 
   useEffect(() => {
@@ -37,9 +39,9 @@ export default function MentionAutocomplete({ query, users, onSelect, anchorRect
           className="w-full text-left px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
         >
           <span className="w-5 h-5 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-medium flex-shrink-0">
-            {user.email.charAt(0).toUpperCase()}
+            {(user.displayName ?? user.email).charAt(0).toUpperCase()}
           </span>
-          <span className="truncate">{user.email}</span>
+          <span className="truncate">{user.displayName ? `${user.displayName} (${user.email})` : user.email}</span>
         </button>
       ))}
     </div>

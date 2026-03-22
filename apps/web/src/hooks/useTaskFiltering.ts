@@ -164,11 +164,14 @@ export function useTaskFiltering(tasks: Task[]): TaskFiltering {
         customFieldFilters?: Record<string, string>;
         filterGroup?: FilterGroupInput | null;
       };
-      if (parsed.statusFilter) setStatusFilter(parsed.statusFilter);
-      if (parsed.priorityFilter) setPriorityFilter(parsed.priorityFilter);
-      if (parsed.assigneeFilter) setAssigneeFilter(parsed.assigneeFilter);
-      if (parsed.labelFilter) setLabelFilter(parsed.labelFilter);
-      if (parsed.customFieldFilters) setCustomFieldFilters(parsed.customFieldFilters);
+      // Clear all existing filters before applying saved ones
+      setSearchQuery('');
+      setDebouncedSearch('');
+      setStatusFilter(parsed.statusFilter ?? 'all');
+      setPriorityFilter(parsed.priorityFilter ?? 'all');
+      setAssigneeFilter(parsed.assigneeFilter ?? 'all');
+      setLabelFilter(parsed.labelFilter ?? []);
+      setCustomFieldFilters(parsed.customFieldFilters ?? {});
       setFilterGroup(parsed.filterGroup ?? null);
     } catch { /* ignore invalid JSON */ }
     if (viewConfig && viewConfigCallbackRef.current) {

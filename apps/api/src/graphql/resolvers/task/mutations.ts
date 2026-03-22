@@ -462,16 +462,27 @@ export const taskMutations = {
       },
       include: { user: { select: { email: true } } },
     });
-    // Extract mentions with tighter email regex, capped at 20
-    const mentionPattern = /@([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
+    // Extract mentions: support both @email and @displayName formats, capped at 20
+    const emailMentionPattern = /@([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
+    const nameMentionPattern = /@([a-zA-Z][a-zA-Z0-9_ .-]{0,49})(?=\s|$|[,;!?)])/g;
     const mentionedEmails: string[] = [];
+    const mentionedNames: string[] = [];
     let mentionMatch: RegExpExecArray | null;
-    while ((mentionMatch = mentionPattern.exec(args.content)) !== null) {
+    while ((mentionMatch = emailMentionPattern.exec(args.content)) !== null) {
       mentionedEmails.push(mentionMatch[1]);
       if (mentionedEmails.length >= 20) break;
     }
+    // Also extract @displayName mentions (non-email format)
+    while ((mentionMatch = nameMentionPattern.exec(args.content)) !== null) {
+      const name = mentionMatch[1].trim();
+      // Skip if this was already captured as an email mention
+      if (name.includes('@') || !name) continue;
+      mentionedNames.push(name);
+      if (mentionedNames.length >= 20) break;
+    }
     // Batch DB lookup — single findMany instead of N queries
     const mentionedUserIds: string[] = [];
+    const mentionedUserIdSet = new Set<string>();
     if (mentionedEmails.length > 0) {
       const mentionedUsers = await context.prisma.user.findMany({
         where: { email: { in: mentionedEmails }, orgId: user.orgId },
@@ -479,6 +490,7 @@ export const taskMutations = {
       for (const mentionedUser of mentionedUsers) {
         if (mentionedUser.userId !== user.userId) {
           mentionedUserIds.push(mentionedUser.userId);
+          mentionedUserIdSet.add(mentionedUser.userId);
         }
       }
       // Auto-add mentioned users as watchers
@@ -486,6 +498,28 @@ export const taskMutations = {
         await context.prisma.taskWatcher.upsert({
           where: { taskId_userId: { taskId: args.taskId, userId: mentionedUser.userId } },
           create: { taskId: args.taskId, userId: mentionedUser.userId },
+          update: {},
+        });
+      }
+    }
+    // Look up @displayName mentions
+    if (mentionedNames.length > 0) {
+      const nameUsers = await context.prisma.user.findMany({
+        where: {
+          orgId: user.orgId,
+          displayName: { in: mentionedNames, mode: 'insensitive' },
+        },
+      });
+      for (const nameUser of nameUsers) {
+        if (nameUser.userId !== user.userId && !mentionedUserIdSet.has(nameUser.userId)) {
+          mentionedUserIds.push(nameUser.userId);
+          mentionedUserIdSet.add(nameUser.userId);
+        }
+      }
+      for (const nameUser of nameUsers) {
+        await context.prisma.taskWatcher.upsert({
+          where: { taskId_userId: { taskId: args.taskId, userId: nameUser.userId } },
+          create: { taskId: args.taskId, userId: nameUser.userId },
           update: {},
         });
       }
