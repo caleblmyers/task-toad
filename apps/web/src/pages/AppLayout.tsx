@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Outlet, Link, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../auth/context';
 import { gql } from '../api/client';
 import NotificationCenter from '../components/NotificationCenter';
@@ -82,7 +82,6 @@ function ChevronLeftIcon({ className = 'w-4 h-4' }: { className?: string }) {
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showNotifSettings, setShowNotifSettings] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -191,9 +190,9 @@ export default function AppLayout() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    await logout();
+    window.location.href = '/login';
   };
 
   const notificationLabel = unreadCount > 0

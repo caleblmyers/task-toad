@@ -10,7 +10,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
         navigateFallback: '/offline.html',
-        navigateFallbackDenylist: [/^\/api\//, /^\/assets\//, /^\/sw\.js$/, /^\/workbox-/],
+        navigateFallbackDenylist: [/^\/api\//, /^\/assets\//, /^\/sw\.js$/, /^\/workbox-/, /^\/login/, /^\/signup/, /^\/verify-email/],
         runtimeCaching: [
           {
             urlPattern: /^\/api\//,
@@ -18,6 +18,14 @@ export default defineConfig({
             options: {
               cacheName: 'api-cache',
               expiration: { maxEntries: 50, maxAgeSeconds: 300 },
+            },
+          },
+          {
+            urlPattern: ({ request }: { request: Request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'html-cache',
+              expiration: { maxEntries: 10, maxAgeSeconds: 86400 },
             },
           },
         ],
