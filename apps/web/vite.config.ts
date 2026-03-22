@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
-        navigateFallback: '/offline.html',
-        navigateFallbackDenylist: [/^\/api\//, /^\/assets\//, /^\/sw\.js$/, /^\/workbox-/, /^\/login/, /^\/signup/, /^\/verify-email/],
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api\//, /^\/assets\//, /^\/sw\.js$/, /^\/workbox-/],
         runtimeCaching: [
           {
             urlPattern: /^\/api\//,
