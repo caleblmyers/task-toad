@@ -21,6 +21,9 @@ export interface JobQueue {
   /** Enqueue a job for immediate processing. */
   enqueue<J extends JobName>(jobName: J, payload: JobPayload<J>): void;
 
+  /** Enqueue a job after a delay (ms). */
+  enqueueDelayed<J extends JobName>(jobName: J, payload: JobPayload<J>, delayMs: number): void;
+
   /** Schedule a recurring job at a fixed interval. */
   schedule(id: string, intervalMs: number, jobName: JobName, payload?: Record<string, unknown>): void;
 

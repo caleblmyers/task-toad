@@ -1,6 +1,7 @@
 import type { ActionExecutor, ActionContext, ActionResult } from '../types.js';
 import { getInstallationToken } from '../../github/githubAppAuth.js';
 import { createChildLogger } from '../../utils/logger.js';
+import { getJobQueue } from '../../infrastructure/jobqueue/index.js';
 
 const log = createChildLogger('monitor-ci');
 
@@ -8,8 +9,7 @@ interface MonitorCIConfig {
   sourcePRActionId: string;
 }
 
-/** Max polling attempts — 60 × 30s = 30 minutes. */
-const MAX_ATTEMPTS = 60;
+/** Delay between poll attempts. */
 const POLL_DELAY_MS = 30_000;
 
 interface CheckRun {
@@ -25,10 +25,6 @@ interface CheckRunsResponse {
   check_runs: CheckRun[];
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 /**
  * Fetch check runs for a given commit SHA.
  */
@@ -37,6 +33,7 @@ async function fetchCheckRuns(
   owner: string,
   repo: string,
   sha: string,
+  signal?: AbortSignal,
 ): Promise<CheckRunsResponse> {
   const response = await fetch(
     `https://api.github.com/repos/${owner}/${repo}/commits/${sha}/check-runs`,
@@ -46,6 +43,7 @@ async function fetchCheckRuns(
         Accept: 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
       },
+      signal,
     },
   );
 
@@ -56,11 +54,55 @@ async function fetchCheckRuns(
   return (await response.json()) as CheckRunsResponse;
 }
 
+/**
+ * Evaluate check run results. Returns an ActionResult if checks are done, or null if still in progress.
+ */
+export function evaluateCheckRuns(checks: CheckRunsResponse): ActionResult | null {
+  if (checks.total_count === 0) {
+    return { success: true, data: { status: 'passed', checksPassed: 0, message: 'No CI checks configured' } };
+  }
+
+  const allCompleted = checks.check_runs.every((c) => c.status === 'completed');
+
+  if (!allCompleted) {
+    return null; // still in progress
+  }
+
+  const failed = checks.check_runs.filter(
+    (c) => c.conclusion !== 'success' && c.conclusion !== 'skipped',
+  );
+
+  if (failed.length === 0) {
+    return {
+      success: true,
+      data: { status: 'passed', checksPassed: checks.check_runs.length },
+    };
+  }
+
+  return {
+    success: false,
+    data: {
+      status: 'failed',
+      failedChecks: failed.map((c) => ({
+        id: c.id,
+        name: c.name,
+        conclusion: c.conclusion,
+        url: c.html_url,
+      })),
+    },
+  };
+}
+
+/**
+ * The monitorCI executor kicks off the initial check and — if CI is still running —
+ * schedules follow-up polls via the job queue instead of sleeping in-process.
+ * This makes it resilient to server restarts.
+ */
 export const monitorCIExecutor: ActionExecutor = {
   type: 'monitor_ci',
 
   async execute(ctx: ActionContext): Promise<ActionResult> {
-    const { task, prisma, previousResults } = ctx;
+    const { task, prisma, previousResults, signal } = ctx;
     const config: MonitorCIConfig = JSON.parse(ctx.action.config || '{}');
 
     // Get PR info from a previous create_pr action result
@@ -99,6 +141,7 @@ export const monitorCIExecutor: ActionExecutor = {
           Accept: 'application/vnd.github+json',
           'X-GitHub-Api-Version': '2022-11-28',
         },
+        signal,
       },
     );
 
@@ -109,56 +152,42 @@ export const monitorCIExecutor: ActionExecutor = {
     const prData = (await prResponse.json()) as { head: { sha: string } };
     const headSha = prData.head.sha;
 
-    // Poll check runs until they complete or we hit the timeout
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      // Refresh the installation token on each poll in case it expires
-      const pollToken = await getInstallationToken(project.githubInstallationId);
-      const checks = await fetchCheckRuns(pollToken, owner, repo, headSha);
-
-      if (checks.total_count === 0) {
-        return { success: true, data: { status: 'passed', checksPassed: 0, message: 'No CI checks configured' } };
-      }
-
-      const allCompleted = checks.check_runs.every((c) => c.status === 'completed');
-
-      if (allCompleted) {
-        const failed = checks.check_runs.filter(
-          (c) => c.conclusion !== 'success' && c.conclusion !== 'skipped',
-        );
-
-        if (failed.length === 0) {
-          return {
-            success: true,
-            data: { status: 'passed', checksPassed: checks.check_runs.length },
-          };
-        }
-
-        // Checks completed but some failed
-        return {
-          success: false,
-          data: {
-            status: 'failed',
-            failedChecks: failed.map((c) => ({
-              id: c.id,
-              name: c.name,
-              conclusion: c.conclusion,
-              url: c.html_url,
-            })),
-          },
-        };
-      }
-
-      log.info(
-        { actionId: ctx.action.id, attempt, totalChecks: checks.total_count },
-        'CI checks still running, waiting 30s before next poll',
-      );
-
-      await sleep(POLL_DELAY_MS);
+    // Do the first check
+    if (signal?.aborted) {
+      throw new DOMException('Action cancelled', 'AbortError');
     }
 
+    const checks = await fetchCheckRuns(token, owner, repo, headSha, signal);
+    const result = evaluateCheckRuns(checks);
+
+    if (result) {
+      return result;
+    }
+
+    // CI still running — schedule follow-up poll via job queue instead of sleeping
+    log.info(
+      { actionId: ctx.action.id, totalChecks: checks.total_count },
+      'CI checks still running, scheduling follow-up poll via job queue',
+    );
+
+    const queue = getJobQueue();
+    queue.enqueueDelayed('monitor-ci-poll', {
+      planId: ctx.planId,
+      actionId: ctx.action.id,
+      orgId: ctx.orgId,
+      userId: ctx.userId,
+      owner: project.githubRepositoryOwner!,
+      repo: project.githubRepositoryName!,
+      headSha,
+      installationId: project.githubInstallationId!,
+      attempt: 2, // first poll was attempt 1 above
+    }, POLL_DELAY_MS);
+
+    // Return a special "polling" result — the action stays in "executing" status.
+    // The poll job will complete it.
     return {
-      success: false,
-      data: { status: 'timeout', error: `CI checks did not complete after ${MAX_ATTEMPTS} attempts (30 min)` },
+      success: true,
+      data: { status: 'polling', message: 'CI checks in progress, follow-up poll scheduled' },
     };
   },
 };

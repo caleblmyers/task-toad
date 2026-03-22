@@ -10,10 +10,15 @@ export const generateCodeExecutor: ActionExecutor = {
   type: 'generate_code',
 
   async execute(ctx: ActionContext): Promise<ActionResult> {
-    const { task, project, apiKey } = ctx;
+    const { task, project, apiKey, signal } = ctx;
 
     if (!task.instructions) {
       return { success: false, data: { error: 'Task has no instructions' } };
+    }
+
+    // Check for cancellation before starting
+    if (signal?.aborted) {
+      throw new DOMException('Action cancelled', 'AbortError');
     }
 
     // Fetch project file tree for context if repo is connected
@@ -24,6 +29,11 @@ export const generateCodeExecutor: ActionExecutor = {
     }
 
     const config: GenerateCodeConfig = JSON.parse(ctx.action.config || '{}');
+
+    // Check for cancellation before calling AI
+    if (signal?.aborted) {
+      throw new DOMException('Action cancelled', 'AbortError');
+    }
 
     const result = await aiGenerateCode(
       apiKey,
@@ -36,6 +46,11 @@ export const generateCodeExecutor: ActionExecutor = {
       config.styleGuide ?? null,
       ctx.knowledgeContext ?? project.knowledgeBase,
     );
+
+    // Check for cancellation after AI response
+    if (signal?.aborted) {
+      throw new DOMException('Action cancelled', 'AbortError');
+    }
 
     return {
       success: true,

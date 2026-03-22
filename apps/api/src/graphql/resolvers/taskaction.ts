@@ -8,6 +8,7 @@ import { getProjectRepo } from '../../github/index.js';
 import { availableTypes } from '../../actions/index.js';
 import { getJobQueue } from '../../infrastructure/jobqueue/index.js';
 import { retrieveRelevantKnowledge } from '../../ai/knowledgeRetrieval.js';
+import { abortPlan } from '../../infrastructure/jobs/actionExecutor.js';
 import { createChildLogger } from '../../utils/logger.js';
 
 const log = createChildLogger('taskaction-resolver');
@@ -389,6 +390,9 @@ export const taskActionMutations = {
     if (plan.status === 'completed' || plan.status === 'cancelled') {
       throw new ValidationError(`Cannot cancel plan in '${plan.status}' status`);
     }
+
+    // Abort the active action (if any) via AbortController
+    abortPlan(args.planId);
 
     // Cancel pending/executing actions
     await context.prisma.taskAction.updateMany({

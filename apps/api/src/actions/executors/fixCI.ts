@@ -36,6 +36,7 @@ async function fetchCheckAnnotations(
   owner: string,
   repo: string,
   checkRunId: number,
+  signal?: AbortSignal,
 ): Promise<CheckAnnotation[]> {
   const response = await fetch(
     `https://api.github.com/repos/${owner}/${repo}/check-runs/${checkRunId}/annotations`,
@@ -45,6 +46,7 @@ async function fetchCheckAnnotations(
         Accept: 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
       },
+      signal,
     },
   );
 
@@ -60,7 +62,7 @@ export const fixCIExecutor: ActionExecutor = {
   type: 'fix_ci',
 
   async execute(ctx: ActionContext): Promise<ActionResult> {
-    const { task, project, apiKey, previousResults } = ctx;
+    const { task, project, apiKey, previousResults, signal } = ctx;
     const config: FixCIConfig = JSON.parse(ctx.action.config || '{}');
 
     // Get failed check info from monitor_ci result
@@ -95,7 +97,7 @@ export const fixCIExecutor: ActionExecutor = {
     // Fetch error annotations from all failed checks
     const allAnnotations: CheckAnnotation[] = [];
     for (const check of monitorResult.failedChecks) {
-      const annotations = await fetchCheckAnnotations(token, owner, repoName, check.id);
+      const annotations = await fetchCheckAnnotations(token, owner, repoName, check.id, signal);
       allAnnotations.push(...annotations);
     }
 
@@ -109,6 +111,11 @@ export const fixCIExecutor: ActionExecutor = {
       : `CI checks failed: ${failedCheckNames}. No detailed annotations available.`;
 
     const ciErrorContext = `\n\nCI FAILURE — FIX REQUIRED:\nFailed checks: ${failedCheckNames}\nErrors:\n${errorLines}\n\nAnalyze the errors above and generate corrected code files that fix the CI failures.`;
+
+    // Check for cancellation before calling AI
+    if (signal?.aborted) {
+      throw new DOMException('Action cancelled', 'AbortError');
+    }
 
     // Generate fix via AI
     const fixInstructions = (task.instructions || task.description || '') + ciErrorContext;
@@ -126,6 +133,11 @@ export const fixCIExecutor: ActionExecutor = {
       return { success: false, data: { error: 'AI did not generate any fix files' } };
     }
 
+    // Check for cancellation after AI call
+    if (signal?.aborted) {
+      throw new DOMException('Action cancelled', 'AbortError');
+    }
+
     // Get the current head OID for the branch
     const branchRefResponse = await fetch(
       `https://api.github.com/repos/${owner}/${repoName}/git/refs/heads/${encodeURIComponent(prResult.branch)}`,
@@ -135,6 +147,7 @@ export const fixCIExecutor: ActionExecutor = {
           Accept: 'application/vnd.github+json',
           'X-GitHub-Api-Version': '2022-11-28',
         },
+        signal,
       },
     );
 

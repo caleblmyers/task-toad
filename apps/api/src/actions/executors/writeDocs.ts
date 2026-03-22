@@ -24,7 +24,7 @@ export const writeDocsExecutor: ActionExecutor = {
   type: 'write_docs',
 
   async execute(ctx: ActionContext): Promise<ActionResult> {
-    const { task, project, apiKey } = ctx;
+    const { task, project, apiKey, signal } = ctx;
     const config: WriteDocsConfig = JSON.parse(ctx.action.config || '{}');
 
     const docType = config.docType || 'readme';
@@ -47,6 +47,11 @@ Return JSON:
 }
 Generate appropriate markdown documentation. Use sensible file paths relative to the project root.`,
     };
+
+    // Check for cancellation before calling AI
+    if (signal?.aborted) {
+      throw new DOMException('Action cancelled', 'AbortError');
+    }
 
     // Reuse generateCode config as the closest match for doc generation
     const featureConfig = FEATURE_CONFIG.generateCode;

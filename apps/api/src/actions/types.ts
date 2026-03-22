@@ -4,6 +4,7 @@ export type ActionType = 'generate_code' | 'create_pr' | 'review_pr' | 'write_do
 
 export interface ActionContext {
   action: { id: string; actionType: string; config: string; label: string };
+  planId: string; // the action plan ID (needed for scheduling follow-up jobs)
   task: { taskId: string; title: string; description: string | null; instructions: string | null; projectId: string };
   project: { projectId: string; name: string; description: string | null; knowledgeBase: string | null };
   knowledgeContext: string | null;
@@ -12,6 +13,7 @@ export interface ActionContext {
   userId: string;
   prisma: PrismaClient;
   previousResults: Map<string, unknown>; // actionId → parsed result from earlier steps
+  signal?: AbortSignal; // cancellation signal — check in long-running actions
 }
 
 export interface ActionResult {

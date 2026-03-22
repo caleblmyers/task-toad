@@ -12,6 +12,29 @@ import { generateTaskInsights } from '../../ai/aiService.js';
 
 const log = createChildLogger('action-executor');
 
+// ── AbortController management for cancellation ──
+const activeControllers = new Map<string, AbortController>();
+
+/** Get the AbortController for a plan (used by monitorCIPoll). */
+export function getAbortController(planId: string): AbortController | undefined {
+  return activeControllers.get(planId);
+}
+
+/** Remove the AbortController for a plan (cleanup after completion). */
+export function removeAbortController(planId: string): void {
+  activeControllers.delete(planId);
+}
+
+/** Abort the active action for a plan (called from cancelActionPlan resolver). */
+export function abortPlan(planId: string): void {
+  const controller = activeControllers.get(planId);
+  if (controller) {
+    controller.abort();
+    activeControllers.delete(planId);
+    log.info({ planId }, 'Aborted active action for plan');
+  }
+}
+
 export function createHandler(prisma: PrismaClient) {
   return async (payload: { planId: string; actionId: string; orgId: string; userId: string }) => {
     const { planId, actionId, orgId, userId } = payload;
@@ -120,8 +143,13 @@ export function createHandler(prisma: PrismaClient) {
       knowledgeContext = project.knowledgeBase;
     }
 
+    // Create AbortController for this plan's active action
+    const abortController = new AbortController();
+    activeControllers.set(planId, abortController);
+
     const ctx: ActionContext = {
       action: { id: action.id, actionType: action.actionType, config: action.config, label: action.label },
+      planId,
       task: { taskId: task.taskId, title: task.title, description: task.description, instructions: task.instructions, projectId: task.projectId },
       project: { projectId: project.projectId, name: project.name, description: project.description, knowledgeBase: project.knowledgeBase },
       knowledgeContext,
@@ -130,6 +158,7 @@ export function createHandler(prisma: PrismaClient) {
       userId,
       prisma,
       previousResults,
+      signal: abortController.signal,
     };
 
     // Mark as executing
@@ -139,7 +168,19 @@ export function createHandler(prisma: PrismaClient) {
     });
 
     try {
+      // Check if already aborted before executing
+      if (abortController.signal.aborted) {
+        throw new DOMException('Action cancelled', 'AbortError');
+      }
+
       const result = await executor.execute(ctx);
+
+      // monitor_ci returns "polling" status when CI is still running —
+      // the action stays in "executing" and the poll job will complete it.
+      if (result.success && (result.data as { status?: string }).status === 'polling') {
+        log.info({ actionId, planId }, 'Action deferred to poll job, leaving in executing status');
+        return; // don't clean up controller — the poll job needs it
+      }
 
       if (result.success) {
         await prisma.taskAction.update({
@@ -175,6 +216,7 @@ export function createHandler(prisma: PrismaClient) {
       });
 
       if (!result.success) {
+        activeControllers.delete(planId);
         await prisma.taskActionPlan.update({
           where: { id: planId },
           data: { status: 'failed' },
@@ -310,7 +352,13 @@ export function createHandler(prisma: PrismaClient) {
           taskId: task.taskId,
         });
       }
+
+      // Clean up AbortController for this plan
+      activeControllers.delete(planId);
     } catch (err) {
+      // Clean up AbortController
+      activeControllers.delete(planId);
+
       const errorCode = err instanceof GraphQLError ? (err.extensions?.code as string) : undefined;
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       const isRetryable = isRetryableAIError(err);

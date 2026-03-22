@@ -10,7 +10,7 @@ export const reviewPRExecutor: ActionExecutor = {
   type: 'review_pr',
 
   async execute(ctx: ActionContext): Promise<ActionResult> {
-    const { task, apiKey, prisma } = ctx;
+    const { task, apiKey, prisma, signal } = ctx;
     const config: ReviewPRConfig = JSON.parse(ctx.action.config || '{}');
 
     // Get PR number from a previous create_pr action result
@@ -47,6 +47,11 @@ export const reviewPRExecutor: ActionExecutor = {
 
     if (!diff || diff.trim().length === 0) {
       return { success: false, data: { error: 'PR diff is empty' } };
+    }
+
+    // Check for cancellation before calling AI
+    if (signal?.aborted) {
+      throw new DOMException('Action cancelled', 'AbortError');
     }
 
     // Run AI code review

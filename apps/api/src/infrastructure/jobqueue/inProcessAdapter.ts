@@ -4,6 +4,7 @@ import type { JobName, JobPayload } from './types.js';
 import { tryAdvisoryLock, releaseAdvisoryLock } from '../../utils/advisoryLock.js';
 import { createChildLogger } from '../../utils/logger.js';
 
+
 const log = createChildLogger('jobqueue');
 
 interface RegisteredHandler<J extends JobName = JobName> {
@@ -23,6 +24,7 @@ export class InProcessJobQueue implements JobQueue {
   private handlers = new Map<JobName, RegisteredHandler>();
   private scheduledJobs = new Map<string, ScheduledJob>();
   private timers = new Map<string, NodeJS.Timeout>();
+  private delayTimers = new Set<NodeJS.Timeout>();
   private inFlightCount = 0;
   private draining = false;
   private started = false;
@@ -50,6 +52,21 @@ export class InProcessJobQueue implements JobQueue {
         log.error({ err, jobName }, 'Enqueued job failed');
       });
     });
+  }
+
+  enqueueDelayed<J extends JobName>(jobName: J, payload: JobPayload<J>, delayMs: number): void {
+    if (this.draining) {
+      log.warn({ jobName }, 'Delayed job enqueued during shutdown — skipping');
+      return;
+    }
+    const timer = setTimeout(() => {
+      this.delayTimers.delete(timer);
+      if (this.draining) return;
+      this.processJob(jobName, payload as Record<string, unknown>).catch((err) => {
+        log.error({ err, jobName }, 'Delayed job failed');
+      });
+    }, delayMs);
+    this.delayTimers.add(timer);
   }
 
   schedule(id: string, intervalMs: number, jobName: JobName, payload: Record<string, unknown> = {}): void {
@@ -82,6 +99,12 @@ export class InProcessJobQueue implements JobQueue {
       clearInterval(timer);
       this.timers.delete(id);
     }
+
+    // Clear all delayed-enqueue timers
+    for (const timer of this.delayTimers) {
+      clearTimeout(timer);
+    }
+    this.delayTimers.clear();
 
     // Wait for in-flight jobs with timeout
     if (this.inFlightCount > 0) {

@@ -65,6 +65,33 @@ async function main() {
   cronScheduler.start();
   slaBreachChecker.start();
 
+  // Recover stuck monitor_ci actions from before a restart
+  // Any action in "executing" state for > 35 minutes with type monitor_ci is likely abandoned
+  const stuckCutoff = new Date(Date.now() - 35 * 60 * 1000);
+  prisma.taskAction.findMany({
+    where: {
+      status: 'executing',
+      actionType: 'monitor_ci',
+      startedAt: { lt: stuckCutoff },
+    },
+    include: { plan: true },
+  }).then(async (stuckActions) => {
+    for (const action of stuckActions) {
+      logger.warn({ actionId: action.id, planId: action.planId, startedAt: action.startedAt }, 'Recovering stuck monitor_ci action');
+      await prisma.taskAction.update({
+        where: { id: action.id },
+        data: { status: 'failed', errorMessage: 'CI monitoring interrupted by server restart' },
+      });
+      await prisma.taskActionPlan.update({
+        where: { id: action.planId },
+        data: { status: 'failed' },
+      });
+    }
+    if (stuckActions.length > 0) {
+      logger.info({ count: stuckActions.length }, 'Recovered stuck monitor_ci actions');
+    }
+  }).catch((err) => logger.warn({ err }, 'Failed to recover stuck monitor_ci actions'));
+
   const server = app.listen(PORT, () => {
     logger.info({ port: PORT }, `TaskToad API listening on http://localhost:${PORT}`);
   });

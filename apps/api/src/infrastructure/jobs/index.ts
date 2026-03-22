@@ -7,6 +7,7 @@ import { createHandler as createWebhookRetryHandler } from './webhookRetry.js';
 import { createHandler as createRecurrenceHandler } from './recurrenceScheduler.js';
 import { createHandler as createPrismaMetricsHandler } from './prismaMetrics.js';
 import { createHandler as createActionExecutorHandler } from './actionExecutor.js';
+import { createHandler as createMonitorCIPollHandler } from './monitorCIPoll.js';
 
 export function registerJobs(queue: JobQueue, prisma: PrismaClient): void {
   // Register handlers
@@ -32,6 +33,8 @@ export function registerJobs(queue: JobQueue, prisma: PrismaClient): void {
     maxRetries: 2,
     retryDelays: [5000, 15000],
   });
+
+  queue.registerHandler('monitor-ci-poll', createMonitorCIPollHandler(prisma));
 
   // Schedule recurring jobs
   queue.schedule('due-date-reminders', 15 * 60 * 1000, 'due-date-reminders');
