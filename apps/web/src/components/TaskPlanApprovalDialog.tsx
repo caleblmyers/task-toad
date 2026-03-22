@@ -17,47 +17,28 @@ function formatHours(h: number): string {
   return `${h}h`;
 }
 
-const PROGRESS_STEPS = [
+const GENERATING_MESSAGES = [
   'Analyzing project scope…',
-  'Breaking down into epics…',
-  'Estimating effort and priority…',
-  'Building dependency graph…',
+  'Breaking down into epics and tasks…',
   'Finalizing task plan…',
 ];
 
 function GeneratingProgress() {
-  const [step, setStep] = useState(0);
+  const [messageIndex, setMessageIndex] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setStep((s) => (s < PROGRESS_STEPS.length - 1 ? s + 1 : s));
-    }, 3000);
+      setMessageIndex((i) => (i < GENERATING_MESSAGES.length - 1 ? i + 1 : i));
+    }, 4000);
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center py-12 gap-6">
+    <div className="flex flex-col items-center justify-center py-12 gap-4">
       <div className="w-8 h-8 border-2 border-slate-300 border-t-brand-green rounded-full animate-spin" />
-      <div className="w-full max-w-xs space-y-3">
-        {PROGRESS_STEPS.map((label, i) => (
-          <div key={i} className="flex items-center gap-3">
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-medium transition-colors duration-300 ${
-              i < step ? 'bg-green-500 text-white' :
-              i === step ? 'bg-brand-green text-white' :
-              'bg-slate-200 text-slate-400'
-            }`}>
-              {i < step ? '✓' : i + 1}
-            </div>
-            <span className={`text-sm transition-colors duration-300 ${
-              i < step ? 'text-slate-400 line-through' :
-              i === step ? 'text-slate-800 font-medium' :
-              'text-slate-400'
-            }`}>
-              {label}
-            </span>
-          </div>
-        ))}
-      </div>
+      <p className="text-sm text-slate-600 font-medium">
+        {GENERATING_MESSAGES[messageIndex]}
+      </p>
     </div>
   );
 }

@@ -103,8 +103,7 @@ describe('timeTrackingListener', () => {
     expect(call.data.autoTracked).toBe(true);
     expect(call.data.durationMinutes).toBeGreaterThanOrEqual(29);
     expect(call.data.durationMinutes).toBeLessThanOrEqual(31);
-    expect(call.data.description).toContain('in_progress');
-    expect(call.data.description).toContain('done');
+    expect(call.data.description).toContain('while in progress');
   });
 
   it('does NOT create TimeEntry when transitioning from todo to in_progress', async () => {
@@ -129,7 +128,7 @@ describe('timeTrackingListener', () => {
     expect(prisma.timeEntry.create).toHaveBeenCalledTimes(1);
     const call = prisma.timeEntry.create.mock.calls[0][0];
     expect(call.data.durationMinutes).toBeGreaterThanOrEqual(9);
-    expect(call.data.description).toContain('todo');
+    expect(call.data.description).toContain('while in progress');
   });
 
   it('creates split entries for multi-assignee tasks', async () => {

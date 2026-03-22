@@ -67,7 +67,7 @@ export default function Modal({
 
   const alignmentClass =
     variant === 'top-aligned'
-      ? 'items-start pt-[15vh]'
+      ? 'items-start justify-center pt-[15vh]'
       : variant === 'panel-right'
         ? 'items-center justify-end pr-4'
         : 'items-center justify-center';

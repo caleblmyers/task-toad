@@ -33,7 +33,7 @@ export default function TimeEntryList({ entries, currentUserId, onDelete }: Time
               <span className="truncate text-slate-500">{entry.description}</span>
             )}
             {entry.autoTracked && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] text-blue-500 bg-blue-50 dark:bg-blue-900/30 px-1 rounded flex-shrink-0" title="Auto-tracked from status change">
+              <span className="inline-flex items-center gap-0.5 text-[10px] text-blue-500 bg-blue-50 dark:bg-blue-900/30 px-1 rounded flex-shrink-0" title="This time was automatically tracked while the task was in progress">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-2.5 h-2.5"><path fillRule="evenodd" d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14Zm.75-10.25a.75.75 0 0 0-1.5 0V8c0 .199.079.39.22.53l2 2a.75.75 0 1 0 1.06-1.06L8.75 7.69V4.75Z" clipRule="evenodd" /></svg>
                 Auto
               </span>

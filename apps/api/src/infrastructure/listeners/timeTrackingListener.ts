@@ -63,7 +63,7 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
                 userId: assignee.userId,
                 durationMinutes: perAssignee,
                 loggedDate: today,
-                description: `Auto-tracked: ${oldStatus} → ${newStatus}`,
+                description: `Auto-tracked: ${perAssignee}m while in progress (split across ${taskAssignees.length} assignees)`,
                 autoTracked: true,
               },
             }),
@@ -85,7 +85,7 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
             userId,
             durationMinutes,
             loggedDate: today,
-            description: `Auto-tracked: ${oldStatus} → ${newStatus}`,
+            description: `Auto-tracked: ${durationMinutes}m while in progress`,
             autoTracked: true,
           },
         });
