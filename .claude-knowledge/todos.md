@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-Production deployed at `https://tasktoad-api-production.up.railway.app`. 50 swarm waves completed. Security: 38/39 (97%). All P1 complete. 14 P2 features shipped. Zero lint warnings. 330 tests.
+Production deployed at `https://tasktoad-api-production.up.railway.app`. 51 swarm waves completed. Security: 38/39 (97%). All P1 + P2 features complete. Zero lint warnings. 335 tests.
 
 ---
 
@@ -128,26 +128,30 @@ Full report: `.claude-knowledge/security-audit.md`
 ## Deferred Polish
 
 ### Code Quality
-- [ ] Add integration tests for `previewHierarchicalPlan` and `commitHierarchicalPlan` resolvers
-- [ ] SLA: paused time handling (task reopened, weekends/business hours)
+- [x] Add integration tests for `previewHierarchicalPlan` and `commitHierarchicalPlan` resolvers *(Wave 51)*
+- [x] SLA: paused time handling (task reopened) *(Wave 51)*
+- [ ] SLA: weekends/business hours exclusion from SLA timer
 
 ### Features
-- [ ] KB entry search/filter in KnowledgeBasePanel when entry count grows large
-- [ ] PlanDependencyEditor: subtask-level dependencies not supported
-- [ ] ExecutionDashboard: dependency visualization between plans
-- [ ] ExecutionDashboard: stat cards count from filtered list — use separate all-plans query
-- [ ] Orchestrator: add metrics/observability
-- [ ] Shared-types expansion — add Report type to `@tasktoad/shared-types`
-- [ ] S3 multipart upload — current 10MB limit uses single PUT
-- [ ] useAsyncData adoption — migrate components with inline fetch-in-useEffect
+- [x] KB entry search/filter in KnowledgeBasePanel *(Wave 51)*
+- [x] PlanDependencyEditor: subtask-level dependencies *(Wave 51)*
+- [x] ExecutionDashboard: dependency visualization between plans *(Wave 51)*
+- [x] ExecutionDashboard: stat cards use unfiltered counts *(Wave 51)*
+- [x] Orchestrator: Prometheus metrics *(Wave 51)*
+- [x] Shared-types expansion — Report type in `@tasktoad/shared-types` *(Wave 51)*
+- [x] S3 multipart upload for files >10MB *(Wave 51)*
+- [x] useAsyncData adoption (3 components migrated) *(Wave 51)*
+- [ ] useAsyncData adoption — migrate remaining inline fetch-in-useEffect components (ReleaseListPanel, Portfolio, etc.)
+- [ ] TQL autocomplete — keyboard navigation (arrow keys + Enter to select)
+- [ ] TQL saved queries — delete/rename saved queries
 
 ### Reliability
 - [ ] monitor_ci: make polling resilient to process restarts
 - [ ] cancelActionPlan: verify it interrupts actively executing actions
-- [ ] Planning prompt: validate monitor_ci/fix_ci source action IDs in schema
-- [ ] AI rate limiter: consider in-memory cache/sliding window for high-throughput orgs
-- [ ] Anthropic SDK maxRetries=0 — consider app-level retry with capped backoff
-- [ ] M-7: consider making email redaction default with admin opt-out
+- [x] Planning prompt: validate monitor_ci/fix_ci source action IDs *(Wave 51)*
+- [x] AI rate limiter: in-memory sliding window cache *(Wave 51)*
+- [x] Anthropic SDK: app-level retry with exponential backoff *(Wave 51)*
+- [x] Email redaction default for non-admin exports *(Wave 51)*
 
 ### Tooling
 - [ ] Swarm planning: when two tasks add Prisma models, they conflict in shared import files — note dependency or have workers rebase
@@ -193,11 +197,11 @@ Full report: `.claude-knowledge/security-audit.md`
 - [x] Approval SSE — include approver info in approval.decided event *(Wave 50)*
 - [x] Timesheet keyboard nav — arrow keys navigate without saving *(Wave 50)*
 - [ ] Fix flaky integration tests — FK violations, deadlocks, unique constraints in e2e/notification/security/sprint tests
-- [ ] TQL — autocomplete/suggestions dropdown for field names as user types
-- [ ] TQL — saved TQL queries (bookmark common searches)
-- [ ] TQL — detection regex duplicated between SearchInput.tsx and useTaskFiltering.ts — extract to shared util
-- [ ] Approval history — show requester's reason/comment for requesting approval transition
-- [ ] Approval workflows — email/notification to designated approvers when approval is requested
+- [x] TQL — autocomplete/suggestions dropdown for field names as user types *(Wave 51)*
+- [x] TQL — saved TQL queries (bookmark common searches) *(Wave 51)*
+- [x] TQL — detection regex extracted to shared tqlHelpers.ts *(Wave 51)*
+- [x] Approval history — show requester's comment in approval history *(Wave 51)*
+- [x] Approval workflows — email notification to designated approvers *(Wave 51)*
 
 ---
 
@@ -223,5 +227,6 @@ Full report: `.claude-knowledge/security-audit.md`
 | 48 | 2026-03-21 | P2 features (timesheet view, approval workflows), follow-up polish (burndown tests, control chart, heatmap names, auto-tracking multi-assignee + tests) |
 | 49 | 2026-03-21 | P2 features (cross-project initiatives, workflow permissions, field-level restrictions), polish (timesheet delete/keyboard nav, approval SSE, control chart window, merge script fix) |
 | 50 | 2026-03-21 | TQL parser + frontend integration, follow-up fixes (field permissions, initiative edit/DataLoader, approval history, timesheet UX, configurable approvers, SSE approver info) |
+| 51 | 2026-03-21 | Feature polish (KB search, ExecutionDashboard deps/stats, S3 multipart, useAsyncData, TQL autocomplete/saved queries), reliability (hierarchical plan tests, SLA pause, AI rate limiter cache, SDK retry, email redaction, prompt validation), shared types (Report), orchestrator metrics, approval email notifications |
 
 Full wave details in `changelog.md`.

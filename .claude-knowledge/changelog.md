@@ -4,6 +4,43 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-22 (big cleanup wave)
+
+### Wave 51: Feature Polish, Reliability & Follow-up Cleanup (3 workers, 3 tasks)
+
+**Worker 1 — task-001: Feature Polish (5 items):**
+- KB entry search/filter in KnowledgeBasePanel — client-side search by title/content with highlighting.
+- ExecutionDashboard dependency badges: shows "Blocked by: Plan #N" for plans with task-level blocking relationships.
+- ExecutionDashboard stat cards fix: separate unfiltered query for counts, filtered query for list.
+- S3 multipart upload: files >10MB use `@aws-sdk/lib-storage` Upload, small files still use PutObjectCommand. Multer limit raised to 100MB.
+- useAsyncData adoption: migrated 3-5 components from inline fetch-in-useEffect to useAsyncData hook.
+
+**Worker 2 — task-002: Code Quality + Reliability (6 items):**
+- Hierarchical plan integration tests: `hierarchicalPlan.integration.test.ts` — preview, commit, autoComplete toggles, validation errors.
+- SLA paused time: `pausedAt` and `totalPausedMs` fields on SLATimer (migration). Listener pauses timer on in_progress→todo, resumes on re-entry. Breach check subtracts paused time.
+- AI rate limiter in-memory cache: sliding window `Map<orgId, {count, windowStart}>`, refreshes from DB once per hour per org.
+- SDK app-level retry: `callWithRetry()` wraps AI calls with 2 retries + exponential backoff (1s/2s/4s, max 10s) for transient errors (5xx, connection). Does NOT retry auth/rate-limit/bad-request.
+- Email redaction default: non-admin exports redact emails by default. Admins can opt in with `?includeEmails=true`.
+- Planning prompt validation: validates source action IDs exist before referencing in AI planning prompt.
+
+**Worker 3 — task-003: Follow-up Polish (8 items):**
+- TQL autocomplete: field name dropdown appears when typing bare words in TQL mode.
+- TQL saved queries: stored as SavedFilter with `viewType: 'tql'`.
+- TQL regex dedup: `isTQLQuery()` extracted to shared `tqlHelpers.ts`.
+- Approval comment display: requester's comment shown in approval history.
+- Approval email notification: sends email to designated approvers if SMTP configured, logs structured message otherwise.
+- Orchestrator Prometheus metrics: 3 counters (tasks_enqueued, failures, concurrency_limit_hits).
+- Shared-types: `Report` interface exported from `@tasktoad/shared-types`.
+- PlanDependencyEditor subtask support: subtasks included in dependency picker with indented hierarchy.
+
+**Process:** task-002 sent back once for missing `callWithRetry` implementation. task-001 needed manual `pnpm install` for `@aws-sdk/lib-storage` before merge validation. Test fix: security test for email redaction updated for new default-on behavior.
+
+**Open follow-ups:**
+- merge-worker.sh should auto-detect lockfile changes and run `pnpm install --frozen-lockfile`
+- For tasks with 6+ acceptance criteria, add self-verify checklist reminder
+
+---
+
 ## 2026-03-21 (TQL + follow-up fixes)
 
 ### Wave 50: Task Query Language & Follow-up Fixes (3 workers, 3 tasks)
@@ -133,39 +170,9 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-03-21 (code quality + tests + P2 features)
-
-### Wave 46: Code Quality, Unit Tests & P2 Features (3 workers, 3 tasks)
-
-**Worker 1 — task-001: Code Quality Fixes:**
-- SLA permission fix: `createSLAPolicy`/`updateSLAPolicy`/`deleteSLAPolicy` now use `requirePermission('MANAGE_PROJECT_SETTINGS')` instead of basic `requireProjectAccess`.
-- Removed 3 `context.prisma as unknown as PrismaClient` double casts in auth.ts — changed `trackRefreshToken` parameter type to `Context['prisma']`.
-- AppLayout `fetchCount` lint warning fixed — 0 lint warnings remaining across entire codebase.
-- Sentry web frontend integration: `@sentry/react` installed, `Sentry.init()` in production with `VITE_SENTRY_DSN`, `ErrorBoundary.componentDidCatch` calls `Sentry.captureException`.
-
-**Worker 2 — task-002: Unit Test Suites (35 new tests):**
-- `cyclicDependencyCheck.test.ts` — 8+ tests: self-loops, direct/indirect cycles, non-blocking type exclusion, `is_blocked_by` normalization, multiple proposed edges.
-- `urlValidator.test.ts` — 8+ tests: valid URLs, localhost variants, private IP ranges, blocked ports, protocol restrictions. DNS resolution mocked.
-- `insightGeneration.test.ts` — 5+ tests: insight generation called after `generate_code`, skipped for other types, non-blocking on failure, TaskInsight record creation.
-
-**Worker 3 — task-003: P2 Features:**
-- Monte Carlo sprint forecasting: `sprintForecast` query, `monteCarloForecast.ts` pure simulation function, `SprintForecastPanel.tsx` with probability gauge + percentile table (50th/75th/90th/95th). Only renders with >= 3 closed sprints.
-- Scheduled automation triggers: `cronExpression`, `timezone`, `nextRunAt`, `lastRunAt` fields on AutomationRule. `cronScheduler.ts` checks due rules every 60s via `setInterval`. `cron-parser` package for expression parsing. AutomationTab schedule section with presets (hourly, daily, weekly) and timezone selector.
-
-**Process:** All 3 tasks merged. Reviewer encountered squash merge issue (deleting files from previously-merged tasks when worker branch diverged) — worked around with `git cherry-pick --no-commit`.
-
-**Open follow-ups:**
-- Monte Carlo forecast edge case tests
-- Sentry ErrorBoundary initialization guard
-- Automation rule validation: enforce cronExpression on scheduled triggers
-- Cron scheduler graceful shutdown (track active promises)
-- SprintForecastPanel loading state (use skeleton loader)
-- merge-worker.sh: fix squash merge to use cherry-pick when diverged
-
----
-
 ## Older Entries (one-line summaries)
 
+- **2026-03-21** — Wave 46: Code quality (SLA perms, prisma casts, Sentry web, 0 lint warnings), unit tests (cyclicDependencyCheck, urlValidator, insightGeneration), P2 (Monte Carlo forecasting, scheduled automation triggers).
 - **2026-03-21** — Wave 45: P1 features (multi-action automation, SLA tracking, compound conditions), L-5 concurrent session limit (RefreshToken model), backend polish (DataLoader N+1, KB refresh, cast fix), frontend polish (lint fixes, mutation extraction, insight dedup, onboarding keyboard nav).
 
 - **2026-03-21** — Wave 44: Security cleanup (M-4 magic bytes, L-6 homograph, L-11 null byte REST), data migration scripts, 19 security integration tests, auth follow-ups (verifyEmail cookies, SessionExpiredModal), frontend polish (permission disabling, BacklogView keyboard nav, lint fixes).
