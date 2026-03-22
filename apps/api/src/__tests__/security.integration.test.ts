@@ -405,7 +405,7 @@ describe('Export Email Redaction', () => {
     expect(body).toContain('j***@company.com');
   });
 
-  it('export without ?redactEmails shows full emails', async () => {
+  it('export without ?redactEmails redacts emails for non-admin users', async () => {
     const token = await generateToken(userId, 'john@company.com');
     const res = await request(app)
       .get(`/api/export/project/${projectId}/json`)
@@ -413,7 +413,9 @@ describe('Export Email Redaction', () => {
 
     expect(res.status).toBe(200);
     const body = JSON.stringify(res.body);
-    expect(body).toContain('john@company.com');
+    // Non-admin users get redacted emails by default (Wave 51 change)
+    expect(body).not.toContain('john@company.com');
+    expect(body).toContain('j***@company.com');
   });
 });
 
