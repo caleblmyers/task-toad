@@ -2,7 +2,6 @@ import { useState } from 'react';
 import type { Task, Sprint, OrgUser, Label } from '../../types';
 import type { TaskTimeSummary } from '@tasktoad/shared-types';
 import { statusLabel } from '../../utils/taskHelpers';
-import Badge from '../shared/Badge';
 import TaskCustomFieldsSection from './TaskCustomFieldsSection';
 import TimeEntryList from './TimeEntryList';
 
@@ -18,7 +17,7 @@ interface TaskFieldsPanelProps {
   onAssignSprint: (taskId: string, sprintId: string | null) => void;
   onAssignUser: (taskId: string, assigneeId: string | null) => void;
   onDueDateChange: (taskId: string, dueDate: string | null) => void;
-  onUpdateTask?: (taskId: string, updates: { storyPoints?: number | null }) => Promise<void>;
+  onUpdateTask?: (taskId: string, updates: { storyPoints?: number | null; priority?: string }) => Promise<void>;
   onAddTaskLabel?: (taskId: string, labelId: string) => Promise<void>;
   onRemoveTaskLabel?: (taskId: string, labelId: string) => Promise<void>;
   onCreateLabel?: (name: string, color: string) => Promise<Label | null>;
@@ -29,13 +28,6 @@ interface TaskFieldsPanelProps {
   timeSummary?: TaskTimeSummary | null;
   onLogTime?: (taskId: string, durationMinutes: number, loggedDate: string, description?: string, billable?: boolean) => Promise<unknown>;
   onDeleteTimeEntry?: (timeEntryId: string, taskId: string) => Promise<void>;
-}
-
-function priorityVariant(p: string): 'danger' | 'warning' | 'info' | 'neutral' {
-  if (p === 'critical') return 'danger';
-  if (p === 'high') return 'warning';
-  if (p === 'low') return 'neutral';
-  return 'info';
 }
 
 function formatHours(h: number): string {
@@ -299,15 +291,33 @@ export default function TaskFieldsPanel({
         />
       </div>
 
-      {/* Metadata: priority + estimate */}
-      {(task.priority !== 'medium' || task.estimatedHours != null) && (
-        <div className="mb-4 flex items-center gap-2">
-          <Badge variant={priorityVariant(task.priority)}>{task.priority}</Badge>
-          {task.estimatedHours != null && (
-            <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-              ~{formatHours(task.estimatedHours)}
-            </span>
-          )}
+      {/* Priority */}
+      <div className="mb-4">
+        <label htmlFor="task-priority-select" className="text-xs font-medium text-slate-500 uppercase tracking-wide">Priority</label>
+        <select
+          id="task-priority-select"
+          value={task.priority}
+          onChange={(e) => {
+            if (onUpdateTask) {
+              onUpdateTask(task.taskId, { priority: e.target.value });
+            }
+          }}
+          className="block mt-1 border border-slate-300 rounded px-2 py-1 text-sm"
+          disabled={disabled}
+        >
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="critical">Critical</option>
+        </select>
+      </div>
+
+      {/* Estimate */}
+      {task.estimatedHours != null && (
+        <div className="mb-4">
+          <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+            ~{formatHours(task.estimatedHours)}
+          </span>
         </div>
       )}
 

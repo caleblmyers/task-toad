@@ -590,6 +590,7 @@ export const generationMutations = {
     if (!task || task.orgId !== user.orgId) {
       throw new NotFoundError('Task not found');
     }
+    await requirePermission(context, task.projectId, Permission.EDIT_TASKS);
     const project = await context.loaders.projectById.load(task.projectId);
     if (!project) throw new NotFoundError('Project not found');
     const siblings = await context.prisma.task.findMany({
@@ -1009,6 +1010,7 @@ export const generationMutations = {
     if (!task || task.orgId !== user.orgId) {
       throw new NotFoundError('Task not found');
     }
+    await requirePermission(context, task.projectId, Permission.EDIT_TASKS);
     const project = await context.loaders.projectById.load(task.projectId);
     if (!project) throw new NotFoundError('Project not found');
 
