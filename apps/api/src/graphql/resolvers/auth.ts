@@ -157,12 +157,13 @@ export const authMutations = {
     if (!user) throw new AuthenticationError('Invalid email or password');
     const valid = await bcrypt.compare(args.password, user.passwordHash);
     if (!valid) throw new AuthenticationError('Invalid email or password');
-    // Require email verification before allowing login
-    // Skip check for pre-existing accounts (created before verification was added) —
-    // they have no verificationToken and no verificationTokenExpiry
-    const hasVerificationFlow = user.verificationToken || user.verificationTokenExpiry;
-    if (!user.emailVerifiedAt && hasVerificationFlow) {
-      throw new AuthenticationError('Please verify your email before logging in. Check your inbox for a verification link.');
+    // Require email verification before allowing login — but only if SMTP is configured
+    // (otherwise users would be permanently locked out with no way to verify)
+    if (process.env.SMTP_HOST && !user.emailVerifiedAt) {
+      const hasVerificationFlow = user.verificationToken || user.verificationTokenExpiry;
+      if (hasVerificationFlow) {
+        throw new AuthenticationError('Please verify your email before logging in. Check your inbox for a verification link.');
+      }
     }
     // Short-lived access token (15 min)
     const accessToken = await new SignJWT({ sub: user.userId, email: user.email, tv: user.tokenVersion })
