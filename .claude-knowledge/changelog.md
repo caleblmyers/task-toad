@@ -4,6 +4,28 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-22 (final cleanup)
+
+### Wave 52: Final Cleanup — SLA Business Hours, Reliability, Test Stability (3 workers, 3 tasks)
+
+**Worker 1 — task-001: SLA Business Hours + useAsyncData + TQL Polish:**
+- SLA business hours: `businessHoursStart`, `businessHoursEnd`, `excludeWeekends` fields on SLAPolicy (migration). `calculateBusinessHours()` utility excludes weekends and non-business hours from SLA timer evaluation. Breach checker and listener use business hours calculation.
+- useAsyncData: 5 more components migrated (Portfolio, PendingApprovals, SprintForecast, Timesheet, WorkloadHeatmap).
+- TQL autocomplete keyboard nav: Arrow Up/Down to highlight, Enter to select, Escape to close.
+- TQL saved queries: delete (X button + confirm) and rename (inline edit) support.
+
+**Worker 2 — task-002: Pipeline Reliability:**
+- monitor_ci restart resilience: Extracted `evaluateCheckRuns()` and created `monitorCIPoll.ts` job that uses the job queue for follow-up polls instead of in-process sleep. Startup scan marks stuck monitor_ci actions as failed after 35 min.
+- cancelActionPlan interrupt: `Map<string, AbortController>` pattern in actionExecutor. Cancel aborts in-flight fetch calls and checks `signal.aborted` before/after AI API calls. AbortController cleaned up on action completion.
+
+**Worker 3 — task-003: Test Stability + Swarm Docs:**
+- Flaky test fix: expanded `cleanDatabase()` table list with all Wave 45-52 tables (refresh_tokens, sla_policies, sla_timers, approvals, initiatives, initiative_projects, field_permissions). Added retry logic for TRUNCATE with 50ms delay. Pre-cleanup drain delay for fire-and-forget operations.
+- task-swarm SKILL.md: added Prisma model conflict guidance to task dependency section.
+
+**Process:** DB was down during merge validation — reviewer had to manually merge task-002. monitorCIPoll.ts duplicates action-completion orchestration from actionExecutor.ts (tech debt noted).
+
+---
+
 ## 2026-03-22 (big cleanup wave)
 
 ### Wave 51: Feature Polish, Reliability & Follow-up Cleanup (3 workers, 3 tasks)
@@ -140,38 +162,9 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-03-21 (P2 visualizations + productivity + polish)
-
-### Wave 47: P2 Charts, Auto-Tracking, Workload Heatmap & Polish (3 workers, 3 tasks)
-
-**Worker 1 — task-001: Cycle Time Scatter + Release Burndown:**
-- Cycle time scatter chart in CycleTimePanel: SVG with date×hours dots, P50/P85/P95 percentile overlay lines (green/amber/red dashed), hover tooltips with task title + duration. Table/Scatter view toggle.
-- Release burndown chart: `releaseBurndown(releaseId)` query (daily total/completed/remaining task series from activities), `ReleaseBurndownChart.tsx` SVG line chart wired into release detail view.
-
-**Worker 2 — task-002: Auto-Tracking + Workload Heatmap:**
-- Auto-tracking from status transitions: `autoTracked` boolean on TimeEntry (migration). New `timeTrackingListener.ts` — when status changes from `in_progress`, calculates duration from last `in_progress` activity and creates TimeEntry with `autoTracked: true`. "Auto" badge in time log UI. Entries are editable.
-- Workload heatmap: `workloadHeatmap(projectId, startDate, endDate)` query returns per-user per-week hours/task counts. `WorkloadHeatmap.tsx` — user×week grid with color-coded cells (green <30h, amber 30-40h, red >40h). Wired into Dashboard tab.
-
-**Worker 3 — task-003: Polish Batch (6 items):**
-- Cron scheduler graceful shutdown: `stop()` tracks active execution promises, awaits before resolving. SIGTERM handler in index.ts calls `scheduler.stop()`.
-- Automation cron validation: `createAutomationRule` rejects scheduled triggers without valid `cronExpression` (parsed with cron-parser).
-- SLA periodic breach checker: `slaBreachChecker.ts` runs every 5 minutes, flags overdue SLATimers where `now - startedAt > responseTimeHours`.
-- Monte Carlo edge case tests: `monteCarloForecast.test.ts` — zero work, empty velocities, single data point, large simulation count, negative days.
-- SprintForecastPanel skeleton loader: replaces bare "Loading forecast..." text.
-- Sentry ErrorBoundary guard: `captureException` guarded against uninitialized Sentry.
-
-**Process:** All 3 tasks merged cleanly with zero rejections. No issues logged.
-
-**Open follow-ups:**
-- Release burndown: tests for edge cases (no tasks, all done, no activities)
-- Cycle time scatter: control chart mode (rolling average, std dev bands)
-- Workload heatmap: use display name instead of email prefix
-- Auto-tracking: handle multi-assignee during in_progress, add listener tests
-
----
-
 ## Older Entries (one-line summaries)
 
+- **2026-03-21** — Wave 47: P2 features (cycle time scatter chart, release burndown, auto-tracking from status transitions, workload heatmap), polish (cron graceful shutdown, automation cron validation, SLA breach checker, Monte Carlo tests, forecast skeleton, Sentry guard).
 - **2026-03-21** — Wave 46: Code quality (SLA perms, prisma casts, Sentry web, 0 lint warnings), unit tests (cyclicDependencyCheck, urlValidator, insightGeneration), P2 (Monte Carlo forecasting, scheduled automation triggers).
 - **2026-03-21** — Wave 45: P1 features (multi-action automation, SLA tracking, compound conditions), L-5 concurrent session limit (RefreshToken model), backend polish (DataLoader N+1, KB refresh, cast fix), frontend polish (lint fixes, mutation extraction, insight dedup, onboarding keyboard nav).
 

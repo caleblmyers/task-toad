@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-Production deployed at `https://tasktoad-api-production.up.railway.app`. 51 swarm waves completed. Security: 38/39 (97%). All P1 + P2 features complete. Zero lint warnings. 335 tests.
+Production deployed at `https://tasktoad-api-production.up.railway.app`. 52 swarm waves completed. Security: 38/39 (97%). All P1 + P2 features complete. All deferred polish complete. Zero lint warnings. 335 tests. Ready for manual testing.
 
 ---
 
@@ -128,9 +128,7 @@ Full report: `.claude-knowledge/security-audit.md`
 ## Deferred Polish
 
 ### Code Quality
-- [x] Add integration tests for `previewHierarchicalPlan` and `commitHierarchicalPlan` resolvers *(Wave 51)*
-- [x] SLA: paused time handling (task reopened) *(Wave 51)*
-- [ ] SLA: weekends/business hours exclusion from SLA timer
+- [x] SLA: weekends/business hours exclusion *(Wave 52)*
 
 ### Features
 - [x] KB entry search/filter in KnowledgeBasePanel *(Wave 51)*
@@ -156,7 +154,10 @@ Full report: `.claude-knowledge/security-audit.md`
 - [x] Email redaction default for non-admin exports *(Wave 51)*
 
 ### Tooling
-- [ ] Swarm planning: when two tasks add Prisma models, they conflict in shared import files — note dependency or have workers rebase
+- [x] Swarm planning: Prisma model conflict guidance added to task-swarm SKILL.md *(Wave 52)*
+- [ ] Refactor: extract shared action-completion orchestration from actionExecutor.ts and monitorCIPoll.ts
+- [ ] useAsyncData: ReleaseListPanel still uses inline fetch pattern
+- [ ] merge-worker.sh: auto-detect lockfile changes and run pnpm install before validation
 
 ---
 
@@ -198,7 +199,7 @@ Full report: `.claude-knowledge/security-audit.md`
 - [x] Field permissions — DataLoader for fieldPermission lookups in updateTask *(Wave 50)*
 - [x] Approval SSE — include approver info in approval.decided event *(Wave 50)*
 - [x] Timesheet keyboard nav — arrow keys navigate without saving *(Wave 50)*
-- [ ] Fix flaky integration tests — FK violations, deadlocks, unique constraints in e2e/notification/security/sprint tests
+- [x] Fix flaky integration tests — expanded cleanDatabase table list + retry logic *(Wave 52)*
 - [x] TQL — autocomplete/suggestions dropdown for field names as user types *(Wave 51)*
 - [x] TQL — saved TQL queries (bookmark common searches) *(Wave 51)*
 - [x] TQL — detection regex extracted to shared tqlHelpers.ts *(Wave 51)*
@@ -230,5 +231,6 @@ Full report: `.claude-knowledge/security-audit.md`
 | 49 | 2026-03-21 | P2 features (cross-project initiatives, workflow permissions, field-level restrictions), polish (timesheet delete/keyboard nav, approval SSE, control chart window, merge script fix) |
 | 50 | 2026-03-21 | TQL parser + frontend integration, follow-up fixes (field permissions, initiative edit/DataLoader, approval history, timesheet UX, configurable approvers, SSE approver info) |
 | 51 | 2026-03-21 | Feature polish (KB search, ExecutionDashboard deps/stats, S3 multipart, useAsyncData, TQL autocomplete/saved queries), reliability (hierarchical plan tests, SLA pause, AI rate limiter cache, SDK retry, email redaction, prompt validation), shared types (Report), orchestrator metrics, approval email notifications |
+| 52 | 2026-03-22 | Final cleanup: SLA business hours, useAsyncData remaining, TQL keyboard nav + saved query CRUD, monitor_ci restart resilience, cancelActionPlan interrupt, flaky test fixes, swarm Prisma conflict guidance |
 
 Full wave details in `changelog.md`.
