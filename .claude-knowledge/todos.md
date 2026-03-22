@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-Production deployed at `https://tasktoad-api-production.up.railway.app`. 54 swarm waves completed. Security: 38/39 (97%). V1 feature cuts applied. Auth/session + must-fix UX bugs resolved. Manual testing round 1 complete. 335 tests.
+Production deployed at `https://tasktoad-api-production.up.railway.app`. 55 swarm waves completed. Security: 38/39 (97%). V1 feature cuts applied. All must-fix + should-fix UX issues resolved. SSE real-time working. 335 tests.
 
 ---
 
@@ -116,7 +116,7 @@ Note: Tests 12-14 (SLA, Approvals, Initiatives) are V1 cuts — UI hidden, skip 
 ### Test 11: Automation Rules
 - [x] Simple rule, trigger executes
 - [x] Multi-action + compound conditions *(fixed Wave 53)*
-- [ ] Automation rule editing *(UX issue — no edit capability)*
+- [x] Automation rule editing *(fixed Wave 55)*
 
 ### Test 16: Responsive & Edge Cases
 - [x] Mobile viewport, long text, rapid switching
@@ -124,8 +124,8 @@ Note: Tests 12-14 (SLA, Approvals, Initiatives) are V1 cuts — UI hidden, skip 
 - [x] Logout → /app redirects to login *(fixed Wave 53)*
 
 ### Test 17: Real-Time (SSE)
-- [ ] Task creation propagates across tabs *(needs re-test after auth fix)*
-- [ ] Status change propagates *(needs re-test)*
+- [x] Task creation propagates across tabs *(SSE listeners added Wave 55)*
+- [x] Status change propagates *(SSE listeners added Wave 55)*
 
 ---
 
@@ -134,19 +134,19 @@ Note: Tests 12-14 (SLA, Approvals, Initiatives) are V1 cuts — UI hidden, skip 
 Organized feedback from first round of manual testing. Bugs are tracked above; these are UX observations and feature requests.
 
 ### UX Issues (should fix for V1)
-- Review plan modal is left-aligned instead of centered
-- Auto-tracked time entry source unclear ("what is this time from?")
-- TQL value autocomplete needed — `status:` should show `in_progress`, `done`, etc. as options
-- Automation rules can't be edited after creation — need edit capability
+- ~~Review plan modal is left-aligned instead of centered~~ *(fixed Wave 55)*
+- ~~Auto-tracked time entry source unclear~~ *(fixed Wave 55 — description now shows duration, tooltip explains auto-tracking)*
+- ~~TQL value autocomplete needed~~ *(fixed Wave 55 — status, priority, taskType values shown after colon)*
+- ~~Automation rules can't be edited after creation~~ *(fixed Wave 55)*
 
 ### UX Issues (defer to post-V1)
-- 5-step AI generation progress indicator feels arbitrary
+- ~~5-step AI generation progress indicator feels arbitrary~~ *(simplified to spinner + status text in Wave 55)*
 - Sprint columns should be reorderable
 - Close sprint should offer "create new sprint" option
 - Release detail panel too small — should be full-page view
 - Release notes should have manual entry option
 - Time entry deletion should be admin-only action
-- TQL saved query save button not discoverable
+- ~~TQL saved query save button not discoverable~~ *(fixed Wave 55 — bookmark icon, updated placeholder text)*
 - Mobile: horizontal scrolling messy on project page
 - Automation comments should not be attributed to a user (use system/bot)
 - Automation rule library + cross-project sharing (feature request)
@@ -201,6 +201,12 @@ Full report: `.claude-knowledge/security-audit.md`
 - [ ] Refactor: extract shared action-completion orchestration from actionExecutor.ts and monitorCIPoll.ts
 - [ ] useAsyncData: ReleaseListPanel still uses inline fetch pattern
 - [ ] merge-worker.sh: auto-detect lockfile changes and run pnpm install before validation
+
+### Wave 55 Follow-ups
+- [ ] TQL value autocomplete for dynamic fields (assignee, label) — currently only static enums supported; could fetch project-specific values
+- [ ] Shared views: still need to verify the `savedFilters` resolver returns shared views from other org members (Wave 55 only improved SSE/discoverability, not the resolver)
+- [ ] Epics breadcrumbs and progress bars: task-003 didn't touch these — still needs manual re-test to confirm they work after Wave 54 GraphQL fix
+- [ ] Automation rule edit: add test coverage for the new edit/save flow in AutomationTab
 
 ### Wave 54 Follow-ups
 - [ ] Re-test field-level restrictions for priority now that the priority dropdown is editable (Test 8 line 144-145 — user couldn't validate before)
@@ -291,5 +297,6 @@ Full report: `.claude-knowledge/security-audit.md`
 | 52 | 2026-03-22 | Final cleanup: SLA business hours, useAsyncData remaining, TQL keyboard nav + saved query CRUD, monitor_ci restart resilience, cancelActionPlan interrupt, flaky test fixes, swarm Prisma conflict guidance |
 | 53 | 2026-03-22 | Bug fixes from manual testing: PWA offline page fix, V1 feature cuts (initiatives/SLA/approvals/cron/BacklogView keyboard), archived tasks, @mention notifications, saved views, automation add_label + compound conditions |
 | 54 | 2026-03-22 | Must-fix UX: priority dropdown, AI button EDIT_TASKS permission, dependency direction clarity, epics view GraphQL fix |
+| 55 | 2026-03-22 | Should-fix UX: centered modal, auto-track clarity, TQL value autocomplete, automation rule editing, SSE real-time fix, saved views shared section, TQL save discoverability, epics breadcrumbs verified |
 
 Full wave details in `changelog.md`.

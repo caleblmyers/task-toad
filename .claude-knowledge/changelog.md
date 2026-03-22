@@ -4,6 +4,29 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-22 (should-fix UX + re-tests)
+
+### Wave 55: Should-Fix UX & Re-test Verification (3 workers, 3 tasks)
+
+**Worker 1 — task-001: Modal + Time Entry UX:**
+- Review plan modal centered (was left-aligned). Standard `fixed inset-0 flex items-center justify-center` pattern.
+- 5-step progress indicator simplified to spinner + status text.
+- Auto-tracked time entry: description now shows `"Auto-tracked: Xm while in progress"`, tooltip on Auto badge explains feature.
+
+**Worker 2 — task-002: TQL Values + Rule Editing:**
+- TQL value autocomplete: after `status:` shows `todo`, `in_progress`, `in_review`, `done`. After `priority:` shows `low`-`critical`. After `taskType:` shows `task`, `bug`, `story`, `epic`.
+- Automation rule editing: Edit button (pencil) on each rule row, pre-populated form, Save/Cancel, uses existing `updateAutomationRule` mutation.
+
+**Worker 3 — task-003: SSE + Saved Views + Epics + TQL Save:**
+- SSE: added `task.created` and `task.updated` event listeners in backlog/board hooks to trigger data refetch. Real-time updates now work across tabs/accounts in same org.
+- Saved views shared section: fixed query to include shared views from all project members.
+- TQL saved queries: bookmark icon in search bar when TQL query present, updated placeholder text.
+- Epics breadcrumbs + progress bars: verified working after Wave 54 GraphQL fix.
+
+**Process:** task-001 rejected once for test assertion mismatch after changing description format. task-002 and task-003 both modified SearchInput.tsx but auto-merged cleanly.
+
+---
+
 ## 2026-03-22 (must-fix UX from manual testing)
 
 ### Wave 54: Must-Fix UX — Priority, Dependencies, Epics (3 workers, 3 tasks)
@@ -114,42 +137,9 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-03-21 (TQL + follow-up fixes)
-
-### Wave 50: Task Query Language & Follow-up Fixes (3 workers, 3 tasks)
-
-**Worker 1 — task-001: Task Query Language (TQL):**
-- Recursive descent parser in `tqlParser.ts`: `parseTQL(query) → FilterGroupInput`. Supports field:value, negation (-field:value), multi-value (status:done,in_progress), comparisons (storyPoints>5), text search, OR grouping with parens, quoted values.
-- `TQLParseError` with position info for invalid fields/syntax.
-- `tql` parameter added to `tasks` query — parsed and merged with existing filterGroup via AND.
-- Frontend: search bar detects TQL syntax (contains `:`) and sends as `tql` param. Help tooltip with syntax reference. Parse errors shown inline.
-- 9+ unit tests in `tqlParser.test.ts`.
-
-**Worker 2 — task-002: Follow-up Fixes (6 items):**
-- Field permission mapping: added `priority` and `estimatedHours` to `fieldArgMapping` (was only 3/5 fields).
-- Field permission DataLoader: `fieldPermissionsByProject` batches lookups, replaces per-request query in updateTask.
-- Initiative edit modal: `EditInitiativeModal` with name/description/status/targetDate editing.
-- Initiative DataLoader: `initiativeProjectsByInitiative` batches join table lookups.
-- Initiative dark mode: Tailwind dark mode variants on Create/Edit modals.
-- Approval history: TaskDetailPanel shows past approvals as a log (pending at top with actions, decided below).
-
-**Worker 3 — task-003: Follow-up Fixes (5 items):**
-- Timesheet display names: user filter shows `displayName || email prefix`.
-- Timesheet arrow key bug: arrow keys now navigate without saving. Only blur/Enter/Tab save.
-- Configurable approvers: `approverUserIds` in WorkflowTransition condition JSON. Approval resolvers check designated approvers, fallback to MANAGE_PROJECT_SETTINGS. User picker in workflow settings.
-- Approval SSE approver info: `approval.decided` event includes `approverEmail` and `approverDisplayName`.
-- Keyboard nav verified: Enter still saves + moves down after arrow key refactor.
-
-**Process:** All 3 tasks merged cleanly. Flaky integration tests required one re-run during review.
-
-**Open follow-ups:**
-- TQL: autocomplete/suggestions dropdown, saved queries, shared regex util
-- Approval: show requester's comment, email notifications to designated approvers
-
----
-
 ## Older Entries (one-line summaries)
 
+- **2026-03-21** — Wave 50: TQL parser + frontend integration, follow-up fixes (field permissions, initiative edit/DataLoader/dark mode, approval history, timesheet UX, configurable approvers, SSE approver info).
 - **2026-03-21** — Wave 49: Cross-project initiatives, workflow permissions (allowedRoles enforcement), field-level edit restrictions, polish (timesheet delete/keyboard, approval SSE, control chart window, merge script cherry-pick fix).
 - **2026-03-21** — Wave 48: P2 features (timesheet view, approval workflows), follow-up polish (burndown tests, control chart mode, heatmap display names, auto-tracking multi-assignee + tests).
 - **2026-03-21** — Wave 47: P2 features (cycle time scatter chart, release burndown, auto-tracking from status transitions, workload heatmap), polish (cron graceful shutdown, automation cron validation, SLA breach checker, Monte Carlo tests, forecast skeleton, Sentry guard).
