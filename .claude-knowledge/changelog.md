@@ -4,6 +4,30 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-22 (must-fix UX from manual testing)
+
+### Wave 54: Must-Fix UX — Priority, Dependencies, Epics (3 workers, 3 tasks)
+
+**Worker 1 — task-001: Priority Dropdown + AI Permission Fix:**
+- Added priority `<select>` dropdown to TaskFieldsPanel — always visible (not hidden when medium), options: low/medium/high/critical. Disabled when user lacks EDIT_TASKS.
+- Added `requirePermission(EDIT_TASKS)` to `generateTaskInstructions` and `generateManualTaskSpec` backend mutations.
+
+**Worker 2 — task-002: Dependency Direction UX:**
+- Dropdown labels changed to declarative: "This task blocks...", "This task is blocked by...", "Related to...", "Duplicates...", "Informs...".
+- Existing dependencies display with directional arrows (→, ←, ↔).
+- Dependencies grouped by type in display list.
+- Help text added below add-dependency section.
+- `informs` link type added to dropdown.
+
+**Worker 3 — task-003: Epics View Fix:**
+- Fixed GraphQL errors — root cause was hardcoded field subset instead of TASK_FIELDS in epics query.
+- Removed `initiative` from epics query filter (V1 cut).
+- Epic expand/collapse and child task loading now works.
+
+**Process:** All 3 tasks merged on first review — zero rejections.
+
+---
+
 ## 2026-03-22 (bug fixes + V1 cuts from manual testing)
 
 ### Wave 53: Bug Fixes, V1 Feature Cuts & Auth Fix (3 workers, 3 tasks)
@@ -124,40 +148,9 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-03-21 (initiatives + access control + polish)
-
-### Wave 49: Cross-Project Initiatives, Workflow Permissions & Polish (3 workers, 3 tasks)
-
-**Worker 1 — task-001: Cross-Project Initiatives:**
-- New `Initiative` + `InitiativeProject` models (many-to-many with Project). Migration: `add_initiatives`.
-- CRUD resolvers: `createInitiative`, `updateInitiative`, `deleteInitiative`, `addProjectToInitiative`, `removeProjectFromInitiative`.
-- `initiativeSummary` query aggregates stats (totalTasks, completedTasks, completionPercent, healthScore, projectCount) across initiative's projects.
-- Portfolio page: initiatives section with rollup cards, click-to-filter project grid, create initiative modal.
-
-**Worker 2 — task-002: Workflow Permissions + Field Restrictions:**
-- WorkflowTransition `allowedRoles` now enforced in `updateTask` — forbidden roles get `ForbiddenError`. Workflow settings UI has multi-select for `allowedRoles` per transition.
-- New `FieldPermission` model (projectId, fieldName, allowedRoles JSON). Migration: `add_field_permissions`.
-- `updateTask` checks field permissions before applying changes — restricted fields return warnings. Maps storyPoints, dueDate, assigneeId (priority and estimatedHours mapping incomplete — follow-up).
-- `setFieldPermission`/`deleteFieldPermission` mutations with `MANAGE_PROJECT_SETTINGS`. Field permissions table in project settings.
-
-**Worker 3 — task-003: Polish Batch (5 items):**
-- Timesheet: setting cell to 0 deletes the entry. Tab/Shift+Tab/Arrow/Enter/Escape keyboard navigation between cells.
-- Approval SSE: `approval.requested` and `approval.decided` events broadcast via sseManager. Frontend toast on approval request.
-- Control chart: configurable rolling window size (5/10/15/20 dropdown).
-- merge-worker.sh: cherry-pick path when worker branch has diverged from main. Lint check uses exit code not output.
-
-**Process:** task-002 sent back once for rebase conflict with task-001 in shared import files (both added Prisma models). Cherry-pick merge fix from task-003 was immediately useful.
-
-**Open follow-ups:**
-- Field permissions: priority and estimatedHours not in fieldArgMapping (3/5 fields enforced)
-- Field permissions: DataLoader for lookups in updateTask
-- Initiative: update/edit modal, DataLoader for summary queries, dark mode modal
-- Approval SSE: include approver info in decided event
-
----
-
 ## Older Entries (one-line summaries)
 
+- **2026-03-21** — Wave 49: Cross-project initiatives, workflow permissions (allowedRoles enforcement), field-level edit restrictions, polish (timesheet delete/keyboard, approval SSE, control chart window, merge script cherry-pick fix).
 - **2026-03-21** — Wave 48: P2 features (timesheet view, approval workflows), follow-up polish (burndown tests, control chart mode, heatmap display names, auto-tracking multi-assignee + tests).
 - **2026-03-21** — Wave 47: P2 features (cycle time scatter chart, release burndown, auto-tracking from status transitions, workload heatmap), polish (cron graceful shutdown, automation cron validation, SLA breach checker, Monte Carlo tests, forecast skeleton, Sentry guard).
 - **2026-03-21** — Wave 46: Code quality (SLA perms, prisma casts, Sentry web, 0 lint warnings), unit tests (cyclicDependencyCheck, urlValidator, insightGeneration), P2 (Monte Carlo forecasting, scheduled automation triggers).

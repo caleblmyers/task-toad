@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-Production deployed at `https://tasktoad-api-production.up.railway.app`. 53 swarm waves completed. Security: 38/39 (97%). V1 feature cuts applied (initiatives, SLA, approvals, cron hidden). Auth/session bugs fixed. Manual testing round 1 complete. 335 tests.
+Production deployed at `https://tasktoad-api-production.up.railway.app`. 54 swarm waves completed. Security: 38/39 (97%). V1 feature cuts applied. Auth/session + must-fix UX bugs resolved. Manual testing round 1 complete. 335 tests.
 
 ---
 
@@ -282,6 +282,12 @@ Full report: `.claude-knowledge/security-audit.md`
 - [ ] useAsyncData: ReleaseListPanel still uses inline fetch pattern
 - [ ] merge-worker.sh: auto-detect lockfile changes and run pnpm install before validation
 
+### Wave 54 Follow-ups
+- [ ] Re-test field-level restrictions for priority now that the priority dropdown is editable (Test 8 line 144-145 — user couldn't validate before)
+- [ ] EpicsView: re-test full hierarchy (Test 5) — expand/collapse, breadcrumbs, progress bars — now that GraphQL errors are fixed
+- [ ] Priority dropdown: consider adding color coding (red for critical, orange for high) to match the old badge styling
+- [ ] Dependency UX: add keyboard navigation for the dependency task picker search results
+
 ### Wave 53 Follow-ups
 - [ ] @mention tab-to-select: MentionAutocomplete should support Tab/ArrowDown to select from dropdown (user noted in Test 3)
 - [ ] @mention notification tests: add unit tests for displayName-based mention parsing in createComment
@@ -364,5 +370,6 @@ Full report: `.claude-knowledge/security-audit.md`
 | 51 | 2026-03-21 | Feature polish (KB search, ExecutionDashboard deps/stats, S3 multipart, useAsyncData, TQL autocomplete/saved queries), reliability (hierarchical plan tests, SLA pause, AI rate limiter cache, SDK retry, email redaction, prompt validation), shared types (Report), orchestrator metrics, approval email notifications |
 | 52 | 2026-03-22 | Final cleanup: SLA business hours, useAsyncData remaining, TQL keyboard nav + saved query CRUD, monitor_ci restart resilience, cancelActionPlan interrupt, flaky test fixes, swarm Prisma conflict guidance |
 | 53 | 2026-03-22 | Bug fixes from manual testing: PWA offline page fix, V1 feature cuts (initiatives/SLA/approvals/cron/BacklogView keyboard), archived tasks, @mention notifications, saved views, automation add_label + compound conditions |
+| 54 | 2026-03-22 | Must-fix UX: priority dropdown, AI button EDIT_TASKS permission, dependency direction clarity, epics view GraphQL fix |
 
 Full wave details in `changelog.md`.
