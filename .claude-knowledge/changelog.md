@@ -4,6 +4,33 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-22 (bug fixes + V1 cuts from manual testing)
+
+### Wave 53: Bug Fixes, V1 Feature Cuts & Auth Fix (3 workers, 3 tasks)
+
+**Worker 1 — task-001: Critical Auth/PWA Fix:**
+- Root cause: PWA service worker `navigateFallback: '/offline.html'` intercepted failed navigations on logout/session expiry/refresh, showing offline page instead of login.
+- Fix: Added `/login`, `/signup`, `/verify-email` to `navigateFallbackDenylist` in vite.config.ts. Changed logout to use `window.location.href = '/login'` (full page load bypassing SPA router). Added `skipWaiting` and `clientsClaim` to service worker config for immediate activation. Verified SessionExpiredModal already uses correct redirect.
+
+**Worker 2 — task-002: V1 Feature Cuts (5 features hidden):**
+- Initiatives: removed section from Portfolio.tsx (create/edit modals, filter, cards).
+- SLA Tracking: removed SLAStatusBadge from TaskDetailPanel, SLA tab from project settings.
+- Approval Workflows: removed approval badge/buttons/history from TaskDetailPanel, PendingApprovalsPanel from toolbar, requiresApproval/approver UI from workflow settings.
+- Scheduled Automations: removed 'scheduled' trigger type and cron/timezone inputs from AutomationTab.
+- BacklogView keyboard nav: removed onKeyDown, tabIndex, ARIA roles from task rows.
+- Created `apps/web/V1_FEATURE_CUTS.md` documenting all removals with re-enablement instructions.
+
+**Worker 3 — task-003: Feature Bug Fixes (5 bugs):**
+- Archived tasks: added `archived: false` default filter in tasks query resolver and frontend filter state.
+- @mention notifications: fixed notification listener regex to match `@displayName` mentions and create Notification records. Added displayName-based user search in MentionAutocomplete.
+- Saved views: fixed SavedViewPicker to apply saved filter data to filter state instead of clearing it. Fixed shared views section visibility.
+- Automation add_label: fixed label lookup to use project-scoped query and proper TaskLabel creation.
+- Automation compound conditions: fixed matchesCondition() to correctly access task properties for compound AND/OR evaluation.
+
+**Process:** task-003 sent back once for missing 2 of 5 bug fixes. All tasks zero file overlap.
+
+---
+
 ## 2026-03-22 (final cleanup)
 
 ### Wave 52: Final Cleanup — SLA Business Hours, Reliability, Test Stability (3 workers, 3 tasks)
@@ -129,41 +156,9 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-03-21 (timesheet + approvals + follow-up polish)
-
-### Wave 48: Timesheet, Approval Workflows & Follow-up Polish (3 workers, 3 tasks)
-
-**Worker 1 — task-001: Timesheet View:**
-- `timesheetData(projectId, userId?, weekStart)` query returns weekly grid with per-task per-day time entries, row/column totals.
-- `TimesheetView.tsx` — 7-day grid (task rows × Mon-Sun columns + Total), inline hour editing (click cell → input → blur upserts TimeEntry), week navigation (prev/next), user filter dropdown, today column highlight.
-- Wired into ProjectDetail as a lazy-loaded "Timesheet" tab.
-
-**Worker 2 — task-002: Approval Workflows:**
-- New `Approval` model (taskId, orgId, requestedById, approverId?, fromStatus, toStatus, status pending/approved/rejected, comment?, decidedAt?). Migration: `add_approvals`.
-- `updateTask` resolver checks WorkflowTransition conditions — if `requiresApproval: true`, creates Approval record instead of changing status, returns warning.
-- `approveTransition` mutation: marks approved, executes the pending status change. `rejectTransition`: marks rejected, task stays.
-- `pendingApprovals(projectId)` and `taskApprovals(taskId)` queries.
-- TaskDetailPanel shows pending approval badge with approve/reject for authorized users. `PendingApprovalsPanel.tsx` accessible from project toolbar.
-
-**Worker 3 — task-003: Follow-up Polish (5 items):**
-- Release burndown tests: `releaseBurndown.test.ts` — 5+ edge case tests (no tasks, all done, no activities, mixed status, released release).
-- Cycle time control chart mode: Table/Scatter/Control toggle — rolling 10-task average line + ±2σ standard deviation bands.
-- Workload heatmap display names: resolver + TimeEntryList use `user.displayName || email.split('@')[0]`.
-- Auto-tracking multi-assignee: duration split evenly across all TaskAssignee entries.
-- Auto-tracking listener tests: `timeTrackingListener.test.ts` — 5+ tests (in_progress→done, todo→in_progress no-op, revert, multi-assignee split, no activity graceful).
-
-**Process:** task-002 sent back once for rebase conflict with task-001 in ProjectDetail.tsx. All tasks passed typecheck/lint/build on first attempt. Pre-existing integration test flakiness noted (FK violations, deadlocks) — not from Wave 48.
-
-**Open follow-ups:**
-- Timesheet: delete entry on 0 hours, keyboard cell navigation, display names in user filter
-- Approval workflows: SSE notification, approval history/audit log, configurable approvers per transition
-- Control chart: configurable rolling window size
-- Fix flaky integration tests (FK violations, deadlocks, unique constraints)
-
----
-
 ## Older Entries (one-line summaries)
 
+- **2026-03-21** — Wave 48: P2 features (timesheet view, approval workflows), follow-up polish (burndown tests, control chart mode, heatmap display names, auto-tracking multi-assignee + tests).
 - **2026-03-21** — Wave 47: P2 features (cycle time scatter chart, release burndown, auto-tracking from status transitions, workload heatmap), polish (cron graceful shutdown, automation cron validation, SLA breach checker, Monte Carlo tests, forecast skeleton, Sentry guard).
 - **2026-03-21** — Wave 46: Code quality (SLA perms, prisma casts, Sentry web, 0 lint warnings), unit tests (cyclicDependencyCheck, urlValidator, insightGeneration), P2 (Monte Carlo forecasting, scheduled automation triggers).
 - **2026-03-21** — Wave 45: P1 features (multi-action automation, SLA tracking, compound conditions), L-5 concurrent session limit (RefreshToken model), backend polish (DataLoader N+1, KB refresh, cast fix), frontend polish (lint fixes, mutation extraction, insight dedup, onboarding keyboard nav).
