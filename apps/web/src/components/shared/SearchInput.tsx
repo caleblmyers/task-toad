@@ -27,6 +27,22 @@ const TQL_HELP_CONTENT = [
 
 const VALID_FIELDS = ['status', 'priority', 'assignee', 'label', 'taskType', 'dueDate', 'estimatedHours', 'storyPoints', 'sprintId'];
 
+const VALUE_SUGGESTIONS: Record<string, string[]> = {
+  status: ['todo', 'in_progress', 'in_review', 'done'],
+  priority: ['low', 'medium', 'high', 'critical'],
+  taskType: ['task', 'bug', 'story', 'epic'],
+};
+
+/** Detect if cursor is after `fieldName:partialValue` and return the field + partial */
+function getValueContext(value: string, cursorPos: number): { field: string; partial: string; start: number } | null {
+  const before = value.slice(0, cursorPos);
+  const match = before.match(/(?:^|\s)([a-zA-Z]+):([a-zA-Z_]*)$/);
+  if (!match) return null;
+  const field = match[1];
+  if (!(field in VALUE_SUGGESTIONS)) return null;
+  return { field, partial: match[2], start: before.length - match[2].length };
+}
+
 function TQLHelpPopover({ onClose }: { onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -71,7 +87,7 @@ function getWordBeforeCursor(value: string, cursorPos: number): string {
 }
 
 const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
-  ({ value, onChange, placeholder = 'Search...', className = '', tqlError, savedFilters, onSaveQuery, onDeleteFilter, onUpdateFilter }, ref) => {
+  ({ value, onChange, placeholder = 'Search or type TQL (e.g., status:done)', className = '', tqlError, savedFilters, onSaveQuery, onDeleteFilter, onUpdateFilter }, ref) => {
     const [showHelp, setShowHelp] = useState(false);
     const [cursorPos, setCursorPos] = useState(0);
     const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -93,11 +109,22 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
 
     // TQL autocomplete suggestions
     const wordBeforeCursor = getWordBeforeCursor(value, cursorPos);
-    const suggestions = useMemo(() => {
+    const valueContext = useMemo(() => getValueContext(value, cursorPos), [value, cursorPos]);
+    const fieldSuggestions = useMemo(() => {
+      if (valueContext) return []; // Don't show field suggestions when in value context
       if (!wordBeforeCursor || wordBeforeCursor.length < 1) return [];
       const lower = wordBeforeCursor.toLowerCase();
       return VALID_FIELDS.filter((f) => f.toLowerCase().startsWith(lower) && f.toLowerCase() !== lower);
-    }, [wordBeforeCursor]);
+    }, [wordBeforeCursor, valueContext]);
+    const valueSuggestions = useMemo(() => {
+      if (!valueContext) return [];
+      const values = VALUE_SUGGESTIONS[valueContext.field] ?? [];
+      if (!valueContext.partial) return values;
+      const lower = valueContext.partial.toLowerCase();
+      return values.filter((v) => v.toLowerCase().startsWith(lower) && v.toLowerCase() !== lower);
+    }, [valueContext]);
+    const suggestions = fieldSuggestions.length > 0 ? fieldSuggestions : valueSuggestions;
+    const isValueMode = fieldSuggestions.length === 0 && valueSuggestions.length > 0;
 
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const showAutocomplete = suggestions.length > 0;
@@ -113,6 +140,20 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
       document.addEventListener('mousedown', handler);
       return () => document.removeEventListener('mousedown', handler);
     }, [showAutocomplete]);
+
+    const handleSelectValue = (val: string) => {
+      if (!valueContext) return;
+      const before = value.slice(0, valueContext.start);
+      const after = value.slice(cursorPos);
+      const newValue = before + val + after;
+      onChange(newValue);
+      const newPos = valueContext.start + val.length;
+      setCursorPos(newPos);
+      requestAnimationFrame(() => {
+        inputRef.current?.setSelectionRange(newPos, newPos);
+        inputRef.current?.focus();
+      });
+    };
 
     const handleSelectField = (field: string) => {
       // Replace the partial word before cursor with the full field name + ':'
@@ -165,7 +206,8 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
                 setHighlightedIndex((prev) => (prev <= 0 ? suggestions.length - 1 : prev - 1));
               } else if (e.key === 'Enter' && highlightedIndex >= 0) {
                 e.preventDefault();
-                handleSelectField(suggestions[highlightedIndex]);
+                if (isValueMode) handleSelectValue(suggestions[highlightedIndex]);
+                else handleSelectField(suggestions[highlightedIndex]);
               } else if (e.key === 'Escape') {
                 e.preventDefault();
                 setHighlightedIndex(-1);
@@ -227,24 +269,29 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           </button>
         </div>
 
-        {/* TQL field autocomplete dropdown */}
+        {/* TQL field/value autocomplete dropdown */}
         {showAutocomplete && (
           <div
             ref={autocompleteRef}
             className="absolute top-full left-0 mt-0.5 z-50 w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-md shadow-lg overflow-hidden"
           >
-            {suggestions.map((field, index) => (
+            {isValueMode && (
+              <div className="px-3 py-1 text-[10px] text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-700">
+                {valueContext?.field} values
+              </div>
+            )}
+            {suggestions.map((item, index) => (
               <button
-                key={field}
+                key={item}
                 type="button"
-                onClick={() => handleSelectField(field)}
+                onClick={() => isValueMode ? handleSelectValue(item) : handleSelectField(item)}
                 className={`w-full text-left text-xs px-3 py-1.5 text-slate-700 dark:text-slate-300 font-mono ${
                   index === highlightedIndex
                     ? 'bg-slate-100 dark:bg-slate-700'
                     : 'hover:bg-slate-100 dark:hover:bg-slate-700'
                 }`}
               >
-                {field}<span className="text-slate-400">:</span>
+                {isValueMode ? item : <>{item}<span className="text-slate-400">:</span></>}
               </button>
             ))}
           </div>

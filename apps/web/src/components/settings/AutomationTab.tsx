@@ -141,6 +141,7 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
   const [conditions, setConditions] = useState<ConditionRow[]>([]);
   const [conditionsOpen, setConditionsOpen] = useState(false);
   const [actions, setActions] = useState<ActionRow[]>([{ type: 'notify_assignee', param: '' }]);
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
 
   const loadRules = useCallback(async () => {
     setLoading(true);
@@ -182,10 +183,7 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
         vars,
       );
       setRules((prev) => [...prev, createAutomationRule]);
-      setName('');
-      setActions([{ type: 'notify_assignee', param: '' }]);
-      setConditions([]);
-      setConditionsOpen(false);
+      resetForm();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create rule');
     } finally {
@@ -214,6 +212,86 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
       setRules((prev) => prev.filter((r) => r.id !== ruleId));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to delete rule');
+    }
+  };
+
+  const resetForm = () => {
+    setName('');
+    setTriggerEvent('task.status_changed');
+    setConditionOp('AND');
+    setConditions([]);
+    setConditionsOpen(false);
+    setActions([{ type: 'notify_assignee', param: '' }]);
+    setEditingRuleId(null);
+  };
+
+  const handleEditRule = (rule: AutomationRule) => {
+    setEditingRuleId(rule.id);
+    setName(rule.name);
+
+    // Parse trigger
+    try {
+      const t = JSON.parse(rule.trigger);
+      setTriggerEvent(t.event ?? 'task.status_changed');
+      if (t.condition?.operator && t.condition?.conditions) {
+        setConditionOp(t.condition.operator);
+        setConditions(t.condition.conditions.map((c: { field: string; op: string; value: unknown }) => ({
+          field: c.field,
+          op: c.op,
+          value: String(c.value),
+        })));
+        setConditionsOpen(true);
+      } else {
+        setConditionOp('AND');
+        setConditions([]);
+        setConditionsOpen(false);
+      }
+    } catch {
+      setTriggerEvent('task.status_changed');
+      setConditionOp('AND');
+      setConditions([]);
+    }
+
+    // Parse action
+    try {
+      const parsed = JSON.parse(rule.action);
+      const arr = Array.isArray(parsed) ? parsed : [parsed];
+      setActions(arr.map((a: Record<string, unknown>) => {
+        const type = String(a.type ?? 'notify_assignee');
+        let param = '';
+        switch (type) {
+          case 'move_to_column': param = String(a.column ?? ''); break;
+          case 'set_status': param = String(a.status ?? ''); break;
+          case 'assign_to': param = String(a.userId ?? ''); break;
+          case 'send_webhook': param = String(a.url ?? ''); break;
+          case 'add_label': param = String(a.labelId ?? ''); break;
+          case 'add_comment': param = String(a.content ?? ''); break;
+          case 'set_due_date': param = String(a.daysFromNow ?? ''); break;
+        }
+        return { type, param };
+      }));
+    } catch {
+      setActions([{ type: 'notify_assignee', param: '' }]);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingRuleId || !name.trim() || saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const trigger = serializeTrigger(triggerEvent, conditionOp, conditions);
+      const action = serializeActions(actions);
+      const { updateAutomationRule } = await gql<{ updateAutomationRule: AutomationRule }>(
+        UPDATE_AUTOMATION_RULE_MUTATION,
+        { ruleId: editingRuleId, name: name.trim(), trigger, action },
+      );
+      setRules((prev) => prev.map((r) => (r.id === editingRuleId ? updateAutomationRule : r)));
+      resetForm();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update rule');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -358,6 +436,7 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
                   />
                   Enabled
                 </label>
+                <button onClick={() => handleEditRule(r)} className="text-blue-500 hover:text-blue-700 text-xs">Edit</button>
                 <button onClick={() => handleDeleteRule(r.id)} className="text-red-500 hover:text-red-700 text-xs">Delete</button>
               </div>
             </div>
@@ -377,7 +456,9 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
       </ul>
 
       <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-700">
-        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Add rule</p>
+        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+          {editingRuleId ? 'Edit rule' : 'Add rule'}
+        </p>
 
         {/* Rule name */}
         <input
@@ -466,9 +547,20 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
           </button>
         </div>
 
-        <Button size="sm" disabled={saving || !name.trim()} onClick={handleCreateRule}>
-          {saving ? 'Creating...' : 'Create Rule'}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" disabled={saving || !name.trim()} onClick={editingRuleId ? handleSaveEdit : handleCreateRule}>
+            {saving ? 'Saving...' : editingRuleId ? 'Save' : 'Create Rule'}
+          </Button>
+          {editingRuleId && (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
       </div>
     </>
   );
