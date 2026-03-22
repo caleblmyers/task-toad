@@ -141,9 +141,10 @@ Full report: `.claude-knowledge/security-audit.md`
 - [x] Shared-types expansion — Report type in `@tasktoad/shared-types` *(Wave 51)*
 - [x] S3 multipart upload for files >10MB *(Wave 51)*
 - [x] useAsyncData adoption (3 components migrated) *(Wave 51)*
-- [ ] useAsyncData adoption — migrate remaining inline fetch-in-useEffect components (ReleaseListPanel, Portfolio, etc.)
-- [ ] TQL autocomplete — keyboard navigation (arrow keys + Enter to select)
-- [ ] TQL saved queries — delete/rename saved queries
+- [x] useAsyncData adoption — migrate remaining inline fetch-in-useEffect components *(Wave 52 — 5 more: Portfolio, PendingApprovals, SprintForecast, Timesheet, WorkloadHeatmap)*
+- [ ] useAsyncData adoption — ReleaseListPanel still uses inline fetch pattern
+- [x] TQL autocomplete — keyboard navigation (arrow keys + Enter to select) *(Wave 52)*
+- [x] TQL saved queries — delete/rename saved queries *(Wave 52)*
 
 ### Reliability
 - [x] monitor_ci: make polling resilient to process restarts *(Wave 52)*
