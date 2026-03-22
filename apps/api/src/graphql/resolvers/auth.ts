@@ -158,7 +158,10 @@ export const authMutations = {
     const valid = await bcrypt.compare(args.password, user.passwordHash);
     if (!valid) throw new AuthenticationError('Invalid email or password');
     // Require email verification before allowing login
-    if (!user.emailVerifiedAt) {
+    // Skip check for pre-existing accounts (created before verification was added) —
+    // they have no verificationToken and no verificationTokenExpiry
+    const hasVerificationFlow = user.verificationToken || user.verificationTokenExpiry;
+    if (!user.emailVerifiedAt && hasVerificationFlow) {
       throw new AuthenticationError('Please verify your email before logging in. Check your inbox for a verification link.');
     }
     // Short-lived access token (15 min)
