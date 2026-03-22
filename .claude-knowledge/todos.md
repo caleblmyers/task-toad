@@ -44,15 +44,20 @@ Production deployed at `https://tasktoad-api-production.up.railway.app`. 52 swar
 
 Test against production: `https://tasktoad-api-production.up.railway.app`
 
-### Test 1: Onboarding Flow
+### Test 1: Onboarding & Auth
 - [ ] Sign up with real email — verify error is graceful if SMTP not configured (no crash)
 - [ ] Sign up, log in, create an org
 - [ ] Set Anthropic API key in org settings — verify it saves, hint shows last 4 chars
+- [ ] Verify email → auto-login (cookies set, redirect to /app without separate login)
+- [ ] Log out → log back in → session works (cookies, not localStorage)
+- [ ] Open 6th browser/device login → oldest session should be pruned (concurrent session limit)
+- [ ] Let session expire (wait 15 min or clear tt-access cookie) → SessionExpiredModal appears (not hard redirect)
 
 ### Test 2: Project Creation
 - [ ] Create a project manually (name + description)
 - [ ] "Generate Project Options" with AI — returns 3 options, pick one, preview task plan, commit
 - [ ] Tasks appear in Backlog tab with correct statuses
+- [ ] Onboarding wizard opens after project creation — Enter/Escape keyboard nav works
 
 ### Test 3: Task Lifecycle
 - [ ] Create task manually, edit title/description/priority/status
@@ -61,6 +66,7 @@ Test against production: `https://tasktoad-api-production.up.railway.app`
 - [ ] Add comment with @mention — notification appears
 - [ ] Add/remove label
 - [ ] Archive task, verify hidden, toggle "show archived" to see it
+- [ ] BacklogView keyboard navigation — Arrow keys move between tasks, Enter/Space opens detail
 
 ### Test 4: Sprint Workflow
 - [ ] Create sprint with custom columns and WIP limits
@@ -75,26 +81,44 @@ Test against production: `https://tasktoad-api-production.up.railway.app`
 - [ ] Click nested task — breadcrumbs show full chain
 - [ ] Progress bars aggregate correctly up hierarchy
 
-### Test 6: Time Tracking
+### Test 6: Time Tracking & Timesheet
 - [ ] Open task, log time (30 min, today)
 - [ ] Log more time — total accumulates
 - [ ] "Logged vs estimated" display when task has estimated hours
 - [ ] Delete a time entry
+- [ ] Move task from in_progress → done — auto-tracked entry appears with "Auto" badge
+- [ ] Auto-tracked entry is editable (can adjust duration)
+- [ ] Timesheet tab — weekly grid renders with task rows × day columns
+- [ ] Click cell to edit hours, blur to save
+- [ ] Set cell to 0 — entry is deleted (not kept as 0)
+- [ ] Keyboard nav: Tab/Arrow keys move between cells, Enter saves + moves down, Escape cancels
+- [ ] Week navigation (prev/next) loads correct week
+- [ ] User filter dropdown shows display names (not emails)
 
-### Test 7: Saved Views & Filters
+### Test 7: Saved Views, Filters & TQL
 - [ ] Apply filters (status + priority), save as view
 - [ ] Clear filters, reload saved view — restores correctly
 - [ ] Share view — appears under "Shared Views"
 - [ ] Advanced filter builder — create OR group, apply, verify results
+- [ ] TQL: type `status:done priority:high` in search bar — tasks filter correctly
+- [ ] TQL autocomplete: type `sta` → dropdown shows `status`, arrow keys + Enter to select
+- [ ] TQL help tooltip: click ? icon next to search bar — syntax reference shows
+- [ ] TQL saved queries: save a query, reload it, rename it, delete it
 
-### Test 8: Permissions
+### Test 8: Permissions & Access Control
 - [ ] In Members tab, change role to "viewer" on a project
-- [ ] Verify buttons disabled (can't create/edit tasks)
-- [ ] Change role to "editor" — can create/edit again
+- [ ] Verify task fields disabled in TaskDetailPanel (can't edit when lacking EDIT_TASKS)
+- [ ] Change role to "editor" — can edit again
+- [ ] Workflow permissions: set a transition's allowedRoles to ["admin"] — non-admin gets ForbiddenError
+- [ ] Field-level restrictions: set "priority" to admin-only — non-admin's priority change is silently skipped with warning
 
 ### Test 9: Charts & Analytics
 - [ ] Dashboard tab — velocity, burndown, cumulative flow charts render
 - [ ] Cycle Time panel — date range presets work
+- [ ] Cycle time scatter chart — dots render, percentile lines visible, hover shows task info
+- [ ] Control chart mode — rolling average line + std dev bands render, window size dropdown works
+- [ ] Monte Carlo forecast panel — probability gauge + percentile table (only with >= 3 closed sprints)
+- [ ] Workload heatmap — user×week grid with color-coded cells, date range inputs work
 - [ ] Portfolio page — rollup stat cards show aggregate data
 
 ### Test 10: Releases
@@ -102,18 +126,61 @@ Test against production: `https://tasktoad-api-production.up.railway.app`
 - [ ] Add tasks to release
 - [ ] Generate release notes (requires Anthropic key)
 - [ ] Change release status (draft → scheduled → released)
+- [ ] Release burndown chart — shows total vs remaining tasks over time
 
-### Test 11: Responsive & Edge Cases
+### Test 11: Automation Rules
+- [ ] Create a simple rule: on status_changed to "done" → set_status "archived"
+- [ ] Trigger the rule — verify action executes
+- [ ] Create multi-action rule: status_changed → add_label + add_comment — both actions execute
+- [ ] Compound condition: AND(status=done, priority=high) — verify only matching tasks trigger
+- [ ] Scheduled trigger: set cron "Every hour" — verify cronExpression saved, nextRunAt set
+- [ ] New action types: send_webhook (verify URL validation), set_due_date (verify date set)
+
+### Test 12: SLA Tracking
+- [ ] Create SLA policy (name, response 4h, resolution 24h, priority filter)
+- [ ] Create a task matching the policy — SLA timer starts
+- [ ] Move task to in_progress — verify timer tracking
+- [ ] SLA status badge in task detail — green (within target), amber (nearing), red (breached)
+- [ ] Move task back to todo — timer pauses (paused time excluded)
+- [ ] Business hours: verify non-business hours/weekends are excluded from timer
+
+### Test 13: Approval Workflows
+- [ ] Configure a workflow transition with requiresApproval: true
+- [ ] Attempt the transition — task stays, "Pending approval" badge appears
+- [ ] SSE toast notification: "Approval requested" appears for approvers
+- [ ] Approve the transition — task status changes, approval history shows "approved"
+- [ ] Reject a different transition — task stays, history shows "rejected" with comment
+- [ ] Configurable approvers: set specific users on transition, verify only they can approve
+- [ ] Approval history in task detail — shows all past approvals with comments
+
+### Test 14: Initiatives & Portfolio
+- [ ] Create initiative (name, description, target date)
+- [ ] Add projects to initiative — portfolio filters to show only linked projects
+- [ ] Initiative card shows aggregate stats (completion %, health score, project count)
+- [ ] Edit initiative (change name, status, target date)
+- [ ] Delete initiative — projects unlinked, not deleted
+- [ ] Create/edit initiative modals work in dark mode
+
+### Test 15: Knowledge Base
+- [ ] Add KB entry manually (title, content, category)
+- [ ] Search/filter KB entries — matches by title and content
+- [ ] Upload .md file — content imported
+- [ ] "Refresh from repo" (GitHub-connected project) — creates KnowledgeEntry with source='learned'
+- [ ] Migration banner (if legacy knowledgeBase text exists) — one-click migrate
+
+### Test 16: Responsive & Edge Cases
 - [ ] Phone-width viewport — sidebar collapses, navigation works
 - [ ] Very long task title/description — layout doesn't break
 - [ ] Rapid task switching — no stale data or race conditions
 - [ ] Two tabs, edit same task — no data loss
 - [ ] Log out → access /app — redirects to login
 
-### Test 12: Real-Time (SSE)
+### Test 17: Real-Time (SSE)
 - [ ] Two browser tabs on same project
 - [ ] Create task in tab 1 — appears in tab 2 without refresh
 - [ ] Change task status in tab 1 — tab 2 updates
+- [ ] Approval requested — toast notification appears in other tab
+- [ ] Action plan completes — execution dashboard updates in real-time
 
 ---
 
