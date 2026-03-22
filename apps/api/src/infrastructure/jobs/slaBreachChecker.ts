@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { createChildLogger } from '../../utils/logger.js';
+import { calculateBusinessMs } from '../../utils/businessHours.js';
 
 const log = createChildLogger('sla-breach-checker');
 
@@ -49,18 +50,32 @@ export class SLABreachChecker {
     for (const timer of timers) {
       const updates: Record<string, unknown> = {};
 
+      // Calculate effective elapsed business time (minus paused time)
+      const businessMs = calculateBusinessMs(timer.startedAt, now, {
+        businessHoursStart: timer.policy.businessHoursStart,
+        businessHoursEnd: timer.policy.businessHoursEnd,
+        excludeWeekends: timer.policy.excludeWeekends,
+      });
+
+      // Subtract paused time and any currently-paused duration
+      let pausedMs = timer.totalPausedMs;
+      if (timer.pausedAt) {
+        pausedMs += now.getTime() - timer.pausedAt.getTime();
+      }
+      const effectiveMs = Math.max(0, businessMs - pausedMs);
+
       // Check response breach (time from creation to first response)
       if (!timer.responseBreached && !timer.respondedAt) {
-        const responseDeadline = timer.startedAt.getTime() + timer.policy.responseTimeHours * 3600_000;
-        if (now.getTime() > responseDeadline) {
+        const responseDeadlineMs = timer.policy.responseTimeHours * 3600_000;
+        if (effectiveMs > responseDeadlineMs) {
           updates.responseBreached = true;
         }
       }
 
       // Check resolution breach (time from creation to resolution)
       if (!timer.resolutionBreached) {
-        const resolutionDeadline = timer.startedAt.getTime() + timer.policy.resolutionTimeHours * 3600_000;
-        if (now.getTime() > resolutionDeadline) {
+        const resolutionDeadlineMs = timer.policy.resolutionTimeHours * 3600_000;
+        if (effectiveMs > resolutionDeadlineMs) {
           updates.resolutionBreached = true;
         }
       }

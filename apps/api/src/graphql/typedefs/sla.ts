@@ -7,6 +7,9 @@ export const slaTypeDefs = /* GraphQL */ `
     responseTimeHours: Int!
     resolutionTimeHours: Int!
     priority: String
+    businessHoursStart: Int!
+    businessHoursEnd: Int!
+    excludeWeekends: Boolean!
     enabled: Boolean!
     createdAt: String!
   }
@@ -36,9 +39,9 @@ export const slaQueryFields = /* GraphQL */ `
 
 export const slaMutationFields = /* GraphQL */ `
   """Create an SLA policy for a project."""
-  createSLAPolicy(projectId: ID!, name: String!, responseTimeHours: Int!, resolutionTimeHours: Int!, priority: String): SLAPolicy!
+  createSLAPolicy(projectId: ID!, name: String!, responseTimeHours: Int!, resolutionTimeHours: Int!, priority: String, businessHoursStart: Int, businessHoursEnd: Int, excludeWeekends: Boolean): SLAPolicy!
   """Update an SLA policy."""
-  updateSLAPolicy(slaPolicyId: ID!, name: String, responseTimeHours: Int, resolutionTimeHours: Int, priority: String, enabled: Boolean): SLAPolicy!
+  updateSLAPolicy(slaPolicyId: ID!, name: String, responseTimeHours: Int, resolutionTimeHours: Int, priority: String, enabled: Boolean, businessHoursStart: Int, businessHoursEnd: Int, excludeWeekends: Boolean): SLAPolicy!
   """Delete an SLA policy."""
   deleteSLAPolicy(slaPolicyId: ID!): Boolean!
 `;

@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { gql } from '../api/client';
 import { WORKLOAD_HEATMAP_QUERY } from '../api/queries';
+import useAsyncData from '../hooks/useAsyncData';
 
 interface WorkloadCell {
   userId: string;
@@ -35,47 +36,39 @@ export default function WorkloadHeatmap({ projectId }: WorkloadHeatmapProps) {
   const defaults = useMemo(() => getDefaultDateRange(), []);
   const [startDate, setStartDate] = useState(defaults.startDate);
   const [endDate, setEndDate] = useState(defaults.endDate);
-  const [cells, setCells] = useState<WorkloadCell[]>([]);
-  const [loading, setLoading] = useState(false);
 
-  const fetchData = useCallback(async (pId: string, sd: string, ed: string) => {
-    setLoading(true);
-    try {
+  const { data: cells, loading } = useAsyncData(
+    async () => {
+      if (!projectId || !startDate || !endDate) return [];
       const d = await gql<{ workloadHeatmap: WorkloadCell[] }>(
         WORKLOAD_HEATMAP_QUERY,
-        { projectId: pId, startDate: sd, endDate: ed },
+        { projectId, startDate, endDate },
       );
-      setCells(d.workloadHeatmap);
-    } catch {
-      setCells([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      return d.workloadHeatmap;
+    },
+    [projectId, startDate, endDate],
+  );
 
-  useEffect(() => {
-    if (!projectId || !startDate || !endDate) return;
-    fetchData(projectId, startDate, endDate);
-  }, [projectId, startDate, endDate, fetchData]);
+  const cellData = useMemo(() => cells ?? [], [cells]);
 
   // Derive unique users and weeks
   const users = useMemo(() => {
     const map = new Map<string, string>();
-    for (const c of cells) map.set(c.userId, c.userName);
+    for (const c of cellData) map.set(c.userId, c.userName);
     return Array.from(map.entries()).map(([userId, userName]) => ({ userId, userName }));
-  }, [cells]);
+  }, [cellData]);
 
   const weeks = useMemo(() => {
     const set = new Set<string>();
-    for (const c of cells) set.add(c.week);
+    for (const c of cellData) set.add(c.week);
     return Array.from(set).sort();
-  }, [cells]);
+  }, [cellData]);
 
   const cellMap = useMemo(() => {
     const m = new Map<string, WorkloadCell>();
-    for (const c of cells) m.set(`${c.userId}::${c.week}`, c);
+    for (const c of cellData) m.set(`${c.userId}::${c.week}`, c);
     return m;
-  }, [cells]);
+  }, [cellData]);
 
   return (
     <div className="space-y-3">

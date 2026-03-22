@@ -671,6 +671,10 @@ export const SAVE_FILTER_MUTATION = `mutation SaveFilter($projectId: ID!, $name:
 
 export const DELETE_FILTER_MUTATION = `mutation DeleteFilter($savedFilterId: ID!) { deleteFilter(savedFilterId: $savedFilterId) }`;
 
+export const UPDATE_FILTER_MUTATION = `mutation UpdateFilter($savedFilterId: ID!, $name: String) {
+  updateFilter(savedFilterId: $savedFilterId, name: $name) { savedFilterId name filters viewType sortBy sortOrder groupBy visibleColumns isShared isDefault createdAt }
+}`;
+
 const SAVED_FILTER_FIELDS = 'savedFilterId name filters viewType sortBy sortOrder groupBy visibleColumns isShared isDefault createdAt';
 
 export const SHARED_VIEWS_QUERY = `query SharedViews($projectId: ID!) { sharedViews(projectId: $projectId) { ${SAVED_FILTER_FIELDS} } }`;

@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import type { EventBus } from '../eventbus/port.js';
 import { logger } from '../../utils/logger.js';
+import { calculateBusinessMs } from '../../utils/businessHours.js';
 
 const log = logger.child({ module: 'slaListener' });
 
@@ -72,10 +73,18 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
           updates.pausedAt = null;
         }
 
+        // Business hours config from policy
+        const bhPolicy = {
+          businessHoursStart: timer.policy.businessHoursStart,
+          businessHoursEnd: timer.policy.businessHoursEnd,
+          excludeWeekends: timer.policy.excludeWeekends,
+        };
+
         // First move to in_progress: mark as "responded"
         if (oldStatus === 'todo' && newStatus === 'in_progress' && !timer.respondedAt) {
           updates.respondedAt = now;
-          const effectiveElapsed = now.getTime() - timer.startedAt.getTime() - timer.totalPausedMs;
+          const businessMs = calculateBusinessMs(timer.startedAt, now, bhPolicy);
+          const effectiveElapsed = Math.max(0, businessMs - timer.totalPausedMs);
           const deadline = timer.policy.responseTimeHours * 3600_000;
           if (effectiveElapsed > deadline) {
             updates.responseBreached = true;
@@ -92,7 +101,8 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
             updates.totalPausedMs = currentPausedMs;
           }
           updates.resolvedAt = now;
-          const effectiveElapsed = now.getTime() - timer.startedAt.getTime() - currentPausedMs;
+          const businessMs = calculateBusinessMs(timer.startedAt, now, bhPolicy);
+          const effectiveElapsed = Math.max(0, businessMs - currentPausedMs);
           const deadline = timer.policy.resolutionTimeHours * 3600_000;
           if (effectiveElapsed > deadline) {
             updates.resolutionBreached = true;

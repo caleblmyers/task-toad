@@ -3,6 +3,7 @@ import { gql } from '../api/client';
 import { TIMESHEET_DATA_QUERY, LOG_TIME_MUTATION, UPDATE_TIME_ENTRY_MUTATION, DELETE_TIME_ENTRY_MUTATION } from '../api/queries';
 import { useAuth } from '../auth/context';
 import type { OrgUser } from '../types';
+import useAsyncData from '../hooks/useAsyncData';
 
 interface TimesheetEntry {
   date: string;
@@ -65,31 +66,23 @@ export default function TimesheetView({ projectId, orgUsers }: TimesheetViewProp
   const { user } = useAuth();
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
   const [filterUserId, setFilterUserId] = useState<string | undefined>(user?.userId);
-  const [data, setData] = useState<TimesheetData | null>(null);
-  const [loading, setLoading] = useState(false);
   const [editingCell, setEditingCell] = useState<{ taskId: string; dateIndex: number } | null>(null);
   const [editValue, setEditValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   const weekStartStr = toDateStr(weekStart);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
+  const { data, loading, retry: loadData } = useAsyncData(
+    async () => {
       const result = await gql<{ timesheetData: TimesheetData }>(TIMESHEET_DATA_QUERY, {
         projectId,
         userId: filterUserId || null,
         weekStart: weekStartStr,
       });
-      setData(result.timesheetData);
-    } catch {
-      // silently fail
-    } finally {
-      setLoading(false);
-    }
-  }, [projectId, filterUserId, weekStartStr]);
-
-  useEffect(() => { loadData(); }, [loadData]);
+      return result.timesheetData;
+    },
+    [projectId, filterUserId, weekStartStr],
+  );
 
   useEffect(() => {
     if (editingCell && inputRef.current) {

@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { gql } from '../api/client';
+import useAsyncData from '../hooks/useAsyncData';
 import {
   PORTFOLIO_OVERVIEW_QUERY,
   INITIATIVES_QUERY,
@@ -464,45 +465,48 @@ function InitiativeCard({
 
 // ── Main Portfolio Component ──
 
+interface PortfolioData {
+  projects: ProjectSummary[];
+  rollup: PortfolioRollup;
+  initiatives: Initiative[];
+  summaries: Record<string, InitiativeSummaryData>;
+}
+
 export default function Portfolio() {
-  const [projects, setProjects] = useState<ProjectSummary[]>([]);
-  const [rollup, setRollup] = useState<PortfolioRollup | null>(null);
-  const [initiatives, setInitiatives] = useState<Initiative[]>([]);
-  const [summaries, setSummaries] = useState<Record<string, InitiativeSummaryData>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingInitiative, setEditingInitiative] = useState<Initiative | null>(null);
   const [selectedInitiativeId, setSelectedInitiativeId] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
-    try {
-      const [portfolioData, initiativeData] = await Promise.all([
+  const { data: portfolioData, loading, error, retry: loadData } = useAsyncData<PortfolioData>(
+    async () => {
+      const [pd, id] = await Promise.all([
         gql<{ portfolioOverview: ProjectSummary[]; portfolioRollup: PortfolioRollup }>(PORTFOLIO_OVERVIEW_QUERY),
         gql<{ initiatives: Initiative[] }>(INITIATIVES_QUERY),
       ]);
-      setProjects(portfolioData.portfolioOverview);
-      setRollup(portfolioData.portfolioRollup);
-      setInitiatives(initiativeData.initiatives);
 
-      // Load summaries for all initiatives
       const summaryEntries = await Promise.all(
-        initiativeData.initiatives.map(async (init) => {
-          const data = await gql<{ initiativeSummary: InitiativeSummaryData }>(INITIATIVE_SUMMARY_QUERY, {
+        id.initiatives.map(async (init) => {
+          const d = await gql<{ initiativeSummary: InitiativeSummaryData }>(INITIATIVE_SUMMARY_QUERY, {
             initiativeId: init.initiativeId,
           });
-          return [init.initiativeId, data.initiativeSummary] as const;
+          return [init.initiativeId, d.initiativeSummary] as const;
         }),
       );
-      setSummaries(Object.fromEntries(summaryEntries));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+      return {
+        projects: pd.portfolioOverview,
+        rollup: pd.portfolioRollup,
+        initiatives: id.initiatives,
+        summaries: Object.fromEntries(summaryEntries),
+      };
+    },
+    [],
+  );
+
+  const projects = portfolioData?.projects ?? [];
+  const rollup = portfolioData?.rollup ?? null;
+  const initiatives = portfolioData?.initiatives ?? [];
+  const summaries = portfolioData?.summaries ?? {};
 
   // Filter projects when an initiative is selected
   const selectedInitiative = initiatives.find((i) => i.initiativeId === selectedInitiativeId);

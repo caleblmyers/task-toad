@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
 import { gql } from '../api/client';
+import useAsyncData from '../hooks/useAsyncData';
 
 const SPRINT_FORECAST_QUERY = `query SprintForecast($projectId: ID!, $sprintId: ID!) {
   sprintForecast(projectId: $projectId, sprintId: $sprintId) {
@@ -63,19 +63,18 @@ function ForecastSkeleton() {
 }
 
 export default function SprintForecastPanel({ projectId, sprintId, closedSprintCount }: Props) {
-  const [forecast, setForecast] = useState<SprintForecast | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (closedSprintCount < 3) return;
-    gql<{ sprintForecast: SprintForecast }>(SPRINT_FORECAST_QUERY, { projectId, sprintId })
-      .then((d) => setForecast(d.sprintForecast))
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load forecast'));
-  }, [projectId, sprintId, closedSprintCount]);
+  const { data: forecast, loading, error } = useAsyncData(
+    async () => {
+      if (closedSprintCount < 3) return null;
+      const d = await gql<{ sprintForecast: SprintForecast }>(SPRINT_FORECAST_QUERY, { projectId, sprintId });
+      return d.sprintForecast;
+    },
+    [projectId, sprintId, closedSprintCount],
+  );
 
   if (closedSprintCount < 3) return null;
   if (error) return <p className="text-xs text-red-500">{error}</p>;
-  if (!forecast) return <ForecastSkeleton />;
+  if (loading || !forecast) return <ForecastSkeleton />;
 
   const prob = forecast.completionProbability;
 

@@ -146,8 +146,9 @@ Full report: `.claude-knowledge/security-audit.md`
 - [ ] TQL saved queries — delete/rename saved queries
 
 ### Reliability
-- [ ] monitor_ci: make polling resilient to process restarts
-- [ ] cancelActionPlan: verify it interrupts actively executing actions
+- [x] monitor_ci: make polling resilient to process restarts *(Wave 52)*
+- [x] cancelActionPlan: verify it interrupts actively executing actions *(Wave 52)*
+- [ ] Refactor: extract shared action-completion orchestration (next-action chaining, plan completion events) from actionExecutor.ts and monitorCIPoll.ts into a shared helper
 - [x] Planning prompt: validate monitor_ci/fix_ci source action IDs *(Wave 51)*
 - [x] AI rate limiter: in-memory sliding window cache *(Wave 51)*
 - [x] Anthropic SDK: app-level retry with exponential backoff *(Wave 51)*

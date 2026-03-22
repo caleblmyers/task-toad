@@ -5,8 +5,11 @@ model SLAPolicy {
   name              String
   responseTimeHours Int        @map("response_time_hours")
   resolutionTimeHours Int      @map("resolution_time_hours")
-  priority          String?    // null = applies to all priorities, or "high", "critical"
-  enabled           Boolean    @default(true)
+  priority            String?    // null = applies to all priorities, or "high", "critical"
+  businessHoursStart  Int        @default(9)  @map("business_hours_start")
+  businessHoursEnd    Int        @default(17) @map("business_hours_end")
+  excludeWeekends     Boolean    @default(true) @map("exclude_weekends")
+  enabled             Boolean    @default(true)
   createdAt         DateTime   @default(now()) @map("created_at")
   project           Project    @relation(fields: [projectId], references: [projectId], onDelete: Cascade)
   org               Org        @relation(fields: [orgId], references: [orgId], onDelete: Cascade)

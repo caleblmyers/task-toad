@@ -3,6 +3,7 @@ import type { Context } from '../context.js';
 import { NotFoundError, ValidationError } from '../errors.js';
 import { requireOrg, requireProjectAccess } from './auth.js';
 import { requirePermission, Permission } from '../../auth/permissions.js';
+import { calculateBusinessMs } from '../../utils/businessHours.js';
 
 export const slaQueries = {
   slaPolicies: async (
@@ -46,6 +47,9 @@ export const slaMutations = {
       responseTimeHours: number;
       resolutionTimeHours: number;
       priority?: string | null;
+      businessHoursStart?: number | null;
+      businessHoursEnd?: number | null;
+      excludeWeekends?: boolean | null;
     },
     context: Context,
   ) => {
@@ -65,6 +69,9 @@ export const slaMutations = {
         responseTimeHours: args.responseTimeHours,
         resolutionTimeHours: args.resolutionTimeHours,
         priority: args.priority ?? null,
+        businessHoursStart: args.businessHoursStart ?? 9,
+        businessHoursEnd: args.businessHoursEnd ?? 17,
+        excludeWeekends: args.excludeWeekends ?? true,
         enabled: true,
       },
     });
@@ -80,6 +87,9 @@ export const slaMutations = {
       resolutionTimeHours?: number | null;
       priority?: string | null;
       enabled?: boolean | null;
+      businessHoursStart?: number | null;
+      businessHoursEnd?: number | null;
+      excludeWeekends?: boolean | null;
     },
     context: Context,
   ) => {
@@ -102,6 +112,9 @@ export const slaMutations = {
     }
     if (args.priority !== undefined) data.priority = args.priority;
     if (args.enabled != null) data.enabled = args.enabled;
+    if (args.businessHoursStart != null) data.businessHoursStart = args.businessHoursStart;
+    if (args.businessHoursEnd != null) data.businessHoursEnd = args.businessHoursEnd;
+    if (args.excludeWeekends != null) data.excludeWeekends = args.excludeWeekends;
 
     const policy = await context.prisma.sLAPolicy.update({
       where: { slaPolicyId: args.slaPolicyId },
@@ -147,18 +160,31 @@ function formatPolicy(p: SLAPolicy) {
 }
 
 function formatTimer(t: SLATimer & { policy: SLAPolicy }) {
-  const now = Date.now();
-  const startMs = t.startedAt.getTime();
-  const responseDeadline = startMs + t.policy.responseTimeHours * 3600_000;
-  const resolutionDeadline = startMs + t.policy.resolutionTimeHours * 3600_000;
+  const now = new Date();
+  const bhPolicy = {
+    businessHoursStart: t.policy.businessHoursStart,
+    businessHoursEnd: t.policy.businessHoursEnd,
+    excludeWeekends: t.policy.excludeWeekends,
+  };
+
+  // Calculate effective elapsed business time minus paused time
+  const businessMs = calculateBusinessMs(t.startedAt, now, bhPolicy);
+  let pausedMs = t.totalPausedMs;
+  if (t.pausedAt) {
+    pausedMs += now.getTime() - t.pausedAt.getTime();
+  }
+  const elapsedMs = Math.max(0, businessMs - pausedMs);
+
+  const responseDeadlineMs = t.policy.responseTimeHours * 3600_000;
+  const resolutionDeadlineMs = t.policy.resolutionTimeHours * 3600_000;
 
   const timeToResponseHours = t.respondedAt
     ? null // already responded
-    : (responseDeadline - now) / 3600_000;
+    : (responseDeadlineMs - elapsedMs) / 3600_000;
 
   const timeToResolutionHours = t.resolvedAt
     ? null // already resolved
-    : (resolutionDeadline - now) / 3600_000;
+    : (resolutionDeadlineMs - elapsedMs) / 3600_000;
 
   return {
     ...t,

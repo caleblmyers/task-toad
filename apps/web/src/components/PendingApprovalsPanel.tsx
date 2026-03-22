@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { gql } from '../api/client';
 import { statusLabel } from '../utils/taskHelpers';
+import useAsyncData from '../hooks/useAsyncData';
 
 interface ApprovalUser {
   userId: string;
@@ -61,32 +62,25 @@ interface PendingApprovalsPanelProps {
 }
 
 export default function PendingApprovalsPanel({ projectId, onClose }: PendingApprovalsPanelProps) {
-  const [approvals, setApprovals] = useState<Approval[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: fetchedApprovals, loading } = useAsyncData(
+    async () => {
+      const data = await gql<{ pendingApprovals: Approval[] }>(PENDING_APPROVALS_QUERY, { projectId });
+      return data.pendingApprovals;
+    },
+    [projectId],
+  );
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectComment, setRejectComment] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const loadApprovals = useCallback(async () => {
-    try {
-      const data = await gql<{ pendingApprovals: Approval[] }>(PENDING_APPROVALS_QUERY, { projectId });
-      setApprovals(data.pendingApprovals);
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
-  }, [projectId]);
-
-  useEffect(() => {
-    void loadApprovals();
-  }, [loadApprovals]);
+  const approvals = (fetchedApprovals ?? []).filter(a => !removedIds.has(a.approvalId));
 
   const handleApprove = async (approvalId: string) => {
     setActionLoading(approvalId);
     try {
       await gql(APPROVE_MUTATION, { approvalId });
-      setApprovals(prev => prev.filter(a => a.approvalId !== approvalId));
+      setRemovedIds(prev => new Set(prev).add(approvalId));
     } catch {
       // ignore
     } finally {
@@ -99,7 +93,7 @@ export default function PendingApprovalsPanel({ projectId, onClose }: PendingApp
     setActionLoading(approvalId);
     try {
       await gql(REJECT_MUTATION, { approvalId, comment: rejectComment.trim() });
-      setApprovals(prev => prev.filter(a => a.approvalId !== approvalId));
+      setRemovedIds(prev => new Set(prev).add(approvalId));
       setRejectingId(null);
       setRejectComment('');
     } catch {

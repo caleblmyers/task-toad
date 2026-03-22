@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { useConfirmDialog } from './shared/ConfirmDialog';
 import { Link } from 'react-router-dom';
 import { gql } from '../api/client';
-import { AUTO_START_PROJECT_MUTATION } from '../api/queries';
+import { AUTO_START_PROJECT_MUTATION, DELETE_FILTER_MUTATION, UPDATE_FILTER_MUTATION } from '../api/queries';
 import type { ProjectData } from '../hooks/useProjectData';
 import type { TaskFiltering } from '../hooks/useTaskFiltering';
 import type { GitHubRepoLink } from '../types';
@@ -64,6 +64,20 @@ export default function ProjectToolbar({
   }, [d.projectId]);
 
   useEffect(() => { fetchSavedFilters(); }, [fetchSavedFilters]);
+
+  const handleDeleteFilter = useCallback(async (filterId: string) => {
+    try {
+      await gql(DELETE_FILTER_MUTATION, { savedFilterId: filterId });
+      setSavedFilters(prev => prev.filter(f => f.savedFilterId !== filterId));
+    } catch { /* non-critical */ }
+  }, []);
+
+  const handleUpdateFilter = useCallback(async (filterId: string, name: string) => {
+    try {
+      await gql(UPDATE_FILTER_MUTATION, { savedFilterId: filterId, name });
+      setSavedFilters(prev => prev.map(f => f.savedFilterId === filterId ? { ...f, name } : f));
+    } catch { /* non-critical */ }
+  }, []);
 
   // Wire up view config callback so loading a view can switch the active tab
   useEffect(() => {
@@ -289,6 +303,9 @@ export default function ProjectToolbar({
               placeholder="Search tasks…"
               className="w-48"
               tqlError={tqlError}
+              savedFilters={savedFilters}
+              onDeleteFilter={handleDeleteFilter}
+              onUpdateFilter={handleUpdateFilter}
             />
           </div>
           <button
