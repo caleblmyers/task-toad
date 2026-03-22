@@ -11,12 +11,31 @@ interface TaskDependenciesSectionProps {
   onRemoveDependency: (taskDependencyId: string) => Promise<void>;
 }
 
-const LINK_TYPE_LABELS: Record<LinkType, string> = {
-  blocks: 'Blocks',
-  is_blocked_by: 'Blocked by',
-  relates_to: 'Relates to',
-  duplicates: 'Duplicates',
-  informs: 'Informs',
+/** Labels for the dropdown when adding a new dependency */
+const LINK_TYPE_PICKER_LABELS: Record<LinkType, string> = {
+  blocks: 'This task blocks…',
+  is_blocked_by: 'This task is blocked by…',
+  relates_to: 'Related to…',
+  duplicates: 'Duplicates…',
+  informs: 'Informs…',
+};
+
+/** Short labels with arrows for displaying existing dependencies */
+const OUTGOING_LABELS: Record<LinkType, string> = {
+  blocks: 'Blocks →',
+  is_blocked_by: 'Blocked by ←',
+  relates_to: 'Related to ↔',
+  duplicates: 'Duplicates ↔',
+  informs: 'Informs →',
+};
+
+/** Labels for incoming dependencies (other → this task) */
+const INCOMING_LABELS: Record<LinkType, string> = {
+  blocks: 'Blocked by ←',
+  is_blocked_by: 'Blocks →',
+  relates_to: 'Related to ↔',
+  duplicates: 'Duplicates ↔',
+  informs: 'Informed by ←',
 };
 
 function statusDotColor(status: string): string {
@@ -73,7 +92,7 @@ export default function TaskDependenciesSection({
         {/* Outgoing dependencies (this task → other) */}
         {Object.entries(depsByType).map(([type, deps]) => (
           <div key={type}>
-            <span className="text-[10px] font-semibold text-slate-400 uppercase">{LINK_TYPE_LABELS[type as LinkType] ?? type}</span>
+            <span className="text-[10px] font-semibold text-slate-400 uppercase">{OUTGOING_LABELS[type as LinkType] ?? type}</span>
             {deps.map(dep => {
               const target = dep.targetTask;
               const dotColor = target ? statusDotColor(target.status) : 'bg-slate-300';
@@ -99,10 +118,9 @@ export default function TaskDependenciesSection({
 
         {/* Incoming dependencies (other → this task) */}
         {Object.entries(depsByTypeIncoming).map(([type, deps]) => {
-          const incomingLabel = type === 'blocks' ? 'Blocked by' : type === 'is_blocked_by' ? 'Blocks' : LINK_TYPE_LABELS[type as LinkType] ?? type;
           return (
             <div key={`incoming-${type}`}>
-              <span className="text-[10px] font-semibold text-slate-400 uppercase">{incomingLabel} (incoming)</span>
+              <span className="text-[10px] font-semibold text-slate-400 uppercase">{INCOMING_LABELS[type as LinkType] ?? type}</span>
               {deps.map(dep => {
                 const source = dep.sourceTask;
                 const dotColor = source ? statusDotColor(source.status) : 'bg-slate-300';
@@ -139,10 +157,9 @@ export default function TaskDependenciesSection({
               onChange={e => setLinkType(e.target.value as LinkType)}
               className="text-xs border border-slate-300 rounded px-1 py-1 focus:outline-none focus:ring-1 focus:ring-brand-green"
             >
-              <option value="blocks">Blocks</option>
-              <option value="is_blocked_by">Blocked by</option>
-              <option value="relates_to">Relates to</option>
-              <option value="duplicates">Duplicates</option>
+              {Object.entries(LINK_TYPE_PICKER_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
             </select>
             <input
               type="text"
@@ -171,7 +188,10 @@ export default function TaskDependenciesSection({
               <p className="text-xs text-slate-400 px-2 py-1">No tasks available</p>
             )}
           </div>
-          <button onClick={() => setShowDepPicker(false)} className="text-xs text-slate-400 hover:text-slate-600 mt-1">Cancel</button>
+          <div className="flex items-center justify-between mt-1">
+            <span className="text-[10px] text-slate-400">Select how this task relates to another task</span>
+            <button onClick={() => setShowDepPicker(false)} className="text-xs text-slate-400 hover:text-slate-600">Cancel</button>
+          </div>
         </div>
       ) : (
         <button
