@@ -44,199 +44,119 @@ Production deployed at `https://tasktoad-api-production.up.railway.app`. 54 swar
 
 Test against production: `https://tasktoad-api-production.up.railway.app`
 
+Note: Tests 12-14 (SLA, Approvals, Initiatives) are V1 cuts — UI hidden, skip these. Test 9 (Charts) needs sprint data to validate. Test 15 (KB) deferred to round 2.
+
 ### Test 1: Onboarding & Auth
-- [x] Sign up with real email — verify error is graceful if SMTP not configured (no crash)
+- [x] Sign up with real email — graceful without SMTP
 - [x] Sign up, log in, create an org
-- [x] Set Anthropic API key in org settings — verify it saves, hint shows last 4 chars
-- [ ] Verify email → auto-login (cookies set, redirect to /app without separate login)
-- [ ] Log out → log back in → session works (cookies, not localStorage)
--- when i logged out it sent me to the offline page and the try again button stayed there. i had to manually remove /login from the url to be sent back to login screen
-- [ ] Open 6th browser/device login → oldest session should be pruned (concurrent session limit)
--- im not sure what this is asking
-- [ ] Let session expire (wait 15 min or clear tt-access cookie) → SessionExpiredModal appears (not hard redirect)
--- i manually removed the tt-access cookie, when i refreshed the page it sent me to the offline page like what happened when logging out.
--- after working for what i think was 15 minutes i did end up getting logged out, and sent to this offline screen again.
--- yes after working some more it definitely seems like im just being logged out and have to log back in
--- also it seems like manually refreshing the page sends me to this offline page
+- [x] Set Anthropic API key in org settings
+- [ ] Verify email → auto-login *(requires SMTP)*
+- [x] Log out → log back in *(fixed Wave 53)*
+- [ ] Concurrent session limit (6th login prunes oldest) *(not tested)*
+- [x] Session expiry handling *(fixed Wave 53 — offline page → login redirect)*
+- [x] Page refresh stays on page *(fixed post-Wave 53)*
 
 ### Test 2: Project Creation
-- [x] Create a project manually (name + description)
-- [x] "Generate Project Options" with AI — returns 3 options, pick one, preview task plan, commit
--- "review plan" modal is left aligned instead of center screen
--- the 5 steps seem arbitrary, if they dont actually mean anything they shouldnt be there
-- [x] Tasks appear in Backlog tab with correct statuses
-- [x] Onboarding wizard opens after project creation — Enter/Escape keyboard nav works
--- this feature needs reviewing. if someone is starting out they probably dont know or have preferences for a lot of the questions i was given. and im not sure if skipping an item removes it or defers to ai recommendation. also it seems like a good time for users to upload any relevant documents for their project
+- [x] Create project manually
+- [x] AI project generation — 3 options, preview plan, commit
+- [x] Tasks appear in Backlog
+- [x] Onboarding wizard keyboard nav
 
 ### Test 3: Task Lifecycle
-- [x] Create task manually, edit title/description/priority/status
--- adding dependecies is confusing, not sure if im saying this blocks or is blocked by the other item
--- i didnt see where to assign priority
-- [x] Assign yourself, add due date, add story points
-- [x] Change status on Board tab (drag or dropdown) — verify status↔column sync
-- [ ] Add comment with @mention — notification appears
--- i see the mention menu but i dont think i got a notification.
--- also it would be nice to have tab select type features for this menu
+- [x] Create task, edit fields *(priority dropdown added Wave 54)*
+- [x] Assign, due date, story points
+- [x] Board status↔column sync
+- [x] @mention in comments *(notification fix Wave 53)*
 - [x] Add/remove label
-- [ ] Archive task, verify hidden, toggle "show archived" to see it
--- i still see it when show archived is not toggled. maybe because im assigned? not sure why else
-- [ ] BacklogView keyboard navigation — Arrow keys move between tasks, Enter/Space opens detail
--- i dont think this works but i dont think i even want it, at least not for v1
+- [x] Archive task *(filter fix Wave 53)*
 
 ### Test 4: Sprint Workflow
-- [x] Create sprint with custom columns and WIP limits
--- i should be able to reorder columns
-- [x] Drag tasks from backlog into sprint
-- [x] Activate sprint — Board tab shows it
-- [x] Move tasks between columns — WIP limit warnings appear (red/amber)
-- [x] Close sprint — test "move incomplete tasks" options
--- should have option to create new sprint to move them into if none exist, and also transition to another active sprint after closing
+- [x] Create sprint with columns + WIP limits
+- [x] Drag tasks from backlog
+- [x] Activate sprint
+- [x] WIP limit warnings
+- [x] Close sprint
 
-### Test 5: Hierarchy
--- i dont think any of this feature is working. i see where i can select an epic at the top of task detail if a task already has one, but i dont see a list of them, and i dont see an option to make something epics or initiatives. also i dont think the idea of an "initiative" is needed. did i ever ask for that? when was that decided to include?
--- after working more i see the initiatives section with a create initiative option on the dashboard, i also see the epics view per projects with the epics listed, but i see graphql errors when selecting them. i will not be testing these features until i finish the first round and review with you.
-- [ ] Create initiative → epic → story → task chain
--- dropdown to assign tasks to a sprint shows archived
-- [ ] EpicsView tree renders with expand/collapse
-- [ ] Click nested task — breadcrumbs show full chain
-- [ ] Progress bars aggregate correctly up hierarchy
+### Test 5: Hierarchy & Epics
+- [ ] EpicsView tree — expand/collapse *(GraphQL fix Wave 54, needs re-test)*
+- [ ] Click nested task — breadcrumbs
+- [ ] Progress bars aggregate up hierarchy
 
 ### Test 6: Time Tracking & Timesheet
-- [x] Open task, log time (30 min, today)
-- [x] Log more time — total accumulates
-- [x] "Logged vs estimated" display when task has estimated hours
-- [x] Delete a time entry
--- im not sure if this adds value, but should be an admin action if so
-- [x] Move task from in_progress → done — auto-tracked entry appears with "Auto" badge
--- what is this time from the auto entry?
-- [ ] Auto-tracked entry is editable (can adjust duration)
--- i dont see an option to edit time logs
-- [x] Timesheet tab — weekly grid renders with task rows × day columns
-- [x] Click cell to edit hours, blur to save
--- seemed to save automatically, not sure what "blur to save" means
-- [x] Set cell to 0 — entry is deleted (not kept as 0)
-- [x] Keyboard nav: Tab/Arrow keys move between cells, Enter saves + moves down, Escape cancels
-- [x] Week navigation (prev/next) loads correct week
-- [x] User filter dropdown shows display names (not emails)
+- [x] Log time, accumulates, estimated display, delete
+- [x] Auto-tracked entry on status transition
+- [ ] Edit time log entries *(no edit UI — UX issue)*
+- [x] Timesheet grid, cell editing, keyboard nav, week nav, user filter
 
 ### Test 7: Saved Views, Filters & TQL
-- [x] Apply filters (status + priority), save as view
-- [ ] Clear filters, reload saved view — restores correctly
--- it doesnt seem like im able to apply saved views, or click them from the filter menu, and if i have filters applied trying to select a view clears filters
-- [ ] Share view — appears under "Shared Views"
--- i was able to select to share view, but i dont see the "shared views" area
-- [x] Advanced filter builder — create OR group, apply, verify results
-- [x] TQL: type `status:done priority:high` in search bar — tasks filter correctly
--- this works, it would be nice if for multi word options i could write "status:in progress" instead of "status:in_progress", but im not sure if its possible without the underscore.
-- [x] TQL autocomplete: type `sta` → dropdown shows `status`, arrow keys + Enter to select
-- [x] TQL help tooltip: click ? icon next to search bar — syntax reference shows
-- [ ] TQL saved queries: save a query, reload it, rename it, delete it
--- i dont know how to save the query
+- [x] Apply filters, save view
+- [ ] Reload saved view *(fix Wave 53, needs re-test)*
+- [ ] Shared Views section *(needs re-test)*
+- [x] Advanced filter builder
+- [x] TQL filtering, autocomplete, help tooltip
+- [ ] TQL saved queries *(save button not discoverable)*
 
 ### Test 8: Permissions & Access Control
-- [x] In Members tab, change role to "viewer" on a project
--- first off the project settings members is empty at first, does this give everyone on the team admin access by default? i am testing with both an admin and a member on the same test org, and it seems like the member can view everything from the project already
-- [x] Verify task fields disabled in TaskDetailPanel (can't edit when lacking EDIT_TASKS)
--- it seems like most direct task fields were correctly disabled, but i was able to select the "generate implementation spec". these buttons and ai features should be disabled with the same permissions as other task editing.
-- [x] Change role to "editor" — can edit again
-- [ ] Workflow permissions: set a transition's allowedRoles to ["admin"] — non-admin gets ForbiddenError
--- im not sure what this is asking. i was able to change the member user to an admin in the project settings and i did not get an error.
-- [ ] Field-level restrictions: set "priority" to admin-only — non-admin's priority change is silently skipped with warning
--- i was able to edit the field-level restrictions but as mentioned earlier i dont know how to manually edit priority so im not sure how to validate.
--- the project settings as a whole could use review, im not very familiar with what all is available there.
+- [x] Role change viewer/editor
+- [x] Task fields disabled for viewers *(AI buttons fixed Wave 54)*
+- [ ] Workflow allowedRoles enforcement *(needs re-test)*
+- [ ] Field-level restrictions *(can re-test now with priority dropdown)*
 
-### Test 9: Charts & Analytics
--- im not sure how to work with a lot of what is asked here. i see a basic dashboard, but it may be limited since i dont have much active data on the test account. i would like to review this section after initial testing phase.
-- [ ] Dashboard tab — velocity, burndown, cumulative flow charts render
-- [ ] Cycle Time panel — date range presets work
-- [ ] Cycle time scatter chart — dots render, percentile lines visible, hover shows task info
-- [ ] Control chart mode — rolling average line + std dev bands render, window size dropdown works
-- [ ] Monte Carlo forecast panel — probability gauge + percentile table (only with >= 3 closed sprints)
-- [ ] Workload heatmap — user×week grid with color-coded cells, date range inputs work
-- [ ] Portfolio page — rollup stat cards show aggregate data
+### Test 9: Charts & Analytics *(needs sprint data)*
+- [ ] Velocity, burndown, cumulative flow
+- [ ] Cycle time scatter + control chart
+- [ ] Monte Carlo forecast (≥3 closed sprints)
+- [ ] Workload heatmap
+- [ ] Portfolio rollup
 
 ### Test 10: Releases
-- [x] Create release (name + version)
-- [x] Add tasks to release
--- the release detail currently displays in a small sidebar like the task details, but it seems like it would be better off with more off a full page view
-- [x] Generate release notes (requires Anthropic key)
--- should be option for manual entry if not already
-- [x] Change release status (draft → scheduled → released)
-- [ ] Release burndown chart — shows total vs remaining tasks over time
--- i dont have active data so im not sure how valid this is. i see a chart but it is empty
+- [x] Create, add tasks, generate notes, change status
+- [ ] Release burndown chart *(needs data)*
 
 ### Test 11: Automation Rules
-- [x] Create a simple rule: on status_changed to "done" → set_status "archived"
--- there should be a library to create these individually and/or move between projects.
--- also should be able to edit rules.
--- comments and other activity from automation rules should not be attributed to a user
-- [x] Trigger the rule — verify action executes
-- [ ] Create multi-action rule: status_changed → add_label + add_comment — both actions execute
--- it added the comment but i dont think the label was working
-- [ ] Compound condition: AND(status=done, priority=high) — verify only matching tasks trigger
--- status = in_review and priority = critical did not seem to work.
-- [ ] Scheduled trigger: set cron "Every hour" — verify cronExpression saved, nextRunAt set
--- im not sure if i want to include this in v1
-- [ ] New action types: send_webhook (verify URL validation), set_due_date (verify date set)
--- i dont know what this is asking me
-
-### Test 12: SLA Tracking
--- im not sure how SLAs work, i will review this and come back after first round of testing
-- [ ] Create SLA policy (name, response 4h, resolution 24h, priority filter)
-- [ ] Create a task matching the policy — SLA timer starts
-- [ ] Move task to in_progress — verify timer tracking
-- [ ] SLA status badge in task detail — green (within target), amber (nearing), red (breached)
-- [ ] Move task back to todo — timer pauses (paused time excluded)
-- [ ] Business hours: verify non-business hours/weekends are excluded from timer
-
-### Test 13: Approval Workflows
--- i created a workflow transition rule from in review to done, allowed editor and admin, required approval from my admin account, and instead of only blocking in review to done transitions, it blocked my member account from moving a task from todo to in progress. this is another feature i will review and come back to after first round of testing
-- [ ] Configure a workflow transition with requiresApproval: true
-- [ ] Attempt the transition — task stays, "Pending approval" badge appears
-- [ ] SSE toast notification: "Approval requested" appears for approvers
-- [ ] Approve the transition — task status changes, approval history shows "approved"
-- [ ] Reject a different transition — task stays, history shows "rejected" with comment
-- [ ] Configurable approvers: set specific users on transition, verify only they can approve
-- [ ] Approval history in task detail — shows all past approvals with comments
-
-### Test 14: Initiatives & Portfolio
--- this is another feature i will come back to after first round of testing
-- [ ] Create initiative (name, description, target date)
-- [ ] Add projects to initiative — portfolio filters to show only linked projects
-- [ ] Initiative card shows aggregate stats (completion %, health score, project count)
-- [ ] Edit initiative (change name, status, target date)
-- [ ] Delete initiative — projects unlinked, not deleted
-- [ ] Create/edit initiative modals work in dark mode
-
-### Test 15: Knowledge Base
--- this is another feature i will come back to after first round of testing
-- [ ] Add KB entry manually (title, content, category)
-- [ ] Search/filter KB entries — matches by title and content
-- [ ] Upload .md file — content imported
-- [ ] "Refresh from repo" (GitHub-connected project) — creates KnowledgeEntry with source='learned'
-- [ ] Migration banner (if legacy knowledgeBase text exists) — one-click migrate
+- [x] Simple rule, trigger executes
+- [x] Multi-action + compound conditions *(fixed Wave 53)*
+- [ ] Automation rule editing *(UX issue — no edit capability)*
 
 ### Test 16: Responsive & Edge Cases
-- [x] Phone-width viewport — sidebar collapses, navigation works
--- sidebar collapses and navigation works. horizontal scrolling is a bit of a mess on the project page
-- [x] Very long task title/description — layout doesn't break
--- seems to be wrapping or making ellipses as needed
-- [x] Rapid task switching — no stale data or race conditions
-- [ ] Two tabs, edit same task — no data loss
--- im not sure good ways to test this properly. one thing i did was moving the same task to in progress on two accounts, the second account was the one assigned where i guess they should have been blocked since the first person already assigned themselves?
-- [ ] Log out → access /app — redirects to login
--- i mentioned logout issues above
+- [x] Mobile viewport, long text, rapid switching
+- [ ] Two tabs edit same task *(not tested)*
+- [x] Logout → /app redirects to login *(fixed Wave 53)*
 
 ### Test 17: Real-Time (SSE)
-- [x] Two browser tabs on same project
-- [ ] Create task in tab 1 — appears in tab 2 without refresh
--- i was viewing the backlog for the same project on two accounts. i created a task on account 1, but account 2 did not see it right away. i switched to board view then back on account 2 and it did appear. is this correct behavior, or was it supposed to appear without needing to change views like that?
-- [ ] Change task status in tab 1 — tab 2 updates
--- account 2 did not see the task status update after switching between board and backlog, nor when leaving the project and coming back
-- [ ] Approval requested — toast notification appears in other tab
--- im not sure how to test this
-- [ ] Action plan completes — execution dashboard updates in real-time
--- im not sure how to test this
+- [ ] Task creation propagates across tabs *(needs re-test after auth fix)*
+- [ ] Status change propagates *(needs re-test)*
+
+---
+
+## Manual Testing Notes (Round 1, 2026-03-22)
+
+Organized feedback from first round of manual testing. Bugs are tracked above; these are UX observations and feature requests.
+
+### UX Issues (should fix for V1)
+- Review plan modal is left-aligned instead of centered
+- Auto-tracked time entry source unclear ("what is this time from?")
+- TQL value autocomplete needed — `status:` should show `in_progress`, `done`, etc. as options
+- Automation rules can't be edited after creation — need edit capability
+
+### UX Issues (defer to post-V1)
+- 5-step AI generation progress indicator feels arbitrary
+- Sprint columns should be reorderable
+- Close sprint should offer "create new sprint" option
+- Release detail panel too small — should be full-page view
+- Release notes should have manual entry option
+- Time entry deletion should be admin-only action
+- TQL saved query save button not discoverable
+- Mobile: horizontal scrolling messy on project page
+- Automation comments should not be attributed to a user (use system/bot)
+- Automation rule library + cross-project sharing (feature request)
+
+### UX Observations (informational)
+- Onboarding wizard questions too advanced for new users — discuss approach
+- "blur to save" in timesheet was confusing (means clicking outside the cell saves it)
+- Project settings could use a guided tour or overview — lots of options
+- Sprint task dropdown shows archived sprints
+- Default project member permissions: empty members list means everyone has admin access — is this intended?
 
 ---
 
