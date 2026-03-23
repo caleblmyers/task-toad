@@ -32,6 +32,14 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 **Process:** All 6 tasks merged on first review — zero rejections. Task descriptions with exact line numbers and code snippets led to precise, minimal changes.
 
+### Post-Wave 56 Hotfixes (2026-03-23)
+
+Three follow-up fixes after re-testing Wave 56 on production:
+
+1. **Priority prop type** — `TaskDetailPanel.tsx` prop type for `onUpdateTask` was missing `priority`, causing the value to be dropped before reaching the hook. Added `priority?: string`.
+2. **Priority GraphQL typedef** — `updateTask` mutation in `typedefs/task.ts` was missing `priority: String` parameter. Schema silently ignored the field. Added it.
+3. **Org auto-access + saved view type** — Default permissions for org members upgraded from viewer-lite to editor-level (`permissions.ts`). FilterBar saved filter pills now pass `viewConfig` so loading a saved view respects the view type it was saved from.
+
 ---
 
 ## 2026-03-22 (should-fix UX + re-tests)

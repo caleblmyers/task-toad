@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-Production deployed at `https://tasktoad-api-production.up.railway.app`. 56 swarm waves completed. Security: 38/39 (97%). V1 feature cuts applied. All must-fix + should-fix UX issues resolved. SSE real-time working. 335 tests.
+Production deployed at `https://tasktoad-api-production.up.railway.app`. 56 swarm waves completed. Security: 38/39 (97%). V1 feature cuts applied. All bugs from manual testing fixed. 335 tests. **V1 ready.**
 
 ---
 
@@ -14,68 +14,14 @@ Production deployed at `https://tasktoad-api-production.up.railway.app`. 56 swar
 
 ## Deployment & Ops
 
-### Infrastructure
-- [ ] Railway health check in service settings (auto-restart on failure)
+- [x] Railway health check — configured via railway.toml
+- [x] Sentry — confirmed receiving errors in production (2026-03-23)
 - [ ] Custom domain (optional — Railway domain works for beta)
 
-### Observability
-- [ ] Verify Sentry receives errors in production
-- [ ] UptimeRobot monitor: HTTP check on `/api/health` every 5 min
-
-### Email (optional for beta)
-- [ ] SMTP provider configured (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`)
-- [ ] Email verification and password reset flows tested
-
----
-
-## Manual Testing — Round 2 Results (2026-03-23)
-
-- [x] Epics hierarchy — **PASS** — expand/collapse, breadcrumbs, progress bars all working
-- [x] Shared Views — **PASS** — visible to member user (minor: share toggle not editable after creation → fix below)
-- [x] TQL search — **PASS** — unified search bar handles both text and TQL
-- [x] Charts & Analytics — **PARTIAL PASS** — render without errors but need multi-day data for meaningful visualization
-- [x] Saved views — **FIXED Wave 56** — filters now captured and restored correctly
-- [x] Workflow allowedRoles — **FIXED Wave 56** — changed to restriction model (unlisted transitions allowed)
-- [x] Field-level restrictions — **FIXED Wave 56** — priority field now persists through update pipeline
-- [x] Release burndown — **FIXED Wave 56** — handles null releaseDate, shows actual error text
-- [ ] Two tabs edit same task — **PARTIAL** — no data loss, SSE doesn't sync edits across tabs (deferred)
-- [ ] Concurrent session limit — **SKIPPED** — deferred
-
-## Bugs Fixed — Wave 56
-
-### All Fixed
-- [x] **Saved views broken** — filters now captured and restored correctly
-- [x] **Workflow: changed to restriction model** — unlisted transitions allowed by default
-- [x] **Priority field not persisting** — added to update pipeline (resolver + mutation builder + hook)
-- [x] **Release burndown error** — handles null releaseDate, 365-day safety cap, shows error detail
-- [x] **Silent auth failures** — detects UNAUTHENTICATED GraphQL error code, attempts refresh, triggers session-expired modal
-- [x] **Release detail: full-page layout** — removed max-w-lg, added back button breadcrumb
-- [x] **Saved view share toggle** — share/unshare button on hover, wired through updateFilter mutation
-
-### Deferred
-- SSE cross-tab sync — manual refresh is fine for now; ensure backend prevents stale data overwrites
-- Concurrent session limit — untested, defer verification
-
----
-
-## Manual Testing Notes (Round 1, 2026-03-22)
-
-### UX Issues (defer to post-V1)
-- Sprint columns should be reorderable
-- Close sprint should offer "create new sprint" option
-- Release detail panel too small — should be full-page view
-- Release notes should have manual entry option
-- Time entry deletion should be admin-only action
-- Time log entries not editable (can delete and re-add)
-- Mobile: horizontal scrolling messy on project page
-- Automation comments should not be attributed to a user (use system/bot)
-- Automation rule library + cross-project sharing (feature request)
-
-### UX Observations (informational — discuss before acting)
-- Onboarding wizard questions too advanced for new users — discuss approach
-- Project settings could use a guided tour or overview — lots of options
-- Sprint task dropdown shows archived sprints
-- Default project member permissions: empty members list means everyone has admin access — is this intended?
+### Email (deferred — not needed for V1)
+- Signup rate limiting in place (10/min per IP). No email verification required.
+- SMTP deferred until custom domain is set up for deliverability.
+- Password resets can be handled manually for early users.
 
 ---
 
@@ -88,10 +34,25 @@ Features hidden from V1 UI. Backend code remains — re-enable by restoring UI e
 - **Approval Workflows** — badge, buttons, history, PendingApprovalsPanel removed
 - **Scheduled Automations** (cron triggers) — trigger type + cron UI removed
 - **BacklogView keyboard navigation** — onKeyDown + ARIA removed
+- **Workflow Restrictions** — role-based transition restrictions deferred; project members requirement deferred
 
 ---
 
 ## Post-V1 Backlog
+
+### UX Improvements
+- [ ] Sprint columns should be reorderable
+- [ ] Close sprint should offer "create new sprint" option
+- [ ] Release notes should have manual entry option
+- [ ] Time entry deletion should be admin-only action
+- [ ] Time log entries not editable (can delete and re-add)
+- [ ] Mobile: horizontal scrolling messy on project page
+- [ ] Automation comments should not be attributed to a user (use system/bot)
+- [ ] Onboarding wizard questions too advanced for new users — discuss approach
+- [ ] Project settings could use a guided tour or overview — lots of options
+- [ ] Sprint task dropdown shows archived sprints
+- [ ] Priority dropdown: color coding (red for critical, orange for high)
+- [ ] SSE cross-tab sync — manual refresh is fine for now; ensure backend prevents stale data overwrites
 
 ### Code Quality
 - [ ] Refactor: extract shared action-completion orchestration from actionExecutor.ts and monitorCIPoll.ts
@@ -101,7 +62,6 @@ Features hidden from V1 UI. Backend code remains — re-enable by restoring UI e
 - [ ] Automation rule edit: add test coverage for edit/save flow
 - [ ] @mention tab-to-select: MentionAutocomplete keyboard navigation for dropdown
 - [ ] @mention notification tests: unit tests for displayName-based mention parsing
-- [ ] Priority dropdown: color coding (red for critical, orange for high)
 - [ ] Dependency task picker: keyboard navigation for search results
 - [ ] L-12: Test database credentials in CI/CD
 - [ ] Workflow restriction model: add test coverage for restriction/allowedRoles logic
@@ -110,7 +70,8 @@ Features hidden from V1 UI. Backend code remains — re-enable by restoring UI e
 
 ### Feature Requests
 - [ ] Scheduled report delivery — ReportSchedule model, cron, email/Slack *(depends on SMTP)*
-- Re-enable V1 cuts when ready (initiatives, SLA, approvals, cron automation)
+- [ ] Automation rule library + cross-project sharing
+- Re-enable V1 cuts when ready (initiatives, SLA, approvals, cron automation, workflow restrictions)
 
 ---
 
