@@ -41,6 +41,20 @@ Premium features are gated behind `requireLicense()` in resolvers and `useLicens
 
 ---
 
+## Priority — Next Up
+
+### Project scaffolding for fresh codebases
+New projects starting from scratch hit a bad UX: the auto-complete pipeline generates manual steps for project initialization (`create-next-app`, etc.) because the AI thinks interactive tools can't be automated. Two fixes needed:
+
+1. **Project scaffolding step** — after creating a project, prompt user to connect/create a GitHub repo, then scaffold a base codebase from a template (Next.js, Vite+React, Express, etc.). This gives the AI a real codebase to plan against instead of trying to bootstrap from nothing inside task execution.
+   - Flow: Create project → connect/create repo → pick framework template → scaffold + initial commit → ready for task planning
+   - Templates should use non-interactive CLI flags (`--yes`, `--typescript`, etc.)
+   - Knowledge base auto-populates from scaffolded code
+
+2. **Fix AI planner for init commands** — update `promptBuilder.ts:buildActionPlanPrompt()` to instruct the AI that project initialization tools have non-interactive modes and should use `generate_code` actions, not `manual_step`. Include examples of non-interactive flags for common tools.
+
+---
+
 ## Post-V1 Backlog
 
 ### UX Improvements
