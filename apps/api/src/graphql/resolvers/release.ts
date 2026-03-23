@@ -108,13 +108,23 @@ export const releaseQueries = {
     const startDate = release.createdAt;
     const endDate = release.status === 'released' && release.releaseDate
       ? new Date(release.releaseDate + 'T23:59:59')
-      : new Date();
+      : release.releaseDate
+        ? new Date(release.releaseDate + 'T23:59:59')
+        : new Date();
+
+    // Ensure endDate is not before startDate
+    const effectiveEnd = endDate >= startDate ? endDate : new Date();
 
     const points: Array<{ date: string; totalTasks: number; completedTasks: number; remainingTasks: number }> = [];
     const current = new Date(startDate);
     current.setUTCHours(0, 0, 0, 0);
 
-    while (current <= endDate) {
+    // Safety: cap at 365 days to prevent infinite loops from bad data
+    let iterations = 0;
+    const MAX_ITERATIONS = 365;
+
+    while (current <= effectiveEnd && iterations < MAX_ITERATIONS) {
+      iterations++;
       const dateStr = current.toISOString().split('T')[0];
       // Count completions on or before this date
       let completedTasks = 0;

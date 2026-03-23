@@ -73,6 +73,37 @@ export async function gql<T>(
     throw new Error(`Server error (${res.status}): ${text.slice(0, 200)}`);
   }
   const json = await res.json();
-  if (json.errors?.length) throw new Error(json.errors[0].message);
+
+  // GraphQL returns HTTP 200 with UNAUTHENTICATED error code when JWT expires
+  if (json.errors?.length) {
+    const authError = json.errors.some(
+      (e: { extensions?: { code?: string } }) => e.extensions?.code === 'UNAUTHENTICATED'
+    );
+    if (authError) {
+      const refreshed = await refreshAccessToken();
+      if (refreshed) {
+        const retryRes = await fetch(`${BASE}/graphql`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ query, variables }),
+          signal,
+        });
+        if (!retryRes.ok) {
+          const text = await retryRes.text().catch(() => '');
+          throw new Error(`Server error (${retryRes.status}): ${text.slice(0, 200)}`);
+        }
+        const retryJson = await retryRes.json();
+        if (retryJson.errors?.length) throw new Error(retryJson.errors[0].message);
+        return retryJson.data as T;
+      }
+      window.dispatchEvent(new CustomEvent('session-expired'));
+      throw new Error('Session expired');
+    }
+    throw new Error(json.errors[0].message);
+  }
   return json.data as T;
 }

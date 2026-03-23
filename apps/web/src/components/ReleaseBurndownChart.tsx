@@ -54,6 +54,7 @@ export default function ReleaseBurndownChart({ releaseId }: { releaseId: string 
     return (
       <div ref={containerRef} className="w-full flex flex-col items-center justify-center gap-2 py-6 text-sm text-slate-500">
         <span>Unable to load burndown</span>
+        <span className="text-xs text-slate-400 max-w-xs text-center">{String(error)}</span>
         <button type="button" onClick={retry} className="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 border border-blue-200 rounded">
           Retry
         </button>

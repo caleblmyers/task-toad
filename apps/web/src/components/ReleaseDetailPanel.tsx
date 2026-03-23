@@ -55,12 +55,14 @@ export default function ReleaseDetailPanel({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 w-full max-w-lg h-full overflow-y-auto">
-      <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200 truncate">{release.name}</h2>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+    <div className="bg-white dark:bg-slate-800 w-full h-full overflow-y-auto">
+      <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center gap-3">
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center gap-1 text-sm">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+          Releases
         </button>
+        <span className="text-slate-300 dark:text-slate-600">/</span>
+        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200 truncate">{release.name}</h2>
       </div>
 
       <div className="p-4 space-y-4">

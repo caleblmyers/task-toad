@@ -77,16 +77,18 @@ export default function ReleaseListPanel({
 }: ReleaseListPanelProps) {
   if (selectedRelease) {
     return (
-      <ReleaseDetailPanel
-        release={selectedRelease}
-        projectTasks={projectTasks}
-        onUpdate={onUpdateRelease}
-        onDelete={onDeleteRelease}
-        onAddTask={onAddTask}
-        onRemoveTask={onRemoveTask}
-        onGenerateNotes={onGenerateNotes}
-        onClose={() => onSelectRelease(null)}
-      />
+      <div className="w-full h-full">
+        <ReleaseDetailPanel
+          release={selectedRelease}
+          projectTasks={projectTasks}
+          onUpdate={onUpdateRelease}
+          onDelete={onDeleteRelease}
+          onAddTask={onAddTask}
+          onRemoveTask={onRemoveTask}
+          onGenerateNotes={onGenerateNotes}
+          onClose={() => onSelectRelease(null)}
+        />
+      </div>
     );
   }
 
