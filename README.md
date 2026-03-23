@@ -1,167 +1,186 @@
-# TaskToad
+# Task Toad
 
-Multi-tenant SaaS project management MVP with AI-assisted planning. Org-scoped projects, sprints, kanban boards, AI-powered task breakdown and code generation, GitHub integration, real-time notifications (SSE), webhooks, automations, Slack integration, and Prometheus observability. RBAC: org:admin / org:member.
+**AI-native project management.** Describe what you want done — Task Toad plans it, generates the code, and creates the PRs.
 
-> **Beta note:** Project-level access control is org-level for beta — all org members can access all projects within their org. Project-level RBAC is planned for post-beta.
+Free and open source (AGPL-3.0). Self-hostable. BYOK (bring your own Anthropic API key).
 
-## Stack
+<!-- TODO: Add screenshot/GIF here -->
 
-- **API**: Express + graphql-yoga + Prisma (PostgreSQL) + HMAC JWT + helmet/cors/rate-limit
-- **Web**: React 18 + Vite + Tailwind CSS
-- **AI**: Anthropic Claude (AI-assisted task planning, sprint planning, auto-complete pipeline with code generation → PR creation → AI review, bug report parsing)
+## Features
 
-## Prerequisites
+**Core Project Management**
+- Tasks, sprints, kanban boards, backlog, epics, releases
+- Multiple assignees, labels, priorities, dependencies
+- Custom fields, time tracking, saved views
+- TQL (Task Query Language) for advanced search
+- Automation rules (trigger → action)
+- Webhooks for external integrations
+- Real-time updates via Server-Sent Events
+- CSV/JSON project export
+
+**AI Pipeline**
+- Natural language task planning — describe a feature, get a structured plan
+- Hierarchical plan generation (epics → tasks → subtasks)
+- **Auto-Complete**: generates code → creates PR → runs AI review, all from a task description
+- Sprint planning, trend analysis, project health reports
+- Knowledge base for project context
+
+**GitHub Integration**
+- Connect repos, create PRs from tasks
+- Sync tasks to GitHub issues
+- AI-powered PR review
+
+**Team Collaboration**
+- Org-scoped multi-tenancy
+- Invite-based team management
+- Comments with @mentions and threaded replies
+- Real-time notifications
+- Activity tracking
+
+## Quick Start
+
+### Prerequisites
 
 - **Node.js 20+**
 - **pnpm** (`npm install -g pnpm`)
 - **Docker** (for PostgreSQL)
 
-## Repo structure
+### Development Setup
+
+```bash
+git clone https://github.com/caleblmyers/task-toad.git
+cd task-toad
+pnpm install
+
+# Start PostgreSQL
+docker compose up -d
+
+# Configure environment
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
+# Edit apps/api/.env — set JWT_SECRET and ENCRYPTION_MASTER_KEY
+
+# Run database migrations
+cd apps/api && npx prisma migrate dev && cd ../..
+
+# Start dev servers
+pnpm dev
+```
+
+Open `http://localhost:5173` — sign up, create an org, set your Anthropic API key in Settings, and create a project.
+
+### Self-Hosting with Docker
+
+```bash
+# Clone and configure
+git clone https://github.com/caleblmyers/task-toad.git
+cd task-toad
+cp apps/api/.env.example .env
+
+# Generate secrets
+export JWT_SECRET=$(openssl rand -hex 32)
+export ENCRYPTION_MASTER_KEY=$(openssl rand -hex 32)
+
+# Build and run
+docker compose --profile deploy up -d
+
+# Run migrations
+docker compose exec app sh -c "cd apps/api && npx prisma migrate deploy"
+```
+
+App is available at `http://localhost:3001`.
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **API** | Express + graphql-yoga + Prisma (PostgreSQL) |
+| **Web** | React 18 + Vite + Tailwind CSS |
+| **AI** | Anthropic Claude (`@anthropic-ai/sdk`) |
+| **Auth** | HMAC JWT (HS256) via HttpOnly cookies |
+| **Real-time** | Server-Sent Events (SSE) |
+| **Observability** | Prometheus metrics, Pino structured logging, Sentry |
+
+## Environment Variables
+
+**API** (`apps/api/.env`):
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `JWT_SECRET` | Yes | Secret for JWT signing (any random string) |
+| `ENCRYPTION_MASTER_KEY` | Yes | 64-char hex key for AES-256-GCM encryption |
+| `CORS_ORIGINS` | No | Allowed origins (default: `http://localhost:5173`) |
+| `LOG_LEVEL` | No | `trace\|debug\|info\|warn\|error` (default: `info`) |
+| `SENTRY_DSN` | No | Sentry error tracking DSN |
+| `TASKTOAD_LICENSE` | No | License key for premium features |
+| `SMTP_HOST` | No | SMTP server (if unset, email links logged to console) |
+| `GITHUB_APP_ID` | No | GitHub App ID for repo integration |
+
+**Web** (`apps/web/.env`):
+
+| Variable | Value |
+|----------|-------|
+| `VITE_API_URL` | `/api` (Vite proxy routes to API in dev) |
+
+## Project Structure
 
 ```
 task-toad/
 ├── apps/
-│   ├── api/          # Express + graphql-yoga API
-│   │   ├── prisma/   # Schema + migrations
+│   ├── api/                # Express + GraphQL API
+│   │   ├── prisma/schema/  # Domain-split Prisma schema
 │   │   └── src/
-│   │       ├── graphql/       # schema.ts, context.ts, resolvers/, typedefs/
-│   │       ├── actions/       # Action plan executors (generate_code, create_pr, review_pr, etc.)
-│   │       ├── ai/            # AI service, prompt builder, response parser, types
-│   │       ├── infrastructure/ # Event bus, job queue, action executor
-│   │       └── utils/         # encryption, logger, metrics, sseManager
-│   └── web/          # React + Vite + Tailwind
+│   │       ├── graphql/    # Schema, resolvers, typedefs, context
+│   │       ├── actions/    # Auto-complete pipeline executors
+│   │       ├── ai/         # AI service, prompts, response parsing
+│   │       └── utils/      # Encryption, logging, metrics, SSE, license
+│   └── web/                # React + Vite + Tailwind
 │       └── src/
-│           ├── components/         # KanbanBoard, BacklogView, TaskDetailPanel, etc.
-│           │   └── shared/         # SearchInput, FilterBar, Icons, ToastContainer
-│           ├── hooks/              # useProjectData, useTaskFiltering, useKeyboardShortcuts, useToast
-│           ├── utils/              # taskHelpers (status↔column mapping)
-│           ├── pages/              # ProjectDetail, Projects, Home, etc.
-│           ├── api/                # gql() fetch helper
-│           └── auth/               # AuthProvider, useAuth
-├── .claude-knowledge/  # Architecture docs and decision log
-├── CLAUDE.md
-└── pnpm-workspace.yaml
+│           ├── components/ # UI components
+│           ├── hooks/      # Data fetching, filtering, shortcuts
+│           ├── pages/      # Route pages
+│           └── api/        # GraphQL client
+├── packages/shared-types/  # Shared TypeScript types
+├── CLAUDE.md               # AI assistant context (Claude Code)
+└── CONTRIBUTING.md         # Contributor guide
 ```
-
-## Setup
-
-### 1. Install dependencies
-
-```bash
-pnpm install
-```
-
-### 2. Start PostgreSQL
-
-```bash
-docker compose up -d
-```
-
-Or manually if you prefer not to use Compose:
-
-```bash
-docker run -d --name tasktoad-db \
-  -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=tasktoad \
-  -p 5432:5432 \
-  postgres:16
-```
-
-### 3. Configure environment
-
-**API** (`apps/api/.env`):
-
-```bash
-cp apps/api/.env.example apps/api/.env
-```
-
-| Variable | Description |
-|---|---|
-| `DATABASE_URL` | `postgresql://postgres:postgres@localhost:5432/tasktoad` |
-| `JWT_SECRET` | Secret for HMAC JWT signing (any random string) |
-| `ENCRYPTION_MASTER_KEY` | 32-byte hex key for AES-256-GCM (org API key encryption) |
-| `CORS_ORIGINS` | Comma-separated allowed origins, e.g. `http://localhost:5173` |
-| `SENTRY_DSN` | Sentry error tracking DSN (optional) |
-| `SMTP_HOST` | SMTP server host (optional — if unset, email links are printed to the console) |
-| `SMTP_PORT` | SMTP port (default `587`) |
-| `SMTP_USER` | SMTP username |
-| `SMTP_PASS` | SMTP password |
-| `EMAIL_FROM` | Sender address (default `noreply@tasktoad.app`) |
-| `APP_URL` | Public app URL used in email links (default `http://localhost:5173`) |
-| `TASKTOAD_LICENSE` | License key to enable premium features (optional — omit for open source mode) |
-
-**Web** (`apps/web/.env`):
-
-```bash
-cp apps/web/.env.example apps/web/.env
-```
-
-| Variable | Value |
-|---|---|
-| `VITE_API_URL` | `/api` (Vite proxy routes to `localhost:3001`) |
-
-### 4. Run migrations
-
-```bash
-cd apps/api && npx prisma migrate dev
-```
-
-### 5. Start dev servers
-
-```bash
-pnpm dev   # starts both API and web concurrently
-```
-
-Or separately:
-
-```bash
-pnpm dev:api   # API at http://localhost:3001/graphql (GraphiQL available)
-pnpm dev:web   # Web at http://localhost:5173
-```
-
-## Usage
-
-1. Open http://localhost:5173/signup and create an account
-2. Check the API console for the verification link (or configure SMTP for real email) and verify your email
-3. Create an organization and set your Anthropic API key in Settings
-4. Create a project (optionally connect a GitHub repo)
-5. Add tasks manually or use AI to generate a task plan
-6. Use **Auto-Complete** on tasks with instructions — generates code, creates a PR, and runs AI review automatically
-7. Create a sprint, plan it from the backlog, and track progress on the kanban board
-8. Invite team members from Settings → Team (invite links are printed to the API console in dev)
-
-## GraphQL API
-
-All operations require `Authorization: Bearer <token>` except `signup` and `login`.
-
-GraphiQL UI is available at `http://localhost:3001/graphql` in development.
-
-**Key queries:** `me`, `projects`, `project(projectId)`, `tasks(projectId)`, `sprints(projectId)`, `orgUsers`, `orgInvites`, `notifications`, `githubInstallations`, `automationRules`, `webhookEndpoints`, `slackIntegrations`
-
-**Key mutations:** `signup`, `login`, `createOrg`, `createProject`, `createTask`, `updateTask`, `createSprint`, `updateSprint`, `deleteSprint`, `generateTaskPlan`, `previewTaskPlan`, `commitTaskPlan`, `createPullRequestFromTask`, `connectGitHubRepo`, `createAutomationRule`, `createWebhookEndpoint`, `connectSlack`, `inviteOrgMember`, `acceptInvite`
 
 ## Scripts
 
 | Script | Description |
-|---|---|
+|--------|-------------|
 | `pnpm dev` | Run API + web together |
-| `pnpm dev:api` | API only |
-| `pnpm dev:web` | Web only |
-| `pnpm build` | Build all packages |
+| `pnpm test` | Run all tests (Vitest) |
+| `pnpm typecheck` | TypeScript strict mode check |
 | `pnpm lint` | ESLint all packages |
-| `pnpm typecheck` | TypeScript check all packages |
-| `pnpm format` | Prettier format all |
+| `pnpm build` | Production build |
+| `pnpm format` | Prettier format |
 
-## Auth
+## GraphQL API
 
-HMAC JWT (HS256) signed with `JWT_SECRET`. Tokens delivered via HttpOnly cookies (`tt-access` 15-min, `tt-refresh` 7-day) with `Secure`/`SameSite=Strict` in production. CSRF protection via `X-Requested-With` header. Fallback `Authorization: Bearer <token>` header supported for API clients. Session expiry shows a modal prompting re-login.
+GraphiQL UI is available at `http://localhost:3001/graphql` in development. All operations require authentication except `signup` and `login`.
+
+See [CLAUDE.md](CLAUDE.md) for the full list of queries and mutations.
 
 ## Security
 
-- `helmet` for HTTP security headers
-- `cors` with origin whitelist (`CORS_ORIGINS`)
-- `express-rate-limit`: 10 req/min for signup/login, 5 req/min for password reset/email verification
-- 1MB request body limit
-- AI prompts sanitized with `<user_input>` delimiters
-- AI responses validated with Zod schemas
-- Org API keys encrypted with AES-256-GCM at rest
+- HttpOnly cookies with short-lived access tokens (15 min) + refresh token rotation
+- CSRF protection via `X-Requested-With` header
+- `helmet` security headers + `cors` origin whitelist
+- Rate limiting: 10/min auth, 5/min password reset
+- AES-256-GCM encryption for API keys at rest
+- AI prompt injection defense (`<user_input>` delimiters + Zod validation)
+- Multi-tenant isolation with org-scoped queries
+
+## Open Core
+
+Task Toad uses an open core model. The core product is fully open source (AGPL-3.0). Premium features (Slack integration, SLA tracking, approval workflows, advanced permissions) are gated behind a license key (`TASKTOAD_LICENSE` env var). See `apps/api/src/utils/license.ts` for details.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions and guidelines.
+
+## License
+
+[AGPL-3.0](LICENSE)
