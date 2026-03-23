@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { OrgUser } from '../types';
 import Modal from './shared/Modal';
 import MembersTab from './settings/MembersTab';
@@ -7,6 +7,7 @@ import CustomFieldsTab from './settings/CustomFieldsTab';
 import TemplatesTab from './settings/TemplatesTab';
 import WorkflowTab from './settings/WorkflowTab';
 import FieldPermissionsTab from './settings/FieldPermissionsTab';
+import { useLicenseFeatures } from '../hooks/useLicenseFeatures';
 
 interface Props {
   projectId: string;
@@ -16,17 +17,22 @@ interface Props {
 
 type Tab = 'members' | 'automation' | 'fields' | 'templates' | 'workflow' | 'permissions';
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'members', label: 'Members' },
+const ALL_TABS: { key: Tab; label: string; feature?: string }[] = [
+  { key: 'members', label: 'Members', feature: 'project_roles' },
   { key: 'automation', label: 'Automation' },
   { key: 'fields', label: 'Custom Fields' },
   { key: 'templates', label: 'Templates' },
   { key: 'workflow', label: 'Workflow' },
-  { key: 'permissions', label: 'Field Permissions' },
+  { key: 'permissions', label: 'Field Permissions', feature: 'field_permissions' },
 ];
 
 export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: Props) {
-  const [tab, setTab] = useState<Tab>('members');
+  const { hasFeature } = useLicenseFeatures();
+  const tabs = useMemo(
+    () => ALL_TABS.filter((t) => !t.feature || hasFeature(t.feature)),
+    [hasFeature],
+  );
+  const [tab, setTab] = useState<Tab>(tabs[0]?.key ?? 'automation');
 
   return (
     <Modal isOpen={true} onClose={onClose} title="Project Settings" size="md">
@@ -37,7 +43,7 @@ export default function ProjectSettingsModal({ projectId, orgUsers, onClose }: P
 
       {/* Tabs */}
       <div className="flex border-b border-slate-200 dark:border-slate-600 px-4">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.key}
             className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === t.key ? 'border-slate-800 text-slate-800 dark:border-slate-200 dark:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-slate-200'}`}

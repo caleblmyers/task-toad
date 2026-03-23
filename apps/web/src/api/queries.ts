@@ -685,7 +685,7 @@ export const SAVE_VIEW_MUTATION = `mutation SaveView($projectId: ID!, $name: Str
 
 // ── Org Settings ──
 
-export const ORG_QUERY = `query GetOrg { org { orgId name hasApiKey apiKeyHint promptLoggingEnabled } }`;
+export const ORG_QUERY = `query GetOrg { org { orgId name hasApiKey apiKeyHint promptLoggingEnabled licenseFeatures } }`;
 
 export const ORG_INVITES_QUERY = `query { orgInvites { inviteId email role expiresAt createdAt } }`;
 

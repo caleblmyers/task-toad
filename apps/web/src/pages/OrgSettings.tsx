@@ -25,12 +25,14 @@ import Card from '../components/shared/Card';
 import SectionHeader from '../components/shared/SectionHeader';
 import Input from '../components/shared/Input';
 import Select from '../components/shared/Select';
+import { useLicenseFeatures } from '../hooks/useLicenseFeatures';
 
 const GITHUB_APP_SLUG = import.meta.env.VITE_GITHUB_APP_SLUG as string | undefined;
 
 export default function OrgSettings() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { hasFeature } = useLicenseFeatures();
   const [org, setOrg] = useState<Org | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
 
@@ -373,11 +375,13 @@ export default function OrgSettings() {
                   )}
                 </Card>
 
-                {/* Slack */}
-                <Card className="space-y-6">
-                  <SectionHeader>Slack</SectionHeader>
-                  <SlackSettings />
-                </Card>
+                {/* Slack (premium) */}
+                {hasFeature('slack') && (
+                  <Card className="space-y-6">
+                    <SectionHeader>Slack</SectionHeader>
+                    <SlackSettings />
+                  </Card>
+                )}
               </div>
             ),
           },

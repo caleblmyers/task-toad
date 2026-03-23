@@ -9,6 +9,7 @@ import {
 } from '../../api/queries';
 import type { OrgUser } from '../../types';
 import Button from '../shared/Button';
+import { useLicenseFeatures } from '../../hooks/useLicenseFeatures';
 
 interface AutomationRule {
   id: string;
@@ -128,6 +129,7 @@ interface Props {
 }
 
 export default function AutomationTab({ projectId, orgUsers }: Props) {
+  const { hasFeature } = useLicenseFeatures();
   const [rules, setRules] = useState<AutomationRule[]>([]);
   const [labels, setLabels] = useState<Label[]>([]);
   const [loading, setLoading] = useState(true);
@@ -441,9 +443,9 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
               </div>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              When: {describeTrigger(r.trigger)}{r.cronExpression ? ` [${r.cronExpression}]` : ''} → Then: {describeAction(r.action)}
+              When: {describeTrigger(r.trigger)}{hasFeature('cron_automations') && r.cronExpression ? ` [${r.cronExpression}]` : ''} → Then: {describeAction(r.action)}
             </p>
-            {r.cronExpression && (
+            {hasFeature('cron_automations') && r.cronExpression && (
               <p className="text-xs text-slate-400 dark:text-slate-500">
                 TZ: {r.timezone ?? 'UTC'}
                 {r.lastRunAt && ` · Last: ${new Date(r.lastRunAt).toLocaleString()}`}
