@@ -72,10 +72,10 @@ export default function ProjectToolbar({
     } catch { /* non-critical */ }
   }, []);
 
-  const handleUpdateFilter = useCallback(async (filterId: string, name: string) => {
+  const handleUpdateFilter = useCallback(async (filterId: string, updates: { name?: string; isShared?: boolean }) => {
     try {
-      await gql(UPDATE_FILTER_MUTATION, { savedFilterId: filterId, name });
-      setSavedFilters(prev => prev.map(f => f.savedFilterId === filterId ? { ...f, name } : f));
+      await gql(UPDATE_FILTER_MUTATION, { savedFilterId: filterId, name: updates.name, isShared: updates.isShared });
+      setSavedFilters(prev => prev.map(f => f.savedFilterId === filterId ? { ...f, ...updates } : f));
     } catch { /* non-critical */ }
   }, []);
 
@@ -330,6 +330,7 @@ export default function ProjectToolbar({
               labelFilter={filtering.labelFilter}
               customFieldFilters={filtering.customFieldFilters}
               filterGroup={filtering.filterGroup}
+              onUpdateFilter={handleUpdateFilter}
             />
           )}
         </div>

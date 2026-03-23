@@ -12,7 +12,7 @@ interface SearchInputProps {
   savedFilters?: SavedFilter[];
   onSaveQuery?: (name: string, tql: string) => void;
   onDeleteFilter?: (filterId: string) => void;
-  onUpdateFilter?: (filterId: string, name: string) => void;
+  onUpdateFilter?: (filterId: string, updates: { name?: string; isShared?: boolean }) => void;
 }
 
 const TQL_HELP_CONTENT = [
@@ -343,7 +343,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
                       onChange={(e) => setEditFilterName(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && editFilterName.trim()) {
-                          onUpdateFilter?.(sf.savedFilterId, editFilterName.trim());
+                          onUpdateFilter?.(sf.savedFilterId, { name: editFilterName.trim() });
                           setEditingFilterId(null);
                         }
                         if (e.key === 'Escape') setEditingFilterId(null);

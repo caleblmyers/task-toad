@@ -3,7 +3,7 @@ import type { SavedFilter } from './FilterBar';
 import type { ViewConfig } from '../../hooks/useTaskFiltering';
 import type { FilterGroupInput } from './FilterBuilder';
 import { gql } from '../../api/client';
-import { SHARED_VIEWS_QUERY, SAVE_VIEW_MUTATION, DELETE_FILTER_MUTATION } from '../../api/queries';
+import { SHARED_VIEWS_QUERY, SAVE_VIEW_MUTATION, DELETE_FILTER_MUTATION, UPDATE_FILTER_MUTATION } from '../../api/queries';
 import { IconList, IconBoard, IconTable } from './Icons';
 
 interface SavedViewPickerProps {
@@ -18,6 +18,7 @@ interface SavedViewPickerProps {
   labelFilter?: string[];
   customFieldFilters?: Record<string, string>;
   filterGroup?: FilterGroupInput | null;
+  onUpdateFilter?: (filterId: string, updates: { name?: string; isShared?: boolean }) => void;
 }
 
 const viewTypeIcon: Record<string, React.ReactNode> = {
@@ -38,6 +39,7 @@ export default function SavedViewPicker({
   labelFilter,
   customFieldFilters,
   filterGroup,
+  onUpdateFilter,
 }: SavedViewPickerProps) {
   const [open, setOpen] = useState(false);
   const [showSave, setShowSave] = useState(false);
@@ -128,6 +130,24 @@ export default function SavedViewPicker({
     }
   };
 
+  const handleToggleShare = async (view: SavedFilter) => {
+    const newIsShared = !view.isShared;
+    try {
+      setError(null);
+      if (onUpdateFilter) {
+        onUpdateFilter(view.savedFilterId, { isShared: newIsShared });
+      } else {
+        await gql<{ updateFilter: SavedFilter }>(
+          UPDATE_FILTER_MUTATION,
+          { savedFilterId: view.savedFilterId, isShared: newIsShared },
+        );
+        onSavedFiltersChange(savedFilters.map((f) => f.savedFilterId === view.savedFilterId ? { ...f, isShared: newIsShared } : f));
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update view');
+    }
+  };
+
   const handleDeleteView = async (filterId: string) => {
     try {
       setError(null);
@@ -186,8 +206,15 @@ export default function SavedViewPicker({
                     )}
                   </button>
                   <button
+                    onClick={() => handleToggleShare(view)}
+                    className={`text-[10px] px-1 rounded opacity-0 group-hover:opacity-100 ml-1 transition-colors ${view.isShared ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800' : 'bg-slate-100 dark:bg-slate-600 text-slate-400 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-500'}`}
+                    title={view.isShared ? 'Unshare view' : 'Share view with team'}
+                  >
+                    {view.isShared ? 'unshare' : 'share'}
+                  </button>
+                  <button
                     onClick={() => handleDeleteView(view.savedFilterId)}
-                    className="text-xs text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 ml-2"
+                    className="text-xs text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 ml-1"
                     title="Delete view"
                   >
                     &times;
