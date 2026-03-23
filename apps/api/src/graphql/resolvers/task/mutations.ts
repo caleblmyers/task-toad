@@ -13,6 +13,7 @@ import { sseManager } from '../../../utils/sseManager.js';
 import { logActivity } from '../../../utils/activity.js';
 import { detectCycle } from '../../../utils/cyclicDependencyCheck.js';
 import { sendEmail } from '../../../utils/email.js';
+import { isPremiumEnabled } from '../../../utils/license.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -140,7 +141,7 @@ export const taskMutations = {
           // No rule for this transition → allowed (open by default)
           // Rule exists with allowedRoles → check user's role
           // Rule exists without allowedRoles → allowed (no role restriction)
-          if (matchingTransition?.allowedRoles && user.role !== 'org:admin') {
+          if (isPremiumEnabled && matchingTransition?.allowedRoles && user.role !== 'org:admin') {
             try {
               const transitionAllowedRoles = JSON.parse(matchingTransition.allowedRoles) as string[];
               if (transitionAllowedRoles.length > 0) {

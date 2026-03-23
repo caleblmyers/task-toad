@@ -2,10 +2,12 @@ import type { PrismaClient } from '@prisma/client';
 import type { EventBus } from '../eventbus/port.js';
 import { logger } from '../../utils/logger.js';
 import { calculateBusinessMs } from '../../utils/businessHours.js';
+import { isPremiumEnabled } from '../../utils/license.js';
 
 const log = logger.child({ module: 'slaListener' });
 
 export function register(bus: EventBus, prisma: PrismaClient): void {
+  if (!isPremiumEnabled) return;
   // When a task is created, create SLA timers for matching policies
   bus.on('task.created', async (e) => {
     try {

@@ -2,6 +2,7 @@ import type { PrismaClient } from '@prisma/client';
 import { CronExpressionParser } from 'cron-parser';
 import { createChildLogger } from '../../utils/logger.js';
 import { executeAutomations } from '../../utils/automationEngine.js';
+import { isPremiumEnabled } from '../../utils/license.js';
 
 const log = createChildLogger('cron-scheduler');
 
@@ -14,6 +15,7 @@ export class CronScheduler {
   constructor(private prisma: PrismaClient) {}
 
   start(): void {
+    if (!isPremiumEnabled) return;
     log.info('Cron scheduler started');
     // Run immediately on startup, then every minute
     this.runCheck();

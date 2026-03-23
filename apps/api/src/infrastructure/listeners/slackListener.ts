@@ -1,8 +1,10 @@
 import type { PrismaClient } from '@prisma/client';
 import type { EventBus } from '../eventbus/port.js';
 import { dispatchSlackNotifications } from '../../utils/notificationUtils.js';
+import { isPremiumEnabled } from '../../utils/license.js';
 
 export function register(bus: EventBus, prisma: PrismaClient): void {
+  if (!isPremiumEnabled) return;
   bus.on('task.created', (e) => {
     dispatchSlackNotifications(prisma, e.orgId, 'task.created', { task: e.task });
   });

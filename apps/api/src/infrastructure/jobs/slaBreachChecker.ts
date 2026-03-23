@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { createChildLogger } from '../../utils/logger.js';
 import { calculateBusinessMs } from '../../utils/businessHours.js';
+import { isPremiumEnabled } from '../../utils/license.js';
 
 const log = createChildLogger('sla-breach-checker');
 
@@ -12,6 +13,7 @@ export class SLABreachChecker {
   constructor(private prisma: PrismaClient) {}
 
   start(): void {
+    if (!isPremiumEnabled) return;
     log.info('SLA breach checker started (every 5 minutes)');
     this.intervalId = setInterval(() => {
       this.checkBreaches().catch((err) => {

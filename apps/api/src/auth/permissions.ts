@@ -1,6 +1,7 @@
 import type { Context } from '../graphql/context.js';
 import { AuthorizationError } from '../graphql/errors.js';
 import { requireOrg } from '../graphql/resolvers/auth.js';
+import { isPremiumEnabled } from '../utils/license.js';
 
 // ── Permission enum ──
 
@@ -82,6 +83,9 @@ export async function requirePermission(
   // org:admin bypasses all permission checks
   if (user.role === 'org:admin') return user;
 
+  // In open source mode, skip project role checks — all org members get default permissions
+  if (!isPremiumEnabled) return user;
+
   // Look up project membership
   const membership = await context.prisma.projectMember.findUnique({
     where: { projectId_userId: { projectId, userId: user.userId } },
@@ -108,6 +112,9 @@ export async function getPermissionsForProject(
 
   // org:admin gets all permissions
   if (user.role === 'org:admin') return [...ALL_PERMISSIONS];
+
+  // In open source mode, all org members get default permissions
+  if (!isPremiumEnabled) return [...DEFAULT_PERMISSIONS];
 
   const membership = await context.prisma.projectMember.findUnique({
     where: { projectId_userId: { projectId, userId: user.userId } },

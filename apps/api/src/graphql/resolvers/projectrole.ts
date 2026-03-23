@@ -4,6 +4,7 @@ import type { Context } from '../context.js';
 import { NotFoundError, ValidationError, AuthorizationError } from '../errors.js';
 import { requireProjectAccess } from './auth.js';
 import { parseInput, CreateAutomationRuleInput } from '../../utils/resolverHelpers.js';
+import { requireLicense } from '../../utils/license.js';
 
 const VALID_ROLES: readonly string[] = ['viewer', 'editor', 'admin'];
 
@@ -120,6 +121,7 @@ export const projectRoleMutations = {
     args: { projectId: string; userId: string; role?: string | null },
     context: Context,
   ) => {
+    requireLicense('project_roles');
     await requireProjectAdmin(context, args.projectId);
     const role = args.role ?? 'editor';
     if (!VALID_ROLES.includes(role as typeof VALID_ROLES[number])) {
@@ -151,6 +153,7 @@ export const projectRoleMutations = {
     args: { projectId: string; userId: string },
     context: Context,
   ) => {
+    requireLicense('project_roles');
     await requireProjectAdmin(context, args.projectId);
     const member = await context.prisma.projectMember.findUnique({
       where: { projectId_userId: { projectId: args.projectId, userId: args.userId } },
@@ -176,6 +179,7 @@ export const projectRoleMutations = {
     args: { projectId: string; userId: string; role: string },
     context: Context,
   ) => {
+    requireLicense('project_roles');
     await requireProjectAdmin(context, args.projectId);
     if (!VALID_ROLES.includes(args.role as typeof VALID_ROLES[number])) {
       throw new ValidationError(`Invalid role "${args.role}". Valid: ${VALID_ROLES.join(', ')}`);
@@ -223,6 +227,7 @@ export const projectRoleMutations = {
       }
     }
     if (args.cronExpression) {
+      requireLicense('cron_automations');
       try {
         CronExpressionParser.parse(args.cronExpression);
       } catch {
@@ -286,6 +291,9 @@ export const projectRoleMutations = {
     };
 
     if (args.cronExpression !== undefined) {
+      if (args.cronExpression) {
+        requireLicense('cron_automations');
+      }
       data.cronExpression = args.cronExpression;
       const tz = args.timezone ?? rule.timezone ?? 'UTC';
       data.timezone = tz;
