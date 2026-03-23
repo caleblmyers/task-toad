@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { SavedFilter } from './FilterBar';
 import type { ViewConfig } from '../../hooks/useTaskFiltering';
+import type { FilterGroupInput } from './FilterBuilder';
 import { gql } from '../../api/client';
 import { SHARED_VIEWS_QUERY, SAVE_VIEW_MUTATION, DELETE_FILTER_MUTATION } from '../../api/queries';
 import { IconList, IconBoard, IconTable } from './Icons';
@@ -11,6 +12,12 @@ interface SavedViewPickerProps {
   onSavedFiltersChange: (filters: SavedFilter[]) => void;
   onLoadFilter: (filtersJson: string, viewConfig?: ViewConfig) => void;
   currentViewType?: string;
+  statusFilter?: string;
+  priorityFilter?: string;
+  assigneeFilter?: string;
+  labelFilter?: string[];
+  customFieldFilters?: Record<string, string>;
+  filterGroup?: FilterGroupInput | null;
 }
 
 const viewTypeIcon: Record<string, React.ReactNode> = {
@@ -25,6 +32,12 @@ export default function SavedViewPicker({
   onSavedFiltersChange,
   onLoadFilter,
   currentViewType,
+  statusFilter,
+  priorityFilter,
+  assigneeFilter,
+  labelFilter,
+  customFieldFilters,
+  filterGroup,
 }: SavedViewPickerProps) {
   const [open, setOpen] = useState(false);
   const [showSave, setShowSave] = useState(false);
@@ -91,7 +104,14 @@ export default function SavedViewPicker({
         {
           projectId,
           name: saveName.trim(),
-          filters: '{}',
+          filters: JSON.stringify({
+            statusFilter: statusFilter ?? 'all',
+            priorityFilter: priorityFilter ?? 'all',
+            assigneeFilter: assigneeFilter ?? 'all',
+            labelFilter: labelFilter ?? [],
+            customFieldFilters: customFieldFilters ?? {},
+            ...(filterGroup ? { filterGroup } : {}),
+          }),
           viewType: saveViewType || null,
           sortBy: saveSortBy || null,
           sortOrder: saveSortOrder || null,

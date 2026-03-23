@@ -324,6 +324,12 @@ export default function ProjectToolbar({
               onSavedFiltersChange={setSavedFilters}
               onLoadFilter={handleLoadFilter}
               currentViewType={d.view === 'backlog' ? 'list' : d.view === 'board' ? 'board' : d.view === 'table' ? 'table' : undefined}
+              statusFilter={filtering.statusFilter}
+              priorityFilter={filtering.priorityFilter}
+              assigneeFilter={filtering.assigneeFilter}
+              labelFilter={filtering.labelFilter}
+              customFieldFilters={filtering.customFieldFilters}
+              filterGroup={filtering.filterGroup}
             />
           )}
         </div>
