@@ -45,7 +45,7 @@ interface FilterBarProps {
   projectId?: string;
   savedFilters?: SavedFilter[];
   onSavedFiltersChange?: (filters: SavedFilter[]) => void;
-  onLoadFilter?: (filters: string) => void;
+  onLoadFilter?: (filters: string, viewConfig?: { viewType?: string | null; sortBy?: string | null; sortOrder?: string | null; groupBy?: string | null }) => void;
   customFields?: CustomFieldDef[];
   customFieldFilters?: Record<string, string>;
   onCustomFieldFilterChange?: (fieldId: string, value: string) => void;
@@ -122,7 +122,7 @@ export default function FilterBar({
           {savedFilters.map((sf) => (
             <span key={sf.savedFilterId} className="inline-flex items-center gap-1">
               <button
-                onClick={() => onLoadFilter(sf.filters)}
+                onClick={() => onLoadFilter(sf.filters, { viewType: sf.viewType, sortBy: sf.sortBy, sortOrder: sf.sortOrder, groupBy: sf.groupBy })}
                 className={`${pillBase} ${pillInactive}`}
               >
                 {sf.name}

@@ -56,8 +56,7 @@ const PROJECT_VIEWER_PERMISSIONS: Permission[] = [
 ];
 
 const DEFAULT_PERMISSIONS: Permission[] = [
-  Permission.VIEW_TASKS,
-  Permission.CREATE_COMMENTS,
+  ...PROJECT_EDITOR_PERMISSIONS,
 ];
 
 export const ROLE_PERMISSIONS: Record<string, readonly Permission[]> = {
