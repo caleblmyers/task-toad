@@ -115,9 +115,9 @@ export default function WorkflowTab({ projectId }: Props) {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Workflow Transition Rules</h3>
+        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Workflow Transition Restrictions</h3>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          Configure which status transitions are allowed. When no rules are configured, all transitions are permitted.
+          Restrict specific status transitions to certain roles. All transitions are allowed by default — add a rule to restrict who can perform a transition.
         </p>
       </div>
 
@@ -129,7 +129,7 @@ export default function WorkflowTab({ projectId }: Props) {
 
       {transitions.length === 0 ? (
         <div className="text-sm text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 rounded p-3 text-center">
-          No workflow rules configured. All status transitions are allowed.
+          No restrictions configured. All status transitions are allowed for everyone.
         </div>
       ) : (
         <div className="border border-slate-200 dark:border-slate-600 rounded overflow-hidden">
@@ -182,7 +182,7 @@ export default function WorkflowTab({ projectId }: Props) {
         </div>
       )}
 
-      {/* Add transition form */}
+      {/* Add restriction form */}
       <form onSubmit={addForm.handleSubmit} className="flex items-end gap-2">
         <div className="flex-1">
           <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">From Status</label>
@@ -218,7 +218,7 @@ export default function WorkflowTab({ projectId }: Props) {
           size="sm"
           disabled={!addForm.values.fromStatus || !addForm.values.toStatus || addForm.loading}
         >
-          Add
+          Add Restriction
         </Button>
       </form>
       {addForm.error && (

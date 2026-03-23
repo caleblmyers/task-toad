@@ -128,7 +128,7 @@ export const taskMutations = {
       const validStatuses = statusParse.success ? statusParse.data : ['todo', 'in_progress', 'in_review', 'done'];
       validateStatus(validStatuses, args.status);
 
-      // Workflow transition validation
+      // Workflow transition validation (restriction model: unlisted transitions are allowed)
       if (args.status !== task.status) {
         const transitions = await context.prisma.workflowTransition.findMany({
           where: { projectId: task.projectId },
@@ -137,13 +137,10 @@ export const taskMutations = {
           const matchingTransition = transitions.find(
             t => t.fromStatus === task.status && t.toStatus === args.status
           );
-          if (!matchingTransition) {
-            throw new ValidationError(
-              `Status transition from '${task.status}' to '${args.status}' is not allowed by the project workflow`
-            );
-          }
-          // Check if user's role is allowed for this transition
-          if (matchingTransition.allowedRoles && user.role !== 'org:admin') {
+          // No rule for this transition → allowed (open by default)
+          // Rule exists with allowedRoles → check user's role
+          // Rule exists without allowedRoles → allowed (no role restriction)
+          if (matchingTransition?.allowedRoles && user.role !== 'org:admin') {
             try {
               const transitionAllowedRoles = JSON.parse(matchingTransition.allowedRoles) as string[];
               if (transitionAllowedRoles.length > 0) {
@@ -163,7 +160,7 @@ export const taskMutations = {
             }
           }
           // Check if transition requires approval
-          if (matchingTransition.condition) {
+          if (matchingTransition?.condition) {
             try {
               const condition = JSON.parse(matchingTransition.condition) as Record<string, unknown>;
               if (condition.requiresApproval) {
