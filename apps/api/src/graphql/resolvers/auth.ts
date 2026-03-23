@@ -196,7 +196,7 @@ export const authMutations = {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         maxAge: 7 * 24 * 60 * 60 * 1000,
-        path: '/api/auth/refresh',
+        path: '/',
       });
     }
     // Return token in body for backward compat during migration
@@ -266,7 +266,7 @@ export const authMutations = {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         maxAge: 7 * 24 * 60 * 60 * 1000,
-        path: '/api/auth/refresh',
+        path: '/',
       });
     }
     return { success: true, token: accessToken };
@@ -432,7 +432,7 @@ export const authMutations = {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         maxAge: 7 * 24 * 60 * 60 * 1000,
-        path: '/api/auth/refresh',
+        path: '/',
       });
     }
     return { token: accessToken };
@@ -470,7 +470,7 @@ export const authMutations = {
     // Clear auth cookies
     if (context.res) {
       context.res.clearCookie('tt-access', { path: '/' });
-      context.res.clearCookie('tt-refresh', { path: '/api/auth/refresh' });
+      context.res.clearCookie('tt-refresh', { path: '/' });
     }
     return true;
   },

@@ -190,7 +190,7 @@ app.post('/api/auth/refresh', async (req, res) => {
     const tv = payload.tv as number | undefined;
     if (tv !== undefined && tv !== user.tokenVersion) {
       res.clearCookie('tt-access', { path: '/' });
-      res.clearCookie('tt-refresh', { path: '/api/auth/refresh' });
+      res.clearCookie('tt-refresh', { path: '/' });
       res.status(401).json({ error: 'Token revoked' });
       return;
     }
@@ -199,7 +199,7 @@ app.post('/api/auth/refresh', async (req, res) => {
     const existingRecord = await sharedPrisma.refreshToken.findUnique({ where: { tokenHash: oldTokenHash } });
     if (!existingRecord) {
       res.clearCookie('tt-access', { path: '/' });
-      res.clearCookie('tt-refresh', { path: '/api/auth/refresh' });
+      res.clearCookie('tt-refresh', { path: '/' });
       res.status(401).json({ error: 'Session expired or revoked' });
       return;
     }
@@ -235,15 +235,16 @@ app.post('/api/auth/refresh', async (req, res) => {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/api/auth/refresh',
+      path: '/',
     });
     res.json({ ok: true });
   } catch {
     res.clearCookie('tt-access', { path: '/' });
-    res.clearCookie('tt-refresh', { path: '/api/auth/refresh' });
+    res.clearCookie('tt-refresh', { path: '/' });
     res.status(401).json({ error: 'Invalid refresh token' });
   }
 });
+
 
 // SSE endpoint for real-time events — reads token from cookie with Authorization fallback
 app.get(['/events', '/api/events'], async (req, res) => {
