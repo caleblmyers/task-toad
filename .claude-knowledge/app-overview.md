@@ -44,7 +44,8 @@ UserCapacity      — id, orgId, userId, hoursPerWeek
 UserTimeOff       — id, orgId, userId, startDate, endDate, description?
 KnowledgeEntry    — id, projectId, orgId, title, content, source, category
 SavedFilter       — id, projectId, userId, name, filters (JSON), viewType?, sortBy?, groupBy?, isShared
-WorkflowTransition — id, projectId, fromStatus, toStatus
+WorkflowTransition — id, projectId, fromStatus, toStatus, allowedRoles? (JSON)
+                    Restriction model: unlisted transitions are allowed; rules only ADD role restrictions
 AutomationRule    — id, projectId, orgId, name, trigger (JSON), action (JSON array), enabled,
                     cronExpression?, timezone?, nextRunAt?, lastRunAt?
                     Action types: notify_assignee, move_to_column, set_status, assign_to, send_webhook, add_label, add_comment, set_due_date
@@ -66,7 +67,7 @@ TaskInsight       — id, sourceTaskId, targetTaskId?, projectId, orgId, type (d
 AIPromptLog       — id, orgId, feature, model, tokenCount, cost, prompt (redacted)
 ```
 
-**Roles:** User has `role` (org:admin/org:member). ProjectMember has `role` (viewer/editor/admin). Permission scheme maps roles → 22 granular permissions via `requirePermission()`.
+**Roles:** User has `role` (org:admin/org:member). ProjectMember has `role` (viewer/editor/admin). Permission scheme maps roles → 22 granular permissions via `requirePermission()`. Org members without an explicit ProjectMember record default to **editor** permissions (can create/edit/transition/assign tasks, log time, view reports). Org admins bypass all permission checks.
 
 **Sprints:** Multiple per project, at most one `isActive`. Dynamic columns as JSON array. WIP limits as JSON object. Tasks assigned via `sprintId` (null = backlog).
 

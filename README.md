@@ -153,13 +153,13 @@ GraphiQL UI is available at `http://localhost:3001/graphql` in development.
 
 ## Auth
 
-HMAC JWT (HS256) signed with `JWT_SECRET`. Token stored in `localStorage` as `task-toad-id-token`. All GraphQL resolvers verify the token and load the user from the database on each request.
+HMAC JWT (HS256) signed with `JWT_SECRET`. Tokens delivered via HttpOnly cookies (`tt-access` 15-min, `tt-refresh` 7-day) with `Secure`/`SameSite=Strict` in production. CSRF protection via `X-Requested-With` header. Fallback `Authorization: Bearer <token>` header supported for API clients. Session expiry shows a modal prompting re-login.
 
 ## Security
 
 - `helmet` for HTTP security headers
 - `cors` with origin whitelist (`CORS_ORIGINS`)
-- `express-rate-limit`: 200 req/min global, 10 req/min for auth endpoints
+- `express-rate-limit`: 10 req/min for signup/login, 5 req/min for password reset/email verification
 - 1MB request body limit
 - AI prompts sanitized with `<user_input>` delimiters
 - AI responses validated with Zod schemas
