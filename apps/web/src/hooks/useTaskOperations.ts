@@ -406,7 +406,7 @@ export function useTaskOperations({ projectId, userId, sprints, onWarnings }: Us
 
   const handleUpdateTask = useCallback(async (
     taskId: string,
-    updates: { description?: string; instructions?: string; acceptanceCriteria?: string; storyPoints?: number | null },
+    updates: { description?: string; instructions?: string; acceptanceCriteria?: string; storyPoints?: number | null; priority?: string },
   ) => {
     setTasks((prev) => prev.map((t) => t.taskId === taskId ? { ...t, ...updates } : t));
     setSelectedTask((t) => t?.taskId === taskId ? { ...t, ...updates } : t);
@@ -418,6 +418,7 @@ export function useTaskOperations({ projectId, userId, sprints, onWarnings }: Us
           instructions: updates.instructions !== undefined,
           acceptanceCriteria: updates.acceptanceCriteria !== undefined,
           storyPoints: updates.storyPoints !== undefined,
+          priority: updates.priority !== undefined,
         }),
         { taskId, ...updates },
       );

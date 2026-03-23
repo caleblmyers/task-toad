@@ -72,7 +72,7 @@ export const taskMutations = {
 
   updateTask: async (
     _parent: unknown,
-    args: { taskId: string; title?: string; status?: string; description?: string; instructions?: string; acceptanceCriteria?: string; sprintId?: string | null; sprintColumn?: string | null; assigneeId?: string | null; dueDate?: string | null; position?: number | null; archived?: boolean; autoComplete?: boolean; storyPoints?: number | null; taskType?: string; recurrenceRule?: string | null; force?: boolean },
+    args: { taskId: string; title?: string; status?: string; description?: string; instructions?: string; acceptanceCriteria?: string; sprintId?: string | null; sprintColumn?: string | null; assigneeId?: string | null; dueDate?: string | null; position?: number | null; archived?: boolean; autoComplete?: boolean; storyPoints?: number | null; taskType?: string; priority?: string; recurrenceRule?: string | null; force?: boolean },
     context: Context
   ) => {
     parseInput(UpdateTaskInput, { title: args.title, description: args.description, instructions: args.instructions, acceptanceCriteria: args.acceptanceCriteria });
@@ -282,6 +282,7 @@ export const taskMutations = {
         ...(args.autoComplete !== undefined ? { autoComplete: args.autoComplete } : {}),
         ...(args.storyPoints !== undefined ? { storyPoints: args.storyPoints } : {}),
         ...(args.taskType !== undefined ? { taskType: args.taskType } : {}),
+        ...(args.priority !== undefined ? { priority: args.priority } : {}),
         ...(args.recurrenceRule !== undefined ? { recurrenceRule: args.recurrenceRule || null } : {}),
       },
     });
@@ -293,6 +294,7 @@ export const taskMutations = {
       ['sprintId', task.sprintId, args.sprintId],
       ['dueDate', task.dueDate, args.dueDate],
       ['archived', String(task.archived), args.archived !== undefined ? String(args.archived) : undefined],
+      ['priority', task.priority ?? null, args.priority],
       ['recurrenceRule', task.recurrenceRule ?? null, args.recurrenceRule !== undefined ? (args.recurrenceRule || null) : undefined],
     ];
     const changes: Record<string, { old: string | null; new: string | null }> = {};

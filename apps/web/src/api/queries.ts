@@ -741,13 +741,14 @@ export function buildSprintColumnChangeMutation(opts: { status?: boolean; assign
   return `mutation UpdateTask(${vars.join(', ')}) { updateTask(${args.join(', ')}) { task { taskId } warnings } }`;
 }
 
-export function buildUpdateTaskFieldsMutation(fields: { description?: boolean; instructions?: boolean; acceptanceCriteria?: boolean; storyPoints?: boolean }): string {
+export function buildUpdateTaskFieldsMutation(fields: { description?: boolean; instructions?: boolean; acceptanceCriteria?: boolean; storyPoints?: boolean; priority?: boolean }): string {
   const vars = ['$taskId: ID!'];
   const args = ['taskId: $taskId'];
   if (fields.description) { vars.push('$description: String'); args.push('description: $description'); }
   if (fields.instructions) { vars.push('$instructions: String'); args.push('instructions: $instructions'); }
   if (fields.acceptanceCriteria) { vars.push('$acceptanceCriteria: String'); args.push('acceptanceCriteria: $acceptanceCriteria'); }
   if (fields.storyPoints) { vars.push('$storyPoints: Int'); args.push('storyPoints: $storyPoints'); }
+  if (fields.priority) { vars.push('$priority: String'); args.push('priority: $priority'); }
   return `mutation UpdateTask(${vars.join(', ')}) { updateTask(${args.join(', ')}) { task { taskId } warnings } }`;
 }
 
