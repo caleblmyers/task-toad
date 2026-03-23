@@ -1,6 +1,7 @@
 import type { Context } from '../context.js';
 import { AuthorizationError, NotFoundError, ValidationError } from '../errors.js';
 import { requireOrg, requireProjectAccess } from './auth.js';
+import { requireLicense } from '../../utils/license.js';
 import { requirePermission, Permission } from '../../auth/permissions.js';
 import { getEventBus } from '../../infrastructure/eventbus/index.js';
 import { sseManager } from '../../utils/sseManager.js';
@@ -45,6 +46,7 @@ export const approvalQueries = {
     args: { projectId: string },
     context: Context
   ) => {
+    requireLicense('approvals');
     await requireProjectAccess(context, args.projectId);
     const approvals = await context.prisma.approval.findMany({
       where: {
@@ -70,6 +72,7 @@ export const approvalQueries = {
     args: { taskId: string },
     context: Context
   ) => {
+    requireLicense('approvals');
     const user = requireOrg(context);
     const task = await context.prisma.task.findUnique({ where: { taskId: args.taskId } });
     if (!task || task.orgId !== user.orgId) {
@@ -98,6 +101,7 @@ export const approvalMutations = {
     args: { approvalId: string; comment?: string },
     context: Context
   ) => {
+    requireLicense('approvals');
     const user = requireOrg(context);
     const approval = await context.prisma.approval.findUnique({
       where: { approvalId: args.approvalId },
@@ -179,6 +183,7 @@ export const approvalMutations = {
     args: { approvalId: string; comment: string },
     context: Context
   ) => {
+    requireLicense('approvals');
     const user = requireOrg(context);
     const approval = await context.prisma.approval.findUnique({
       where: { approvalId: args.approvalId },

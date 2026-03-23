@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import type { Context } from '../context.js';
 import { encryptApiKey, decryptApiKey } from '../../utils/encryption.js';
 import { AuthenticationError, AuthorizationError, ValidationError } from '../errors.js';
+import { getEnabledFeatures } from '../../utils/license.js';
 import { requireAuth, requireOrg } from './auth.js';
 import { auditLog } from '../../utils/auditLog.js';
 
@@ -83,6 +84,7 @@ export const orgMutations = {
 export const orgFieldResolvers = {
   Org: {
     createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
+    licenseFeatures: () => getEnabledFeatures(),
     hasApiKey: (parent: { anthropicApiKeyEncrypted?: string | null }) => !!parent.anthropicApiKeyEncrypted,
     apiKeyHint: (parent: { anthropicApiKeyEncrypted?: string | null }) => {
       if (!parent.anthropicApiKeyEncrypted) return null;

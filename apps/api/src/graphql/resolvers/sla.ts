@@ -2,6 +2,7 @@ import type { SLAPolicy, SLATimer } from '@prisma/client';
 import type { Context } from '../context.js';
 import { NotFoundError, ValidationError } from '../errors.js';
 import { requireOrg, requireProjectAccess } from './auth.js';
+import { requireLicense } from '../../utils/license.js';
 import { requirePermission, Permission } from '../../auth/permissions.js';
 import { calculateBusinessMs } from '../../utils/businessHours.js';
 
@@ -11,6 +12,7 @@ export const slaQueries = {
     args: { projectId: string },
     context: Context,
   ) => {
+    requireLicense('sla');
     await requireProjectAccess(context, args.projectId);
     const policies = await context.prisma.sLAPolicy.findMany({
       where: { projectId: args.projectId },
@@ -24,6 +26,7 @@ export const slaQueries = {
     args: { taskId: string },
     context: Context,
   ) => {
+    requireLicense('sla');
     const user = requireOrg(context);
     const task = await context.prisma.task.findFirst({
       where: { taskId: args.taskId, orgId: user.orgId },
@@ -53,6 +56,7 @@ export const slaMutations = {
     },
     context: Context,
   ) => {
+    requireLicense('sla');
     await requirePermission(context, args.projectId, Permission.MANAGE_PROJECT_SETTINGS);
     const user = requireOrg(context);
     if (args.responseTimeHours < 1) throw new ValidationError('responseTimeHours must be at least 1');
@@ -93,6 +97,7 @@ export const slaMutations = {
     },
     context: Context,
   ) => {
+    requireLicense('sla');
     const user = requireOrg(context);
     const existing = await context.prisma.sLAPolicy.findFirst({
       where: { slaPolicyId: args.slaPolicyId, orgId: user.orgId },
@@ -128,6 +133,7 @@ export const slaMutations = {
     args: { slaPolicyId: string },
     context: Context,
   ) => {
+    requireLicense('sla');
     const user = requireOrg(context);
     const existing = await context.prisma.sLAPolicy.findFirst({
       where: { slaPolicyId: args.slaPolicyId, orgId: user.orgId },

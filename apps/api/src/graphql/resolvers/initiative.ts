@@ -2,11 +2,13 @@ import type { Initiative, Project } from '@prisma/client';
 import type { Context } from '../context.js';
 import { NotFoundError, ValidationError } from '../errors.js';
 import { requireOrg } from './auth.js';
+import { requireLicense } from '../../utils/license.js';
 
 // ── Queries ──
 
 export const initiativeQueries = {
   initiatives: async (_parent: unknown, _args: unknown, context: Context) => {
+    requireLicense('initiatives');
     const user = requireOrg(context);
     const initiatives = await context.prisma.initiative.findMany({
       where: { orgId: user.orgId },
@@ -21,6 +23,7 @@ export const initiativeQueries = {
     args: { initiativeId: string },
     context: Context,
   ) => {
+    requireLicense('initiatives');
     const user = requireOrg(context);
     const initiative = await context.prisma.initiative.findFirst({
       where: { initiativeId: args.initiativeId, orgId: user.orgId },
@@ -35,6 +38,7 @@ export const initiativeQueries = {
     args: { initiativeId: string },
     context: Context,
   ) => {
+    requireLicense('initiatives');
     const user = requireOrg(context);
     const initiative = await context.prisma.initiative.findFirst({
       where: { initiativeId: args.initiativeId, orgId: user.orgId },
@@ -105,6 +109,7 @@ export const initiativeMutations = {
     args: { name: string; description?: string | null; targetDate?: string | null },
     context: Context,
   ) => {
+    requireLicense('initiatives');
     const user = requireOrg(context);
     if (!args.name.trim()) throw new ValidationError('Name is required');
 
@@ -131,6 +136,7 @@ export const initiativeMutations = {
     },
     context: Context,
   ) => {
+    requireLicense('initiatives');
     const user = requireOrg(context);
     const existing = await context.prisma.initiative.findFirst({
       where: { initiativeId: args.initiativeId, orgId: user.orgId },
@@ -163,6 +169,7 @@ export const initiativeMutations = {
     args: { initiativeId: string },
     context: Context,
   ) => {
+    requireLicense('initiatives');
     const user = requireOrg(context);
     const existing = await context.prisma.initiative.findFirst({
       where: { initiativeId: args.initiativeId, orgId: user.orgId },
@@ -180,6 +187,7 @@ export const initiativeMutations = {
     args: { initiativeId: string; projectId: string },
     context: Context,
   ) => {
+    requireLicense('initiatives');
     const user = requireOrg(context);
     const initiative = await context.prisma.initiative.findFirst({
       where: { initiativeId: args.initiativeId, orgId: user.orgId },
@@ -218,6 +226,7 @@ export const initiativeMutations = {
     args: { initiativeId: string; projectId: string },
     context: Context,
   ) => {
+    requireLicense('initiatives');
     const user = requireOrg(context);
     const initiative = await context.prisma.initiative.findFirst({
       where: { initiativeId: args.initiativeId, orgId: user.orgId },

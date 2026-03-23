@@ -1,8 +1,6 @@
 import { GraphQLError } from 'graphql';
 import { logger } from './logger.js';
 
-// ── License types ──
-
 export type LicenseFeature =
   | 'slack'
   | 'initiatives'
@@ -13,15 +11,22 @@ export type LicenseFeature =
   | 'field_permissions'
   | 'project_roles';
 
-// ── License state ──
+const ALL_FEATURES: LicenseFeature[] = [
+  'slack',
+  'initiatives',
+  'sla',
+  'approvals',
+  'cron_automations',
+  'workflow_restrictions',
+  'field_permissions',
+  'project_roles',
+];
 
 export const isPremiumEnabled = !!process.env.TASKTOAD_LICENSE;
 
-if (!isPremiumEnabled) {
-  logger.info('No license key — running in open source mode');
+export function getEnabledFeatures(): string[] {
+  return isPremiumEnabled ? [...ALL_FEATURES] : [];
 }
-
-// ── License helpers ──
 
 export class LicenseError extends GraphQLError {
   constructor(feature: string) {
@@ -37,16 +42,8 @@ export function requireLicense(feature: LicenseFeature): void {
   }
 }
 
-export function getEnabledFeatures(): string[] {
-  if (!isPremiumEnabled) return [];
-  return [
-    'slack',
-    'initiatives',
-    'sla',
-    'approvals',
-    'cron_automations',
-    'workflow_restrictions',
-    'field_permissions',
-    'project_roles',
-  ];
+if (isPremiumEnabled) {
+  logger.info('Premium license detected — all features enabled');
+} else {
+  logger.info('No license key — running in open source mode');
 }

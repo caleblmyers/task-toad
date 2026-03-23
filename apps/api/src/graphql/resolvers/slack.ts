@@ -5,6 +5,7 @@ import { isValidWebhookEvent } from '../../utils/webhookDispatcher.js';
 import { sendSlackWebhook, buildTestMessage } from '../../slack/slackClient.js';
 import { StringArraySchema } from '../../utils/zodSchemas.js';
 import { createChildLogger } from '../../utils/logger.js';
+import { requireLicense } from '../../utils/license.js';
 import { encryptApiKey, decryptIfEncrypted } from '../../utils/encryption.js';
 
 const log = createChildLogger('slack');
@@ -21,6 +22,7 @@ function requireAdmin(context: Context) {
 
 export const slackQueries = {
   slackIntegrations: async (_parent: unknown, _args: unknown, context: Context) => {
+    requireLicense('slack');
     const user = requireAdmin(context);
     const integrations = await context.prisma.slackIntegration.findMany({
       where: { orgId: user.orgId },
@@ -34,6 +36,7 @@ export const slackQueries = {
   },
 
   slackUserMappings: async (_parent: unknown, args: { integrationId: string }, context: Context) => {
+    requireLicense('slack');
     const user = requireAdmin(context);
     // Verify integration belongs to this org
     const integration = await context.prisma.slackIntegration.findUnique({
@@ -65,6 +68,7 @@ export const slackMutations = {
     },
     context: Context
   ) => {
+    requireLicense('slack');
     const user = requireAdmin(context);
 
     // Validate webhook URL
@@ -119,6 +123,7 @@ export const slackMutations = {
     args: { id: string; events?: string[] | null; enabled?: boolean | null },
     context: Context
   ) => {
+    requireLicense('slack');
     const user = requireAdmin(context);
     const integration = await context.prisma.slackIntegration.findUnique({
       where: { id: args.id },
@@ -148,6 +153,7 @@ export const slackMutations = {
   },
 
   disconnectSlack: async (_parent: unknown, args: { id: string }, context: Context) => {
+    requireLicense('slack');
     const user = requireAdmin(context);
     const integration = await context.prisma.slackIntegration.findUnique({
       where: { id: args.id },
@@ -160,6 +166,7 @@ export const slackMutations = {
   },
 
   testSlackIntegration: async (_parent: unknown, args: { id: string }, context: Context) => {
+    requireLicense('slack');
     const user = requireAdmin(context);
     const integration = await context.prisma.slackIntegration.findUnique({
       where: { id: args.id },
@@ -178,6 +185,7 @@ export const slackMutations = {
     args: { slackUserId: string; slackTeamId: string; userId: string },
     context: Context
   ) => {
+    requireLicense('slack');
     const user = requireAdmin(context);
 
     // Verify the target user belongs to the same org
@@ -205,6 +213,7 @@ export const slackMutations = {
   },
 
   unmapSlackUser: async (_parent: unknown, args: { mappingId: string }, context: Context) => {
+    requireLicense('slack');
     const user = requireAdmin(context);
     const mapping = await context.prisma.slackUserMapping.findUnique({
       where: { id: args.mappingId },
