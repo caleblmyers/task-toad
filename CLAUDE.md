@@ -85,7 +85,7 @@ Tasks with instructions can be auto-completed via the **Auto-Complete** button, 
 - **Event bus:** `apps/api/src/infrastructure/eventbus/` — typed domain events for real-time updates
 - **AI planner:** `promptBuilder.ts:buildActionPlanPrompt()` generates the action sequence; validated by `ActionPlanResponseSchema` in `aiTypes.ts`
 - **Frontend:** `ActionProgressPanel.tsx` shows live progress; `ActionPlanDialog.tsx` for plan preview/approval; SSE events refresh state in real-time
-- **Manual code generation is deprecated** — the standalone "Generate code" button has been removed from the UI. Auto-Complete is the sole code generation entry point. Backend mutations (`generateCodeFromTask`, `regenerateCodeFile`) still exist but are unused by the frontend.
+- **Auto-Complete is the sole code generation entry point** — the standalone "Generate code" button has been removed from the UI.
 
 ### Real-Time
 
@@ -190,7 +190,7 @@ All packages extend `tsconfig.base.json`. Strict mode + `noUnusedLocals` + `noUn
 
 ### Env Files
 
-- `apps/api/.env` — `DATABASE_URL`, `JWT_SECRET`, `ENCRYPTION_MASTER_KEY`, `CORS_ORIGINS`, `LOG_LEVEL` (optional, defaults to `info`), `SENTRY_DSN` (optional), `AI_RATE_LIMIT_PER_HOUR` (optional, defaults to `60`), `MAX_SESSIONS_PER_USER` (optional, defaults to `5`), `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` (optional — falls back to local disk storage if not set)
+- `apps/api/.env` — `DATABASE_URL`, `JWT_SECRET`, `ENCRYPTION_MASTER_KEY`, `CORS_ORIGINS`, `LOG_LEVEL` (optional, defaults to `info`), `SENTRY_DSN` (optional), `AI_RATE_LIMIT_PER_HOUR` (optional, defaults to `60`), `MAX_SESSIONS_PER_USER` (optional, defaults to `5`), `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` (optional — falls back to local disk storage if not set), `TASKTOAD_LICENSE` (optional — enables premium features when set)
 - `apps/web/.env` — `VITE_API_URL` (set to `/api` in dev; Vite proxy handles routing)
 
 Copy from `.env.example` and fill in values.

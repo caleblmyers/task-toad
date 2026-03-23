@@ -1,19 +1,31 @@
 node_modules
 dist
 cdk.out
+
 # Env secrets (do not commit); .env.example files are kept in git
 .env
 .env.local
 .env.*.local
-*.log
+
+# OS / IDE
 .DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build artifacts
+*.log
 coverage
 .vite
 *.tsbuildinfo
 vite.config.js
 vite.config.d.ts
-# Swarm role prompt (injected per worktree, never committed)
-.claude/swarm-role.md
+
+# Claude Code (local dev workflow — skills, settings, plans)
+.claude/
+
 # Swarm artifacts (ephemeral per run, cleaned up by teardown scripts)
 .ai/taskswarm/tasks*.json
 .ai/taskswarm/issues.md

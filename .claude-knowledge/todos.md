@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-Production deployed at `https://tasktoad-api-production.up.railway.app`. 57 swarm waves completed. Security: 38/39 (97%). Open core license system in place. 335 tests. **V1 ready — preparing for AGPL open source launch.**
+57 swarm waves completed. Security: 38/39 (97%). Open core license system in place. 335 tests. **V1 ready — preparing for AGPL open source launch.**
 
 ---
 
