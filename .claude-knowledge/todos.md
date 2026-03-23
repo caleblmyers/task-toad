@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-Production deployed at `https://tasktoad-api-production.up.railway.app`. 55 swarm waves completed. Security: 38/39 (97%). V1 feature cuts applied. All must-fix + should-fix UX issues resolved. SSE real-time working. 335 tests.
+Production deployed at `https://tasktoad-api-production.up.railway.app`. 56 swarm waves completed. Security: 38/39 (97%). V1 feature cuts applied. All must-fix + should-fix UX issues resolved. SSE real-time working. 335 tests.
 
 ---
 
@@ -28,20 +28,33 @@ Production deployed at `https://tasktoad-api-production.up.railway.app`. 55 swar
 
 ---
 
-## Manual Testing — Re-test Items
+## Manual Testing — Round 2 Results (2026-03-23)
 
-Items that were fixed but need verification on production:
+- [x] Epics hierarchy — **PASS** — expand/collapse, breadcrumbs, progress bars all working
+- [x] Shared Views — **PASS** — visible to member user (minor: share toggle not editable after creation → fix below)
+- [x] TQL search — **PASS** — unified search bar handles both text and TQL
+- [x] Charts & Analytics — **PARTIAL PASS** — render without errors but need multi-day data for meaningful visualization
+- [x] Saved views — **FIXED Wave 56** — filters now captured and restored correctly
+- [x] Workflow allowedRoles — **FIXED Wave 56** — changed to restriction model (unlisted transitions allowed)
+- [x] Field-level restrictions — **FIXED Wave 56** — priority field now persists through update pipeline
+- [x] Release burndown — **FIXED Wave 56** — handles null releaseDate, shows actual error text
+- [ ] Two tabs edit same task — **PARTIAL** — no data loss, SSE doesn't sync edits across tabs (deferred)
+- [ ] Concurrent session limit — **SKIPPED** — deferred
 
-- [ ] Epics hierarchy — expand/collapse, breadcrumbs, progress bars (GraphQL fix Wave 54, breadcrumbs verified Wave 55)
-- [ ] Saved views — reload saved view restores filters (fix Wave 53)
-- [ ] Shared Views section visible when shared views exist (fix Wave 55)
-- [ ] TQL saved queries — save/reload/rename/delete (discoverability fix Wave 55)
-- [ ] Workflow allowedRoles enforcement (set transition to admin-only, non-admin gets error)
-- [ ] Field-level restrictions (set priority to admin-only, non-admin change skipped with warning)
-- [ ] Charts & Analytics (needs sprint data — velocity, burndown, scatter, Monte Carlo, heatmap, portfolio)
-- [ ] Release burndown chart (needs release with completed tasks)
-- [ ] Concurrent session limit (6th login prunes oldest)
-- [ ] Two tabs edit same task — no data loss
+## Bugs Fixed — Wave 56
+
+### All Fixed
+- [x] **Saved views broken** — filters now captured and restored correctly
+- [x] **Workflow: changed to restriction model** — unlisted transitions allowed by default
+- [x] **Priority field not persisting** — added to update pipeline (resolver + mutation builder + hook)
+- [x] **Release burndown error** — handles null releaseDate, 365-day safety cap, shows error detail
+- [x] **Silent auth failures** — detects UNAUTHENTICATED GraphQL error code, attempts refresh, triggers session-expired modal
+- [x] **Release detail: full-page layout** — removed max-w-lg, added back button breadcrumb
+- [x] **Saved view share toggle** — share/unshare button on hover, wired through updateFilter mutation
+
+### Deferred
+- SSE cross-tab sync — manual refresh is fine for now; ensure backend prevents stale data overwrites
+- Concurrent session limit — untested, defer verification
 
 ---
 
@@ -91,6 +104,9 @@ Features hidden from V1 UI. Backend code remains — re-enable by restoring UI e
 - [ ] Priority dropdown: color coding (red for critical, orange for high)
 - [ ] Dependency task picker: keyboard navigation for search results
 - [ ] L-12: Test database credentials in CI/CD
+- [ ] Workflow restriction model: add test coverage for restriction/allowedRoles logic
+- [ ] Auth retry: add test for UNAUTHENTICATED error detection and token refresh in gql() client
+- [ ] Saved views: test coverage for filter capture (round-trip save → load with all filter types)
 
 ### Feature Requests
 - [ ] Scheduled report delivery — ReportSchedule model, cron, email/Slack *(depends on SMTP)*
@@ -125,5 +141,6 @@ Features hidden from V1 UI. Backend code remains — re-enable by restoring UI e
 | 53 | 2026-03-22 | Bug fixes: PWA offline page, V1 feature cuts, archived tasks, @mention, saved views, automation |
 | 54 | 2026-03-22 | Must-fix UX: priority dropdown, AI permissions, dependency direction, epics GraphQL |
 | 55 | 2026-03-22 | Should-fix UX: centered modal, auto-track clarity, TQL values, automation editing, SSE, saved views, epics |
+| 56 | 2026-03-23 | Bug fixes: priority persistence, workflow restriction model, saved view filters, release burndown, silent auth, release layout, share toggle |
 
 Full wave details in `changelog.md`.

@@ -4,6 +4,36 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-23 (Wave 56 — bug fixes from manual testing Round 2)
+
+### Wave 56: Bug Fixes from Production Testing (3 workers, 6 tasks)
+
+**Worker 1 — task-001: Priority Field Persistence:**
+- Added `priority` to three-point update pipeline: backend resolver (`task/mutations.ts` Prisma update data), frontend mutation builder (`buildUpdateTaskFieldsMutation` in `queries.ts`), and frontend hook (`useTaskOperations.ts` updates type). Priority changes now persist through refresh.
+
+**Worker 1 — task-002: Workflow Restriction Model:**
+- Changed workflow from allowlist to restriction/overlay model in `task/mutations.ts`. Previously: defining ANY transition blocked all unlisted ones. Now: all transitions allowed by default; workflow rules only ADD role restrictions to specific transitions.
+- Updated `WorkflowTab.tsx` UI labels to reflect restriction model ("Add Restriction" instead of "Add Transition").
+
+**Worker 2 — task-003: Saved View Filter Capture:**
+- Fixed `SavedViewPicker.tsx` — was hardcoding `filters: '{}'` instead of capturing actual filter state. Now captures statusFilter, priorityFilter, assigneeFilter, labelFilter, customFieldFilters, filterGroup as JSON.
+- Restore path in `useTaskFiltering.ts` already worked — just needed real data.
+
+**Worker 2 — task-004: Saved View Share Toggle Editing:**
+- Added share/unshare button on hover for existing saved views. Wired through `updateFilter` mutation (backend already supported `isShared`).
+- `UPDATE_FILTER_MUTATION` in `queries.ts` now includes `isShared` field.
+
+**Worker 3 — task-005: Release Burndown + Full-Page Layout:**
+- Release burndown resolver: handles null `releaseDate` (falls back to current date), added 365-day safety cap on date range, shows actual error text instead of generic "Unable to load burndown".
+- Release detail: removed `max-w-lg` constraint, now full-width. Added back button breadcrumb for navigation.
+
+**Worker 3 — task-006: Silent Auth Failures:**
+- Root cause: GraphQL returns HTTP 200 with `extensions.code: 'UNAUTHENTICATED'` — the `gql()` client only checked HTTP 401. Fixed: after parsing JSON response, checks for UNAUTHENTICATED error code, attempts token refresh, triggers `session-expired` custom event and modal if refresh fails.
+
+**Process:** All 6 tasks merged on first review — zero rejections. Task descriptions with exact line numbers and code snippets led to precise, minimal changes.
+
+---
+
 ## 2026-03-22 (should-fix UX + re-tests)
 
 ### Wave 55: Should-Fix UX & Re-test Verification (3 workers, 3 tasks)
@@ -80,23 +110,7 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ## 2026-03-22 (final cleanup)
 
-### Wave 52: Final Cleanup — SLA Business Hours, Reliability, Test Stability (3 workers, 3 tasks)
-
-**Worker 1 — task-001: SLA Business Hours + useAsyncData + TQL Polish:**
-- SLA business hours: `businessHoursStart`, `businessHoursEnd`, `excludeWeekends` fields on SLAPolicy (migration). `calculateBusinessHours()` utility excludes weekends and non-business hours from SLA timer evaluation. Breach checker and listener use business hours calculation.
-- useAsyncData: 5 more components migrated (Portfolio, PendingApprovals, SprintForecast, Timesheet, WorkloadHeatmap).
-- TQL autocomplete keyboard nav: Arrow Up/Down to highlight, Enter to select, Escape to close.
-- TQL saved queries: delete (X button + confirm) and rename (inline edit) support.
-
-**Worker 2 — task-002: Pipeline Reliability:**
-- monitor_ci restart resilience: Extracted `evaluateCheckRuns()` and created `monitorCIPoll.ts` job that uses the job queue for follow-up polls instead of in-process sleep. Startup scan marks stuck monitor_ci actions as failed after 35 min.
-- cancelActionPlan interrupt: `Map<string, AbortController>` pattern in actionExecutor. Cancel aborts in-flight fetch calls and checks `signal.aborted` before/after AI API calls. AbortController cleaned up on action completion.
-
-**Worker 3 — task-003: Test Stability + Swarm Docs:**
-- Flaky test fix: expanded `cleanDatabase()` table list with all Wave 45-52 tables (refresh_tokens, sla_policies, sla_timers, approvals, initiatives, initiative_projects, field_permissions). Added retry logic for TRUNCATE with 50ms delay. Pre-cleanup drain delay for fire-and-forget operations.
-- task-swarm SKILL.md: added Prisma model conflict guidance to task dependency section.
-
-**Process:** DB was down during merge validation — reviewer had to manually merge task-002. monitorCIPoll.ts duplicates action-completion orchestration from actionExecutor.ts (tech debt noted).
+### Wave 52: Final Cleanup — SLA business hours, pipeline reliability, test stability, swarm docs.
 
 ---
 
