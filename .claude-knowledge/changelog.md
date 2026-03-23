@@ -4,6 +4,38 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-23 (Wave 57 — open core license flag system)
+
+### Wave 57: Premium Feature Gating (3 workers, 3 tasks)
+
+**Worker 1 — task-001: License Utility + Resolver Gating:**
+- Created `apps/api/src/utils/license.ts` with `isPremiumEnabled`, `requireLicense()`, `getEnabledFeatures()`, `LicenseFeature` type.
+- Added `LicenseError` class to `errors.ts` with `LICENSE_REQUIRED` GraphQL error code.
+- Added `licenseFeatures: [String!]!` to Org GraphQL type with field resolver.
+- Gated all resolvers for: Slack, Initiatives, SLA, Approvals, Field Permissions.
+
+**Worker 2 — task-002: Infrastructure Gating + Permissions Bypass:**
+- Gated listeners (Slack, SLA) and jobs (SLA breach checker, cron scheduler) — early return when unlicensed.
+- Bypassed project role permission checks in `requirePermission()` and `getPermissionsForProject()` when unlicensed — all org members get default editor permissions.
+- Gated `addProjectMember`/`removeProjectMember`/`updateProjectMemberRole` behind `requireLicense('project_roles')`.
+- Gated cron automation fields — `requireLicense('cron_automations')` when `cronExpression` present.
+- Wrapped workflow role restriction check in `if (isPremiumEnabled)` in task mutations.
+
+**Worker 3 — task-003: Frontend Feature Gating:**
+- Created `useLicenseFeatures()` hook — fetches `org.licenseFeatures`, caches result, provides `hasFeature()` helper.
+- Hid Slack settings in OrgSettings when unlicensed.
+- Hid Members and Field Permissions tabs in ProjectSettingsModal when unlicensed.
+- Hid cron schedule fields in AutomationTab when unlicensed.
+
+**Open follow-ups:**
+- WorkflowTab role restriction UI still visible without license (missing from task-003 file list)
+- AutomationTab cron input fields in create/edit form not fully gated (only display hidden)
+- Test coverage for license gating needed
+
+**Process:** Both workers 1 and 2 created `license.ts` — conflict resolved by reviewer keeping worker-1's version. All tasks merged on first review.
+
+---
+
 ## 2026-03-23 (Wave 56 — bug fixes from manual testing Round 2)
 
 ### Wave 56: Bug Fixes from Production Testing (3 workers, 6 tasks)
@@ -91,28 +123,7 @@ Three follow-up fixes after re-testing Wave 56 on production:
 
 ## 2026-03-22 (bug fixes + V1 cuts from manual testing)
 
-### Wave 53: Bug Fixes, V1 Feature Cuts & Auth Fix (3 workers, 3 tasks)
-
-**Worker 1 — task-001: Critical Auth/PWA Fix:**
-- Root cause: PWA service worker `navigateFallback: '/offline.html'` intercepted failed navigations on logout/session expiry/refresh, showing offline page instead of login.
-- Fix: Added `/login`, `/signup`, `/verify-email` to `navigateFallbackDenylist` in vite.config.ts. Changed logout to use `window.location.href = '/login'` (full page load bypassing SPA router). Added `skipWaiting` and `clientsClaim` to service worker config for immediate activation. Verified SessionExpiredModal already uses correct redirect.
-
-**Worker 2 — task-002: V1 Feature Cuts (5 features hidden):**
-- Initiatives: removed section from Portfolio.tsx (create/edit modals, filter, cards).
-- SLA Tracking: removed SLAStatusBadge from TaskDetailPanel, SLA tab from project settings.
-- Approval Workflows: removed approval badge/buttons/history from TaskDetailPanel, PendingApprovalsPanel from toolbar, requiresApproval/approver UI from workflow settings.
-- Scheduled Automations: removed 'scheduled' trigger type and cron/timezone inputs from AutomationTab.
-- BacklogView keyboard nav: removed onKeyDown, tabIndex, ARIA roles from task rows.
-- Created `apps/web/V1_FEATURE_CUTS.md` documenting all removals with re-enablement instructions.
-
-**Worker 3 — task-003: Feature Bug Fixes (5 bugs):**
-- Archived tasks: added `archived: false` default filter in tasks query resolver and frontend filter state.
-- @mention notifications: fixed notification listener regex to match `@displayName` mentions and create Notification records. Added displayName-based user search in MentionAutocomplete.
-- Saved views: fixed SavedViewPicker to apply saved filter data to filter state instead of clearing it. Fixed shared views section visibility.
-- Automation add_label: fixed label lookup to use project-scoped query and proper TaskLabel creation.
-- Automation compound conditions: fixed matchesCondition() to correctly access task properties for compound AND/OR evaluation.
-
-**Process:** task-003 sent back once for missing 2 of 5 bug fixes. All tasks zero file overlap.
+### Wave 53: Auth/PWA fix, V1 feature cuts (5 features hidden), 5 bug fixes (archived tasks, @mentions, saved views, automation).
 
 ---
 

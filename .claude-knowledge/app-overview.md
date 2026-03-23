@@ -121,6 +121,7 @@ Browser → Vite dev server (localhost:5173)
 | Prisma schema (domain-split) | `apps/api/prisma/schema/*.prisma` |
 | REST export routes | `apps/api/src/routes/export.ts` |
 | REST API docs page | `apps/api/src/routes/docs.ts` |
+| License flag system (open core gating) | `apps/api/src/utils/license.ts` |
 | Express app setup (+ helmet/cors/rate-limit) | `apps/api/src/app.ts` |
 | API entry point | `apps/api/src/index.ts` |
 | API test config | `apps/api/vitest.config.ts` |
@@ -174,6 +175,7 @@ Browser → Vite dev server (localhost:5173)
 - `SENTRY_DSN` — optional Sentry error tracking DSN
 - `AI_RATE_LIMIT_PER_HOUR` — per-org AI request limit (defaults to `60`)
 - `MAX_SESSIONS_PER_USER` — concurrent session limit (defaults to `5`)
+- `TASKTOAD_LICENSE` — license key for premium features (optional — omit for open source mode). When set, enables: Slack, initiatives, SLA, approvals, cron automations, workflow restrictions, field permissions, project roles. See `apps/api/src/utils/license.ts`.
 
 **Web** (`apps/web/.env`):
 - `VITE_API_URL` — set to `/api` in dev (Vite proxy strips prefix and forwards to `:3001`)

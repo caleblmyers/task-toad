@@ -88,6 +88,7 @@ cp apps/api/.env.example apps/api/.env
 | `SMTP_PASS` | SMTP password |
 | `EMAIL_FROM` | Sender address (default `noreply@tasktoad.app`) |
 | `APP_URL` | Public app URL used in email links (default `http://localhost:5173`) |
+| `TASKTOAD_LICENSE` | License key to enable premium features (optional — omit for open source mode) |
 
 **Web** (`apps/web/.env`):
 

@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-Production deployed at `https://tasktoad-api-production.up.railway.app`. 56 swarm waves completed. Security: 38/39 (97%). V1 feature cuts applied. All bugs from manual testing fixed. 335 tests. **V1 ready.**
+Production deployed at `https://tasktoad-api-production.up.railway.app`. 57 swarm waves completed. Security: 38/39 (97%). Open core license system in place. 335 tests. **V1 ready — preparing for AGPL open source launch.**
 
 ---
 
@@ -25,16 +25,19 @@ Production deployed at `https://tasktoad-api-production.up.railway.app`. 56 swar
 
 ---
 
-## V1 Feature Cuts (UI hidden, backend intact)
+## Premium Features (license-gated, TASKTOAD_LICENSE env var)
 
-Features hidden from V1 UI. Backend code remains — re-enable by restoring UI entry points. See `apps/web/V1_FEATURE_CUTS.md` for details.
+Premium features are gated behind `requireLicense()` in resolvers and `useLicenseFeatures()` hook in frontend. Without a license key, resolvers return `LICENSE_REQUIRED` error and UI hides premium sections. See `apps/api/src/utils/license.ts`.
 
-- **Initiatives** (cross-project grouping) — Portfolio page section removed
-- **SLA Tracking** — badge + settings tab removed
-- **Approval Workflows** — badge, buttons, history, PendingApprovalsPanel removed
-- **Scheduled Automations** (cron triggers) — trigger type + cron UI removed
-- **BacklogView keyboard navigation** — onKeyDown + ARIA removed
-- **Workflow Restrictions** — role-based transition restrictions deferred; project members requirement deferred
+- **Slack integration** — resolver gated + UI hidden in OrgSettings
+- **Initiatives** (cross-project grouping) — resolver gated + UI removed (Wave 53)
+- **SLA Tracking** — resolver gated + listeners/jobs disabled + UI removed (Wave 53)
+- **Approval Workflows** — resolver gated + UI removed (Wave 53)
+- **Scheduled Automations** (cron triggers) — cron fields gated in resolver + UI removed (Wave 53)
+- **Workflow Role Restrictions** — role checks bypassed in task/mutations.ts when unlicensed
+- **Field-level Permissions** — resolver gated + settings tab hidden
+- **Project Member Roles** — resolver gated + permissions.ts bypasses role lookup + members tab hidden
+- **BacklogView keyboard navigation** — UI removed (Wave 53, re-enable as core when fixed)
 
 ---
 
@@ -72,6 +75,9 @@ Features hidden from V1 UI. Backend code remains — re-enable by restoring UI e
 - [ ] Scheduled report delivery — ReportSchedule model, cron, email/Slack *(depends on SMTP)*
 - [ ] Automation rule library + cross-project sharing
 - Re-enable V1 cuts when ready (initiatives, SLA, approvals, cron automation, workflow restrictions)
+- [ ] Gate WorkflowTab.tsx "Workflow Transition Restrictions" section behind `hasFeature('workflow_restrictions')` — role restriction UI is still visible without license
+- [ ] Gate cron input fields in AutomationTab create/edit form behind `hasFeature('cron_automations')` — currently only display is hidden
+- [ ] Add test coverage for license gating (both API resolvers returning LICENSE_REQUIRED and frontend feature hiding)
 
 ---
 
@@ -103,5 +109,6 @@ Features hidden from V1 UI. Backend code remains — re-enable by restoring UI e
 | 54 | 2026-03-22 | Must-fix UX: priority dropdown, AI permissions, dependency direction, epics GraphQL |
 | 55 | 2026-03-22 | Should-fix UX: centered modal, auto-track clarity, TQL values, automation editing, SSE, saved views, epics |
 | 56 | 2026-03-23 | Bug fixes: priority persistence, workflow restriction model, saved view filters, release burndown, silent auth, release layout, share toggle |
+| 57 | 2026-03-23 | Open core: license flag system (TASKTOAD_LICENSE), premium feature gating (8 features), frontend useLicenseFeatures hook |
 
 Full wave details in `changelog.md`.
