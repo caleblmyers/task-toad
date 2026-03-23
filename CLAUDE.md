@@ -172,7 +172,7 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 - `apps/api/src/routes/export.ts` — REST endpoints for project/activity CSV/JSON export
 - `apps/api/src/routes/docs.ts` — REST endpoint serving API documentation page
 - `apps/api/vitest.config.ts` — API test configuration (Vitest)
-- `apps/web/src/api/client.ts` — `gql<T>()` fetch helper with AbortSignal support, `TOKEN_KEY`
+- `apps/web/src/api/client.ts` — `gql<T>()` fetch helper with AbortSignal support, token refresh, session-expired detection
 - `apps/web/src/auth/context.tsx` — `AuthProvider`, `useAuth` hook
 - `apps/web/src/hooks/useProjectData.ts` — data fetching, mutations, sprint/task CRUD, AI ops
 - `apps/web/src/hooks/useTaskFiltering.ts` — search + filter logic

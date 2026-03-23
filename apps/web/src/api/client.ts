@@ -1,8 +1,5 @@
 const BASE = (import.meta.env.VITE_API_URL as string) ?? '/api';
 
-/** @deprecated No longer used for auth — cookies handle authentication now. */
-export const TOKEN_KEY = 'task-toad-id-token';
-
 let isRefreshing = false;
 let refreshPromise: Promise<boolean> | null = null;
 
