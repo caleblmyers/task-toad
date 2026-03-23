@@ -79,7 +79,7 @@ export interface TaskDetailPanelProps {
   onCreateComment: (content: string, parentCommentId?: string) => Promise<void>;
   onUpdateComment: (commentId: string, content: string) => Promise<void>;
   onDeleteComment: (commentId: string) => Promise<void>;
-  onUpdateTask?: (taskId: string, updates: { description?: string; instructions?: string; acceptanceCriteria?: string; storyPoints?: number | null }) => Promise<void>;
+  onUpdateTask?: (taskId: string, updates: { description?: string; instructions?: string; acceptanceCriteria?: string; storyPoints?: number | null; priority?: string }) => Promise<void>;
   onArchiveTask?: (taskId: string, archived: boolean) => Promise<void>;
   labels?: Label[];
   onAddTaskLabel?: (taskId: string, labelId: string) => Promise<void>;
