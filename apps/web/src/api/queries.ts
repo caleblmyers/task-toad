@@ -995,3 +995,17 @@ export const UPDATE_SLA_POLICY_MUTATION = `mutation UpdateSLAPolicy($slaPolicyId
 export const DELETE_SLA_POLICY_MUTATION = `mutation DeleteSLAPolicy($slaPolicyId: ID!) {
   deleteSLAPolicy(slaPolicyId: $slaPolicyId)
 }`;
+
+// ── Project Setup ──
+
+export const SCAFFOLD_PROJECT_MUTATION = `mutation ScaffoldProject($projectId: ID!, $template: String!, $options: String) {
+  scaffoldProject(projectId: $projectId, template: $template, options: $options) {
+    success filesCreated summary commitUrl
+  }
+}`;
+
+export const CREATE_GITHUB_REPO_MUTATION = `mutation CreateGitHubRepo($projectId: ID!, $installationId: ID!, $ownerLogin: String!) {
+  createGitHubRepo(projectId: $projectId, installationId: $installationId, ownerLogin: $ownerLogin) {
+    repositoryId repositoryName repositoryOwner installationId defaultBranch
+  }
+}`;
