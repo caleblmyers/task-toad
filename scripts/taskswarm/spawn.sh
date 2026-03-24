@@ -66,8 +66,11 @@ for i in $(seq 1 "$WORKER_COUNT"); do
   echo "Generating Prisma client for worker-$i..."
   (cd "$WORKER_DIR/apps/api" && npx prisma generate 2>&1) || echo "Warning: prisma generate failed (non-fatal)"
 
-  # Grant full tool permissions (workers run unattended)
+  # Copy .claude directory (skills, settings) from main repo
   mkdir -p "$WORKER_DIR/.claude"
+  [ -d "$MAIN_REPO/.claude/skills" ] && cp -r "$MAIN_REPO/.claude/skills" "$WORKER_DIR/.claude/"
+
+  # Grant full tool permissions (workers run unattended)
   cat > "$WORKER_DIR/.claude/settings.json" << 'SETTINGS_EOF'
 {
   "permissions": {
@@ -92,7 +95,7 @@ for i in $(seq 1 "$WORKER_COUNT"); do
   }
 }
 SETTINGS_EOF
-  git -C "$WORKER_DIR" update-index --assume-unchanged .claude/settings.json
+  git -C "$WORKER_DIR" update-index --assume-unchanged .claude/settings.json 2>/dev/null || true
 
   # Write role prompt to gitignored file (avoids CLAUDE.md contamination)
   if [ -f "$PROMPTS_DIR/worker.md" ]; then
@@ -131,8 +134,11 @@ else
   echo "Generating Prisma client for reviewer..."
   (cd "$REVIEWER_DIR/apps/api" && npx prisma generate 2>&1) || echo "Warning: prisma generate failed (non-fatal)"
 
-  # Grant full tool permissions (reviewer runs unattended)
+  # Copy .claude directory (skills, settings) from main repo
   mkdir -p "$REVIEWER_DIR/.claude"
+  [ -d "$MAIN_REPO/.claude/skills" ] && cp -r "$MAIN_REPO/.claude/skills" "$REVIEWER_DIR/.claude/"
+
+  # Grant full tool permissions (reviewer runs unattended)
   cat > "$REVIEWER_DIR/.claude/settings.json" << 'SETTINGS_EOF'
 {
   "permissions": {
@@ -157,7 +163,7 @@ else
   }
 }
 SETTINGS_EOF
-  git -C "$REVIEWER_DIR" update-index --assume-unchanged .claude/settings.json
+  git -C "$REVIEWER_DIR" update-index --assume-unchanged .claude/settings.json 2>/dev/null || true
 
   if [ -f "$PROMPTS_DIR/reviewer.md" ]; then
     PROMPT=$(sed \

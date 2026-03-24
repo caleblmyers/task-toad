@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-57 swarm waves completed. Security: 38/39 (97%). Open core license system in place. 335 tests. **V1 ready — preparing for AGPL open source launch.**
+58 swarm waves completed. Security: 38/39 (97%). Open core license system in place. 335 tests. **V1 ready — preparing for AGPL open source launch.**
 
 ---
 
@@ -52,6 +52,22 @@ New projects starting from scratch hit a bad UX: the auto-complete pipeline gene
    - Knowledge base auto-populates from scaffolded code
 
 2. **Fix AI planner for init commands** — update `promptBuilder.ts:buildActionPlanPrompt()` to instruct the AI that project initialization tools have non-interactive modes and should use `generate_code` actions, not `manual_step`. Include examples of non-interactive flags for common tools.
+
+3. **Follow-ups from wave 58:**
+   - `commitFilesToEmptyRepo` hardcodes `refs/heads/main` — should respect `repo.defaultBranch` for users with non-`main` default branch settings
+   - Add unit tests for `ProjectSetupWizard` component
+   - Template list is hardcoded client-side — consider server-side template registry for extensibility
+   - Knowledge base auto-population after scaffold (trigger KB ingestion from committed files)
+
+### Per-org licensing (Wave 59)
+Move license checks from server-level env var to per-org `plan` field in the database. Enables hosted platform with both free and paid users on the same deployment. `TASKTOAD_LICENSE` env var becomes a self-host override.
+- Spec: `~/brain/projects/task-toad/internal-docs/per-org-licensing.md`
+- Add `plan` column to Org model (default "free")
+- Update `license.ts`: `isPremiumEnabled(orgPlan?)` + `requireLicense(feature, orgPlan?)`
+- Update all `requireLicense` call sites to pass `context.org.plan`
+- Infrastructure jobs (SLA, cron) need to load org plan from DB
+- Add `plan: String!` to Org GraphQL type
+- No billing/Stripe yet — plan changes are manual DB updates
 
 ---
 
@@ -124,5 +140,6 @@ New projects starting from scratch hit a bad UX: the auto-complete pipeline gene
 | 55 | 2026-03-22 | Should-fix UX: centered modal, auto-track clarity, TQL values, automation editing, SSE, saved views, epics |
 | 56 | 2026-03-23 | Bug fixes: priority persistence, workflow restriction model, saved view filters, release burndown, silent auth, release layout, share toggle |
 | 57 | 2026-03-23 | Open core: license flag system (TASKTOAD_LICENSE), premium feature gating (8 features), frontend useLicenseFeatures hook |
+| 58 | 2026-03-24 | Project scaffolding: setup wizard, scaffold mutation, AI prompt fix, empty repo commit, framework templates |
 
 Full wave details in `changelog.md`.

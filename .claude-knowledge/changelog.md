@@ -4,6 +4,36 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-24 (Wave 58 — project scaffolding)
+
+### Wave 58: Project Scaffolding for Fresh Codebases (3 workers, 3 tasks)
+
+**Worker 1 — task-001: Backend scaffold mutation + prompt fix:**
+- New `scaffoldProject` GraphQL mutation: generates framework scaffold via AI, commits to GitHub repo (handles empty repos with no prior commits via REST Git Data API).
+- New `buildScaffoldPrompt()` in `apps/api/src/ai/promptBuilders/scaffold.ts` — instructs AI to generate complete project scaffold for a given framework template.
+- New `commitFilesToEmptyRepo()` in `githubCommitService.ts` — creates initial commit on empty repos using blob → tree → commit → ref flow.
+- Added `scaffoldProject` AI feature to `aiTypes.ts` and `aiConfig.ts`.
+- Fixed planner prompt: added Rule 3 prohibiting `manual_step` for project initialization tools (create-next-app, create-vite, etc.) — instructs AI to use `generate_code` instead.
+
+**Worker 2 — task-002: Frontend ProjectSetupWizard:**
+- New `ProjectSetupWizard.tsx` component — multi-step wizard shown after project creation.
+- Step 1: GitHub connection (connect existing / create new / skip).
+- Step 2: Framework template selection (Next.js, Vite+React, Express+TS, Python+FastAPI).
+- Step 3: Scaffolding progress (calls mutation, shows file count + summary).
+- Added `SCAFFOLD_PROJECT_MUTATION` to queries.ts.
+
+**Worker 3 — task-003: Integration wiring:**
+- Modified `NewProject.tsx` to pass `showSetup: true` in navigation state after project creation.
+- Modified `ProjectDetail.tsx` to show `ProjectSetupWizard` before the onboarding wizard when `showSetup` is set.
+
+**Open follow-ups:**
+- `commitFilesToEmptyRepo` hardcodes `refs/heads/main` — should respect `repo.defaultBranch`
+- Add unit tests for ProjectSetupWizard
+- Template list is hardcoded client-side — consider server-side template registry
+- Knowledge base auto-population after scaffold (trigger KB ingestion from committed files)
+
+---
+
 ## 2026-03-23 (Wave 57 — open core license flag system)
 
 ### Wave 57: Premium Feature Gating (3 workers, 3 tasks)
@@ -99,25 +129,7 @@ Three follow-up fixes after re-testing Wave 56 on production:
 
 ## 2026-03-22 (must-fix UX from manual testing)
 
-### Wave 54: Must-Fix UX — Priority, Dependencies, Epics (3 workers, 3 tasks)
-
-**Worker 1 — task-001: Priority Dropdown + AI Permission Fix:**
-- Added priority `<select>` dropdown to TaskFieldsPanel — always visible (not hidden when medium), options: low/medium/high/critical. Disabled when user lacks EDIT_TASKS.
-- Added `requirePermission(EDIT_TASKS)` to `generateTaskInstructions` and `generateManualTaskSpec` backend mutations.
-
-**Worker 2 — task-002: Dependency Direction UX:**
-- Dropdown labels changed to declarative: "This task blocks...", "This task is blocked by...", "Related to...", "Duplicates...", "Informs...".
-- Existing dependencies display with directional arrows (→, ←, ↔).
-- Dependencies grouped by type in display list.
-- Help text added below add-dependency section.
-- `informs` link type added to dropdown.
-
-**Worker 3 — task-003: Epics View Fix:**
-- Fixed GraphQL errors — root cause was hardcoded field subset instead of TASK_FIELDS in epics query.
-- Removed `initiative` from epics query filter (V1 cut).
-- Epic expand/collapse and child task loading now works.
-
-**Process:** All 3 tasks merged on first review — zero rejections.
+### Wave 54: Must-fix UX — priority dropdown, dependency direction UX, epics GraphQL fix.
 
 ---
 
