@@ -15,7 +15,7 @@ export { handleGitHubWebhook } from './githubWebhookHandler.js';
 export { getProjectRepo, connectRepoToProject, disconnectRepo, createRepoForProject, listInstallationRepos } from './githubRepositoryService.js';
 
 // Git operations
-export { createBranch, commitFiles } from './githubCommitService.js';
+export { createBranch, commitFiles, getDefaultBranchOid, commitFilesToEmptyRepo } from './githubCommitService.js';
 
 // Pull requests
 export { createPullRequest, getPullRequestDiff, getPullRequestComments, getPullRequestFiles } from './githubPullRequestService.js';

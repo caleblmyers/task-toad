@@ -63,6 +63,55 @@ interface CreateCommitResponse {
   };
 }
 
+const GITHUB_REST_BASE = 'https://api.github.com';
+
+/**
+ * Simple REST helper for the GitHub Git Data API.
+ */
+async function githubRestRequest<T>(
+  token: string,
+  method: string,
+  path: string,
+  body?: unknown
+): Promise<T> {
+  const response = await fetch(`${GITHUB_REST_BASE}${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`GitHub REST API error ${response.status}: ${text}`);
+  }
+
+  return response.json() as Promise<T>;
+}
+
+/**
+ * Get the latest commit OID for a ref (branch).
+ * Returns null if the ref doesn't exist (e.g. empty repo).
+ */
+export async function getDefaultBranchOid(
+  repo: GitHubRepoLink
+): Promise<string | null> {
+  const token = await getInstallationToken(repo.installationId);
+  const qualifiedRef = `refs/heads/${repo.defaultBranch}`;
+
+  const data = await githubRequest<GetBranchOidResponse>(token, GET_DEFAULT_BRANCH_OID, {
+    owner: repo.repositoryOwner,
+    name: repo.repositoryName,
+    ref: qualifiedRef,
+  });
+
+  return data.repository.ref?.target.oid ?? null;
+}
+
 /**
  * Get the latest commit OID for a ref (branch).
  */
@@ -199,6 +248,77 @@ export async function commitFiles(
     logApiError('commitFiles', error, {
       repo: `${repo.repositoryOwner}/${repo.repositoryName}`,
       branch: input.branch,
+    });
+    throw error;
+  }
+}
+
+/**
+ * Commit files to an empty GitHub repository (no existing commits).
+ *
+ * Empty repos have no defaultBranchRef, so `createCommitOnBranch` GraphQL
+ * won't work. Uses the REST Git Data API to create an initial commit.
+ */
+export async function commitFilesToEmptyRepo(
+  repo: GitHubRepoLink,
+  files: Array<{ path: string; content: string }>,
+  message: string
+): Promise<{ oid: string; url: string }> {
+  const token = await getInstallationToken(repo.installationId);
+  const owner = encodeURIComponent(repo.repositoryOwner);
+  const name = encodeURIComponent(repo.repositoryName);
+  const repoPath = `/repos/${owner}/${name}`;
+
+  try {
+    // 1. Create blobs for each file
+    const blobShas = await Promise.all(
+      files.map(async (file) => {
+        const blob = await githubRestRequest<{ sha: string }>(
+          token,
+          'POST',
+          `${repoPath}/git/blobs`,
+          { content: Buffer.from(file.content).toString('base64'), encoding: 'base64' }
+        );
+        return { path: file.path, sha: blob.sha };
+      })
+    );
+
+    // 2. Create tree
+    const tree = await githubRestRequest<{ sha: string }>(
+      token,
+      'POST',
+      `${repoPath}/git/trees`,
+      {
+        tree: blobShas.map((b) => ({
+          path: b.path,
+          mode: '100644',
+          type: 'blob',
+          sha: b.sha,
+        })),
+      }
+    );
+
+    // 3. Create commit (empty parents = initial commit)
+    const commit = await githubRestRequest<{ sha: string; html_url: string }>(
+      token,
+      'POST',
+      `${repoPath}/git/commits`,
+      { message, tree: tree.sha, parents: [] }
+    );
+
+    // 4. Create ref pointing to the new commit
+    await githubRestRequest(
+      token,
+      'POST',
+      `${repoPath}/git/refs`,
+      { ref: 'refs/heads/main', sha: commit.sha }
+    );
+
+    logCommit(repo.repositoryOwner, repo.repositoryName, 'main', commit.sha);
+    return { oid: commit.sha, url: commit.html_url };
+  } catch (error) {
+    logApiError('commitFilesToEmptyRepo', error, {
+      repo: `${repo.repositoryOwner}/${repo.repositoryName}`,
     });
     throw error;
   }
