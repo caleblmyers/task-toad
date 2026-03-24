@@ -27,6 +27,8 @@ export interface Org {
   monthlyBudgetCentsUSD?: number | null;
   budgetAlertThreshold?: number;
   promptLoggingEnabled?: boolean;
+  plan?: string;
+  licenseFeatures?: string[];
 }
 
 export interface OrgUser {

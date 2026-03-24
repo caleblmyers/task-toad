@@ -3,12 +3,13 @@ import type { EventBus } from '../eventbus/port.js';
 import { logger } from '../../utils/logger.js';
 import { calculateBusinessMs } from '../../utils/businessHours.js';
 import { isPremiumEnabled } from '../../utils/license.js';
+import { getCachedOrgPlan } from '../../utils/orgPlanCache.js';
 
 const log = logger.child({ module: 'slaListener' });
 
 async function isOrgPremium(prisma: PrismaClient, orgId: string): Promise<boolean> {
-  const org = await prisma.org.findUnique({ where: { orgId }, select: { plan: true } });
-  return isPremiumEnabled(org?.plan);
+  const plan = await getCachedOrgPlan(prisma, orgId);
+  return isPremiumEnabled(plan);
 }
 
 export function register(bus: EventBus, prisma: PrismaClient): void {

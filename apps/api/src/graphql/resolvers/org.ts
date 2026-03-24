@@ -5,6 +5,7 @@ import { AuthenticationError, AuthorizationError, ValidationError } from '../err
 import { getEnabledFeatures } from '../../utils/license.js';
 import { requireAuth, requireOrg } from './auth.js';
 import { auditLog } from '../../utils/auditLog.js';
+import { invalidateOrgPlanCache } from '../../utils/orgPlanCache.js';
 
 // ── Org queries ──
 
@@ -76,6 +77,24 @@ export const orgMutations = {
     });
     auditLog(context.prisma, { orgId: user.orgId, userId: user.userId, action: 'api_key_changed' });
     return result;
+  },
+
+  updateOrgPlan: async (_parent: unknown, args: { plan: string }, context: Context) => {
+    const user = requireOrg(context);
+    if (user.role !== 'org:admin') {
+      throw new AuthorizationError('Admin role required');
+    }
+    const validPlans = ['free', 'paid'];
+    if (!validPlans.includes(args.plan)) {
+      throw new ValidationError(`Invalid plan. Must be one of: ${validPlans.join(', ')}`);
+    }
+    const updated = await context.prisma.org.update({
+      where: { orgId: user.orgId },
+      data: { plan: args.plan },
+    });
+    invalidateOrgPlanCache(user.orgId);
+    auditLog(context.prisma, { orgId: user.orgId, userId: user.userId, action: 'org_plan_changed', field: 'plan', newValue: args.plan });
+    return updated;
   },
 };
 

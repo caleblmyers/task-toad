@@ -110,7 +110,9 @@ export function requireApiKey(context: Context): string {
 export const authQueries = {
   me: async (_parent: unknown, _args: unknown, context: Context) => {
     if (!context.user) return null;
-    return context.prisma.user.findUnique({ where: { userId: context.user.userId } });
+    const user = await context.prisma.user.findUnique({ where: { userId: context.user.userId } });
+    if (!user) return null;
+    return { ...user, orgPlan: context.org?.plan ?? 'free' };
   },
 
   myPermissions: async (_parent: unknown, args: { projectId: string }, context: Context) => {
