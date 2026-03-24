@@ -4,6 +4,28 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-24 (Wave 59 — per-org licensing)
+
+### Wave 59: Per-Org Licensing (2 workers, 2 tasks)
+
+**Worker 1 — task-001: license.ts rewrite + resolver call sites:**
+- Added `plan` column to Org model (default "free") with migration.
+- Rewrote `license.ts`: `isPremiumEnabled(orgPlan?)`, `requireLicense(feature, orgPlan?)`, `getEnabledFeatures(orgPlan?)`. `TASKTOAD_LICENSE` env var is now a self-host override.
+- Updated all 33 `requireLicense` calls across 6 resolver files to pass `context.org?.plan`.
+- Added `getOrgPlan()` helper for extracting plan from context.
+
+**Worker 2 — task-002: infrastructure + permissions + org type:**
+- Infrastructure jobs/listeners (slack, SLA, cron) now load org plan from DB per-event instead of module-level boolean check.
+- `permissions.ts`: `isPremiumEnabled` calls now pass `context.org?.plan`.
+- `task/mutations.ts`: workflow role restriction check passes org plan.
+- Added `plan: String!` to Org GraphQL type.
+- Updated `licenseFeatures` field resolver to pass `org.plan`.
+- Verified `context.ts` includes `plan` in org select.
+
+**Process:** task-001 had one rejection (typecheck failure — `isPremiumEnabled` still used as boolean in task/mutations.ts). task-002 had merge conflicts with task-001's license.ts rewrite — reviewer resolved by keeping main's version.
+
+---
+
 ## 2026-03-24 (Wave 58 — project scaffolding)
 
 ### Wave 58: Project Scaffolding for Fresh Codebases (3 workers, 3 tasks)
@@ -106,24 +128,7 @@ Three follow-up fixes after re-testing Wave 56 on production:
 
 ## 2026-03-22 (should-fix UX + re-tests)
 
-### Wave 55: Should-Fix UX & Re-test Verification (3 workers, 3 tasks)
-
-**Worker 1 — task-001: Modal + Time Entry UX:**
-- Review plan modal centered (was left-aligned). Standard `fixed inset-0 flex items-center justify-center` pattern.
-- 5-step progress indicator simplified to spinner + status text.
-- Auto-tracked time entry: description now shows `"Auto-tracked: Xm while in progress"`, tooltip on Auto badge explains feature.
-
-**Worker 2 — task-002: TQL Values + Rule Editing:**
-- TQL value autocomplete: after `status:` shows `todo`, `in_progress`, `in_review`, `done`. After `priority:` shows `low`-`critical`. After `taskType:` shows `task`, `bug`, `story`, `epic`.
-- Automation rule editing: Edit button (pencil) on each rule row, pre-populated form, Save/Cancel, uses existing `updateAutomationRule` mutation.
-
-**Worker 3 — task-003: SSE + Saved Views + Epics + TQL Save:**
-- SSE: added `task.created` and `task.updated` event listeners in backlog/board hooks to trigger data refetch. Real-time updates now work across tabs/accounts in same org.
-- Saved views shared section: fixed query to include shared views from all project members.
-- TQL saved queries: bookmark icon in search bar when TQL query present, updated placeholder text.
-- Epics breadcrumbs + progress bars: verified working after Wave 54 GraphQL fix.
-
-**Process:** task-001 rejected once for test assertion mismatch after changing description format. task-002 and task-003 both modified SearchInput.tsx but auto-merged cleanly.
+### Wave 55: Should-fix UX — modal centering, time entry clarity, TQL autocomplete, automation editing, SSE real-time, saved views, epics.
 
 ---
 

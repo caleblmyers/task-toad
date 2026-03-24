@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-58 swarm waves completed. Security: 38/39 (97%). Open core license system in place. 335 tests. **V1 ready — preparing for AGPL open source launch.**
+59 swarm waves completed. Security: 38/39 (97%). Open core license system in place. 335 tests. **V1 ready — preparing for AGPL open source launch.**
 
 ---
 
@@ -25,19 +25,28 @@
 
 ---
 
-## Premium Features (license-gated, TASKTOAD_LICENSE env var)
+## Premium Features (per-org plan + self-host override)
 
-Premium features are gated behind `requireLicense()` in resolvers and `useLicenseFeatures()` hook in frontend. Without a license key, resolvers return `LICENSE_REQUIRED` error and UI hides premium sections. See `apps/api/src/utils/license.ts`.
+Premium features are gated behind `requireLicense(feature, orgPlan)` in resolvers and `useLicenseFeatures()` hook in frontend. Orgs with `plan='paid'` get access; `plan='free'` (default) gets `LICENSE_REQUIRED` error and UI hides premium sections. Self-host override: `TASKTOAD_LICENSE` env var bypasses per-org checks (all orgs get premium). See `apps/api/src/utils/license.ts`.
+
+Infrastructure jobs/listeners (slack, SLA, cron) load org plan from DB per-event rather than checking at startup. Context type includes `plan: string` field.
 
 - **Slack integration** — resolver gated + UI hidden in OrgSettings
 - **Initiatives** (cross-project grouping) — resolver gated + UI removed (Wave 53)
-- **SLA Tracking** — resolver gated + listeners/jobs disabled + UI removed (Wave 53)
+- **SLA Tracking** — resolver gated + listeners/jobs check org plan per-event + UI removed (Wave 53)
 - **Approval Workflows** — resolver gated + UI removed (Wave 53)
-- **Scheduled Automations** (cron triggers) — cron fields gated in resolver + UI removed (Wave 53)
-- **Workflow Role Restrictions** — role checks bypassed in task/mutations.ts when unlicensed
+- **Scheduled Automations** (cron triggers) — cron fields gated in resolver + scheduler checks org plan per-rule + UI removed (Wave 53)
+- **Workflow Role Restrictions** — role checks bypassed in task/mutations.ts when org not premium
 - **Field-level Permissions** — resolver gated + settings tab hidden
-- **Project Member Roles** — resolver gated + permissions.ts bypasses role lookup + members tab hidden
+- **Project Member Roles** — resolver gated + permissions.ts bypasses role lookup for non-premium orgs + members tab hidden
 - **BacklogView keyboard navigation** — UI removed (Wave 53, re-enable as core when fixed)
+
+### Per-org licensing follow-ups
+- [ ] Frontend: add plan upgrade UI / billing page (org settings)
+- [ ] Frontend: update `useLicenseFeatures` hook to read org plan from `me` query instead of static check
+- [ ] API: add `updateOrgPlan` mutation (admin-only, or Stripe webhook)
+- [ ] API: add plan field to org seed data / onboarding flow
+- [ ] Consider caching org plan lookups in infrastructure jobs to reduce DB queries under load
 
 ---
 
@@ -141,5 +150,6 @@ Move license checks from server-level env var to per-org `plan` field in the dat
 | 56 | 2026-03-23 | Bug fixes: priority persistence, workflow restriction model, saved view filters, release burndown, silent auth, release layout, share toggle |
 | 57 | 2026-03-23 | Open core: license flag system (TASKTOAD_LICENSE), premium feature gating (8 features), frontend useLicenseFeatures hook |
 | 58 | 2026-03-24 | Project scaffolding: setup wizard, scaffold mutation, AI prompt fix, empty repo commit, framework templates |
+| 59 | 2026-03-24 | Per-org licensing: plan column on Org, license.ts rewrite, 33 resolver call sites, infrastructure per-event checks |
 
 Full wave details in `changelog.md`.

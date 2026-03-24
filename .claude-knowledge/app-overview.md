@@ -24,7 +24,7 @@ Domain-split schema files in `apps/api/prisma/schema/`. Key models:
 
 ```
 User              — id, email, passwordHash, orgId, role, tokenVersion, emailVerifiedAt
-Org               — id, name, anthropicApiKeyEncrypted, monthlyBudgetCentsUSD
+Org               — id, name, anthropicApiKeyEncrypted, monthlyBudgetCentsUSD, plan ("free"|"paid")
 Project           — id, name, description, orgId, statuses? (JSON)
 Sprint            — id, name, orgId, projectId, isActive, columns (JSON), wipLimits (JSON), startDate?, endDate?
 Task              — id, title, status, projectId, orgId, parentTaskId?, sprintId?, sprintColumn?, taskType
@@ -175,7 +175,7 @@ Browser → Vite dev server (localhost:5173)
 - `SENTRY_DSN` — optional Sentry error tracking DSN
 - `AI_RATE_LIMIT_PER_HOUR` — per-org AI request limit (defaults to `60`)
 - `MAX_SESSIONS_PER_USER` — concurrent session limit (defaults to `5`)
-- `TASKTOAD_LICENSE` — license key for premium features (optional — omit for open source mode). When set, enables: Slack, initiatives, SLA, approvals, cron automations, workflow restrictions, field permissions, project roles. See `apps/api/src/utils/license.ts`.
+- `TASKTOAD_LICENSE` — self-host override for premium features (optional). When set, bypasses per-org plan checks and enables all premium features for every org. Without it, premium features are gated per-org by the `plan` field ("free"|"paid"). See `apps/api/src/utils/license.ts`.
 
 **Web** (`apps/web/.env`):
 - `VITE_API_URL` — set to `/api` in dev (Vite proxy strips prefix and forwards to `:3001`)
