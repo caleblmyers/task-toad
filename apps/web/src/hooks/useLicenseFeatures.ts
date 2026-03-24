@@ -1,31 +1,24 @@
-import { useState, useEffect } from 'react';
-import { gql } from '../api/client';
+import { useAuth } from '../auth/context';
 
-const LICENSE_QUERY = `query { org { licenseFeatures } }`;
-
-let cachedFeatures: string[] | null = null;
+const PREMIUM_FEATURES = [
+  'slack',
+  'initiatives',
+  'sla',
+  'approvals',
+  'cron_automations',
+  'workflow_restrictions',
+  'field_permissions',
+  'project_roles',
+];
 
 export function useLicenseFeatures() {
-  const [features, setFeatures] = useState<string[]>(cachedFeatures ?? []);
-  const [loading, setLoading] = useState(cachedFeatures === null);
-
-  useEffect(() => {
-    if (cachedFeatures !== null) return;
-    gql<{ org: { licenseFeatures: string[] } }>(LICENSE_QUERY)
-      .then(({ org }) => {
-        cachedFeatures = org.licenseFeatures;
-        setFeatures(cachedFeatures);
-      })
-      .catch(() => {
-        cachedFeatures = [];
-        setFeatures([]);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+  const { user, loading } = useAuth();
+  const isPaid = user?.orgPlan === 'paid';
+  const features = isPaid ? PREMIUM_FEATURES : [];
 
   return {
     features,
-    hasFeature: (f: string) => features.includes(f),
+    hasFeature: (f: string) => isPaid && PREMIUM_FEATURES.includes(f),
     loading,
   };
 }

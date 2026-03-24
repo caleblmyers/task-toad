@@ -461,8 +461,101 @@ export default function OrgSettings() {
               </div>
             ),
           },
+          {
+            id: 'plans',
+            label: 'Plans',
+            content: <PlansTab org={org} />,
+          },
         ]}
       />
+    </div>
+  );
+}
+
+const PREMIUM_FEATURE_LIST = [
+  { key: 'slack', label: 'Slack integration' },
+  { key: 'initiatives', label: 'Initiatives' },
+  { key: 'sla', label: 'SLA tracking' },
+  { key: 'approvals', label: 'Approval workflows' },
+  { key: 'cron_automations', label: 'Scheduled automations' },
+  { key: 'workflow_restrictions', label: 'Workflow restrictions' },
+  { key: 'field_permissions', label: 'Field permissions' },
+  { key: 'project_roles', label: 'Project member roles' },
+];
+
+function PlansTab({ org }: { org: Org }) {
+  const isPaid = org.plan === 'paid';
+
+  return (
+    <div className="space-y-6">
+      <Card className="space-y-4">
+        <SectionHeader>Current Plan</SectionHeader>
+        <div className="flex items-center gap-3">
+          <span
+            className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+              isPaid
+                ? 'bg-brand-green/10 text-brand-green'
+                : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+            }`}
+          >
+            {isPaid ? 'Premium' : 'Free'}
+          </span>
+        </div>
+      </Card>
+
+      <Card className="space-y-4">
+        <SectionHeader>Feature Comparison</SectionHeader>
+        <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-800">
+                <th className="text-left px-4 py-2 font-medium text-slate-600 dark:text-slate-300">Feature</th>
+                <th className="text-center px-4 py-2 font-medium text-slate-600 dark:text-slate-300">Free</th>
+                <th className="text-center px-4 py-2 font-medium text-slate-600 dark:text-slate-300">Premium</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+              <tr>
+                <td className="px-4 py-2 text-slate-700 dark:text-slate-300">Projects, tasks, sprints</td>
+                <td className="text-center px-4 py-2 text-green-600">&#10003;</td>
+                <td className="text-center px-4 py-2 text-green-600">&#10003;</td>
+              </tr>
+              <tr>
+                <td className="px-4 py-2 text-slate-700 dark:text-slate-300">AI task planning &amp; code generation</td>
+                <td className="text-center px-4 py-2 text-green-600">&#10003;</td>
+                <td className="text-center px-4 py-2 text-green-600">&#10003;</td>
+              </tr>
+              <tr>
+                <td className="px-4 py-2 text-slate-700 dark:text-slate-300">GitHub integration</td>
+                <td className="text-center px-4 py-2 text-green-600">&#10003;</td>
+                <td className="text-center px-4 py-2 text-green-600">&#10003;</td>
+              </tr>
+              {PREMIUM_FEATURE_LIST.map((f) => (
+                <tr key={f.key}>
+                  <td className="px-4 py-2 text-slate-700 dark:text-slate-300">{f.label}</td>
+                  <td className="text-center px-4 py-2 text-slate-300 dark:text-slate-600">&mdash;</td>
+                  <td className="text-center px-4 py-2 text-green-600">&#10003;</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {!isPaid && (
+        <Card className="space-y-3">
+          <SectionHeader>Upgrade</SectionHeader>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Premium plans coming soon. Contact us for early access.
+          </p>
+          <a
+            href="mailto:hello@tasktoad.dev?subject=Premium%20early%20access"
+            className="inline-flex items-center px-4 py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover text-sm"
+          >
+            Contact us
+          </a>
+        </Card>
+      )}
     </div>
   );
 }

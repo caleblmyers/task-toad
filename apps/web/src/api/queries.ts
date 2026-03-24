@@ -685,7 +685,7 @@ export const SAVE_VIEW_MUTATION = `mutation SaveView($projectId: ID!, $name: Str
 
 // ── Org Settings ──
 
-export const ORG_QUERY = `query GetOrg { org { orgId name hasApiKey apiKeyHint promptLoggingEnabled licenseFeatures } }`;
+export const ORG_QUERY = `query GetOrg { org { orgId name hasApiKey apiKeyHint promptLoggingEnabled plan licenseFeatures } }`;
 
 export const ORG_INVITES_QUERY = `query { orgInvites { inviteId email role expiresAt createdAt } }`;
 
@@ -764,7 +764,7 @@ export const REMOVE_TASK_DEPENDENCY_MUTATION = `mutation RemoveDep($taskDependen
 
 // ── Auth ──
 
-export const ME_QUERY = `query { me { userId email orgId role emailVerifiedAt } }`;
+export const ME_QUERY = `query { me { userId email orgId role emailVerifiedAt orgPlan } }`;
 
 export const LOGIN_MUTATION = `mutation Login($email: String!, $password: String!) {
   login(email: $email, password: $password) { token }

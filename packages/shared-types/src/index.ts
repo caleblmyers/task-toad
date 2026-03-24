@@ -7,6 +7,7 @@ export interface MeResponse {
   orgId: string | null;
   role: 'org:admin' | 'org:member' | null;
   emailVerifiedAt: string | null;
+  orgPlan: string | null;
 }
 
 export interface OrgInvite {
