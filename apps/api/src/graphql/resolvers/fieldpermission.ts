@@ -1,7 +1,7 @@
 import type { Context } from '../context.js';
 import { NotFoundError, ValidationError } from '../errors.js';
 import { requirePermission, Permission } from '../../auth/permissions.js';
-import { requireLicense } from '../../utils/license.js';
+import { requireLicense, getOrgPlan } from '../../utils/license.js';
 import { requireProject } from '../../utils/resolverHelpers.js';
 
 const VALID_FIELD_NAMES = ['priority', 'estimatedHours', 'storyPoints', 'dueDate', 'assigneeId'];
@@ -13,7 +13,7 @@ export const fieldPermissionQueries = {
     args: { projectId: string },
     context: Context,
   ) => {
-    requireLicense('field_permissions');
+    requireLicense('field_permissions', getOrgPlan(context.org));
     await requireProject(context, args.projectId);
     const permissions = await context.prisma.fieldPermission.findMany({
       where: { projectId: args.projectId },
@@ -33,7 +33,7 @@ export const fieldPermissionMutations = {
     args: { projectId: string; fieldName: string; allowedRoles: string[] },
     context: Context,
   ) => {
-    requireLicense('field_permissions');
+    requireLicense('field_permissions', getOrgPlan(context.org));
     const { user } = await requireProject(context, args.projectId);
     await requirePermission(context, args.projectId, Permission.MANAGE_PROJECT_SETTINGS);
 
@@ -80,7 +80,7 @@ export const fieldPermissionMutations = {
     args: { projectId: string; fieldName: string },
     context: Context,
   ) => {
-    requireLicense('field_permissions');
+    requireLicense('field_permissions', getOrgPlan(context.org));
     await requireProject(context, args.projectId);
     await requirePermission(context, args.projectId, Permission.MANAGE_PROJECT_SETTINGS);
 
