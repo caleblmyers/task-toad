@@ -22,6 +22,7 @@ Free and open source (AGPL-3.0). Self-hostable. BYOK (bring your own Anthropic A
 - Natural language task planning — describe a feature, get a structured plan
 - Hierarchical plan generation (epics → tasks → subtasks)
 - **Auto-Complete**: generates code → creates PR → runs AI review, all from a task description
+- **Project scaffolding**: create a new repo and scaffold a framework (Next.js, Vite, Express, FastAPI) with AI-generated boilerplate
 - Sprint planning, trend analysis, project health reports
 - Knowledge base for project context
 
@@ -113,7 +114,7 @@ App is available at `http://localhost:3001`.
 | `CORS_ORIGINS` | No | Allowed origins (default: `http://localhost:5173`) |
 | `LOG_LEVEL` | No | `trace\|debug\|info\|warn\|error` (default: `info`) |
 | `SENTRY_DSN` | No | Sentry error tracking DSN |
-| `TASKTOAD_LICENSE` | No | License key for premium features |
+| `TASKTOAD_LICENSE` | No | Self-host override — enables all premium features for every org |
 | `SMTP_HOST` | No | SMTP server (if unset, email links logged to console) |
 | `GITHUB_APP_ID` | No | GitHub App ID for repo integration |
 
@@ -175,7 +176,11 @@ See [CLAUDE.md](CLAUDE.md) for the full list of queries and mutations.
 
 ## Open Core
 
-Task Toad uses an open core model. The core product is fully open source (AGPL-3.0). Premium features (Slack integration, SLA tracking, approval workflows, advanced permissions) are gated behind a license key (`TASKTOAD_LICENSE` env var). See `apps/api/src/utils/license.ts` for details.
+Task Toad uses an open core model. The core product is fully open source (AGPL-3.0).
+
+Premium features (Slack integration, SLA tracking, approval workflows, scheduled automations, advanced permissions) are gated per-org by the `plan` field on the Org model (`"free"` or `"paid"`). Self-hosters can set the `TASKTOAD_LICENSE` env var to bypass per-org checks and enable all premium features.
+
+See `apps/api/src/utils/license.ts` for the gating implementation and `apps/web/src/hooks/useLicenseFeatures.ts` for the frontend hook.
 
 ## Contributing
 

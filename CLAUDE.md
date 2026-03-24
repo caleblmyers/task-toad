@@ -131,7 +131,7 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 - **Task:** `createTask`, `updateTask`, `createSubtask`, `bulkUpdateTasks`, `createLabel`, `deleteLabel`, `addTaskLabel`, `removeTaskLabel`, `generateTaskPlan`, `previewTaskPlan`, `commitTaskPlan`, `expandTask`, `generateTaskInstructions`, `createCustomField`, `updateCustomField`, `deleteCustomField`, `setCustomFieldValue`, `addTaskAssignee`, `removeTaskAssignee`
 - **Sprint:** `createSprint`, `updateSprint`, `deleteSprint`, `closeSprint`, `previewSprintPlan`, `commitSprintPlan`
 - **Comment:** `createComment`, `updateComment`, `deleteComment`
-- **AI:** `generateCodeFromTask`, `regenerateCodeFile`, `reviewPullRequest`, `parseBugReport`, `previewPRDBreakdown`, `commitPRDBreakdown`, `bootstrapProjectFromRepo`, `batchGenerateCode`, `generateOnboardingQuestions`, `saveOnboardingAnswers`, `commitHierarchicalPlan`, `dismissInsight`, `cancelActionPlan`, `generateManualTaskSpec`, `autoStartProject`
+- **AI:** `generateCodeFromTask`, `regenerateCodeFile`, `reviewPullRequest`, `parseBugReport`, `previewPRDBreakdown`, `commitPRDBreakdown`, `bootstrapProjectFromRepo`, `batchGenerateCode`, `generateOnboardingQuestions`, `saveOnboardingAnswers`, `commitHierarchicalPlan`, `dismissInsight`, `cancelActionPlan`, `generateManualTaskSpec`, `autoStartProject`, `scaffoldProject`
 - **Notification:** `markNotificationRead`, `markAllNotificationsRead`, `updateNotificationPreference`
 - **GitHub:** `linkGitHubInstallation`, `connectGitHubRepo`, `disconnectGitHubRepo`, `createGitHubRepo`, `createPullRequestFromTask`, `syncTaskToGitHub`, `decomposeGitHubIssue`, `generateFixFromReview`
 - **Report:** `saveReport`, `deleteReport`, `summarizeProject`
@@ -190,7 +190,7 @@ All packages extend `tsconfig.base.json`. Strict mode + `noUnusedLocals` + `noUn
 
 ### Env Files
 
-- `apps/api/.env` — `DATABASE_URL`, `JWT_SECRET`, `ENCRYPTION_MASTER_KEY`, `CORS_ORIGINS`, `LOG_LEVEL` (optional, defaults to `info`), `SENTRY_DSN` (optional), `AI_RATE_LIMIT_PER_HOUR` (optional, defaults to `60`), `MAX_SESSIONS_PER_USER` (optional, defaults to `5`), `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` (optional — falls back to local disk storage if not set), `TASKTOAD_LICENSE` (optional — enables premium features when set)
+- `apps/api/.env` — `DATABASE_URL`, `JWT_SECRET`, `ENCRYPTION_MASTER_KEY`, `CORS_ORIGINS`, `LOG_LEVEL` (optional, defaults to `info`), `SENTRY_DSN` (optional), `AI_RATE_LIMIT_PER_HOUR` (optional, defaults to `60`), `MAX_SESSIONS_PER_USER` (optional, defaults to `5`), `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` (optional — falls back to local disk storage if not set), `TASKTOAD_LICENSE` (optional — self-host override, bypasses per-org plan checks to enable all premium features)
 - `apps/web/.env` — `VITE_API_URL` (set to `/api` in dev; Vite proxy handles routing)
 
 Copy from `.env.example` and fill in values.

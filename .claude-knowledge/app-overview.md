@@ -121,7 +121,8 @@ Browser → Vite dev server (localhost:5173)
 | Prisma schema (domain-split) | `apps/api/prisma/schema/*.prisma` |
 | REST export routes | `apps/api/src/routes/export.ts` |
 | REST API docs page | `apps/api/src/routes/docs.ts` |
-| License flag system (open core gating) | `apps/api/src/utils/license.ts` |
+| License system (per-org plan + self-host override) | `apps/api/src/utils/license.ts` |
+| Scaffold prompt builder | `apps/api/src/ai/promptBuilders/scaffold.ts` |
 | Express app setup (+ helmet/cors/rate-limit) | `apps/api/src/app.ts` |
 | API entry point | `apps/api/src/index.ts` |
 | API test config | `apps/api/vitest.config.ts` |
@@ -144,6 +145,7 @@ Browser → Vite dev server (localhost:5173)
 | Action plan progress panel | `apps/web/src/components/ActionProgressPanel.tsx` |
 | Action plan preview/approval | `apps/web/src/components/ActionPlanDialog.tsx` |
 | Knowledge base panel (CRUD + file upload) | `apps/web/src/components/KnowledgeBasePanel.tsx` |
+| Project setup wizard (GitHub + scaffold) | `apps/web/src/components/ProjectSetupWizard.tsx` |
 | Onboarding interview wizard | `apps/web/src/components/OnboardingWizard.tsx` |
 | Execution dashboard (auto-complete status) | `apps/web/src/components/ExecutionDashboard.tsx` |
 | Insight review panel | `apps/web/src/components/taskdetail/InsightPanel.tsx` |
