@@ -4,6 +4,40 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-24 (Wave 60 — scaffolding + licensing follow-ups)
+
+### Wave 60: Wave 58/59 Follow-ups (3 workers, 4 tasks)
+
+**Worker 1 — task-001: Scaffolding fixes (default branch + template registry + KB auto-pop):**
+- Fixed `commitFilesToEmptyRepo` to use `repo.defaultBranch` instead of hardcoded `'main'`.
+- Added `scaffoldTemplates` GraphQL query — moved hardcoded template list from frontend to API.
+- Updated `ProjectSetupWizard` to fetch templates from API with loading state.
+- Added KB auto-population after scaffold — creates entries for key scaffolded files (capped at 10).
+
+**Worker 1 — task-002: ProjectSetupWizard unit tests:**
+- Added 13 test cases covering all 4 wizard steps (github, template, scaffolding, done).
+- Tests mock GraphQL calls, verify mutation arguments, cover error/loading states.
+- Note: React act() warnings present (console noise, tests pass).
+
+**Worker 2 — task-003: Licensing backend:**
+- Added `orgPlan` field to `me` query response (defaults to `'free'`).
+- Added `updateOrgPlan` admin-only mutation with `'free'`/`'paid'` validation.
+- Created `orgPlanCache.ts` — in-memory cache with 5-min TTL for SLA listener lookups.
+- Updated shared-types `Org` interface with `plan` and `licenseFeatures` fields.
+
+**Worker 3 — task-004: Licensing frontend:**
+- Updated `useLicenseFeatures` hook to read `orgPlan` from auth context instead of separate query.
+- Updated `ME_QUERY` to include `orgPlan` field.
+- Added "Plans" tab to OrgSettings with feature comparison table and placeholder upgrade CTA.
+
+**Process:** All 4 tasks merged on first review, zero rejections. Smooth wave.
+
+### Open follow-ups
+- React act() warnings in ProjectSetupWizard tests
+- `API: add plan field to org seed data / onboarding flow` still pending
+
+---
+
 ## 2026-03-24 (Wave 59 — per-org licensing)
 
 ### Wave 59: Per-Org Licensing (2 workers, 2 tasks)

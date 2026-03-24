@@ -105,7 +105,7 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 **Queries:**
 - **Auth:** `me`, `orgInvites`
 - **Org:** `org`, `orgUsers`
-- **Project:** `projects`, `project(projectId)`, `projectStats`, `portfolioOverview`, `savedFilters`
+- **Project:** `projects`, `project(projectId)`, `projectStats`, `portfolioOverview`, `savedFilters`, `scaffoldTemplates`
 - **Task:** `tasks(projectId)`, `epics`, `labels`, `customFields`
 - **Sprint:** `sprints(projectId)`, `sprintVelocity`, `sprintBurndown`, `sprintForecast`, `workloadHeatmap`
 - **Comment:** `comments`, `activities`
@@ -126,7 +126,7 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 
 **Mutations:**
 - **Auth:** `signup`, `login`, `sendVerificationEmail`, `verifyEmail`, `requestPasswordReset`, `resetPassword`, `updateProfile`, `inviteOrgMember`, `acceptInvite`, `revokeInvite`
-- **Org:** `createOrg`, `setOrgApiKey`, `setAIBudget`
+- **Org:** `createOrg`, `setOrgApiKey`, `setAIBudget`, `updateOrgPlan`
 - **Project:** `createProject`, `updateProject`, `archiveProject`, `generateProjectOptions`, `createProjectFromOption`, `saveFilter`, `updateFilter`, `deleteFilter`
 - **Task:** `createTask`, `updateTask`, `createSubtask`, `bulkUpdateTasks`, `createLabel`, `deleteLabel`, `addTaskLabel`, `removeTaskLabel`, `generateTaskPlan`, `previewTaskPlan`, `commitTaskPlan`, `expandTask`, `generateTaskInstructions`, `createCustomField`, `updateCustomField`, `deleteCustomField`, `setCustomFieldValue`, `addTaskAssignee`, `removeTaskAssignee`
 - **Sprint:** `createSprint`, `updateSprint`, `deleteSprint`, `closeSprint`, `previewSprintPlan`, `commitSprintPlan`

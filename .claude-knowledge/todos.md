@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work & Tracking
 
-59 swarm waves completed. Security: 38/39 (97%). Open core license system in place. 335 tests. **V1 ready — preparing for AGPL open source launch.**
+60 swarm waves completed. Security: 38/39 (97%). Open core license system in place. 348 tests. **V1 ready — preparing for AGPL open source launch.**
 
 ---
 
@@ -42,11 +42,11 @@ Infrastructure jobs/listeners (slack, SLA, cron) load org plan from DB per-event
 - **BacklogView keyboard navigation** — UI removed (Wave 53, re-enable as core when fixed)
 
 ### Per-org licensing follow-ups
-- [ ] Frontend: add plan upgrade UI / billing page (org settings)
-- [ ] Frontend: update `useLicenseFeatures` hook to read org plan from `me` query instead of static check
-- [ ] API: add `updateOrgPlan` mutation (admin-only, or Stripe webhook)
+- [x] Frontend: add plan upgrade UI / billing page (org settings) — Plans tab in OrgSettings (Wave 60)
+- [x] Frontend: update `useLicenseFeatures` hook to read org plan from `me` query instead of static check (Wave 60)
+- [x] API: add `updateOrgPlan` mutation (admin-only, or Stripe webhook) (Wave 60)
 - [ ] API: add plan field to org seed data / onboarding flow
-- [ ] Consider caching org plan lookups in infrastructure jobs to reduce DB queries under load
+- [x] Consider caching org plan lookups in infrastructure jobs to reduce DB queries under load — orgPlanCache.ts with 5-min TTL (Wave 60)
 
 ---
 
@@ -62,11 +62,11 @@ New projects starting from scratch hit a bad UX: the auto-complete pipeline gene
 
 2. **Fix AI planner for init commands** — update `promptBuilder.ts:buildActionPlanPrompt()` to instruct the AI that project initialization tools have non-interactive modes and should use `generate_code` actions, not `manual_step`. Include examples of non-interactive flags for common tools.
 
-3. **Follow-ups from wave 58:**
-   - `commitFilesToEmptyRepo` hardcodes `refs/heads/main` — should respect `repo.defaultBranch` for users with non-`main` default branch settings
-   - Add unit tests for `ProjectSetupWizard` component
-   - Template list is hardcoded client-side — consider server-side template registry for extensibility
-   - Knowledge base auto-population after scaffold (trigger KB ingestion from committed files)
+3. **Follow-ups from wave 58:** *(all completed in Wave 60)*
+   - [x] `commitFilesToEmptyRepo` hardcodes `refs/heads/main` — uses `repo.defaultBranch` now
+   - [x] Add unit tests for `ProjectSetupWizard` component (13 test cases)
+   - [x] Template list is hardcoded client-side — moved to `scaffoldTemplates` GraphQL query
+   - [x] Knowledge base auto-population after scaffold — creates entries for key scaffolded files
 
 ### Per-org licensing (Wave 59)
 Move license checks from server-level env var to per-org `plan` field in the database. Enables hosted platform with both free and paid users on the same deployment. `TASKTOAD_LICENSE` env var becomes a self-host override.
@@ -97,6 +97,7 @@ Move license checks from server-level env var to per-org `plan` field in the dat
 - [ ] SSE cross-tab sync — manual refresh is fine for now; ensure backend prevents stale data overwrites
 
 ### Code Quality
+- [ ] Fix React act() warnings in ProjectSetupWizard tests (state updates during async template fetch)
 - [ ] Refactor: extract shared action-completion orchestration from actionExecutor.ts and monitorCIPoll.ts
 - [ ] useAsyncData: ReleaseListPanel still uses inline fetch pattern
 - [ ] merge-worker.sh: auto-detect lockfile changes and run pnpm install before validation
@@ -151,5 +152,6 @@ Move license checks from server-level env var to per-org `plan` field in the dat
 | 57 | 2026-03-23 | Open core: license flag system (TASKTOAD_LICENSE), premium feature gating (8 features), frontend useLicenseFeatures hook |
 | 58 | 2026-03-24 | Project scaffolding: setup wizard, scaffold mutation, AI prompt fix, empty repo commit, framework templates |
 | 59 | 2026-03-24 | Per-org licensing: plan column on Org, license.ts rewrite, 33 resolver call sites, infrastructure per-event checks |
+| 60 | 2026-03-24 | Scaffolding follow-ups (default branch fix, template registry, KB auto-populate, wizard tests) + licensing frontend/backend (orgPlan in me query, updateOrgPlan mutation, org plan cache, Plans tab) |
 
 Full wave details in `changelog.md`.
