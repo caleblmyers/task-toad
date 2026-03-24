@@ -38,6 +38,7 @@ const MeetingNotesDialog = lazyWithRetry(() => import('../components/MeetingNote
 const CSVImportModal = lazyWithRetry(() => import('../components/CSVImportModal'));
 const KnowledgeBasePanel = lazyWithRetry(() => import('../components/KnowledgeBasePanel'));
 const OnboardingWizard = lazyWithRetry(() => import('../components/OnboardingWizard'));
+const ProjectSetupWizard = lazyWithRetry(() => import('../components/ProjectSetupWizard'));
 const BugReportModal = lazyWithRetry(() => import('../components/BugReportModal'));
 const PRDBreakdownModal = lazyWithRetry(() => import('../components/PRDBreakdownModal'));
 const HierarchicalPlanDialog = lazyWithRetry(() => import('../components/HierarchicalPlanDialog'));
@@ -69,9 +70,15 @@ export default function ProjectDetail() {
   const searchRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
 
-  // Auto-open onboarding wizard after project creation
+  // Show setup wizard and/or onboarding wizard after project creation
+  const [showSetup, setShowSetup] = useState(false);
   useEffect(() => {
-    if ((location.state as Record<string, unknown> | null)?.showOnboarding) {
+    const state = location.state as Record<string, unknown> | null;
+    if (state?.showSetup) {
+      setShowSetup(true);
+      // Clear state so it doesn't re-trigger on navigation
+      window.history.replaceState({}, '');
+    } else if (state?.showOnboarding) {
       setActiveModal('onboarding');
       // Clear state so it doesn't re-trigger on navigation
       window.history.replaceState({}, '');
@@ -884,6 +891,24 @@ export default function ProjectDetail() {
             onRefreshFromRepo={d.handleRefreshRepoProfile}
             hasGitHubRepo={!!(d.project?.githubRepositoryName)}
             onRunInterview={() => setActiveModal('onboarding')}
+          />
+        </Suspense>
+      )}
+
+      {/* Project setup wizard (shown before onboarding after project creation) */}
+      {showSetup && d.projectId && (
+        <Suspense fallback={lazyFallback}>
+          <ProjectSetupWizard
+            isOpen
+            projectId={d.projectId}
+            onComplete={() => {
+              setShowSetup(false);
+              setActiveModal('onboarding');
+            }}
+            onSkip={() => {
+              setShowSetup(false);
+              setActiveModal('onboarding');
+            }}
           />
         </Suspense>
       )}
