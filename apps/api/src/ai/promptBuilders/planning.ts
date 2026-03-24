@@ -302,11 +302,12 @@ Action type guide:
 Rules:
 1. Order actions logically — code gen before PR creation, setup before implementation.
 2. Use manual_step for anything that can't be automated (account setup, API key configuration, manual testing, deployment).
-3. Set requiresApproval to true for actions that modify external systems (create_pr) and false for safe actions (generate_code, write_docs, review_pr, monitor_ci, fix_ci).
-4. Keep the plan focused — typically 2–6 actions. Don't over-plan.
-5. create_pr must always reference a prior generate_code action via sourceActionId (use a placeholder ID like "action_0" referring to the action at index 0).
-6. If the plan includes create_pr, always follow it with review_pr. review_pr should have requiresApproval: false.
-7. If the plan includes create_pr and review_pr, optionally add monitor_ci after review_pr to verify CI passes, followed by fix_ci as a fallback.
+3. NEVER use manual_step for project initialization. Tools like create-next-app, create-vite, npm init all have non-interactive modes. Use generate_code to create the project structure directly as files — generate the equivalent boilerplate, don't tell the user to run a CLI command.
+4. Set requiresApproval to true for actions that modify external systems (create_pr) and false for safe actions (generate_code, write_docs, review_pr, monitor_ci, fix_ci).
+5. Keep the plan focused — typically 2–6 actions. Don't over-plan.
+6. create_pr must always reference a prior generate_code action via sourceActionId (use a placeholder ID like "action_0" referring to the action at index 0).
+7. If the plan includes create_pr, always follow it with review_pr. review_pr should have requiresApproval: false.
+8. If the plan includes create_pr and review_pr, optionally add monitor_ci after review_pr to verify CI passes, followed by fix_ci as a fallback.
 
 Return JSON:
 {

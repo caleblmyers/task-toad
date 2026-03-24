@@ -82,6 +82,13 @@ export const projectTypeDefs = /* GraphQL */ `
     teamSprintProgress: TeamSprintProgress!
     aggregateStatusDistribution: [CountEntry!]!
   }
+
+  type ScaffoldResult {
+    success: Boolean!
+    filesCreated: Int!
+    summary: String!
+    commitUrl: String
+  }
 `;
 
 export const projectQueryFields = /* GraphQL */ `
@@ -112,4 +119,6 @@ export const projectMutationFields = /* GraphQL */ `
   deleteFilter(savedFilterId: ID!): Boolean!
   """Create a GitHub repo if needed and trigger auto-complete for all eligible tasks."""
   autoStartProject(projectId: ID!): Project!
+  """Generate a project scaffold from a template and commit it to the GitHub repo."""
+  scaffoldProject(projectId: ID!, template: String!, options: String): ScaffoldResult!
 `;

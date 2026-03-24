@@ -72,6 +72,7 @@ import {
   buildHierarchicalPlanPrompt,
   buildGenerateTaskInsightsPrompt,
   buildManualTaskSpecPrompt,
+  buildScaffoldPrompt,
 } from './promptBuilder.js';
 
 // ---------------------------------------------------------------------------
@@ -720,4 +721,21 @@ export async function generateManualTaskSpec(
     projectName, projectDescription, knowledgeBase, repoFiles, acceptanceCriteria,
   });
   return callAndParse(apiKey, 'generateManualTaskSpec', p, ManualTaskSpecSchema, promptLogContext);
+}
+
+export async function scaffoldProject(
+  apiKey: string,
+  template: string,
+  projectName: string,
+  projectDescription: string,
+  options?: string | null,
+  promptLogContext?: PromptLogContext
+): Promise<CodeGeneration> {
+  const p = buildScaffoldPrompt({
+    template,
+    projectName,
+    projectDescription,
+    ...(options ? { options } : {}),
+  });
+  return callAndParse(apiKey, 'scaffoldProject', p, CodeGenerationSchema, promptLogContext);
 }

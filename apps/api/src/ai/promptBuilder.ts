@@ -34,4 +34,5 @@ export {
   buildHierarchicalPlanPrompt,
   buildGenerateTaskInsightsPrompt,
   buildManualTaskSpecPrompt,
+  buildScaffoldPrompt,
 } from './promptBuilders/index.js';

@@ -362,7 +362,8 @@ export type AIFeature =
   | 'onboardingQuestion'
   | 'generateHierarchicalPlan'
   | 'generateTaskInsights'
-  | 'generateManualTaskSpec';
+  | 'generateManualTaskSpec'
+  | 'scaffoldProject';
 
 export const ProjectChatResponseSchema = z.object({
   answer: z.string(),

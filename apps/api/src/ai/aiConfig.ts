@@ -50,6 +50,7 @@ export const FEATURE_CONFIG: Record<AIFeature, FeatureConfig> = {
   generateHierarchicalPlan: { maxTokens: 32768, cacheTTLMs: 86_400_000, retryOnValidationFailure: true },
   generateTaskInsights:     { maxTokens: 2048, cacheTTLMs: 0,          retryOnValidationFailure: true },
   generateManualTaskSpec:   { maxTokens: 4096, cacheTTLMs: 3_600_000,  retryOnValidationFailure: true },
+  scaffoldProject:          { maxTokens: 32768, cacheTTLMs: 0,          retryOnValidationFailure: true },
 };
 
 // ---------------------------------------------------------------------------

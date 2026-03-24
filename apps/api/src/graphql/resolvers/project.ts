@@ -3,7 +3,7 @@ import type { Context } from '../context.js';
 // These match the GraphQL response shapes consumed by the web client.
 export type { Project as SharedProject } from '@tasktoad/shared-types';
 import { AuthorizationError, NotFoundError, ValidationError } from '../errors.js';
-import { requireAuth, requireOrg, requireProjectAccess } from './auth.js';
+import { requireAuth, requireOrg, requireProjectAccess, requireApiKey } from './auth.js';
 import { parseInput, CreateProjectInput, requireProject } from '../../utils/resolverHelpers.js';
 import { getEventBus } from '../../infrastructure/eventbus/index.js';
 
@@ -510,6 +510,74 @@ export const projectMutations = {
     return context.prisma.project.findUniqueOrThrow({
       where: { projectId: args.projectId },
     });
+  },
+
+  scaffoldProject: async (
+    _parent: unknown,
+    args: { projectId: string; template: string; options?: string | null },
+    context: Context
+  ) => {
+    const { project } = await requireProject(context, args.projectId);
+    const apiKey = requireApiKey(context);
+
+    if (!project.githubRepositoryId || !project.githubRepositoryName || !project.githubRepositoryOwner || !project.githubInstallationId) {
+      throw new ValidationError('Project must have a GitHub repository connected before scaffolding.');
+    }
+
+    const defaultBranch = project.githubDefaultBranch ?? 'main';
+
+    // Generate scaffold files via AI
+    const { scaffoldProject: aiScaffold } = await import('../../ai/aiService.js');
+    const result = await aiScaffold(
+      apiKey,
+      args.template,
+      project.name,
+      project.description ?? '',
+      args.options,
+      { prisma: context.prisma, orgId: context.user!.orgId!, userId: context.user!.userId },
+    );
+
+    // Commit files to GitHub
+    const { getDefaultBranchOid, commitFilesToEmptyRepo, commitFiles } = await import('../../github/index.js');
+    const filesToCommit = result.files.map((f) => ({ path: f.path, content: f.content }));
+    const commitMessage = `chore: scaffold ${args.template} project`;
+
+    const repoData = {
+      repositoryId: project.githubRepositoryId,
+      repositoryName: project.githubRepositoryName,
+      repositoryOwner: project.githubRepositoryOwner,
+      installationId: project.githubInstallationId,
+      defaultBranch,
+    };
+
+    const headOid = await getDefaultBranchOid(repoData);
+
+    let commitUrl: string | null = null;
+
+    if (!headOid) {
+      // Empty repo — use REST Git Data API
+      const commitResult = await commitFilesToEmptyRepo(repoData, filesToCommit, commitMessage);
+      commitUrl = commitResult.url;
+    } else {
+      // Existing repo — commit directly to default branch
+      const commitResult = await commitFiles(
+        repoData,
+        {
+          branch: defaultBranch,
+          message: commitMessage,
+          additions: filesToCommit,
+        },
+        headOid
+      );
+      commitUrl = commitResult.url;
+    }
+
+    return {
+      success: true,
+      filesCreated: result.files.length,
+      summary: result.summary,
+      commitUrl,
+    };
   },
 };
 
