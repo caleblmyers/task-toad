@@ -24,7 +24,7 @@ let _project2Id: string;
 function makeContext1(): Context {
   return {
     user: { userId: user1Id, email: 'user1@example.com', orgId: org1Id, role: 'org:admin', emailVerifiedAt: null },
-    org: { orgId: org1Id, name: 'Org 1', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, createdAt: new Date() },
+    org: { orgId: org1Id, name: 'Org 1', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, plan: 'free', createdAt: new Date() },
     prisma,
     loaders: createLoaders(prisma, null),
   };
@@ -33,7 +33,7 @@ function makeContext1(): Context {
 function makeContext2(): Context {
   return {
     user: { userId: user2Id, email: 'user2@example.com', orgId: org2Id, role: 'org:admin', emailVerifiedAt: null },
-    org: { orgId: org2Id, name: 'Org 2', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, createdAt: new Date() },
+    org: { orgId: org2Id, name: 'Org 2', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, plan: 'free', createdAt: new Date() },
     prisma,
     loaders: createLoaders(prisma, null),
   };

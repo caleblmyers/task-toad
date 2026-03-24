@@ -6,10 +6,15 @@ import { isPremiumEnabled } from '../../utils/license.js';
 
 const log = logger.child({ module: 'slaListener' });
 
+async function isOrgPremium(prisma: PrismaClient, orgId: string): Promise<boolean> {
+  const org = await prisma.org.findUnique({ where: { orgId }, select: { plan: true } });
+  return isPremiumEnabled(org?.plan);
+}
+
 export function register(bus: EventBus, prisma: PrismaClient): void {
-  if (!isPremiumEnabled) return;
   // When a task is created, create SLA timers for matching policies
   bus.on('task.created', async (e) => {
+    if (!(await isOrgPremium(prisma, e.orgId))) return;
     try {
       const policies = await prisma.sLAPolicy.findMany({
         where: {
@@ -41,6 +46,7 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
 
   // When a task is updated, update SLA timer milestones
   bus.on('task.updated', async (e) => {
+    if (!(await isOrgPremium(prisma, e.orgId))) return;
     if (!e.changes.status) return;
 
     const oldStatus = e.changes.status.old;

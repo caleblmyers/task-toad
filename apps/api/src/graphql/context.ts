@@ -23,7 +23,7 @@ export const JWT_SECRET = getJwtSecret();
 
 export interface Context {
   user: { userId: string; email: string; displayName?: string | null; orgId: string | null; role: string | null; emailVerifiedAt: Date | null } | null;
-  org: { orgId: string; name: string; anthropicApiKeyEncrypted: string | null; promptLoggingEnabled: boolean; monthlyBudgetCentsUSD: number | null; budgetAlertThreshold: number; createdAt: Date } | null;
+  org: { orgId: string; name: string; anthropicApiKeyEncrypted: string | null; promptLoggingEnabled: boolean; monthlyBudgetCentsUSD: number | null; budgetAlertThreshold: number; createdAt: Date; plan: string } | null;
   prisma: PrismaClient;
   loaders: Loaders;
   req?: import('http').IncomingMessage & { cookies?: Record<string, string> };
@@ -68,7 +68,7 @@ export async function buildContext(ctx: { request: Request; req?: import('http')
     if (dbUser.orgId) {
       org = await prisma.org.findUnique({
         where: { orgId: dbUser.orgId },
-        select: { orgId: true, name: true, anthropicApiKeyEncrypted: true, promptLoggingEnabled: true, monthlyBudgetCentsUSD: true, budgetAlertThreshold: true, createdAt: true },
+        select: { orgId: true, name: true, anthropicApiKeyEncrypted: true, promptLoggingEnabled: true, monthlyBudgetCentsUSD: true, budgetAlertThreshold: true, createdAt: true, plan: true },
       });
     }
 

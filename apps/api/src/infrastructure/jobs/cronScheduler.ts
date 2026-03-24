@@ -15,7 +15,6 @@ export class CronScheduler {
   constructor(private prisma: PrismaClient) {}
 
   start(): void {
-    if (!isPremiumEnabled) return;
     log.info('Cron scheduler started');
     // Run immediately on startup, then every minute
     this.runCheck();
@@ -64,6 +63,10 @@ export class CronScheduler {
 
     for (const rule of dueRules) {
       try {
+        // Skip rules for non-premium orgs
+        const org = await this.prisma.org.findUnique({ where: { orgId: rule.orgId }, select: { plan: true } });
+        if (!isPremiumEnabled(org?.plan)) continue;
+
         // Execute the rule's actions against matching tasks in the project
         const trigger = JSON.parse(rule.trigger) as { event?: string; condition?: unknown };
         executeAutomations(this.prisma, {

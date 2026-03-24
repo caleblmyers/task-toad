@@ -28,7 +28,7 @@ function makeContext(overrides?: { userId?: string; email?: string }): Context {
       role: 'org:admin',
       emailVerifiedAt: null,
     },
-    org: { orgId, name: 'Test Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, createdAt: new Date() },
+    org: { orgId, name: 'Test Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, plan: 'free', createdAt: new Date() },
     prisma,
     loaders: createLoaders(prisma, null),
   };

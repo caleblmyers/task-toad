@@ -84,7 +84,7 @@ export async function requirePermission(
   if (user.role === 'org:admin') return user;
 
   // In open source mode, skip project role checks — all org members get default permissions
-  if (!isPremiumEnabled) return user;
+  if (!isPremiumEnabled(context.org?.plan)) return user;
 
   // Look up project membership
   const membership = await context.prisma.projectMember.findUnique({
@@ -114,7 +114,7 @@ export async function getPermissionsForProject(
   if (user.role === 'org:admin') return [...ALL_PERMISSIONS];
 
   // In open source mode, all org members get default permissions
-  if (!isPremiumEnabled) return [...DEFAULT_PERMISSIONS];
+  if (!isPremiumEnabled(context.org?.plan)) return [...DEFAULT_PERMISSIONS];
 
   const membership = await context.prisma.projectMember.findUnique({
     where: { projectId_userId: { projectId, userId: user.userId } },

@@ -13,7 +13,6 @@ export class SLABreachChecker {
   constructor(private prisma: PrismaClient) {}
 
   start(): void {
-    if (!isPremiumEnabled) return;
     log.info('SLA breach checker started (every 5 minutes)');
     this.intervalId = setInterval(() => {
       this.checkBreaches().catch((err) => {
@@ -47,9 +46,20 @@ export class SLABreachChecker {
 
     if (timers.length === 0) return;
 
+    // Load org plans and filter to premium orgs only
+    const orgIds = [...new Set(timers.map(t => t.orgId))];
+    const orgs = await this.prisma.org.findMany({
+      where: { orgId: { in: orgIds } },
+      select: { orgId: true, plan: true },
+    });
+    const orgPlanMap = new Map(orgs.map(o => [o.orgId, o.plan]));
+    const premiumTimers = timers.filter(t => isPremiumEnabled(orgPlanMap.get(t.orgId)));
+
+    if (premiumTimers.length === 0) return;
+
     let breachCount = 0;
 
-    for (const timer of timers) {
+    for (const timer of premiumTimers) {
       const updates: Record<string, unknown> = {};
 
       // Calculate effective elapsed business time (minus paused time)

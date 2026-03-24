@@ -9,6 +9,7 @@ export const orgTypeDefs = /* GraphQL */ `
     budgetAlertThreshold: Int!
     budgetEnforcement: String!
     promptLoggingEnabled: Boolean!
+    plan: String!
     licenseFeatures: [String!]!
   }
 

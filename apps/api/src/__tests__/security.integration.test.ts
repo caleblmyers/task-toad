@@ -278,7 +278,7 @@ describe('Audit Logging', () => {
   it('setOrgApiKey creates an Activity with action api_key_changed', async () => {
     const ctx = makeContext(
       { userId, email: 'audit@example.com', orgId, role: 'org:admin', emailVerifiedAt: new Date() },
-      { orgId, name: 'Audit Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, createdAt: new Date() },
+      { orgId, name: 'Audit Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, plan: 'free', createdAt: new Date() },
     );
 
     await orgMutations.setOrgApiKey(null, { apiKey: 'sk-ant-test-key', confirmPassword: password }, ctx);
@@ -295,7 +295,7 @@ describe('Audit Logging', () => {
   it('inviteOrgMember creates an Activity with action member_invited', async () => {
     const ctx = makeContext(
       { userId, email: 'audit@example.com', orgId, role: 'org:admin', emailVerifiedAt: new Date() },
-      { orgId, name: 'Audit Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, createdAt: new Date() },
+      { orgId, name: 'Audit Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, plan: 'free', createdAt: new Date() },
     );
 
     await authMutations.inviteOrgMember(null, { email: 'invited@example.com' }, ctx);
@@ -311,7 +311,7 @@ describe('Audit Logging', () => {
   it('logout creates an Activity with action user_logout', async () => {
     const ctx = makeContext(
       { userId, email: 'audit@example.com', orgId, role: 'org:admin', emailVerifiedAt: new Date() },
-      { orgId, name: 'Audit Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, createdAt: new Date() },
+      { orgId, name: 'Audit Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, plan: 'free', createdAt: new Date() },
     );
 
     await authMutations.logout(null, {}, ctx);
@@ -438,7 +438,7 @@ describe('Bulk Update Cap', () => {
 
     const ctx = makeContext(
       { userId: user.userId, email: 'bulk@example.com', orgId: org.orgId, role: 'org:admin', emailVerifiedAt: new Date() },
-      { orgId: org.orgId, name: 'Bulk Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, createdAt: new Date() },
+      { orgId: org.orgId, name: 'Bulk Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, plan: 'free', createdAt: new Date() },
     );
 
     const fakeIds = Array.from({ length: 101 }, (_, i) => `fake-task-${i}`);
@@ -487,7 +487,7 @@ describe('Input Validation — Length Limits', () => {
   it('createSprint rejects name longer than 200 characters', async () => {
     const ctx = makeContext(
       { userId, email: 'validate@example.com', orgId, role: 'org:admin', emailVerifiedAt: new Date() },
-      { orgId, name: 'Validation Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, createdAt: new Date() },
+      { orgId, name: 'Validation Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, plan: 'free', createdAt: new Date() },
     );
 
     const longName = 'x'.repeat(201);
@@ -500,7 +500,7 @@ describe('Input Validation — Length Limits', () => {
   it('createLabel rejects name longer than 100 characters', async () => {
     const ctx = makeContext(
       { userId, email: 'validate@example.com', orgId, role: 'org:admin', emailVerifiedAt: new Date() },
-      { orgId, name: 'Validation Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, createdAt: new Date() },
+      { orgId, name: 'Validation Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, plan: 'free', createdAt: new Date() },
     );
 
     const longName = 'x'.repeat(101);
