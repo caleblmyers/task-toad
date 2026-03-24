@@ -188,7 +188,8 @@ app.post('/api/auth/refresh', async (req, res) => {
     if (!user) { res.status(401).json({ error: 'User not found' }); return; }
     // Check tokenVersion matches to detect revoked tokens
     const tv = payload.tv as number | undefined;
-    if (tv !== undefined && tv !== user.tokenVersion) {
+    const dbTokenVersion = user.tokenVersion ?? 0;
+    if (tv !== undefined && tv !== dbTokenVersion) {
       res.clearCookie('tt-access', { path: '/' });
       res.clearCookie('tt-refresh', { path: '/' });
       res.status(401).json({ error: 'Token revoked' });

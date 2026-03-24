@@ -59,7 +59,7 @@ export async function buildContext(ctx: { request: Request; req?: import('http')
 
     // Reject tokens with stale tokenVersion (revoked via logout or password reset)
     const tv = payload.tv as number | undefined;
-    if (tv !== undefined && tv !== dbUser.tokenVersion) {
+    if (tv !== undefined && tv !== (dbUser.tokenVersion ?? 0)) {
       const loaders = createLoaders(prisma, null);
       return { user: null, org: null, prisma, loaders, req, res };
     }
