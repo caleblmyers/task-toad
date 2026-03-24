@@ -177,7 +177,8 @@ app.use((req, _res, next) => {
 });
 
 // Refresh token endpoint — rotates access + refresh tokens using refresh cookie
-app.post('/api/auth/refresh', async (req, res) => {
+// Mounted at both paths: /api/auth/refresh (production) and /auth/refresh (dev via Vite proxy which strips /api)
+const refreshHandler: import('express').RequestHandler = async (req, res) => {
   const refreshToken = req.cookies?.['tt-refresh'];
   if (!refreshToken) { res.status(401).json({ error: 'No refresh token' }); return; }
   try {
@@ -244,7 +245,9 @@ app.post('/api/auth/refresh', async (req, res) => {
     res.clearCookie('tt-refresh', { path: '/' });
     res.status(401).json({ error: 'Invalid refresh token' });
   }
-});
+};
+app.post('/api/auth/refresh', refreshHandler);
+app.post('/auth/refresh', refreshHandler);
 
 
 // SSE endpoint for real-time events — reads token from cookie with Authorization fallback
