@@ -311,10 +311,10 @@ export async function commitFilesToEmptyRepo(
       token,
       'POST',
       `${repoPath}/git/refs`,
-      { ref: 'refs/heads/main', sha: commit.sha }
+      { ref: `refs/heads/${repo.defaultBranch}`, sha: commit.sha }
     );
 
-    logCommit(repo.repositoryOwner, repo.repositoryName, 'main', commit.sha);
+    logCommit(repo.repositoryOwner, repo.repositoryName, repo.defaultBranch, commit.sha);
     return { oid: commit.sha, url: commit.html_url };
   } catch (error) {
     logApiError('commitFilesToEmptyRepo', error, {

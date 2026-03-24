@@ -89,6 +89,12 @@ export const projectTypeDefs = /* GraphQL */ `
     summary: String!
     commitUrl: String
   }
+
+  type ScaffoldTemplate {
+    name: String!
+    label: String!
+    description: String!
+  }
 `;
 
 export const projectQueryFields = /* GraphQL */ `
@@ -104,6 +110,8 @@ export const projectQueryFields = /* GraphQL */ `
   sharedViews(projectId: ID!): [SavedFilter!]!
   """Get aggregate rollup metrics across all projects in the org."""
   portfolioRollup: PortfolioRollup!
+  """Get available scaffold templates."""
+  scaffoldTemplates: [ScaffoldTemplate!]!
 `;
 
 export const projectMutationFields = /* GraphQL */ `

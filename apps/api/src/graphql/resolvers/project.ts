@@ -246,6 +246,13 @@ export const projectQueries = {
     };
   },
 
+  scaffoldTemplates: () => [
+    { name: 'nextjs', label: 'Next.js', description: 'React + TypeScript + Tailwind' },
+    { name: 'vite-react', label: 'Vite + React', description: 'SPA with TypeScript' },
+    { name: 'express-ts', label: 'Express + TypeScript', description: 'Node.js API' },
+    { name: 'python-fastapi', label: 'Python + FastAPI', description: 'Python API' },
+  ],
+
   savedFilters: async (_parent: unknown, args: { projectId: string }, context: Context) => {
     const user = requireAuth(context);
     await requireProjectAccess(context, args.projectId);
@@ -570,6 +577,42 @@ export const projectMutations = {
         headOid
       );
       commitUrl = commitResult.url;
+    }
+
+    // Auto-populate knowledge base with key scaffolded files
+    const KB_USEFUL_PATTERNS = [
+      /^package\.json$/,
+      /^README\.md$/i,
+      /^tsconfig.*\.json$/,
+      /^\.env\.example$/,
+      /^(next|vite|vitest)\.config\.(ts|js|mjs)$/,
+      /^(src|app)\/(index|main|app)\.(ts|tsx|js|jsx|py)$/,
+      /^(src|app)\/.*\.(ts|tsx|js|jsx|py)$/,
+      /^requirements\.txt$/,
+      /^pyproject\.toml$/,
+      /^tailwind\.config\.(ts|js)$/,
+    ];
+    const SKIP_PATTERNS = [/node_modules/, /\.lock$/, /\.ico$/, /\.png$/, /\.jpg$/, /\.svg$/];
+    const MAX_KB_ENTRIES = 10;
+
+    const kbFiles = result.files
+      .filter((f: { path: string; content: string }) => {
+        if (SKIP_PATTERNS.some((p) => p.test(f.path))) return false;
+        return KB_USEFUL_PATTERNS.some((p) => p.test(f.path));
+      })
+      .slice(0, MAX_KB_ENTRIES);
+
+    if (kbFiles.length > 0) {
+      await context.prisma.knowledgeEntry.createMany({
+        data: kbFiles.map((f: { path: string; content: string }) => ({
+          projectId: args.projectId,
+          orgId: context.user!.orgId!,
+          title: f.path,
+          content: f.content,
+          source: 'scaffold',
+          category: 'standard',
+        })),
+      });
     }
 
     return {

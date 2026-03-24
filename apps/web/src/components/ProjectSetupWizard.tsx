@@ -25,12 +25,13 @@ interface ScaffoldResult {
   commitUrl: string | null;
 }
 
-const TEMPLATES = [
-  { name: 'nextjs', label: 'Next.js', description: 'React + TypeScript + Tailwind' },
-  { name: 'vite-react', label: 'Vite + React', description: 'SPA with TypeScript' },
-  { name: 'express-ts', label: 'Express + TypeScript', description: 'Node.js API' },
-  { name: 'python-fastapi', label: 'Python + FastAPI', description: 'Python API' },
-];
+interface ScaffoldTemplate {
+  name: string;
+  label: string;
+  description: string;
+}
+
+const SCAFFOLD_TEMPLATES_QUERY = `query { scaffoldTemplates { name label description } }`;
 
 export default function ProjectSetupWizard({
   isOpen,
@@ -47,6 +48,8 @@ export default function ProjectSetupWizard({
   const [scaffolding, setScaffolding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showRepoModal, setShowRepoModal] = useState(false);
+  const [templates, setTemplates] = useState<ScaffoldTemplate[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
 
   // Fetch GitHub installations on mount
   useEffect(() => {
@@ -57,6 +60,16 @@ export default function ProjectSetupWizard({
       .catch(() => setInstallations([]))
       .finally(() => setLoadingInstallations(false));
   }, [isOpen]);
+
+  // Fetch scaffold templates when reaching template step
+  useEffect(() => {
+    if (step !== 'template' || templates.length > 0) return;
+    setLoadingTemplates(true);
+    gql<{ scaffoldTemplates: ScaffoldTemplate[] }>(SCAFFOLD_TEMPLATES_QUERY)
+      .then((data) => setTemplates(data.scaffoldTemplates))
+      .catch(() => setTemplates([]))
+      .finally(() => setLoadingTemplates(false));
+  }, [step, templates.length]);
 
   const handleCreateRepo = useCallback(async () => {
     if (!installations || installations.length === 0) return;
@@ -202,8 +215,13 @@ export default function ProjectSetupWizard({
                 </p>
               </div>
 
+              {loadingTemplates ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-500" />
+                </div>
+              ) : (
               <div className="grid grid-cols-2 gap-3">
-                {TEMPLATES.map((t) => (
+                {templates.map((t) => (
                   <button
                     key={t.name}
                     type="button"
@@ -215,6 +233,7 @@ export default function ProjectSetupWizard({
                   </button>
                 ))}
               </div>
+              )}
 
               <div className="text-center mt-4">
                 <button
