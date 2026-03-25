@@ -4,6 +4,7 @@ import type { TaskTimeSummary } from '@tasktoad/shared-types';
 import { statusLabel } from '../../utils/taskHelpers';
 import TaskCustomFieldsSection from './TaskCustomFieldsSection';
 import TimeEntryList from './TimeEntryList';
+import MultiPicker from '../shared/MultiPicker';
 
 interface TaskFieldsPanelProps {
   task: Task;
@@ -68,9 +69,6 @@ export default function TaskFieldsPanel({
   onLogTime,
   onDeleteTimeEntry,
 }: TaskFieldsPanelProps) {
-  const [showAssigneePicker, setShowAssigneePicker] = useState(false);
-  const [showWatcherPicker, setShowWatcherPicker] = useState(false);
-  const [showLabelPicker, setShowLabelPicker] = useState(false);
   const [newLabelName, setNewLabelName] = useState('');
   const [newLabelColor, setNewLabelColor] = useState('#6b7280');
   const [showLogTime, setShowLogTime] = useState(false);
@@ -124,62 +122,19 @@ export default function TaskFieldsPanel({
       <div className="mb-4">
         <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Assignees</p>
         {onAddAssignee && onRemoveAssignee ? (
-          <>
-            <div className="flex flex-wrap gap-1.5 mb-1">
-              {(task.assignees ?? []).map((a) => (
-                <span
-                  key={a.id}
-                  className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200"
-                >
-                  {a.user.email}
-                  <button
-                    onClick={() => onRemoveAssignee(task.taskId, a.user.userId)}
-                    className="ml-0.5 hover:opacity-70"
-                    disabled={disabled}
-                    aria-label={`Remove ${a.user.email}`}
-                  >
-                    ✕
-                  </button>
-                </span>
-              ))}
-              {(task.assignees ?? []).length === 0 && (
-                <span className="text-xs text-slate-400">No assignees</span>
-              )}
-            </div>
-            {showAssigneePicker ? (
-              <div className="mt-1">
-                <div className="max-h-32 overflow-y-auto border border-slate-200 rounded mb-1">
-                  {orgUsers
-                    .filter((u) => !(task.assignees ?? []).some((a) => a.user.userId === u.userId))
-                    .map((u) => (
-                      <button
-                        key={u.userId}
-                        onClick={() => {
-                          onAddAssignee(task.taskId, u.userId);
-                          setShowAssigneePicker(false);
-                        }}
-                        className="w-full text-left px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
-                        disabled={disabled}
-                      >
-                        {u.email}
-                      </button>
-                    ))}
-                  {orgUsers.filter((u) => !(task.assignees ?? []).some((a) => a.user.userId === u.userId)).length === 0 && (
-                    <p className="text-xs text-slate-400 px-2 py-1">All users assigned</p>
-                  )}
-                </div>
-                <button onClick={() => setShowAssigneePicker(false)} className="text-xs text-slate-400 hover:text-slate-600">Cancel</button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setShowAssigneePicker(true)}
-                className="text-xs text-slate-500 hover:text-slate-700"
-                disabled={disabled}
-              >
-                + Add assignee
-              </button>
-            )}
-          </>
+          <MultiPicker
+            items={orgUsers}
+            selectedIds={(task.assignees ?? []).map((a) => a.user.userId)}
+            getId={(u) => u.userId}
+            getLabel={(u) => u.email}
+            onAdd={(id) => onAddAssignee(task.taskId, id)}
+            onRemove={(id) => onRemoveAssignee(task.taskId, id)}
+            placeholder="+ Add assignee"
+            disabled={disabled}
+            emptyText="No assignees"
+            allSelectedText="All users assigned"
+            tagClassName="bg-blue-50 text-blue-700 border border-blue-200"
+          />
         ) : (
           <select
             id="task-assignee-select"
@@ -203,80 +158,40 @@ export default function TaskFieldsPanel({
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
             Watchers {(task.watchers ?? []).length > 0 && <span className="text-slate-400">({(task.watchers ?? []).length})</span>}
           </p>
-          <div className="flex flex-wrap gap-1.5 mb-1">
-            {(task.watchers ?? []).map((w) => (
-              <span
-                key={w.id}
-                className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-slate-50 text-slate-700 border border-slate-200"
-              >
-                {w.user.email}
+          <MultiPicker
+            items={orgUsers}
+            selectedIds={(task.watchers ?? []).map((w) => w.user.userId)}
+            getId={(u) => u.userId}
+            getLabel={(u) => u.email}
+            onAdd={(id) => onAddWatcher(task.taskId, id)}
+            onRemove={(id) => onRemoveWatcher(task.taskId, id)}
+            placeholder="+ Add watcher"
+            disabled={disabled}
+            emptyText="No watchers"
+            allSelectedText="All users watching"
+            tagClassName="bg-slate-50 text-slate-700 border border-slate-200"
+          >
+            {/* Watch/Unwatch toggle for current user */}
+            {currentUserId && (
+              (task.watchers ?? []).some((w) => w.user.userId === currentUserId) ? (
                 <button
-                  onClick={() => onRemoveWatcher(task.taskId, w.user.userId)}
-                  className="ml-0.5 hover:opacity-70"
+                  onClick={() => onRemoveWatcher(task.taskId, currentUserId)}
+                  className="text-xs text-slate-500 hover:text-slate-700 mr-2"
                   disabled={disabled}
-                  aria-label={`Remove watcher ${w.user.email}`}
                 >
-                  ✕
+                  Unwatch
                 </button>
-              </span>
-            ))}
-            {(task.watchers ?? []).length === 0 && (
-              <span className="text-xs text-slate-400">No watchers</span>
+              ) : (
+                <button
+                  onClick={() => onAddWatcher(task.taskId, currentUserId)}
+                  className="text-xs text-slate-500 hover:text-slate-700 mr-2"
+                  disabled={disabled}
+                >
+                  Watch
+                </button>
+              )
             )}
-          </div>
-          {/* Watch/Unwatch toggle for current user */}
-          {currentUserId && (
-            (task.watchers ?? []).some((w) => w.user.userId === currentUserId) ? (
-              <button
-                onClick={() => onRemoveWatcher(task.taskId, currentUserId)}
-                className="text-xs text-slate-500 hover:text-slate-700 mr-2"
-                disabled={disabled}
-              >
-                Unwatch
-              </button>
-            ) : (
-              <button
-                onClick={() => onAddWatcher(task.taskId, currentUserId)}
-                className="text-xs text-slate-500 hover:text-slate-700 mr-2"
-                disabled={disabled}
-              >
-                Watch
-              </button>
-            )
-          )}
-          {showWatcherPicker ? (
-            <div className="mt-1">
-              <div className="max-h-32 overflow-y-auto border border-slate-200 rounded mb-1">
-                {orgUsers
-                  .filter((u) => !(task.watchers ?? []).some((w) => w.user.userId === u.userId))
-                  .map((u) => (
-                    <button
-                      key={u.userId}
-                      onClick={() => {
-                        onAddWatcher(task.taskId, u.userId);
-                        setShowWatcherPicker(false);
-                      }}
-                      className="w-full text-left px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
-                      disabled={disabled}
-                    >
-                      {u.email}
-                    </button>
-                  ))}
-                {orgUsers.filter((u) => !(task.watchers ?? []).some((w) => w.user.userId === u.userId)).length === 0 && (
-                  <p className="text-xs text-slate-400 px-2 py-1">All users watching</p>
-                )}
-              </div>
-              <button onClick={() => setShowWatcherPicker(false)} className="text-xs text-slate-400 hover:text-slate-600">Cancel</button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowWatcherPicker(true)}
-              className="text-xs text-slate-500 hover:text-slate-700"
-              disabled={disabled}
-            >
-              + Add watcher
-            </button>
-          )}
+          </MultiPicker>
         </div>
       )}
 
@@ -469,91 +384,82 @@ export default function TaskFieldsPanel({
       {(onAddTaskLabel || (task.labels && task.labels.length > 0)) && (
         <div className="mb-4">
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Labels</p>
-          <div className="flex flex-wrap gap-1.5 mb-1">
-            {(task.labels ?? []).map((label) => (
-              <span
-                key={label.labelId}
-                className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium"
-                style={{ backgroundColor: label.color + '20', color: label.color, border: `1px solid ${label.color}40` }}
-              >
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: label.color }} />
-                {label.name}
-                {onRemoveTaskLabel && (
+          {onAddTaskLabel && onRemoveTaskLabel ? (
+            <MultiPicker
+              items={labels ?? []}
+              selectedIds={(task.labels ?? []).map((l) => l.labelId)}
+              getId={(l) => l.labelId}
+              getLabel={(l) => l.name}
+              onAdd={(id) => onAddTaskLabel(task.taskId, id)}
+              onRemove={(id) => onRemoveTaskLabel(task.taskId, id)}
+              placeholder="+ Add label"
+              disabled={disabled}
+              allSelectedText="No more labels"
+              renderTag={(label, onRemove) => (
+                <span
+                  className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium"
+                  style={{ backgroundColor: label.color + '20', color: label.color, border: `1px solid ${label.color}40` }}
+                >
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: label.color }} />
+                  {label.name}
                   <button
-                    onClick={() => onRemoveTaskLabel(task.taskId, label.labelId)}
+                    onClick={onRemove}
                     className="ml-0.5 hover:opacity-70"
                     disabled={disabled}
                     aria-label={`Remove label ${label.name}`}
                   >
                     ✕
                   </button>
-                )}
-              </span>
-            ))}
-          </div>
-          {onAddTaskLabel && (
-            showLabelPicker ? (
-              <div className="mt-1">
-                <div className="max-h-32 overflow-y-auto border border-slate-200 rounded mb-1">
-                  {(labels ?? [])
-                    .filter((l) => !(task.labels ?? []).some((tl) => tl.labelId === l.labelId))
-                    .map((l) => (
-                      <button
-                        key={l.labelId}
-                        onClick={() => {
-                          onAddTaskLabel(task.taskId, l.labelId);
-                          setShowLabelPicker(false);
-                        }}
-                        className="w-full text-left px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                      >
-                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: l.color }} />
-                        {l.name}
-                      </button>
-                    ))}
-                  {(labels ?? []).filter((l) => !(task.labels ?? []).some((tl) => tl.labelId === l.labelId)).length === 0 && (
-                    <p className="text-xs text-slate-400 px-2 py-1">No more labels</p>
-                  )}
-                </div>
-                {onCreateLabel && (
-                  <div className="flex items-center gap-1 mt-1">
-                    <input
-                      type="color"
-                      value={newLabelColor}
-                      onChange={(e) => setNewLabelColor(e.target.value)}
-                      className="w-6 h-6 rounded border border-slate-300 cursor-pointer"
-                      aria-label="Label color"
-                    />
-                    <input
-                      type="text"
-                      value={newLabelName}
-                      onChange={(e) => setNewLabelName(e.target.value)}
-                      placeholder="New label…"
-                      aria-label="New label name"
-                      className="flex-1 text-xs border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-green"
-                      onKeyDown={async (e) => {
-                        if (e.key === 'Enter' && newLabelName.trim()) {
-                          const label = await onCreateLabel(newLabelName.trim(), newLabelColor);
-                          if (label) {
-                            onAddTaskLabel(task.taskId, label.labelId);
-                            setNewLabelName('');
-                            setShowLabelPicker(false);
-                          }
+                </span>
+              )}
+              renderItem={(l) => (
+                <span className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: l.color }} />
+                  {l.name}
+                </span>
+              )}
+              extraContent={onCreateLabel ? (
+                <div className="flex items-center gap-1 mt-1">
+                  <input
+                    type="color"
+                    value={newLabelColor}
+                    onChange={(e) => setNewLabelColor(e.target.value)}
+                    className="w-6 h-6 rounded border border-slate-300 cursor-pointer"
+                    aria-label="Label color"
+                  />
+                  <input
+                    type="text"
+                    value={newLabelName}
+                    onChange={(e) => setNewLabelName(e.target.value)}
+                    placeholder="New label…"
+                    aria-label="New label name"
+                    className="flex-1 text-xs border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-green"
+                    onKeyDown={async (e) => {
+                      if (e.key === 'Enter' && newLabelName.trim()) {
+                        const created = await onCreateLabel(newLabelName.trim(), newLabelColor);
+                        if (created) {
+                          onAddTaskLabel(task.taskId, created.labelId);
+                          setNewLabelName('');
                         }
-                      }}
-                    />
-                  </div>
-                )}
-                <button onClick={() => setShowLabelPicker(false)} className="text-xs text-slate-400 hover:text-slate-600 mt-1">Cancel</button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setShowLabelPicker(true)}
-                className="text-xs text-slate-500 hover:text-slate-700"
-                disabled={disabled}
-              >
-                + Add label
-              </button>
-            )
+                      }
+                    }}
+                  />
+                </div>
+              ) : undefined}
+            />
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {(task.labels ?? []).map((label) => (
+                <span
+                  key={label.labelId}
+                  className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium"
+                  style={{ backgroundColor: label.color + '20', color: label.color, border: `1px solid ${label.color}40` }}
+                >
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: label.color }} />
+                  {label.name}
+                </span>
+              ))}
+            </div>
           )}
         </div>
       )}
