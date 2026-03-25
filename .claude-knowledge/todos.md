@@ -42,10 +42,18 @@ Infrastructure jobs/listeners (slack, SLA, cron) load org plan from DB per-event
 
 ---
 
+## Investigate
+
+- [ ] **Session / cross-account data leak** — when session expires and user logs in as a different account, is it possible for frontend React state or cache to serve data from the previous account? Logout should clear all state. Potential security issue — needs investigation.
+
 ## Post-V1 Backlog
 
 ### UX Improvements
 - [ ] Sprint columns should be reorderable
+- [ ] Sprints should be ordered; first sprint should auto-activate
+- [ ] Project bootstrap modals should not be dismissable by clicking outside during an active process (prevent accidental disruption)
+- [ ] Long-running AI operations need better loading states — show what's happening (e.g., "Generating code for auth service..."), not just a spinner
+- [ ] Network latency during project init — scaffold calls AI + GitHub sequentially, may feel slow. Consider showing per-step progress.
 - [ ] Close sprint should offer "create new sprint" option
 - [ ] Release notes should have manual entry option
 - [ ] Time entry deletion should be admin-only action
@@ -97,7 +105,13 @@ Foundation cleanup for files we'll be touching heavily during Phase 1. Do these 
    - Files: `apps/api/src/actions/registry.ts`, `apps/api/src/infrastructure/eventbus/port.ts`
    - Trivial, no risk.
 
-**Parallelism:** All 3 are independent. Can be one swarm wave with 1-2 workers.
+4. **Custom project option in project creation** (~15 min)
+   - Add a "Describe your own" card alongside the 3 AI-generated project options
+   - Shows title + description inputs, then proceeds to epic generation with that input
+   - Frontend-only change to the project creation flow (NewProject page or equivalent)
+   - Acceptance: User can bypass AI-generated options and enter their own project title/description
+
+**Parallelism:** All 4 are independent. Can be one swarm wave with 2 workers.
 
 ### Fold Into Pipeline Rewrite (do alongside Phase 1, not separately)
 
@@ -172,6 +186,7 @@ The action plan pipeline needs a fundamental rework so that generated code is co
    - Ensure the planning resolver checks repo connection and refuses to plan if no repo (with clear error message)
    - OR: make the planner always generate `create_pr` + `review_pr` for GitHub-connected projects (enforce in code, not just prompt)
    - Update planner prompt to emphasize: every plan for a connected repo MUST end with `create_pr` → `review_pr`
+   - **Also:** Update planner prompt so generated tasks are generic, not opinionated about specific services/tools. E.g., "Set up authentication" not "Set up Auth0 integration." Full decision-point support is Phase 2, but the prompt should at least avoid baking in specific vendor choices now.
    - Files: `resolvers/taskaction.ts`, `promptBuilders/planning.ts`
 
 **Parallelism:** Tasks 1+5 can run in parallel (no file overlap). Tasks 2+3 depend on task 1 (need branch context in ActionContext). Task 4 depends on task 2 (needs to understand the new commit flow). Suggested split: Worker 1 does tasks 1+2, Worker 2 does tasks 3+4 (after 1 merges), Worker 3 does task 5.

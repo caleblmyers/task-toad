@@ -72,7 +72,15 @@ Non-obvious choices and their rationale. Only decisions where the "why" isn't ap
 
 **User input in `<user_input>` XML tags:** Prompt injection defense. AI system prompts instruct to treat tagged content as opaque data.
 
+**AI features must be actionable, not just informational:** Every AI suggestion should return structured data that maps to a mutation (create task, update task, add dependency). Avoid patterns where AI output is only displayable as text. This enables one-click "Apply" buttons and future auto-apply. The interaction model is always: AI suggests with preview → user approves → action applied.
+
 **Sequential action plan pipeline:** generate_code → create_pr → review_pr. Each step depends on the previous. Approval gates let users review before proceeding. Branch-based execution (feature branches per task) being implemented to allow context threading between steps.
+
+**Single execution primitive, multiple triggers:** `executeTask(taskId)` is the one function that runs the pipeline for a task. It is triggered by: (1) user clicking Auto-Complete in the UI, (2) a session loop picking the next task, (3) a status-change automation rule. No separate execution logic per trigger — sessions and automations are orchestrators that decide *which* task to run and call the same pipeline. Keep this entry point clean and callable from multiple contexts, not coupled to a specific UI flow.
+
+**Sprints stay, Sessions are coming:** Sprints are a human-team concept (time-boxed capacity). The autopilot needs a different organizing unit: Sessions (scope-boxed, budget-limited execution batches). Sessions are Phase 3 — don't redesign sprints now, don't remove them, build sessions as a new concept alongside them. See autopilot-pillars.md "Sessions vs Sprints" section.
+
+**Project ↔ Repo is 1:1 for now, but don't cement it:** Currently a Project has single `githubRepositoryId/Name/Owner` fields. This is correct for the initial target (solo dev, one project, one repo). Future: monorepo support (multiple projects → one repo with path scoping) and multi-repo (one project → multiple repos for microservices). Don't solve now, but when building pipeline features, pass repo context per-action rather than assuming a global project repo. Keep the door open.
 
 ---
 

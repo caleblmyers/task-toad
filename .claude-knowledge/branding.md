@@ -75,6 +75,41 @@ To change a brand color, update the CSS variable in `index.css` — Tailwind cla
 - Head/face only (no full body, except T-Frog where the T acts as abstract body)
 - Reference peers: GitHub Octocat, Docker whale, Go gopher
 
+## Tommy the Toad — AI Assistant Persona (Future)
+
+The AI autopilot should have a consistent identity: **Tommy**. Not a gimmick — the face of all AI interactions.
+
+**Where Tommy appears (AI is making decisions or communicating):**
+- AI suggestions use Tommy's voice: "I'd recommend Next.js for this — here's why..."
+- Project chat is a conversation with Tommy, not a generic AI chat box
+- Approval prompts: "Tommy wants to create a PR — approve?" not "Action requires approval"
+- Error recovery: "I hit a problem with the auth service. Here's what happened and what I'd try next."
+- Stack recommendations, task suggestions, project health insights — all from Tommy
+
+**Where Tommy does NOT appear (avoid gimmicky):**
+- Loading spinners, generic buttons, non-AI UI elements
+- Error messages that aren't AI-related (404, network errors)
+- Standard PM features (boards, task lists, sprint views)
+- Everywhere by default — Tommy appears where the AI is active, invisible where it's not
+
+**Voice guidelines:**
+- Confident but not arrogant — "I'd recommend..." not "You should..."
+- Concise — no filler, no forced personality in every sentence
+- Helpful when relevant, invisible when not
+- Can express uncertainty: "I'm not sure about this approach — here are two options"
+- Think Copilot energy, not Clippy energy
+
+**Visual:**
+- Uses the Node Frog logo variant (AI/automation identity)
+- Small avatar next to AI-generated content
+- Subtle — doesn't dominate the UI
+
+**Implementation:** Post-pipeline polish. Don't build now, but keep AI-facing UI language consistent so it's easy to add Tommy's voice later. Avoid hardcoding generic language like "AI suggests..." — use a pattern that can be swapped to "Tommy suggests..." in one place.
+
+**Reference:** GitHub Copilot's chat identity, Linear's Dolt, Vercel's v0.
+
+---
+
 ## Full Brand System Needs (Future)
 
 ### Core Identity
