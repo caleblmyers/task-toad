@@ -8,15 +8,19 @@
 
 ## Quick Hits (before Phase 1)
 
-- [ ] Replace `LICENSE` file — remove AGPL-3.0, add proprietary license text
-- [ ] Remove or rewrite `CONTRIBUTING.md` for closed source
-- [ ] Remove `TASKTOAD_LICENSE` env var and self-host override code (or repurpose for enterprise tier)
-- [ ] Remove Docker self-hosting config if still present (`docker-compose` deploy profile)
-- [ ] Project bootstrap modals should not be dismissable by clicking outside during an active process
+- [x] Replace `LICENSE` file — remove AGPL-3.0, add proprietary license text *(Wave 63)*
+- [x] Remove or rewrite `CONTRIBUTING.md` for closed source *(Wave 63)*
+- [x] Remove `TASKTOAD_LICENSE` env var and self-host override code *(Wave 63)*
+- [x] Remove Docker self-hosting config — deploy profile removed from `docker-compose` *(Wave 63)*
+- [x] Project bootstrap modals should not be dismissable by clicking outside during an active process *(Wave 63)*
+- [ ] `license.ts` still logs "No license key — running in open source mode" at startup — update log message to reflect closed-source model
+- [ ] Add test coverage for Modal `closeOnOverlayClick` prop behavior
+- [ ] ProjectSetupWizard test has `act(...)` warning — wrap state updates in test
 
 ## Investigate
 
-- [ ] **Session / cross-account data leak** — when session expires and user logs in as a different account, could frontend React state serve data from the previous account? Logout should clear all state. Potential security issue.
+- [x] **Session / cross-account data leak** — fixed: App tree remounts on user change via `key={userId}` *(Wave 63)*
+- [ ] Consider adding an integration test for the logout→login-as-different-user flow to prevent regression
 
 ---
 

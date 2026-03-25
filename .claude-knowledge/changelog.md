@@ -4,6 +4,33 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-25 (Wave 63 — quick hits)
+
+### Wave 63: Quick Hits Before Phase 1 (3 workers, 3 tasks)
+
+**Worker 1 — task-001: Closed-source cleanup:**
+- Replaced LICENSE (AGPL-3.0 → proprietary copyright)
+- Deleted CONTRIBUTING.md
+- Removed `TASKTOAD_LICENSE` env var and `SELF_HOST_OVERRIDE` from license.ts
+- Removed Docker deploy profile from docker-compose.yml
+- Cleaned references from CLAUDE.md and app-overview.md
+
+**Worker 2 — task-002: Modal dismissal fix:**
+- Added `closeOnOverlayClick` prop to Modal component (default true)
+- ProjectSetupWizard prevents overlay dismiss during active operations
+
+**Worker 3 — task-003: Session security fix:**
+- Added user-keyed remount (`key={userId}`) to App routes — prevents stale data across logout/login cycles
+
+**Process:** task-001 had one rejection (typo: double closing paren in CLAUDE.md). Fixed and merged. Tasks 2+3 merged on first review.
+
+### Open follow-ups
+- license.ts still logs "open source mode" at startup — update log message
+- Add test coverage for Modal closeOnOverlayClick
+- Add integration test for logout→login-as-different-user flow
+
+---
+
 ## 2026-03-25 (Wave 62 — deferred refactors)
 
 ### Wave 62: Codebase Refactors from Audit (3 workers, 6 tasks)
