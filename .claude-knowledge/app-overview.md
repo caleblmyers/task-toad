@@ -121,7 +121,7 @@ Browser → Vite dev server (localhost:5173)
 | Prisma schema (domain-split) | `apps/api/prisma/schema/*.prisma` |
 | REST export routes | `apps/api/src/routes/export.ts` |
 | REST API docs page | `apps/api/src/routes/docs.ts` |
-| License system (per-org plan + self-host override) | `apps/api/src/utils/license.ts` |
+| License system (per-org plan gating) | `apps/api/src/utils/license.ts` |
 | Scaffold prompt builder | `apps/api/src/ai/promptBuilders/scaffold.ts` |
 | Express app setup (+ helmet/cors/rate-limit) | `apps/api/src/app.ts` |
 | API entry point | `apps/api/src/index.ts` |
@@ -177,7 +177,6 @@ Browser → Vite dev server (localhost:5173)
 - `SENTRY_DSN` — optional Sentry error tracking DSN
 - `AI_RATE_LIMIT_PER_HOUR` — per-org AI request limit (defaults to `60`)
 - `MAX_SESSIONS_PER_USER` — concurrent session limit (defaults to `5`)
-- `TASKTOAD_LICENSE` — self-host override for premium features (optional). When set, bypasses per-org plan checks and enables all premium features for every org. Without it, premium features are gated per-org by the `plan` field ("free"|"paid"). See `apps/api/src/utils/license.ts`.
 
 **Web** (`apps/web/.env`):
 - `VITE_API_URL` — set to `/api` in dev (Vite proxy strips prefix and forwards to `:3001`)

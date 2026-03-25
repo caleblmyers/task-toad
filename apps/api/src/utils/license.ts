@@ -1,5 +1,4 @@
 import { GraphQLError } from 'graphql';
-import { logger } from './logger.js';
 
 export type LicenseFeature =
   | 'slack'
@@ -22,10 +21,7 @@ const ALL_FEATURES: LicenseFeature[] = [
   'project_roles',
 ];
 
-const SELF_HOST_OVERRIDE = !!process.env.TASKTOAD_LICENSE;
-
 export function isPremiumEnabled(orgPlan?: string): boolean {
-  if (SELF_HOST_OVERRIDE) return true;
   return orgPlan === 'paid';
 }
 
@@ -53,10 +49,4 @@ export function requireLicense(feature: LicenseFeature, orgPlan?: string): void 
 export function getOrgPlan(org: any): string | undefined {
   if (!org) return undefined;
   return typeof org.plan === 'string' ? org.plan : undefined;
-}
-
-if (SELF_HOST_OVERRIDE) {
-  logger.info('Premium license detected — all features enabled (self-host override)');
-} else {
-  logger.info('No license key — running in open source mode');
 }
