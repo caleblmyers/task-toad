@@ -98,18 +98,19 @@ These improve files we'll be rewriting for branch-based execution:
 - **R13: Executor config validation** — Add Zod schemas for each executor's config. Do this when touching executors for branch commit changes (pipeline tasks 2-4).
 - **R3: AI feature registry** (partial) — If aiService.ts needs further changes for the pipeline, consolidate the 40+ wrapper functions then. Otherwise defer.
 
-### Deferred Refactors (not blocking pipeline, do post-Phase 1)
+### Deferred Refactors — DONE (Wave 62)
 
-UI and code quality improvements that don't touch pipeline files:
+- [x] **R2: useEditableField hook** — `hooks/useEditableField.ts`
+- [x] **R6: Metrics calculation extraction** — `utils/metricsCalc.ts`
+- [x] **R8: TaskDetailPanel tab extraction** — 5 tab components in `taskdetail/`
+- [x] **R9: Picker component consolidation** — `shared/MultiPicker.tsx`
+- [x] **R11: queries.ts decomposition** — domain-split files in `api/queries/`
+- [x] **R12: Chart utilities extraction** — `hooks/useResizableContainer.ts` + `utils/chartFormatting.ts`
 
-- **R2: useEditableField hook** — Extract from TaskDetailPanel/TaskFieldsPanel. ~200 lines saved. P2.
+### Remaining Deferred Refactors
+
 - **R5: Split useProjectData god interface** — 100+ properties → focused sub-interfaces. P2. Medium complexity.
-- **R6: Metrics calculation extraction** — Inline velocity/burndown/cycle-time → `utils/metrics.ts`. P2.
 - **R7: Resolver auth/ownership guards** — `requireEntity<T>()` helper. P3. Wide blast radius, do incrementally.
-- **R8: TaskDetailPanel tab extraction** — 5 inline tabs → 5 components. P2.
-- **R9: Picker component consolidation** — Assignee/Watcher/Label pickers → shared components. P2.
-- **R11: queries.ts decomposition** — 1,011 lines → domain-split files. P3.
-- **R12: Chart utilities extraction** — Shared resize observer + axis formatting. P3.
 
 ### Action Pipeline Rewrite — Branch-Based Code Generation
 
@@ -225,5 +226,7 @@ The action plan pipeline needs a fundamental rework so that generated code is co
 | 58 | 2026-03-24 | Project scaffolding: setup wizard, scaffold mutation, AI prompt fix, empty repo commit, framework templates |
 | 59 | 2026-03-24 | Per-org licensing: plan column on Org, license.ts rewrite, 33 resolver call sites, infrastructure per-event checks |
 | 60 | 2026-03-24 | Scaffolding follow-ups (default branch fix, template registry, KB auto-populate, wizard tests) + licensing frontend/backend (orgPlan in me query, updateOrgPlan mutation, org plan cache, Plans tab) |
+| 61 | 2026-03-25 | Pre-pipeline refactors: token manager (R1), event emission helpers (R4), unused exports (R14), custom project option |
+| 62 | 2026-03-25 | Deferred refactors: useEditableField (R2), tab extraction (R8), picker consolidation (R9), metrics extraction (R6), queries.ts split (R11), chart utilities (R12) |
 
 Full wave details in `changelog.md`.

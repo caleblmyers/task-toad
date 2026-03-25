@@ -4,6 +4,37 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-25 (Wave 62 — deferred refactors)
+
+### Wave 62: Codebase Refactors from Audit (3 workers, 6 tasks)
+
+**Worker 1 — task-001: useEditableField hook (R2):**
+- Extracted `hooks/useEditableField.ts` from TaskDetailPanel's 3 repeated editing state pairs
+
+**Worker 1 — task-002: Tab extraction (R8):**
+- Extracted 5 inline tabs from TaskDetailPanel into standalone components: DetailsTab, ActivityTab, RelationsTab, ActionsTab, InsightsTab
+- TaskDetailPanel reduced from ~695 lines to orchestration + tab rendering
+
+**Worker 1 — task-003: Picker consolidation (R9):**
+- Created `shared/MultiPicker.tsx` — generic multi-select component
+- TaskFieldsPanel uses it for assignees, watchers, and labels (with custom rendering + label creation)
+
+**Worker 2 — task-004: Metrics extraction (R6):**
+- Created `utils/metricsCalc.ts` with calculateVelocity, calculateCycleTime, percentile, calculateHealthScore
+- sprint.ts and project.ts resolvers use shared utilities (eliminated duplicate calculations)
+
+**Worker 2 — task-005: queries.ts decomposition (R11):**
+- Split 1,011-line queries.ts into domain files: auth, project, task, sprint, ai, github, misc + barrel index
+- Consolidated 8 UPDATE_TASK_* mutations via factory function
+
+**Worker 3 — task-006: Chart utilities (R12):**
+- Created `hooks/useResizableContainer.ts` and `utils/chartFormatting.ts`
+- 4 chart components updated to use shared utilities (eliminated 6 ResizeObserver duplications + 3 fmtDate duplications)
+
+**Process:** All 6 merged on first review, zero rejections. Pre-existing integration test failures (19 tests) remain — noted in issues.md.
+
+---
+
 ## 2026-03-25 (Wave 61 — pre-pipeline refactors)
 
 ### Wave 61: Pre-Pipeline Refactors (2 workers, 4 tasks)
