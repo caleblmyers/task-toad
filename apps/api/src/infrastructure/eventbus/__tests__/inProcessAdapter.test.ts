@@ -65,27 +65,6 @@ describe('InProcessEventBus', () => {
     expect(handler2).toHaveBeenCalledOnce();
   });
 
-  it('calls onAny handlers for every event', () => {
-    const anyHandler = vi.fn();
-    bus.onAny(anyHandler);
-
-    bus.emit('task.created', {
-      orgId: 'org1', userId: 'user1', projectId: 'proj1',
-      timestamp: new Date().toISOString(),
-      task: { taskId: 't1', title: 'Test', status: 'todo', projectId: 'proj1', orgId: 'org1', taskType: 'task' },
-    });
-
-    bus.emit('sprint.created', {
-      orgId: 'org1', userId: 'user1', projectId: 'proj1',
-      timestamp: new Date().toISOString(),
-      sprint: { sprintId: 's1', name: 'Sprint 1', projectId: 'proj1', orgId: 'org1' },
-    });
-
-    expect(anyHandler).toHaveBeenCalledTimes(2);
-    expect(anyHandler.mock.calls[0][0]).toBe('task.created');
-    expect(anyHandler.mock.calls[1][0]).toBe('sprint.created');
-  });
-
   it('catches sync handler errors without throwing to caller', () => {
     bus.on('task.created', () => {
       throw new Error('Handler exploded');
@@ -117,9 +96,7 @@ describe('InProcessEventBus', () => {
 
   it('removeAllListeners clears all handlers', () => {
     const handler = vi.fn();
-    const anyHandler = vi.fn();
     bus.on('task.created', handler);
-    bus.onAny(anyHandler);
 
     bus.removeAllListeners();
 
@@ -130,6 +107,5 @@ describe('InProcessEventBus', () => {
     });
 
     expect(handler).not.toHaveBeenCalled();
-    expect(anyHandler).not.toHaveBeenCalled();
   });
 });

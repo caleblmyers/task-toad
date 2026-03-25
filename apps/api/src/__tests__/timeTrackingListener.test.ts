@@ -23,7 +23,6 @@ function makeBus() {
       if (!handlers[event]) handlers[event] = [];
       handlers[event].push(handler);
     }),
-    onAny: vi.fn(),
     removeAllListeners: vi.fn(),
   };
   return {

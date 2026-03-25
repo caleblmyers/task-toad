@@ -17,5 +17,5 @@ export function registerExecutors(): void {
   register(fixCIExecutor);
 }
 
-export { get as getExecutor, has as hasExecutor, availableTypes } from './registry.js';
+export { get as getExecutor, availableTypes } from './registry.js';
 export type { ActionType, ActionExecutor, ActionContext, ActionResult } from './types.js';
