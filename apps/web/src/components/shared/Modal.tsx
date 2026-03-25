@@ -8,6 +8,7 @@ interface ModalProps {
   title: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   variant?: 'centered' | 'panel-right' | 'top-aligned';
+  closeOnOverlayClick?: boolean;
   children: ReactNode;
 }
 
@@ -24,6 +25,7 @@ export default function Modal({
   title,
   size = 'md',
   variant = 'centered',
+  closeOnOverlayClick = true,
   children,
 }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -56,11 +58,11 @@ export default function Modal({
   // Backdrop click
   const handleOverlayClick = useCallback(
     (e: React.MouseEvent) => {
-      if (e.target === overlayRef.current) {
+      if (e.target === overlayRef.current && closeOnOverlayClick) {
         onClose();
       }
     },
-    [onClose]
+    [onClose, closeOnOverlayClick]
   );
 
   if (!isOpen) return null;

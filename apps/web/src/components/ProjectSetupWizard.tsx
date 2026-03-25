@@ -169,7 +169,7 @@ export default function ProjectSetupWizard({
 
   return (
     <>
-      <Modal isOpen={isOpen && !showRepoModal} onClose={onSkip} title="Set Up Your Project" size="lg">
+      <Modal isOpen={isOpen && !showRepoModal} onClose={onSkip} title="Set Up Your Project" size="lg" closeOnOverlayClick={!creatingRepo && !scaffolding && step === 'github'}>
         <div className="p-6">
           {step === 'github' && (
             <div className="space-y-4">
