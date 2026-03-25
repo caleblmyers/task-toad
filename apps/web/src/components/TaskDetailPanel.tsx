@@ -6,6 +6,7 @@ import { gql } from '../api/client';
 import { TASK_ANCESTORS_QUERY, TASK_INSIGHTS_QUERY, GENERATE_MANUAL_TASK_SPEC_MUTATION } from '../api/queries';
 import ManualTaskSpecView from './taskdetail/ManualTaskSpecView';
 import type { ManualTaskSpec } from './taskdetail/ManualTaskSpecView';
+import { useEditableField } from '../hooks/useEditableField';
 import CommentSection from './CommentSection';
 import ActivityFeed from './ActivityFeed';
 import MarkdownRenderer from './shared/MarkdownRenderer';
@@ -146,12 +147,18 @@ function PanelContent({
   const [insightCount, setInsightCount] = useState(0);
   const [fetchedInsights, setFetchedInsights] = useState<TaskInsight[]>([]);
 
-  const [editingDescription, setEditingDescription] = useState(false);
-  const [editDescValue, setEditDescValue] = useState('');
-  const [editingInstructions, setEditingInstructions] = useState(false);
-  const [editInstrValue, setEditInstrValue] = useState('');
-  const [editingAC, setEditingAC] = useState(false);
-  const [editACValue, setEditACValue] = useState('');
+  const descField = useEditableField(
+    task.description ?? '',
+    async (val) => { if (onUpdateTask) await onUpdateTask(task.taskId, { description: val }); },
+  );
+  const instrField = useEditableField(
+    task.instructions ?? '',
+    async (val) => { if (onUpdateTask) await onUpdateTask(task.taskId, { instructions: val }); },
+  );
+  const acField = useEditableField(
+    task.acceptanceCriteria ?? '',
+    async (val) => { if (onUpdateTask) await onUpdateTask(task.taskId, { acceptanceCriteria: val }); },
+  );
   const [uploading, setUploading] = useState(false);
   const [localAttachments, setLocalAttachments] = useState<Attachment[]>(task.attachments ?? []);
   const [manualSpec, setManualSpec] = useState<ManualTaskSpec | null>(null);
@@ -247,15 +254,12 @@ function PanelContent({
       {/* Description */}
       <div className="mb-4">
         <p className="text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">Description</p>
-        {editingDescription ? (
+        {descField.isEditing ? (
           <MarkdownEditor
-            value={editDescValue}
-            onChange={setEditDescValue}
-            onSave={async () => {
-              if (onUpdateTask) await onUpdateTask(task.taskId, { description: editDescValue });
-              setEditingDescription(false);
-            }}
-            onCancel={() => setEditingDescription(false)}
+            value={descField.value}
+            onChange={descField.setValue}
+            onSave={descField.save}
+            onCancel={descField.cancel}
             placeholder="Add a description…"
             rows={4}
           />
@@ -263,7 +267,7 @@ function PanelContent({
           <button
             type="button"
             className="w-full text-left cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded p-1 -m-1"
-            onClick={() => { if (!isDisabled) { setEditDescValue(task.description ?? ''); setEditingDescription(true); } }}
+            onClick={() => { if (!isDisabled) descField.startEdit(); }}
             disabled={isDisabled}
             aria-label="Edit description"
           >
@@ -271,7 +275,7 @@ function PanelContent({
           </button>
         ) : (
           <button
-            onClick={() => { setEditDescValue(''); setEditingDescription(true); }}
+            onClick={() => { if (!isDisabled) descField.startEdit(); }}
             className="text-xs text-slate-500 hover:text-slate-600"
             disabled={isDisabled}
           >
@@ -285,15 +289,12 @@ function PanelContent({
         <p className="text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">
           <span className="mr-1">&#10003;</span>Acceptance Criteria
         </p>
-        {editingAC ? (
+        {acField.isEditing ? (
           <MarkdownEditor
-            value={editACValue}
-            onChange={setEditACValue}
-            onSave={async () => {
-              if (onUpdateTask) await onUpdateTask(task.taskId, { acceptanceCriteria: editACValue });
-              setEditingAC(false);
-            }}
-            onCancel={() => setEditingAC(false)}
+            value={acField.value}
+            onChange={acField.setValue}
+            onSave={acField.save}
+            onCancel={acField.cancel}
             placeholder="Add acceptance criteria…"
             rows={4}
           />
@@ -301,7 +302,7 @@ function PanelContent({
           <button
             type="button"
             className="w-full text-left cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded p-1 -m-1"
-            onClick={() => { if (!isDisabled) { setEditACValue(task.acceptanceCriteria ?? ''); setEditingAC(true); } }}
+            onClick={() => { if (!isDisabled) acField.startEdit(); }}
             disabled={isDisabled}
             aria-label="Edit acceptance criteria"
           >
@@ -309,7 +310,7 @@ function PanelContent({
           </button>
         ) : (
           <button
-            onClick={() => { setEditACValue(''); setEditingAC(true); }}
+            onClick={() => { if (!isDisabled) acField.startEdit(); }}
             className="text-xs text-slate-500 hover:text-slate-600"
             disabled={isDisabled}
           >
@@ -321,15 +322,12 @@ function PanelContent({
       {/* Instructions */}
       <div className="mb-4">
         <p className="text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">Instructions</p>
-        {editingInstructions ? (
+        {instrField.isEditing ? (
           <MarkdownEditor
-            value={editInstrValue}
-            onChange={setEditInstrValue}
-            onSave={async () => {
-              if (onUpdateTask) await onUpdateTask(task.taskId, { instructions: editInstrValue });
-              setEditingInstructions(false);
-            }}
-            onCancel={() => setEditingInstructions(false)}
+            value={instrField.value}
+            onChange={instrField.setValue}
+            onSave={instrField.save}
+            onCancel={instrField.cancel}
             placeholder="Add instructions…"
             rows={6}
           />
@@ -337,7 +335,7 @@ function PanelContent({
           <button
             type="button"
             className="w-full text-left bg-slate-50 dark:bg-slate-800 rounded-lg p-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700"
-            onClick={() => { if (!isDisabled) { setEditInstrValue(task.instructions ?? ''); setEditingInstructions(true); } }}
+            onClick={() => { if (!isDisabled) instrField.startEdit(); }}
             disabled={isDisabled}
             aria-label="Edit instructions"
           >
@@ -354,7 +352,7 @@ function PanelContent({
               {generatingInstructions === task.taskId ? 'Generating…' : '✦ Generate instructions'}
             </button>
             <button
-              onClick={() => { setEditInstrValue(''); setEditingInstructions(true); }}
+              onClick={() => { if (!isDisabled) instrField.startEdit(); }}
               className="text-xs text-slate-500 hover:text-slate-600 px-2"
               disabled={isDisabled}
             >
@@ -362,7 +360,7 @@ function PanelContent({
             </button>
           </div>
         )}
-        {task.instructions && !editingInstructions && (
+        {task.instructions && !instrField.isEditing && (
           <ManualTaskSpecView
             spec={manualSpec}
             loading={specLoading}
@@ -623,8 +621,7 @@ function PanelContent({
   }, [
     task, subtasks, editingTitle, editTitleValue, generatingInstructions,
     sprints, orgUsers, statuses, allTasks, comments, activities, labels,
-    disabled, projectHasRepo, editingDescription, editDescValue,
-    editingInstructions, editInstrValue, editingAC, editACValue,
+    disabled, projectHasRepo, descField, instrField, acField,
     uploading, localAttachments, reviewResult, reviewLoading,
     autoCompleteLoading, actionPlan, timeSummary, tools.length, ancestors,
     showInsightsTab, insightCount, fetchedInsights, manualSpec, specLoading,
