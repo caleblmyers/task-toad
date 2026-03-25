@@ -6,6 +6,7 @@ import { AuthorizationError, NotFoundError, ValidationError } from '../errors.js
 import { requireAuth, requireOrg, requireProjectAccess, requireApiKey } from './auth.js';
 import { parseInput, CreateProjectInput, requireProject } from '../../utils/resolverHelpers.js';
 import { emitProjectEvent, emitTaskEvent } from '../../infrastructure/eventbus/emitters.js';
+import { calculateHealthScore, calculateCycleTime } from '../../utils/metricsCalc.js';
 
 // ── Project queries ──
 
@@ -85,15 +86,9 @@ export const projectQueries = {
       }
       const statusDistribution = Array.from(statusMap, ([label, count]) => ({ label, count }));
 
-      // Health score: simple heuristic (100 base, penalize overdue and low completion)
-      let healthScore: number | null = null;
-      if (totalTasks > 0) {
-        healthScore = 100;
-        healthScore -= Math.min(overdueTasks * 10, 50);
-        if (completionPercent < 25) healthScore -= 20;
-        else if (completionPercent < 50) healthScore -= 10;
-        healthScore = Math.max(0, Math.min(100, healthScore));
-      }
+      const healthScore: number | null = totalTasks > 0
+        ? calculateHealthScore(completionPercent, overdueTasks, totalTasks)
+        : null;
 
       return {
         projectId: proj.projectId,
@@ -183,27 +178,14 @@ export const projectQueries = {
         orderBy: { createdAt: 'asc' },
       });
 
-      const actByTask = new Map<string, Array<{ newValue: string | null; createdAt: Date }>>();
-      for (const a of statusActivities) {
-        if (!a.taskId) continue;
-        const list = actByTask.get(a.taskId) ?? [];
-        list.push({ newValue: a.newValue, createdAt: a.createdAt });
-        actByTask.set(a.taskId, list);
-      }
-
-      const cycleTimes: number[] = [];
-      for (const taskId of recentDoneIds) {
-        const acts = actByTask.get(taskId) ?? [];
-        const firstInProgress = acts.find((a) => a.newValue === 'in_progress');
-        const firstDone = acts.find((a) => a.newValue === 'done');
-        if (firstInProgress && firstDone) {
-          const hours = (firstDone.createdAt.getTime() - firstInProgress.createdAt.getTime()) / (1000 * 60 * 60);
-          cycleTimes.push(hours);
-        }
-      }
-
-      if (cycleTimes.length > 0) {
-        avgCycleTimeHours = Math.round((cycleTimes.reduce((s, v) => s + v, 0) / cycleTimes.length) * 100) / 100;
+      // Use task createdAt as placeholder — calculateCycleTime only uses it for lead time
+      const recentDoneTasks2 = recentDoneTasks.map((t) => ({
+        taskId: t.taskId,
+        createdAt: t.createdAt,
+      }));
+      const cycleResult = calculateCycleTime(statusActivities, recentDoneTasks2);
+      if (cycleResult.cycleTimes.length > 0) {
+        avgCycleTimeHours = cycleResult.averageCycleTime;
       }
     }
 

@@ -11,6 +11,7 @@ import { StringArraySchema } from '../../utils/zodSchemas.js';
 import { createChildLogger } from '../../utils/logger.js';
 import { emitSprintEvent } from '../../infrastructure/eventbus/emitters.js';
 import { runMonteCarloForecast } from '../../utils/monteCarloForecast.js';
+import { calculateVelocity, percentile } from '../../utils/metricsCalc.js';
 
 const log = createChildLogger('sprint');
 
@@ -56,16 +57,11 @@ export const sprintQueries = {
     return closedSprints.map((sprint, i) => {
       const loaded = allSprintTasks[i];
       const tasks = loaded instanceof Error ? [] : (loaded ?? []);
-      const doneTasks = tasks.filter((t: { status: string }) => t.status === 'done');
+      const velocity = calculateVelocity(tasks);
       return {
         sprintId: sprint.sprintId,
         sprintName: sprint.name,
-        completedTasks: doneTasks.length,
-        completedHours: doneTasks.reduce((s: number, t: { estimatedHours: number | null }) => s + (t.estimatedHours ?? 0), 0),
-        totalTasks: tasks.length,
-        totalHours: tasks.reduce((s: number, t: { estimatedHours: number | null }) => s + (t.estimatedHours ?? 0), 0),
-        pointsCompleted: doneTasks.reduce((s: number, t: { storyPoints: number | null }) => s + (t.storyPoints ?? 0), 0),
-        pointsTotal: tasks.reduce((s: number, t: { storyPoints: number | null }) => s + (t.storyPoints ?? 0), 0),
+        ...velocity,
       };
     });
   },
@@ -239,22 +235,16 @@ export const sprintQueries = {
       });
     }
 
-    const percentile = (sorted: number[], p: number): number => {
-      if (sorted.length === 0) return 0;
-      const idx = Math.ceil((p / 100) * sorted.length) - 1;
-      return sorted[Math.max(0, idx)];
-    };
-
-    const avg = (arr: number[]): number =>
-      arr.length === 0 ? 0 : arr.reduce((s, v) => s + v, 0) / arr.length;
-
     leadTimes.sort((a, b) => a - b);
     cycleTimes.sort((a, b) => a - b);
 
+    const avgArr = (arr: number[]): number =>
+      arr.length === 0 ? 0 : arr.reduce((s, v) => s + v, 0) / arr.length;
+
     return {
       tasks: taskMetrics,
-      avgLeadTimeHours: Math.round(avg(leadTimes) * 100) / 100,
-      avgCycleTimeHours: Math.round(avg(cycleTimes) * 100) / 100,
+      avgLeadTimeHours: Math.round(avgArr(leadTimes) * 100) / 100,
+      avgCycleTimeHours: Math.round(avgArr(cycleTimes) * 100) / 100,
       p50LeadTimeHours: Math.round(percentile(leadTimes, 50) * 100) / 100,
       p85LeadTimeHours: Math.round(percentile(leadTimes, 85) * 100) / 100,
       p50CycleTimeHours: Math.round(percentile(cycleTimes, 50) * 100) / 100,
