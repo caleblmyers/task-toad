@@ -8,6 +8,7 @@ import {
   UPDATE_WORKFLOW_TRANSITION_MUTATION,
 } from '../../api/queries';
 import { useFormState } from '../../hooks/useFormState';
+import { useLicenseFeatures } from '../../hooks/useLicenseFeatures';
 import Button from '../shared/Button';
 const ALL_ROLES = ['viewer', 'editor', 'admin'] as const;
 
@@ -26,6 +27,7 @@ interface Props {
 }
 
 export default function WorkflowTab({ projectId }: Props) {
+  const { hasFeature } = useLicenseFeatures();
   const [transitions, setTransitions] = useState<WorkflowTransition[]>([]);
   const [statuses, setStatuses] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,6 +109,19 @@ export default function WorkflowTab({ projectId }: Props) {
   }, []);
 
   const formatStatus = (s: string) => s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+  if (!hasFeature('workflow_restrictions')) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Workflow Transition Restrictions</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 rounded p-3">
+            Workflow transition restrictions are available on the Premium plan. Upgrade to control which roles can perform specific status transitions.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return <div className="text-sm text-slate-500 dark:text-slate-400">Loading...</div>;

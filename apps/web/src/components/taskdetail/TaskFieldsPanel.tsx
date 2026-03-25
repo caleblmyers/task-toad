@@ -110,11 +110,13 @@ export default function TaskFieldsPanel({
           disabled={disabled}
         >
           <option value="">Backlog (unassigned)</option>
-          {sprints.map((s) => (
-            <option key={s.sprintId} value={s.sprintId}>
-              {s.name}{s.isActive ? ' ★' : ''}
-            </option>
-          ))}
+          {sprints
+            .filter((s) => !s.closedAt || s.sprintId === task.sprintId)
+            .map((s) => (
+              <option key={s.sprintId} value={s.sprintId}>
+                {s.name}{s.isActive ? ' ★' : ''}{s.closedAt ? ' (closed)' : ''}
+              </option>
+            ))}
         </select>
       </div>
 

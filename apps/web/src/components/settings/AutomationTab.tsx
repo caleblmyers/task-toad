@@ -144,6 +144,8 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
   const [conditionsOpen, setConditionsOpen] = useState(false);
   const [actions, setActions] = useState<ActionRow[]>([{ type: 'notify_assignee', param: '' }]);
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+  const [cronExpression, setCronExpression] = useState('');
+  const [cronTimezone, setCronTimezone] = useState('UTC');
 
   const loadRules = useCallback(async () => {
     setLoading(true);
@@ -180,6 +182,10 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
       const trigger = serializeTrigger(triggerEvent, conditionOp, conditions);
       const action = serializeActions(actions);
       const vars: Record<string, unknown> = { projectId, name: name.trim(), trigger, action };
+      if (cronExpression.trim()) {
+        vars.cronExpression = cronExpression.trim();
+        vars.timezone = cronTimezone;
+      }
       const { createAutomationRule } = await gql<{ createAutomationRule: AutomationRule }>(
         CREATE_AUTOMATION_RULE_MUTATION,
         vars,
@@ -225,11 +231,15 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
     setConditionsOpen(false);
     setActions([{ type: 'notify_assignee', param: '' }]);
     setEditingRuleId(null);
+    setCronExpression('');
+    setCronTimezone('UTC');
   };
 
   const handleEditRule = (rule: AutomationRule) => {
     setEditingRuleId(rule.id);
     setName(rule.name);
+    setCronExpression(rule.cronExpression ?? '');
+    setCronTimezone(rule.timezone ?? 'UTC');
 
     // Parse trigger
     try {
@@ -284,9 +294,17 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
     try {
       const trigger = serializeTrigger(triggerEvent, conditionOp, conditions);
       const action = serializeActions(actions);
+      const editVars: Record<string, unknown> = { ruleId: editingRuleId, name: name.trim(), trigger, action };
+      if (cronExpression.trim()) {
+        editVars.cronExpression = cronExpression.trim();
+        editVars.timezone = cronTimezone;
+      } else {
+        editVars.cronExpression = null;
+        editVars.timezone = null;
+      }
       const { updateAutomationRule } = await gql<{ updateAutomationRule: AutomationRule }>(
         UPDATE_AUTOMATION_RULE_MUTATION,
-        { ruleId: editingRuleId, name: name.trim(), trigger, action },
+        editVars,
       );
       setRules((prev) => prev.map((r) => (r.id === editingRuleId ? updateAutomationRule : r)));
       resetForm();
@@ -548,6 +566,36 @@ export default function AutomationTab({ projectId, orgUsers }: Props) {
             + Add action
           </button>
         </div>
+
+        {/* Cron schedule (premium only) */}
+        {hasFeature('cron_automations') && (
+          <div className="space-y-2">
+            <label className="text-xs text-slate-500 dark:text-slate-400">Schedule (optional):</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={cronExpression}
+                onChange={(e) => setCronExpression(e.target.value)}
+                placeholder="Cron expression (e.g. 0 9 * * 1-5)"
+                className={`flex-1 ${inputClass} py-1.5`}
+              />
+              <select
+                value={cronTimezone}
+                onChange={(e) => setCronTimezone(e.target.value)}
+                className={`w-40 ${selectClass}`}
+              >
+                <option value="UTC">UTC</option>
+                <option value="America/New_York">Eastern</option>
+                <option value="America/Chicago">Central</option>
+                <option value="America/Denver">Mountain</option>
+                <option value="America/Los_Angeles">Pacific</option>
+                <option value="Europe/London">London</option>
+                <option value="Europe/Berlin">Berlin</option>
+                <option value="Asia/Tokyo">Tokyo</option>
+              </select>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center gap-2">
           <Button size="sm" disabled={saving || !name.trim()} onClick={editingRuleId ? handleSaveEdit : handleCreateRule}>
