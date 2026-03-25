@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { gql } from '../api/client';
 import { CUMULATIVE_FLOW_QUERY } from '../api/queries';
 import useAsyncData from '../hooks/useAsyncData';
+import { useResizableContainer } from '../hooks/useResizableContainer';
+import { formatChartDate } from '../utils/chartFormatting';
 
 interface StatusCount {
   status: string;
@@ -36,15 +38,9 @@ const STATUS_COLORS: Record<string, { fill: string; label: string }> = {
 const CHART_H = 280;
 const PAD = { top: 24, right: 16, bottom: 32, left: 40 };
 
-function fmtDate(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  return `${d.getMonth() + 1}/${d.getDate()}`;
-}
-
 export default function CumulativeFlowChart({ projectId, sprintId, fromDate, toDate }: CumulativeFlowChartProps) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(500);
+  const [width, containerRef] = useResizableContainer(500);
 
   const { data, loading, error: fetchError, retry } = useAsyncData(
     async () => {
@@ -58,17 +54,6 @@ export default function CumulativeFlowChart({ projectId, sprintId, fromDate, toD
     },
     [projectId, sprintId, fromDate, toDate],
   );
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const obs = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width;
-      if (w && w > 0) setWidth(w);
-    });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
 
   if (loading) {
     return (
@@ -170,7 +155,7 @@ export default function CumulativeFlowChart({ projectId, sprintId, fromDate, toD
           if (i % labelStep !== 0 && i !== days.length - 1) return null;
           return (
             <text key={d.date} x={xScale(i)} y={CHART_H - 8} textAnchor="middle" className="fill-slate-400" fontSize={10}>
-              {fmtDate(d.date)}
+              {formatChartDate(d.date)}
             </text>
           );
         })}
@@ -212,7 +197,7 @@ export default function CumulativeFlowChart({ projectId, sprintId, fromDate, toD
             const label = STATUS_COLORS[l.status]?.label ?? l.status;
             return `${label}: ${l.count}`;
           });
-          const headerText = fmtDate(day.date);
+          const headerText = formatChartDate(day.date);
           const allLines = [headerText, ...lines];
           const boxW = Math.max(100, Math.max(...allLines.map((l) => l.length)) * 7 + 16);
           const boxH = allLines.length * 16 + 8;

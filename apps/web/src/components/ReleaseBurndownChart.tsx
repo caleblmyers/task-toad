@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { gql } from '../api/client';
 import { RELEASE_BURNDOWN_QUERY } from '../api/queries';
 import useAsyncData from '../hooks/useAsyncData';
+import { useResizableContainer } from '../hooks/useResizableContainer';
+import { formatChartDate } from '../utils/chartFormatting';
 
 interface BurndownPoint {
   date: string;
@@ -13,15 +15,9 @@ interface BurndownPoint {
 const CHART_H = 220;
 const PAD = { top: 24, right: 16, bottom: 32, left: 40 };
 
-function fmtDate(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  return `${d.getMonth() + 1}/${d.getDate()}`;
-}
-
 export default function ReleaseBurndownChart({ releaseId }: { releaseId: string }) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(400);
+  const [width, containerRef] = useResizableContainer(400);
 
   const { data, loading, error, retry } = useAsyncData(
     async () => {
@@ -30,17 +26,6 @@ export default function ReleaseBurndownChart({ releaseId }: { releaseId: string 
     },
     [releaseId],
   );
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const obs = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width;
-      if (w && w > 0) setWidth(w);
-    });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
 
   if (loading) {
     return (
@@ -122,7 +107,7 @@ export default function ReleaseBurndownChart({ releaseId }: { releaseId: string 
           if (i % labelStep !== 0 && i !== data.length - 1) return null;
           return (
             <text key={d.date} x={xScale(i)} y={CHART_H - 8} textAnchor="middle" className="fill-slate-400" fontSize={10}>
-              {fmtDate(d.date)}
+              {formatChartDate(d.date)}
             </text>
           );
         })}
@@ -154,7 +139,7 @@ export default function ReleaseBurndownChart({ releaseId }: { releaseId: string 
         {/* Tooltip */}
         {hoveredIdx !== null && (() => {
           const p = remainingPoints[hoveredIdx];
-          const labelText = `${fmtDate(p.date)}: ${p.completed}/${p.total} done`;
+          const labelText = `${formatChartDate(p.date)}: ${p.completed}/${p.total} done`;
           const boxW = Math.max(90, labelText.length * 6.5);
           const tx = Math.min(Math.max(p.x, PAD.left + boxW / 2), PAD.left + innerW - boxW / 2);
           return (

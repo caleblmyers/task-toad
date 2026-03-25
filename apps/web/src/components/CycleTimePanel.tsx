@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { gql } from '../api/client';
 import { CYCLE_TIME_METRICS_QUERY } from '../api/queries';
 import useAsyncData from '../hooks/useAsyncData';
+import { useResizableContainer } from '../hooks/useResizableContainer';
+import { formatHours } from '../utils/chartFormatting';
 import { IconClose } from './shared/Icons';
 
 interface TaskCycleMetrics {
@@ -42,13 +44,6 @@ interface Props {
 
 type SortField = 'title' | 'leadTimeHours' | 'cycleTimeHours';
 type ViewMode = 'table' | 'scatter' | 'control';
-
-function formatHours(hours: number | null): string {
-  if (hours === null) return '-';
-  if (hours < 1) return `${Math.round(hours * 60)}m`;
-  if (hours < 24) return `${hours.toFixed(1)}h`;
-  return `${(hours / 24).toFixed(1)}d`;
-}
 
 export default function CycleTimePanel({ projectId, sprints, disabled, onClose }: Props) {
   const [sprintFilter, setSprintFilter] = useState<string>('');
@@ -292,20 +287,8 @@ function computePercentile(sorted: number[], p: number): number {
 }
 
 function CycleTimeScatter({ tasks, p50, p85 }: { tasks: TaskCycleMetrics[]; p50: number; p85: number }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(500);
+  const [width, containerRef] = useResizableContainer(500);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const obs = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width;
-      if (w && w > 0) setWidth(w);
-    });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
 
   // Filter to tasks with both cycleTimeHours and completedAt
   const validTasks = tasks.filter((t) => t.cycleTimeHours !== null && t.completedAt !== null);
@@ -476,20 +459,8 @@ const CONTROL_WINDOW_OPTIONS = [5, 10, 15, 20] as const;
 
 function CycleTimeControlChart({ tasks, windowSize, onWindowChange }: { tasks: TaskCycleMetrics[]; windowSize: number; onWindowChange: (v: number) => void }) {
   const controlWindow = windowSize;
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(500);
+  const [width, containerRef] = useResizableContainer(500);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const obs = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width;
-      if (w && w > 0) setWidth(w);
-    });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
 
   const validTasks = tasks
     .filter((t) => t.cycleTimeHours !== null && t.completedAt !== null)

@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { gql } from '../api/client';
 import { SPRINT_BURNDOWN_QUERY } from '../api/queries';
 import useAsyncData from '../hooks/useAsyncData';
+import { useResizableContainer } from '../hooks/useResizableContainer';
+import { formatChartDate } from '../utils/chartFormatting';
 
 interface BurndownDay {
   date: string;
@@ -26,16 +28,10 @@ type BurndownChartProps =
 const CHART_H = 250;
 const PAD = { top: 24, right: 16, bottom: 32, left: 40 };
 
-function fmtDate(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  return `${d.getMonth() + 1}/${d.getDate()}`;
-}
-
 export default function BurndownChart(props: BurndownChartProps) {
   const [mode, setMode] = useState<'burndown' | 'burnup'>('burndown');
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(500);
+  const [width, containerRef] = useResizableContainer(500);
 
   const sprintId = props.sprintId;
 
@@ -48,17 +44,6 @@ export default function BurndownChart(props: BurndownChartProps) {
     [sprintId],
   );
   const error = !!fetchError;
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const obs = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width;
-      if (w && w > 0) setWidth(w);
-    });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
 
   const data = props.data ?? fetched;
 
@@ -128,7 +113,7 @@ export default function BurndownChart(props: BurndownChartProps) {
     <div ref={containerRef} className="w-full">
       <div className="flex items-center justify-between mb-2 px-1">
         <span className="text-xs text-slate-500 font-medium">
-          {data.sprintName} ({fmtDate(startDate)} - {fmtDate(endDate)})
+          {data.sprintName} ({formatChartDate(startDate)} - {formatChartDate(endDate)})
         </span>
         <div className="flex rounded-md border border-slate-200 text-xs overflow-hidden">
           <button
@@ -171,7 +156,7 @@ export default function BurndownChart(props: BurndownChartProps) {
           if (i % labelStep !== 0 && i !== days.length - 1) return null;
           return (
             <text key={d.date} x={xScale(i)} y={CHART_H - 8} textAnchor="middle" className="fill-slate-400" fontSize={10}>
-              {fmtDate(d.date)}
+              {formatChartDate(d.date)}
             </text>
           );
         })}
@@ -200,7 +185,7 @@ export default function BurndownChart(props: BurndownChartProps) {
         {/* Tooltip */}
         {hoveredIdx !== null && (() => {
           const p = points[hoveredIdx];
-          const labelText = `${fmtDate(p.date)}: ${p.value}`;
+          const labelText = `${formatChartDate(p.date)}: ${p.value}`;
           const boxW = Math.max(70, labelText.length * 7);
           const tx = Math.min(Math.max(p.x, PAD.left + boxW / 2), PAD.left + innerW - boxW / 2);
           return (
