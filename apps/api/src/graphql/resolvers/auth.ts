@@ -1,7 +1,6 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import { SignJWT } from 'jose';
-import { JWT_SECRET, type Context } from '../context.js';
+import { type Context } from '../context.js';
 import { generateToken, hashToken } from '../../utils/token.js';
 import {
   sendEmail,
@@ -23,46 +22,7 @@ import {
 import { validatePassword } from '../../utils/passwordPolicy.js';
 import { getPermissionsForProject } from '../../auth/permissions.js';
 import { auditLog } from '../../utils/auditLog.js';
-
-
-const MAX_SESSIONS = Number(process.env.MAX_SESSIONS_PER_USER) || 5;
-const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-
-/** Hash a JWT for storage in the refresh_tokens table. */
-function hashRefreshToken(jwt: string): string {
-  return crypto.createHash('sha256').update(jwt).digest('hex');
-}
-
-/** Store a refresh token record and prune oldest sessions if over the limit. */
-async function trackRefreshToken(
-  prisma: Context['prisma'],
-  userId: string,
-  refreshJwt: string,
-  userAgent: string | undefined,
-): Promise<void> {
-  const tokenHash = hashRefreshToken(refreshJwt);
-  await prisma.refreshToken.create({
-    data: {
-      userId,
-      tokenHash,
-      expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
-      userAgent: userAgent ?? null,
-    },
-  });
-
-  // Prune oldest sessions if over the limit
-  const activeTokens = await prisma.refreshToken.findMany({
-    where: { userId, expiresAt: { gt: new Date() } },
-    orderBy: { createdAt: 'asc' },
-    select: { id: true },
-  });
-  if (activeTokens.length > MAX_SESSIONS) {
-    const tokensToDelete = activeTokens.slice(0, activeTokens.length - MAX_SESSIONS);
-    await prisma.refreshToken.deleteMany({
-      where: { id: { in: tokensToDelete.map((t) => t.id) } },
-    });
-  }
-}
+import { generateTokenPair, setAuthCookies, trackRefreshToken, hashRefreshToken } from '../../utils/tokenManager.js';
 
 // ── Shared auth helpers (imported by other resolver modules) ──
 
@@ -167,42 +127,16 @@ export const authMutations = {
         throw new AuthenticationError('Please verify your email before logging in. Check your inbox for a verification link.');
       }
     }
-    // Short-lived access token (15 min)
-    const accessToken = await new SignJWT({ sub: user.userId, email: user.email, tv: user.tokenVersion })
-      .setProtectedHeader({ alg: 'HS256' })
-      .setExpirationTime('15m')
-      .sign(JWT_SECRET);
-    // Long-lived refresh token (7 days)
-    const refreshToken = await new SignJWT({ sub: user.userId, type: 'refresh', tv: user.tokenVersion })
-      .setProtectedHeader({ alg: 'HS256' })
-      .setExpirationTime('7d')
-      .sign(JWT_SECRET);
-    // Track refresh token server-side for session limiting
+    const tokens = await generateTokenPair(user);
     await trackRefreshToken(
       context.prisma,
       user.userId,
-      refreshToken,
+      tokens.refreshToken,
       context.req?.headers['user-agent'] as string | undefined,
     );
-    // Set HttpOnly cookies
-    if (context.res) {
-      context.res.cookie('tt-access', accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 15 * 60 * 1000,
-        path: '/',
-      });
-      context.res.cookie('tt-refresh', refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-        path: '/',
-      });
-    }
+    if (context.res) setAuthCookies(context.res, tokens);
     // Return token in body for backward compat during migration
-    return { token: accessToken };
+    return { token: tokens.accessToken };
   },
 
   sendVerificationEmail: async (_parent: unknown, _args: unknown, context: Context) => {
@@ -240,38 +174,15 @@ export const authMutations = {
       data: { emailVerifiedAt: new Date(), verificationToken: null, verificationTokenExpiry: null },
     });
     // Auto-login: generate tokens and set cookies (same pattern as login)
-    const accessToken = await new SignJWT({ sub: user.userId, email: user.email, tv: user.tokenVersion })
-      .setProtectedHeader({ alg: 'HS256' })
-      .setExpirationTime('15m')
-      .sign(JWT_SECRET);
-    const refreshToken = await new SignJWT({ sub: user.userId, type: 'refresh', tv: user.tokenVersion })
-      .setProtectedHeader({ alg: 'HS256' })
-      .setExpirationTime('7d')
-      .sign(JWT_SECRET);
-    // Track refresh token server-side for session limiting
+    const tokens = await generateTokenPair(user);
     await trackRefreshToken(
       context.prisma,
       user.userId,
-      refreshToken,
+      tokens.refreshToken,
       context.req?.headers['user-agent'] as string | undefined,
     );
-    if (context.res) {
-      context.res.cookie('tt-access', accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 15 * 60 * 1000,
-        path: '/',
-      });
-      context.res.cookie('tt-refresh', refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-        path: '/',
-      });
-    }
-    return { success: true, token: accessToken };
+    if (context.res) setAuthCookies(context.res, tokens);
+    return { success: true, token: tokens.accessToken };
   },
 
   requestPasswordReset: async (_parent: unknown, args: { email: string }, context: Context) => {
@@ -403,41 +314,15 @@ export const authMutations = {
     });
     const updatedUser = await context.prisma.user.findUnique({ where: { userId } });
     if (!updatedUser) throw new NotFoundError('User not found');
-    // Short-lived access token (15 min)
-    const accessToken = await new SignJWT({ sub: updatedUser.userId, email: updatedUser.email, tv: updatedUser.tokenVersion })
-      .setProtectedHeader({ alg: 'HS256' })
-      .setExpirationTime('15m')
-      .sign(JWT_SECRET);
-    // Long-lived refresh token (7 days)
-    const refreshToken = await new SignJWT({ sub: updatedUser.userId, type: 'refresh', tv: updatedUser.tokenVersion })
-      .setProtectedHeader({ alg: 'HS256' })
-      .setExpirationTime('7d')
-      .sign(JWT_SECRET);
-    // Track refresh token server-side for session limiting
+    const tokens = await generateTokenPair(updatedUser);
     await trackRefreshToken(
       context.prisma,
       updatedUser.userId,
-      refreshToken,
+      tokens.refreshToken,
       context.req?.headers['user-agent'] as string | undefined,
     );
-    // Set HttpOnly cookies
-    if (context.res) {
-      context.res.cookie('tt-access', accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 15 * 60 * 1000,
-        path: '/',
-      });
-      context.res.cookie('tt-refresh', refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-        path: '/',
-      });
-    }
-    return { token: accessToken };
+    if (context.res) setAuthCookies(context.res, tokens);
+    return { token: tokens.accessToken };
   },
 
   revokeInvite: async (_parent: unknown, args: { inviteId: string }, context: Context) => {

@@ -20,9 +20,10 @@ import { uploadRouter } from './routes/upload.js';
 import githubOAuthRouter from './routes/githubOAuth.js';
 import { logger } from './utils/logger.js';
 import { sseManager } from './utils/sseManager.js';
-import { jwtVerify, SignJWT } from 'jose';
+import { jwtVerify } from 'jose';
 import { JWT_SECRET } from './graphql/context.js';
 import crypto from 'crypto';
+import { generateTokenPair, setAuthCookies, hashRefreshToken } from './utils/tokenManager.js';
 import { register, httpRequestDuration, httpRequestsTotal, graphqlResolverDuration } from './utils/metrics.js';
 import { checkS3Health } from './utils/s3.js';
 import { prisma as sharedPrisma } from './graphql/context.js';
@@ -200,7 +201,7 @@ const refreshHandler: import('express').RequestHandler = async (req, res) => {
       return;
     }
     // Validate refresh token exists in DB (session not pruned or logged out)
-    const oldTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    const oldTokenHash = hashRefreshToken(refreshToken);
     const existingRecord = await sharedPrisma.refreshToken.findUnique({ where: { tokenHash: oldTokenHash } });
     if (!existingRecord) {
       res.clearCookie('tt-access', { path: '/' });
@@ -208,17 +209,9 @@ const refreshHandler: import('express').RequestHandler = async (req, res) => {
       res.status(401).json({ error: 'Session expired or revoked' });
       return;
     }
-    // Issue new access token
-    const accessToken = await new SignJWT({ sub: user.userId, email: user.email, tv: user.tokenVersion })
-      .setProtectedHeader({ alg: 'HS256' })
-      .setExpirationTime('15m')
-      .sign(JWT_SECRET);
-    // Token rotation: issue new refresh token, delete old record, create new record
-    const newRefreshToken = await new SignJWT({ sub: user.userId, type: 'refresh', tv: user.tokenVersion })
-      .setProtectedHeader({ alg: 'HS256' })
-      .setExpirationTime('7d')
-      .sign(JWT_SECRET);
-    const newTokenHash = crypto.createHash('sha256').update(newRefreshToken).digest('hex');
+    // Token rotation: generate new pair, delete old record, create new record
+    const tokens = await generateTokenPair(user);
+    const newTokenHash = hashRefreshToken(tokens.refreshToken);
     await sharedPrisma.refreshToken.delete({ where: { id: existingRecord.id } });
     await sharedPrisma.refreshToken.create({
       data: {
@@ -228,20 +221,7 @@ const refreshHandler: import('express').RequestHandler = async (req, res) => {
         userAgent: req.headers['user-agent'] ?? null,
       },
     });
-    res.cookie('tt-access', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 15 * 60 * 1000,
-      path: '/',
-    });
-    res.cookie('tt-refresh', newRefreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/',
-    });
+    setAuthCookies(res, tokens);
     res.json({ ok: true });
   } catch {
     res.clearCookie('tt-access', { path: '/' });
