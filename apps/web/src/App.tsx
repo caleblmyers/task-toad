@@ -49,6 +49,8 @@ function Protected({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const { user } = useAuth();
+
   return (
     <ErrorBoundary>
       <Suspense
@@ -58,7 +60,7 @@ export default function App() {
           </div>
         }
       >
-        <Routes>
+        <Routes key={user?.userId ?? 'logged-out'}>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
