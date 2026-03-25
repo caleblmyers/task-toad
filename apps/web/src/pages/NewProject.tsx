@@ -35,6 +35,9 @@ export default function NewProject() {
 
   const [options, setOptions] = useState<ProjectOption[]>(state?.options ?? []);
   const [selected, setSelected] = useState<ProjectOption | null>(null);
+  const [customMode, setCustomMode] = useState(false);
+  const [customTitle, setCustomTitle] = useState('');
+  const [customDescription, setCustomDescription] = useState('');
   const [refineText, setRefineText] = useState('');
   const [showRefine, setShowRefine] = useState(false);
   const [refining, setRefining] = useState(false);
@@ -114,12 +117,12 @@ export default function NewProject() {
 
       <div className="space-y-3 mb-6">
         {options.map((opt) => {
-          const isSelected = selected?.title === opt.title;
+          const isSelected = !customMode && selected?.title === opt.title;
           return (
             <button
               key={opt.title}
               type="button"
-              onClick={() => { setSelected(opt); setShowRefine(false); }}
+              onClick={() => { setSelected(opt); setCustomMode(false); setShowRefine(false); }}
               className={`w-full text-left p-4 rounded-lg border-2 transition-colors ${
                 isSelected
                   ? 'border-slate-800 bg-slate-50'
@@ -131,6 +134,56 @@ export default function NewProject() {
             </button>
           );
         })}
+
+        {/* Custom project option */}
+        <button
+          type="button"
+          onClick={() => {
+            setCustomMode(true);
+            setSelected(customTitle.trim() ? { title: customTitle.trim(), description: customDescription.trim() } : null);
+            setShowRefine(false);
+          }}
+          className={`w-full text-left p-4 rounded-lg border-2 border-dashed transition-colors ${
+            customMode
+              ? 'border-slate-800 bg-slate-50'
+              : 'border-slate-300 bg-slate-50/50 hover:border-slate-400'
+          }`}
+        >
+          <p className="font-semibold text-slate-600">Describe your own project</p>
+          <p className="text-slate-500 text-sm mt-1">Define a custom title and description instead of using an AI suggestion</p>
+        </button>
+
+        {customMode && (
+          <div className="space-y-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Project title</label>
+              <input
+                type="text"
+                value={customTitle}
+                onChange={(e) => {
+                  setCustomTitle(e.target.value);
+                  const title = e.target.value.trim();
+                  setSelected(title ? { title, description: customDescription.trim() } : null);
+                }}
+                placeholder="e.g. Mobile App Redesign"
+                className="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+              <textarea
+                value={customDescription}
+                onChange={(e) => {
+                  setCustomDescription(e.target.value);
+                  setSelected(customTitle.trim() ? { title: customTitle.trim(), description: e.target.value.trim() } : null);
+                }}
+                placeholder="Describe what this project is about…"
+                rows={3}
+                className="w-full px-3 py-2 border border-slate-300 rounded resize-none text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {err && <p className="text-sm text-red-600 mb-4">{err}</p>}
