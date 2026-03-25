@@ -2,9 +2,24 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Strategic Context
+
+TaskToad is an **autopilot for software projects** — an abstraction layer on top of AI coding agents (Claude Code, Codex) that manages and orchestrates projects at scale. It is NOT a PM tool that generates code. The PM features (boards, task views, statuses) are the **dashboard for the autopilot**, not the product itself.
+
+**Three pillars in priority order:**
+1. **Decomposition engine** — natural language goal → epics → tasks → subtasks with dependency graph. Hardest part, most defensible.
+2. **Context threading** — each task inherits relevant context from completed upstream work. Task #5 succeeds because tasks #1-4 informed it.
+3. **Orchestration loop** — monitor execution, handle failures, re-plan when things change.
+
+**Business model:** Closed source SaaS. Free tier = basic AI planning + single-agent execution. Paid tier = full autopilot pipeline (dependency-aware sequencing, parallel execution, context threading, auto-retry).
+
+**Positioning:** "Autopilot for software projects." Code gen is table stakes; the pipeline around it is the moat.
+
+Development priority: autopilot pipeline > PM dashboard features. When in doubt, invest in decomposition, context threading, and orchestration.
+
 ## Overview
 
-TaskToad is a multi-tenant SaaS project management MVP. The stack: React + Vite frontend, Express/TypeScript API with GraphQL (graphql-yoga), Prisma ORM with PostgreSQL, and HMAC JWT auth.
+TaskToad is a closed-source SaaS that orchestrates AI coding agents at the project level. The stack: React + Vite frontend, Express/TypeScript API with GraphQL (graphql-yoga), Prisma ORM with PostgreSQL, and HMAC JWT auth.
 
 ## Commands
 

@@ -1,42 +1,41 @@
 # Task Toad
 
-**AI-native project management.** Describe what you want done — Task Toad plans it, generates the code, and creates the PRs.
+**Autopilot for software projects.** Describe what you want built — Task Toad breaks it down, sequences the work, and executes it.
 
-Free and open source (AGPL-3.0). Self-hostable. BYOK (bring your own Anthropic API key).
+BYOK (bring your own Anthropic API key).
 
 <!-- TODO: Add screenshot/GIF here -->
 
 ## Features
 
-**Core Project Management**
-- Tasks, sprints, kanban boards, backlog, epics, releases
-- Multiple assignees, labels, priorities, dependencies
-- Custom fields, time tracking, saved views
-- TQL (Task Query Language) for advanced search
-- Automation rules (trigger → action)
-- Webhooks for external integrations
-- Real-time updates via Server-Sent Events
-- CSV/JSON project export
-
-**AI Pipeline**
-- Natural language task planning — describe a feature, get a structured plan
-- Hierarchical plan generation (epics → tasks → subtasks)
-- **Auto-Complete**: generates code → creates PR → runs AI review, all from a task description
-- **Project scaffolding**: create a new repo and scaffold a framework (Next.js, Vite, Express, FastAPI) with AI-generated boilerplate
-- Sprint planning, trend analysis, project health reports
-- Knowledge base for project context
+**Autopilot Pipeline**
+- Describe a goal in natural language → get a structured execution plan with dependency graph
+- Hierarchical decomposition (epics → tasks → subtasks with dependencies)
+- **Auto-Complete**: generates code → commits to branch → creates PR → runs AI review → monitors CI
+- Context threading — completed task outputs feed into downstream tasks
+- Auto-retry and re-planning on failure
+- **Project scaffolding**: create a repo and scaffold a framework (Next.js, Vite, Express, FastAPI)
+- Knowledge base for persistent project context
 
 **GitHub Integration**
 - Connect repos, create PRs from tasks
-- Sync tasks to GitHub issues
+- Branch-based code generation (feature branches per task)
 - AI-powered PR review
+- CI monitoring and auto-fix
+
+**Project Dashboard**
+- Tasks, sprints, kanban boards, backlog, epics, releases
+- Multiple assignees, labels, priorities, dependencies
+- Real-time updates via Server-Sent Events
+- Sprint planning, trend analysis, project health reports
+- TQL (Task Query Language) for advanced search
+- Automation rules, webhooks, CSV/JSON export
 
 **Team Collaboration**
 - Org-scoped multi-tenancy
 - Invite-based team management
 - Comments with @mentions and threaded replies
 - Real-time notifications
-- Activity tracking
 
 ## Quick Start
 
@@ -70,27 +69,6 @@ pnpm dev
 
 Open `http://localhost:5173` — sign up, create an org, set your Anthropic API key in Settings, and create a project.
 
-### Self-Hosting with Docker
-
-```bash
-# Clone and configure
-git clone https://github.com/caleblmyers/task-toad.git
-cd task-toad
-cp apps/api/.env.example .env
-
-# Generate secrets
-export JWT_SECRET=$(openssl rand -hex 32)
-export ENCRYPTION_MASTER_KEY=$(openssl rand -hex 32)
-
-# Build and run
-docker compose --profile deploy up -d
-
-# Run migrations
-docker compose exec app sh -c "cd apps/api && npx prisma migrate deploy"
-```
-
-App is available at `http://localhost:3001`.
-
 ## Tech Stack
 
 | Layer | Technology |
@@ -114,7 +92,8 @@ App is available at `http://localhost:3001`.
 | `CORS_ORIGINS` | No | Allowed origins (default: `http://localhost:5173`) |
 | `LOG_LEVEL` | No | `trace\|debug\|info\|warn\|error` (default: `info`) |
 | `SENTRY_DSN` | No | Sentry error tracking DSN |
-| `TASKTOAD_LICENSE` | No | Self-host override — enables all premium features for every org |
+| `GITHUB_CLIENT_ID` | No | GitHub App OAuth client ID |
+| `GITHUB_CLIENT_SECRET` | No | GitHub App OAuth client secret |
 | `SMTP_HOST` | No | SMTP server (if unset, email links logged to console) |
 | `GITHUB_APP_ID` | No | GitHub App ID for repo integration |
 
@@ -174,18 +153,15 @@ See [CLAUDE.md](CLAUDE.md) for the full list of queries and mutations.
 - AI prompt injection defense (`<user_input>` delimiters + Zod validation)
 - Multi-tenant isolation with org-scoped queries
 
-## Open Core
+## Pricing
 
-Task Toad uses an open core model. The core product is fully open source (AGPL-3.0).
+Task Toad is a closed-source SaaS with a free tier. Pricing splits on **orchestration depth**, not usage limits:
 
-Premium features (Slack integration, SLA tracking, approval workflows, scheduled automations, advanced permissions) are gated per-org by the `plan` field on the Org model (`"free"` or `"paid"`). Self-hosters can set the `TASKTOAD_LICENSE` env var to bypass per-org checks and enable all premium features.
+- **Free**: Manual task management + basic AI planning + single-agent execution. 1 project. BYOK.
+- **Paid** ($15-25/month): Full autopilot pipeline — dependency-aware sequencing, parallel execution, context threading, auto-retry. Unlimited projects. Knowledge base.
 
-See `apps/api/src/utils/license.ts` for the gating implementation and `apps/web/src/hooks/useLicenseFeatures.ts` for the frontend hook.
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions and guidelines.
+Premium features are gated per-org by the `plan` field on the Org model. See `apps/api/src/utils/license.ts`.
 
 ## License
 
-[AGPL-3.0](LICENSE)
+Proprietary. All rights reserved.

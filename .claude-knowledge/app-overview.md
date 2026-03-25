@@ -2,7 +2,7 @@
 
 ## What It Is
 
-Multi-tenant SaaS project management MVP. Users belong to orgs; orgs own projects; projects contain tasks.
+Autopilot for software projects — an orchestration layer on top of AI coding agents. Users belong to orgs; orgs own projects; projects contain tasks that the AI decomposes, sequences, and executes.
 
 ## Auth Flow
 

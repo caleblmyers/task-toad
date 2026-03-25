@@ -26,7 +26,7 @@ Non-obvious choices and their rationale. Only decisions where the "why" isn't ap
 
 **HMAC JWT (HS256) over sessions:** Stateless, scales horizontally without session store. Trade-off: can't invalidate individual tokens without blocklist (solved with `tokenVersion` in Wave 35).
 
-**JWT in localStorage (current) — migration planned:** H-1 in security audit. Will migrate to HttpOnly cookies + refresh token rotation. Current approach is XSS-vulnerable.
+**HttpOnly cookies (migrated from localStorage in Wave 42):** Access token (15-min) and refresh token (7-day) delivered via HttpOnly cookies. Secure/SameSite=Strict in production. CSRF via X-Requested-With header.
 
 **API keys on Org, not User:** Multi-tenant — one Anthropic key per org. All members share it. Admin sets via settings. Encrypted with AES-256-GCM.
 
@@ -64,13 +64,15 @@ Non-obvious choices and their rationale. Only decisions where the "why" isn't ap
 
 ## AI
 
-**Claude Haiku 4.5 over Opus/Sonnet:** ~20× cheaper than Opus. Fast enough for structured generation tasks. Per-feature config with different maxTokens and cache TTLs.
+**Claude Sonnet 4 as default model:** Upgraded from Haiku 4.5 in Wave 60. Sonnet produces more reliable structured output and better code. Per-feature model override available via `model` field in `FEATURE_CONFIG`.
 
-**Zod validation on all AI responses:** Never trust AI output with bare `as T` casts. Every response parsed through a Zod schema — invalid responses trigger retry or graceful failure.
+**Structured output via tool_use:** AI responses use a forced tool call pattern (`tool_choice: { type: 'tool' }`) with Zod-to-JSON-Schema conversion. The tool `input` field is always valid parsed JSON — no stripFences/repairJSON hacks needed. Works on all Claude models.
+
+**Zod validation on all AI responses:** Every response validated through Zod schema. Structured output guarantees valid JSON; Zod catches semantic issues.
 
 **User input in `<user_input>` XML tags:** Prompt injection defense. AI system prompts instruct to treat tagged content as opaque data.
 
-**Sequential action plan pipeline:** generate_code → create_pr → review_pr. Each step depends on the previous. Approval gates let users review before proceeding.
+**Sequential action plan pipeline:** generate_code → create_pr → review_pr. Each step depends on the previous. Approval gates let users review before proceeding. Branch-based execution (feature branches per task) being implemented to allow context threading between steps.
 
 ---
 

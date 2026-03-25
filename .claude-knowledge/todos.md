@@ -1,21 +1,18 @@
 # TaskToad — Remaining Work & Tracking
 
-60 swarm waves completed. Security: 38/39 (97%). Open core license system in place. 348 tests. **V1 ready — preparing for AGPL open source launch.**
+60 swarm waves completed. Security: 38/39 (97%). 348 tests. **Strategic pivot to closed-source SaaS autopilot — building the three pillars (decomposition, context threading, orchestration).**
 
 ---
 
-## Swarm Rules
+## Closed-Source Cleanup
 
-- **Task sizing:** 30-60 min per task. Full vertical slices (schema + resolver + typeDefs + frontend).
-- **Parallelism:** Check file overlap. Two sets can run in parallel if their `files` arrays don't overlap.
-- **File structure:** Prisma: `prisma/schema/`, TypeDefs: `typedefs/`, Resolvers: `resolvers/` — all domain-split.
-
----
+- [ ] Replace `LICENSE` file — remove AGPL-3.0, add proprietary license text
+- [ ] Remove or rewrite `CONTRIBUTING.md` for closed source (no external contributors expected)
+- [ ] Remove `TASKTOAD_LICENSE` env var and self-host override code (or repurpose for enterprise tier)
+- [ ] Remove Docker self-hosting config if still present (`docker-compose` deploy profile)
 
 ## Deployment & Ops
 
-- [x] Railway health check — configured via railway.toml
-- [x] Sentry — confirmed receiving errors in production (2026-03-23)
 - [ ] Custom domain (optional — Railway domain works for beta)
 
 ### Email (deferred — not needed for V1)
@@ -25,11 +22,13 @@
 
 ---
 
-## Premium Features (per-org plan + self-host override)
+## Premium Features (per-org plan)
 
-Premium features are gated behind `requireLicense(feature, orgPlan)` in resolvers and `useLicenseFeatures()` hook in frontend. Orgs with `plan='paid'` get access; `plan='free'` (default) gets `LICENSE_REQUIRED` error and UI hides premium sections. Self-host override: `TASKTOAD_LICENSE` env var bypasses per-org checks (all orgs get premium). See `apps/api/src/utils/license.ts`.
+Premium features are gated behind `requireLicense(feature, orgPlan)` in resolvers and `useLicenseFeatures()` hook in frontend. Orgs with `plan='paid'` get access; `plan='free'` (default) gets `LICENSE_REQUIRED` error and UI hides premium sections. See `apps/api/src/utils/license.ts`.
 
-Infrastructure jobs/listeners (slack, SLA, cron) load org plan from DB per-event rather than checking at startup. Context type includes `plan: string` field.
+Pricing splits on **orchestration depth**: free tier = basic AI planning + single-agent execution; paid tier = full autopilot pipeline (dependency-aware sequencing, parallel execution, context threading, auto-retry).
+
+Infrastructure jobs/listeners (slack, SLA, cron) load org plan from DB per-event with 5-min TTL cache (`orgPlanCache.ts`). Context type includes `plan: string` field.
 
 - **Slack integration** — resolver gated + UI hidden in OrgSettings
 - **Initiatives** (cross-project grouping) — resolver gated + UI removed (Wave 53)
@@ -40,43 +39,6 @@ Infrastructure jobs/listeners (slack, SLA, cron) load org plan from DB per-event
 - **Field-level Permissions** — resolver gated + settings tab hidden
 - **Project Member Roles** — resolver gated + permissions.ts bypasses role lookup for non-premium orgs + members tab hidden
 - **BacklogView keyboard navigation** — UI removed (Wave 53, re-enable as core when fixed)
-
-### Per-org licensing follow-ups
-- [x] Frontend: add plan upgrade UI / billing page (org settings) — Plans tab in OrgSettings (Wave 60)
-- [x] Frontend: update `useLicenseFeatures` hook to read org plan from `me` query instead of static check (Wave 60)
-- [x] API: add `updateOrgPlan` mutation (admin-only, or Stripe webhook) (Wave 60)
-- [ ] API: add plan field to org seed data / onboarding flow
-- [x] Consider caching org plan lookups in infrastructure jobs to reduce DB queries under load — orgPlanCache.ts with 5-min TTL (Wave 60)
-
----
-
-## Priority — Next Up
-
-### Project scaffolding for fresh codebases
-New projects starting from scratch hit a bad UX: the auto-complete pipeline generates manual steps for project initialization (`create-next-app`, etc.) because the AI thinks interactive tools can't be automated. Two fixes needed:
-
-1. **Project scaffolding step** — after creating a project, prompt user to connect/create a GitHub repo, then scaffold a base codebase from a template (Next.js, Vite+React, Express, etc.). This gives the AI a real codebase to plan against instead of trying to bootstrap from nothing inside task execution.
-   - Flow: Create project → connect/create repo → pick framework template → scaffold + initial commit → ready for task planning
-   - Templates should use non-interactive CLI flags (`--yes`, `--typescript`, etc.)
-   - Knowledge base auto-populates from scaffolded code
-
-2. **Fix AI planner for init commands** — update `promptBuilder.ts:buildActionPlanPrompt()` to instruct the AI that project initialization tools have non-interactive modes and should use `generate_code` actions, not `manual_step`. Include examples of non-interactive flags for common tools.
-
-3. **Follow-ups from wave 58:** *(all completed in Wave 60)*
-   - [x] `commitFilesToEmptyRepo` hardcodes `refs/heads/main` — uses `repo.defaultBranch` now
-   - [x] Add unit tests for `ProjectSetupWizard` component (13 test cases)
-   - [x] Template list is hardcoded client-side — moved to `scaffoldTemplates` GraphQL query
-   - [x] Knowledge base auto-population after scaffold — creates entries for key scaffolded files
-
-### Per-org licensing (Wave 59)
-Move license checks from server-level env var to per-org `plan` field in the database. Enables hosted platform with both free and paid users on the same deployment. `TASKTOAD_LICENSE` env var becomes a self-host override.
-- Spec: `~/brain/projects/task-toad/internal-docs/per-org-licensing.md`
-- Add `plan` column to Org model (default "free")
-- Update `license.ts`: `isPremiumEnabled(orgPlan?)` + `requireLicense(feature, orgPlan?)`
-- Update all `requireLicense` call sites to pass `context.org.plan`
-- Infrastructure jobs (SLA, cron) need to load org plan from DB
-- Add `plan: String!` to Org GraphQL type
-- No billing/Stripe yet — plan changes are manual DB updates
 
 ---
 
@@ -111,12 +73,83 @@ Move license checks from server-level env var to per-org `plan` field in the dat
 - [ ] Auth retry: add test for UNAUTHENTICATED error detection and token refresh in gql() client
 - [ ] Saved views: test coverage for filter capture (round-trip save → load with all filter types)
 
+### Action Pipeline Rewrite — Branch-Based Code Generation
+
+The action plan pipeline needs a fundamental rework so that generated code is committed incrementally to a feature branch, making each step visible to subsequent steps and ending with a real PR.
+
+**Current broken flow:**
+- `generate_code` stores files in the action's `result` field (in-memory only)
+- Multiple `generate_code` steps can't see each other's output
+- `create_pr` is often missing from plans because `getProjectRepo()` returns null during planning
+- `write_docs` generates docs but doesn't commit them
+- Net result: AI generates code that never reaches the repo
+
+**Target flow:**
+1. When an action plan starts execution, create a feature branch: `tasktoad/<task-slug>` from the default branch
+2. `generate_code` → generates files → **commits to the feature branch immediately**
+3. Subsequent `generate_code` → reads the feature branch (sees previous commits) → commits on top
+4. `write_docs` → generates docs → commits to the same feature branch
+5. `create_pr` → opens PR from the feature branch to default branch (no longer creates files itself)
+6. `review_pr` → reviews the PR
+7. `monitor_ci` / `fix_ci` → existing flow works as-is
+
+**Implementation tasks (5 vertical slices):**
+
+1. **Branch management in actionExecutor.ts** (~45 min)
+   - When a plan starts executing, create a feature branch via `createBranch()` from `githubCommitService.ts`
+   - Store `branchName` and `headOid` on the `TaskActionPlan` model (new fields: `branchName String?`, `headOid String?`)
+   - Pass branch context to each action executor via `ActionContext`
+   - Need migration for new fields on `task_action_plans` table
+   - For personal GitHub accounts, pass user's OAuth token (same pattern as scaffold resolver)
+   - Files: `actionExecutor.ts`, `actions/types.ts`, prisma schema, migration
+
+2. **Update generateCode executor to commit** (~45 min)
+   - After AI generates files, commit them to the feature branch using `commitFiles()`
+   - Update `headOid` on the plan after each commit
+   - Return the commit URL in the action result
+   - Read the feature branch's file tree (not main) for context so subsequent steps see previous work
+   - Files: `executors/generateCode.ts`, `actionExecutor.ts`
+
+3. **Update writeDocs executor to commit** (~30 min)
+   - Same pattern as generateCode — commit docs to the feature branch
+   - Files: `executors/writeDocs.ts`
+
+4. **Update createPR executor to use existing branch** (~30 min)
+   - Instead of creating files from scratch, just open a PR from the feature branch to default branch
+   - Read the branch name from the plan context
+   - Remove file-creation logic (files are already committed)
+   - Files: `executors/createPR.ts`
+
+5. **Fix planner to always include create_pr when repo is connected** (~30 min)
+   - The `hasGitHubRepo` check in `taskaction.ts` resolver is correct, but the plan was generated without a repo
+   - Ensure the planning resolver checks repo connection and refuses to plan if no repo (with clear error message)
+   - OR: make the planner always generate `create_pr` + `review_pr` for GitHub-connected projects (enforce in code, not just prompt)
+   - Update planner prompt to emphasize: every plan for a connected repo MUST end with `create_pr` → `review_pr`
+   - Files: `resolvers/taskaction.ts`, `promptBuilders/planning.ts`
+
+**Parallelism:** Tasks 1+5 can run in parallel (no file overlap). Tasks 2+3 depend on task 1 (need branch context in ActionContext). Task 4 depends on task 2 (needs to understand the new commit flow). Suggested split: Worker 1 does tasks 1+2, Worker 2 does tasks 3+4 (after 1 merges), Worker 3 does task 5.
+
+**Key files:**
+- `apps/api/src/infrastructure/jobs/actionExecutor.ts` — orchestrates action execution
+- `apps/api/src/actions/types.ts` — ActionContext interface
+- `apps/api/src/actions/executors/generateCode.ts` — code generation
+- `apps/api/src/actions/executors/writeDocs.ts` — docs generation
+- `apps/api/src/actions/executors/createPR.ts` — PR creation
+- `apps/api/src/github/githubCommitService.ts` — commit/branch operations
+- `apps/api/src/graphql/resolvers/taskaction.ts` — plan generation resolver
+- `apps/api/src/ai/promptBuilders/planning.ts` — AI planner prompt
+- `apps/api/prisma/schema/` — TaskActionPlan model (needs branchName, headOid fields)
+
 ### Feature Requests
 - [ ] Scheduled report delivery — ReportSchedule model, cron, email/Slack *(depends on SMTP)*
 - [ ] Automation rule library + cross-project sharing
 - Re-enable V1 cuts when ready (initiatives, SLA, approvals, cron automation, workflow restrictions)
-- [ ] Gate WorkflowTab.tsx "Workflow Transition Restrictions" section behind `hasFeature('workflow_restrictions')` — role restriction UI is still visible without license
-- [ ] Gate cron input fields in AutomationTab create/edit form behind `hasFeature('cron_automations')` — currently only display is hidden
+- [ ] Add plan field to org seed data / onboarding flow
+- [ ] Stripe integration for billing (Plans tab has placeholder)
+
+### License Gating Gaps
+- [x] Gate WorkflowTab.tsx "Workflow Transition Restrictions" section behind `hasFeature('workflow_restrictions')`
+- [x] Gate cron input fields in AutomationTab create/edit form behind `hasFeature('cron_automations')`
 - [ ] Add test coverage for license gating (both API resolvers returning LICENSE_REQUIRED and frontend feature hiding)
 
 ---
