@@ -72,6 +72,7 @@ export default function ProjectDetail() {
 
   // Show setup wizard and/or onboarding wizard after project creation
   const [showSetup, setShowSetup] = useState(false);
+  const setupCheckedRef = useRef(false);
   useEffect(() => {
     const state = location.state as Record<string, unknown> | null;
     if (state?.showSetup) {
@@ -85,13 +86,24 @@ export default function ProjectDetail() {
     }
   }, [location.state]);
 
-  // Load time summary when task is selected
+  // Show setup wizard for projects without a GitHub repo (once project data loads)
+  useEffect(() => {
+    if (d.project && !d.project.githubRepositoryName && !setupCheckedRef.current) {
+      setupCheckedRef.current = true;
+      setShowSetup(true);
+    }
+  }, [d.project]);
+
+  // Load time summary and action plan when task is selected
   const selectedTaskId = d.selectedTask?.taskId;
   useEffect(() => {
     if (selectedTaskId) {
       void loadTimeSummary(selectedTaskId);
+      void d.loadActionPlan(selectedTaskId);
+    } else {
+      d.setActionPlan(null);
     }
-  }, [selectedTaskId, loadTimeSummary]);
+  }, [selectedTaskId, loadTimeSummary, d.loadActionPlan, d.setActionPlan]);
 
   // Re-fetch tasks when server-side filter changes
   const filterInput = filtering.filterInput;

@@ -9,6 +9,7 @@ export const authTypeDefs = /* GraphQL */ `
     avatarUrl: String
     timezone: String
     orgPlan: String
+    githubLogin: String
   }
 
   type OrgInvite {

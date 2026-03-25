@@ -764,7 +764,7 @@ export const REMOVE_TASK_DEPENDENCY_MUTATION = `mutation RemoveDep($taskDependen
 
 // ── Auth ──
 
-export const ME_QUERY = `query { me { userId email orgId role emailVerifiedAt orgPlan } }`;
+export const ME_QUERY = `query { me { userId email orgId role emailVerifiedAt orgPlan githubLogin } }`;
 
 export const LOGIN_MUTATION = `mutation Login($email: String!, $password: String!) {
   login(email: $email, password: $password) { token }

@@ -32,6 +32,8 @@ model User {
   userCapacities    UserCapacity[]
   userTimeOffs      UserTimeOff[]
   tokenVersion      Int            @default(0) @map("token_version")
+  githubLogin       String?        @map("github_login")
+  githubTokenEncrypted String?     @map("github_token_encrypted")
   refreshTokens     RefreshToken[]
   approvalRequests  Approval[]     @relation("ApprovalRequester")
   approvalDecisions Approval[]     @relation("ApprovalApprover")

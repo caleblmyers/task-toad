@@ -17,6 +17,7 @@ import { handleSlackCommand } from './slack/slackWebhookHandler.js';
 import { exportRouter } from './routes/export.js';
 import { docsRouter } from './routes/docs.js';
 import { uploadRouter } from './routes/upload.js';
+import githubOAuthRouter from './routes/githubOAuth.js';
 import { logger } from './utils/logger.js';
 import { sseManager } from './utils/sseManager.js';
 import { jwtVerify, SignJWT } from 'jose';
@@ -37,6 +38,8 @@ const envSchema = z.object({
   GITHUB_APP_ID: z.string().optional(),
   GITHUB_PRIVATE_KEY: z.string().optional(),
   GITHUB_WEBHOOK_SECRET: z.string().optional(),
+  GITHUB_CLIENT_ID: z.string().optional(),
+  GITHUB_CLIENT_SECRET: z.string().optional(),
 });
 
 const envResult = envSchema.safeParse(process.env);
@@ -289,6 +292,7 @@ const exportLimiter = rateLimit({
 });
 
 // Export REST endpoints (file downloads — not suited for GraphQL)
+app.use(githubOAuthRouter);
 app.use('/api/export', exportLimiter, exportRouter);
 
 // File uploads (multipart — before JSON body parser would conflict, but self-contained via multer)

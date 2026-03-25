@@ -17,6 +17,7 @@ import { decomposeIssue as aiDecomposeIssue, generateReviewFix as aiGenerateRevi
 import { NotFoundError, AuthorizationError, ValidationError } from '../errors.js';
 import { requireOrg, requireProjectAccess, requireApiKey } from './auth.js';
 import { requireProject } from '../../utils/resolverHelpers.js';
+import { decryptIfEncrypted } from '../../utils/encryption.js';
 
 // ── GitHub queries ──
 
@@ -101,7 +102,18 @@ export const githubMutations = {
     context: Context
   ) => {
     await requireProjectAccess(context, args.projectId);
-    return createRepoForProject(args.projectId, args.installationId, args.ownerLogin);
+    // Load user's GitHub OAuth token if available (needed for personal account repo creation)
+    let userOAuthToken: string | undefined;
+    if (context.user) {
+      const user = await context.prisma.user.findUnique({
+        where: { userId: context.user.userId },
+        select: { githubTokenEncrypted: true },
+      });
+      if (user?.githubTokenEncrypted) {
+        userOAuthToken = decryptIfEncrypted(user.githubTokenEncrypted);
+      }
+    }
+    return createRepoForProject(args.projectId, args.installationId, args.ownerLogin, userOAuthToken);
   },
 
   createPullRequestFromTask: async (

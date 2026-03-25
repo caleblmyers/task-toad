@@ -6,8 +6,9 @@ import {
   GITHUB_INSTALLATIONS_QUERY,
   SCAFFOLD_PROJECT_MUTATION,
   CREATE_GITHUB_REPO_MUTATION,
+  ME_QUERY,
 } from '../api/queries';
-import type { GitHubInstallation, GitHubRepoLink } from '../types';
+import type { GitHubInstallation, GitHubRepoLink, MeResponse } from '../types';
 
 interface ProjectSetupWizardProps {
   isOpen: boolean;
@@ -48,17 +49,38 @@ export default function ProjectSetupWizard({
   const [scaffolding, setScaffolding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showRepoModal, setShowRepoModal] = useState(false);
+  const [selectedInstallation, setSelectedInstallation] = useState<string | null>(null);
+  const [githubLogin, setGithubLogin] = useState<string | null>(null);
   const [templates, setTemplates] = useState<ScaffoldTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
 
-  // Fetch GitHub installations on mount
+  // Fetch GitHub installations and user's GitHub connection on mount
   useEffect(() => {
     if (!isOpen) return;
     setLoadingInstallations(true);
-    gql<{ githubInstallations: GitHubInstallation[] }>(GITHUB_INSTALLATIONS_QUERY)
-      .then((data) => setInstallations(data.githubInstallations))
+    Promise.all([
+      gql<{ githubInstallations: GitHubInstallation[] }>(GITHUB_INSTALLATIONS_QUERY),
+      gql<{ me: MeResponse | null }>(ME_QUERY),
+    ])
+      .then(([instData, meData]) => {
+        setInstallations(instData.githubInstallations);
+        if (instData.githubInstallations.length > 0) {
+          setSelectedInstallation(instData.githubInstallations[0].installationId);
+        }
+        setGithubLogin(meData.me?.githubLogin ?? null);
+      })
       .catch(() => setInstallations([]))
       .finally(() => setLoadingInstallations(false));
+
+    // Listen for GitHub OAuth popup completion
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === 'github-oauth-success') {
+        setGithubLogin(event.data.login);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, [isOpen]);
 
   // Fetch scaffold templates when reaching template step
@@ -72,14 +94,16 @@ export default function ProjectSetupWizard({
   }, [step, templates.length]);
 
   const handleCreateRepo = useCallback(async () => {
-    if (!installations || installations.length === 0) return;
+    if (!installations || !selectedInstallation) return;
+    const installation = installations.find((i) => i.installationId === selectedInstallation);
+    if (!installation) return;
     setCreatingRepo(true);
     setError(null);
     try {
       await gql<{ createGitHubRepo: GitHubRepoLink }>(CREATE_GITHUB_REPO_MUTATION, {
         projectId,
-        installationId: installations[0].installationId,
-        ownerLogin: installations[0].accountLogin,
+        installationId: installation.installationId,
+        ownerLogin: installation.accountLogin,
       });
       setStep('template');
     } catch (err) {
@@ -87,7 +111,19 @@ export default function ProjectSetupWizard({
     } finally {
       setCreatingRepo(false);
     }
-  }, [installations, projectId]);
+  }, [installations, selectedInstallation, projectId]);
+
+  const selectedInst = installations?.find((i) => i.installationId === selectedInstallation);
+  const isUserAccount = selectedInst?.accountType === 'User';
+  const needsGitHubAuth = isUserAccount && !githubLogin;
+
+  const handleConnectGitHub = useCallback(() => {
+    const width = 600;
+    const height = 700;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+    window.open('/api/auth/github', 'github-oauth', `width=${width},height=${height},left=${left},top=${top}`);
+  }, []);
 
   const handleRepoConnected = useCallback(() => {
     setShowRepoModal(false);
@@ -161,6 +197,23 @@ export default function ProjectSetupWizard({
                 </div>
               ) : (
                 <div className="grid gap-3">
+                  {installations.length > 1 && (
+                    <div>
+                      <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">GitHub account</label>
+                      <select
+                        value={selectedInstallation ?? ''}
+                        onChange={(e) => setSelectedInstallation(e.target.value)}
+                        className="w-full border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200"
+                      >
+                        {installations.map((inst) => (
+                          <option key={inst.installationId} value={inst.installationId}>
+                            {inst.accountLogin} ({inst.accountType.toLowerCase()})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => setShowRepoModal(true)}
@@ -172,10 +225,29 @@ export default function ProjectSetupWizard({
                     </p>
                   </button>
 
+                  {needsGitHubAuth && (
+                    <button
+                      type="button"
+                      onClick={handleConnectGitHub}
+                      className="w-full text-left p-4 rounded-lg border-2 border-violet-300 dark:border-violet-600 bg-violet-50 dark:bg-violet-900/20 hover:border-violet-500 dark:hover:border-violet-400 transition-colors"
+                    >
+                      <p className="font-semibold text-violet-800 dark:text-violet-200">Connect GitHub Account</p>
+                      <p className="text-violet-600 dark:text-violet-400 text-sm mt-1">
+                        Required to create repos on your personal account. One-time authorization.
+                      </p>
+                    </button>
+                  )}
+
+                  {isUserAccount && githubLogin && (
+                    <div className="text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded p-2">
+                      Connected as <span className="font-medium">{githubLogin}</span>
+                    </div>
+                  )}
+
                   <button
                     type="button"
                     onClick={handleCreateRepo}
-                    disabled={creatingRepo}
+                    disabled={creatingRepo || !selectedInstallation || needsGitHubAuth}
                     className="w-full text-left p-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-500 transition-colors disabled:opacity-50"
                   >
                     <p className="font-semibold text-slate-800 dark:text-slate-200">

@@ -35,6 +35,19 @@ const CREATE_REPOSITORY = `
   }
 `;
 
+const CREATE_REPOSITORY_NO_OWNER = `
+  mutation CreateRepository($name: String!, $visibility: RepositoryVisibility!) {
+    createRepository(input: { name: $name, visibility: $visibility }) {
+      repository {
+        id
+        name
+        owner { login }
+        defaultBranchRef { name }
+      }
+    }
+  }
+`;
+
 const GET_OWNER_ID = `
   query GetOwnerId($login: String!) {
     repositoryOwner(login: $login) {
@@ -150,11 +163,15 @@ export async function disconnectRepo(projectId: string): Promise<void> {
 /**
  * Create a new private GitHub repository for a project.
  * Repository naming: tasktoad-{slugified project name}
+ *
+ * For org accounts: uses the installation token with ownerId.
+ * For user accounts: uses the user's OAuth token (required for creating repos on personal accounts).
  */
 export async function createRepoForProject(
   projectId: string,
   installationId: string,
-  ownerLogin: string
+  ownerLogin: string,
+  userOAuthToken?: string
 ): Promise<GitHubRepoLink> {
   const project = await prisma.project.findUniqueOrThrow({
     where: { projectId },
@@ -167,24 +184,41 @@ export async function createRepoForProject(
     .replace(/^-|-$/g, '');
   const repoName = `tasktoad-${slug}`;
 
-  const token = await getInstallationToken(installationId);
-
-  // Resolve the owner's node ID (required for createRepository mutation)
-  const ownerData = await githubRequest<GetOwnerIdResponse>(token, GET_OWNER_ID, {
-    login: ownerLogin,
+  // Look up the installation to determine account type
+  const installation = await prisma.gitHubInstallation.findUnique({
+    where: { installationId },
+    select: { accountType: true },
   });
-  if (!ownerData.repositoryOwner) {
-    throw new Error(`GitHub owner "${ownerLogin}" not found`);
-  }
+  const isUserAccount = installation?.accountType === 'User';
 
   let repoNode: RepoNode;
   try {
-    const data = await githubRequest<CreateRepoResponse>(token, CREATE_REPOSITORY, {
-      name: repoName,
-      visibility: 'PRIVATE',
-      ownerId: ownerData.repositoryOwner.id,
-    });
-    repoNode = data.createRepository.repository;
+    if (isUserAccount) {
+      // User accounts: must use user's OAuth token (installation tokens can't create repos on personal accounts)
+      if (!userOAuthToken) {
+        throw new Error('GitHub account not connected. Please connect your GitHub account in the project setup wizard to create repositories on your personal account.');
+      }
+      const data = await githubRequest<CreateRepoResponse>(userOAuthToken, CREATE_REPOSITORY_NO_OWNER, {
+        name: repoName,
+        visibility: 'PRIVATE',
+      });
+      repoNode = data.createRepository.repository;
+    } else {
+      // Org accounts: use installation token with ownerId
+      const token = await getInstallationToken(installationId);
+      const ownerData = await githubRequest<GetOwnerIdResponse>(token, GET_OWNER_ID, {
+        login: ownerLogin,
+      });
+      if (!ownerData.repositoryOwner) {
+        throw new Error(`GitHub owner "${ownerLogin}" not found`);
+      }
+      const data = await githubRequest<CreateRepoResponse>(token, CREATE_REPOSITORY, {
+        name: repoName,
+        visibility: 'PRIVATE',
+        ownerId: ownerData.repositoryOwner.id,
+      });
+      repoNode = data.createRepository.repository;
+    }
     logRepoCreation(repoNode.owner.login, repoNode.name, repoNode.id);
   } catch (error) {
     logApiError('createRepository', error, { repoName, ownerLogin });

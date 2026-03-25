@@ -8,6 +8,7 @@ export interface MeResponse {
   role: 'org:admin' | 'org:member' | null;
   emailVerifiedAt: string | null;
   orgPlan: string | null;
+  githubLogin: string | null;
 }
 
 export interface OrgInvite {
