@@ -4,6 +4,33 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-25 (Wave 61 — pre-pipeline refactors)
+
+### Wave 61: Pre-Pipeline Refactors (2 workers, 4 tasks)
+
+**Worker 1 — task-001: Token manager utility (R1):**
+- Extracted `utils/tokenManager.ts` with `generateTokenPair`, `setAuthCookies`, `hashRefreshToken`
+- Consolidated 4 identical JWT+cookie blocks from login, verifyEmail, acceptInvite, and refresh handler
+
+**Worker 1 — task-002: Unused exports cleanup (R14):**
+- Removed `has()` from action registry (exported, never imported)
+- Removed `onAny()` from EventBus port interface and adapter (test-only, not production)
+
+**Worker 2 — task-003: Event emission helpers (R4):**
+- Created `eventbus/emitters.ts` with `emitTaskEvent`, `emitSprintEvent`, `emitProjectEvent`, `emitCommentEvent`
+- Updated task/mutations.ts, sprint.ts, project.ts to use helpers (16 emit calls consolidated)
+
+**Worker 2 — task-004: Custom project option:**
+- Added "Describe your own" card to NewProject page with title/description inputs
+- Visually distinct (dashed border), auto-selects when typing, deselects AI options
+
+**Process:** All 4 merged on first review, zero rejections. Reviewer noted pre-existing integration test failures (23 tests, FK constraint violations) — added to todos.
+
+### Open follow-ups
+- Integration test DB isolation failures (10 files, 23 tests) — pre-existing, added to todos
+
+---
+
 ## 2026-03-24 (Wave 60 — scaffolding + licensing follow-ups)
 
 ### Wave 60: Wave 58/59 Follow-ups (3 workers, 4 tasks)

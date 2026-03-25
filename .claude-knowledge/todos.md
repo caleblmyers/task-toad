@@ -80,38 +80,15 @@ Infrastructure jobs/listeners (slack, SLA, cron) load org plan from DB per-event
 - [ ] Workflow restriction model: add test coverage for restriction/allowedRoles logic
 - [ ] Auth retry: add test for UNAUTHENTICATED error detection and token refresh in gql() client
 - [ ] Saved views: test coverage for filter capture (round-trip save → load with all filter types)
+- [ ] Fix integration test DB isolation — project/task integration tests fail with FK constraint violations (10 files, 23 tests). Tests share DB state between runs. Blocks using `pnpm test` as merge gate.
 
-### Pre-Pipeline Refactors (Wave 61 — quick wins before pipeline rewrite)
+### Pre-Pipeline Refactors (Wave 61) — DONE
 
-Foundation cleanup for files we'll be touching heavily during Phase 1. Do these first so the pipeline rewrite starts from a cleaner base.
-
-1. **Token manager utility (R1)** (~20 min)
-   - Extract `utils/tokenManager.ts` with `generateTokenPair(user)` and `setAuthCookies(res, tokens)`
-   - Consolidates 4 identical JWT generation + cookie setting blocks (~120 lines duplicated)
-   - Files: `apps/api/src/graphql/resolvers/auth.ts`, `apps/api/src/app.ts` (refresh handler)
-   - Acceptance: All auth tests pass. Single source of truth for token mechanics.
-
-2. **Event emission helpers (R4)** (~25 min)
-   - Create domain-specific emission helpers: `emitTaskEvent(type, user, task)`, `emitSprintEvent(type, user, sprint)`, etc.
-   - Consolidates 30+ manual `getEventBus().emit()` calls with hand-built payloads
-   - Common metadata (orgId, userId, timestamp) handled by helpers
-   - Files: new `apps/api/src/infrastructure/eventbus/emitters.ts`, then incrementally update resolver files
-   - Acceptance: All existing events still fire with correct payloads. Helpers are used in at least the task and sprint resolvers.
-   - **Important for pipeline:** We'll be adding new events for branch operations in Phase 1 — better to have helpers first.
-
-3. **Unused exports cleanup (R14)** (~5 min)
-   - Remove `hasExecutor` from `actions/registry.ts` (exported, never imported)
-   - Remove `onAny` from `eventbus/port.ts` (defined, never called)
-   - Files: `apps/api/src/actions/registry.ts`, `apps/api/src/infrastructure/eventbus/port.ts`
-   - Trivial, no risk.
-
-4. **Custom project option in project creation** (~15 min)
-   - Add a "Describe your own" card alongside the 3 AI-generated project options
-   - Shows title + description inputs, then proceeds to epic generation with that input
-   - Frontend-only change to the project creation flow (NewProject page or equivalent)
-   - Acceptance: User can bypass AI-generated options and enter their own project title/description
-
-**Parallelism:** All 4 are independent. Can be one swarm wave with 2 workers.
+All 4 completed in Wave 61:
+- [x] Token manager utility (R1) — `utils/tokenManager.ts`
+- [x] Event emission helpers (R4) — `eventbus/emitters.ts`
+- [x] Unused exports cleanup (R14) — `has()` and `onAny()` removed
+- [x] Custom project option — "Describe your own" card on NewProject page
 
 ### Fold Into Pipeline Rewrite (do alongside Phase 1, not separately)
 
