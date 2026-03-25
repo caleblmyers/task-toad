@@ -8,7 +8,7 @@ import { createChildLogger } from '../../../utils/logger.js';
 import { reviewCode } from '../../../ai/aiService.js';
 import { decryptApiKey } from '../../../utils/encryption.js';
 import { getPullRequestDiff } from '../../../github/index.js';
-import { getEventBus } from '../../../infrastructure/eventbus/index.js';
+import { emitTaskEvent, emitCommentEvent } from '../../../infrastructure/eventbus/emitters.js';
 import { sseManager } from '../../../utils/sseManager.js';
 import { logActivity } from '../../../utils/activity.js';
 import { detectCycle } from '../../../utils/cyclicDependencyCheck.js';
@@ -63,9 +63,8 @@ export const taskMutations = {
     await context.prisma.taskWatcher.create({
       data: { taskId: task.taskId, userId: user.userId },
     });
-    getEventBus().emit('task.created', {
-      orgId: user.orgId, userId: user.userId, projectId: args.projectId,
-      timestamp: new Date().toISOString(),
+    emitTaskEvent('task.created', { orgId: user.orgId, userId: user.userId }, {
+      projectId: args.projectId,
       task: { taskId: task.taskId, title: task.title, status: task.status, projectId: task.projectId, orgId: task.orgId, taskType: task.taskType },
     });
     return task;
@@ -302,9 +301,8 @@ export const taskMutations = {
       }
     }
     if (Object.keys(changes).length > 0) {
-      getEventBus().emit('task.updated', {
-        orgId: user.orgId, userId: user.userId, projectId: task.projectId,
-        timestamp: new Date().toISOString(),
+      emitTaskEvent('task.updated', { orgId: user.orgId, userId: user.userId }, {
+        projectId: task.projectId,
         task: { taskId: updated.taskId, title: updated.title, status: updated.status, projectId: updated.projectId, orgId: updated.orgId, taskType: updated.taskType },
         changes,
         previousAssigneeId: task.assigneeId,
@@ -392,9 +390,8 @@ export const taskMutations = {
     if (args.assigneeId !== undefined) changes.assigneeId = { old: null, new: args.assigneeId };
     if (args.sprintId !== undefined) changes.sprintId = { old: null, new: args.sprintId ?? null };
     if (args.archived !== undefined && args.archived !== null) changes.archived = { old: null, new: String(args.archived) };
-    getEventBus().emit('task.bulk_updated', {
-      orgId: user.orgId, userId: user.userId, projectId: projectIds[0],
-      timestamp: new Date().toISOString(),
+    emitTaskEvent('task.bulk_updated', { orgId: user.orgId, userId: user.userId }, {
+      projectId: projectIds[0],
       taskIds: args.taskIds,
       changes: Object.keys(changes).length > 0 ? changes : undefined,
     });
@@ -434,9 +431,8 @@ export const taskMutations = {
         },
       });
     }, { isolationLevel: 'Serializable' });
-    getEventBus().emit('subtask.created', {
-      orgId: user.orgId, userId: user.userId, projectId: parent.projectId,
-      timestamp: new Date().toISOString(),
+    emitTaskEvent('subtask.created', { orgId: user.orgId, userId: user.userId }, {
+      projectId: parent.projectId,
       task: { taskId: task.taskId, title: task.title, status: task.status, projectId: task.projectId, orgId: task.orgId, taskType: task.taskType },
       parentTaskId: args.parentTaskId,
     });
@@ -524,9 +520,8 @@ export const taskMutations = {
         });
       }
     }
-    getEventBus().emit('comment.created', {
-      orgId: user.orgId, userId: user.userId, projectId: task.projectId,
-      timestamp: new Date().toISOString(),
+    emitCommentEvent('comment.created', { orgId: user.orgId, userId: user.userId }, {
+      projectId: task.projectId,
       comment: { commentId: comment.commentId, taskId: args.taskId, content: args.content },
       task: { taskId: task.taskId, title: task.title, status: task.status, projectId: task.projectId, orgId: task.orgId, taskType: task.taskType, assigneeId: task.assigneeId },
       mentionedUserIds,
@@ -666,9 +661,8 @@ export const taskMutations = {
       where: { taskId: args.taskId },
       data: { position: args.position },
     });
-    getEventBus().emit('task.reordered', {
-      orgId: task.orgId, userId: context.user!.userId, projectId: task.projectId,
-      timestamp: new Date().toISOString(),
+    emitTaskEvent('task.reordered', { orgId: task.orgId, userId: context.user!.userId }, {
+      projectId: task.projectId,
       task: { taskId: updated.taskId, title: updated.title, status: updated.status, projectId: updated.projectId, orgId: updated.orgId, taskType: updated.taskType },
     });
     return updated;
@@ -694,9 +688,8 @@ export const taskMutations = {
       create: { taskId: args.taskId, userId: args.userId },
       update: {},
     });
-    getEventBus().emit('task.assignee_added', {
-      orgId: user.orgId, userId: user.userId, projectId: task.projectId,
-      timestamp: new Date().toISOString(),
+    emitTaskEvent('task.assignee_added', { orgId: user.orgId, userId: user.userId }, {
+      projectId: task.projectId,
       taskId: task.taskId, taskTitle: task.title, assigneeId: args.userId,
     });
     return {
@@ -717,9 +710,8 @@ export const taskMutations = {
     await context.prisma.taskAssignee.deleteMany({
       where: { taskId: args.taskId, userId: args.userId },
     });
-    getEventBus().emit('task.assignee_removed', {
-      orgId: user.orgId, userId: user.userId, projectId: task.projectId,
-      timestamp: new Date().toISOString(),
+    emitTaskEvent('task.assignee_removed', { orgId: user.orgId, userId: user.userId }, {
+      projectId: task.projectId,
       taskId: task.taskId, assigneeId: args.userId,
     });
     return true;
@@ -738,9 +730,8 @@ export const taskMutations = {
       update: {},
       include: { user: true },
     });
-    getEventBus().emit('task.watcher_added', {
-      orgId: user.orgId, userId: user.userId, projectId: task.projectId,
-      timestamp: new Date().toISOString(),
+    emitTaskEvent('task.watcher_added', { orgId: user.orgId, userId: user.userId }, {
+      projectId: task.projectId,
       taskId: task.taskId, taskTitle: task.title, watcherId: args.userId,
     });
     return {
@@ -760,9 +751,8 @@ export const taskMutations = {
     await context.prisma.taskWatcher.deleteMany({
       where: { taskId: args.taskId, userId: args.userId },
     });
-    getEventBus().emit('task.watcher_removed', {
-      orgId: user.orgId, userId: user.userId, projectId: task.projectId,
-      timestamp: new Date().toISOString(),
+    emitTaskEvent('task.watcher_removed', { orgId: user.orgId, userId: user.userId }, {
+      projectId: task.projectId,
       taskId: task.taskId, taskTitle: task.title, watcherId: args.userId,
     });
     return true;

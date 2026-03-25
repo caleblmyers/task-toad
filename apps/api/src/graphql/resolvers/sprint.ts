@@ -9,7 +9,7 @@ import { requireProject, parseInput, CreateSprintInput } from '../../utils/resol
 import { requirePermission, Permission } from '../../auth/permissions.js';
 import { StringArraySchema } from '../../utils/zodSchemas.js';
 import { createChildLogger } from '../../utils/logger.js';
-import { getEventBus } from '../../infrastructure/eventbus/index.js';
+import { emitSprintEvent } from '../../infrastructure/eventbus/emitters.js';
 import { runMonteCarloForecast } from '../../utils/monteCarloForecast.js';
 
 const log = createChildLogger('sprint');
@@ -528,9 +528,8 @@ export const sprintMutations = {
         wipLimits: args.wipLimits ?? null,
       },
     });
-    getEventBus().emit('sprint.created', {
-      orgId: user.orgId, userId: user.userId, projectId: args.projectId,
-      timestamp: new Date().toISOString(),
+    emitSprintEvent('sprint.created', { orgId: user.orgId, userId: user.userId }, {
+      projectId: args.projectId,
       sprint: { sprintId: sprint.sprintId, name: sprint.name, projectId: sprint.projectId, orgId: sprint.orgId },
     });
     return sprint;
@@ -562,9 +561,8 @@ export const sprintMutations = {
         ...(args.wipLimits !== undefined ? { wipLimits: args.wipLimits } : {}),
       },
     });
-    getEventBus().emit('sprint.updated', {
-      orgId: user.orgId, userId: user.userId, projectId: sprint.projectId,
-      timestamp: new Date().toISOString(),
+    emitSprintEvent('sprint.updated', { orgId: user.orgId, userId: user.userId }, {
+      projectId: sprint.projectId,
       sprint: { sprintId: updated.sprintId, name: updated.name, projectId: updated.projectId, orgId: updated.orgId },
     });
     return updated;
@@ -581,9 +579,8 @@ export const sprintMutations = {
       data: { sprintId: null, sprintColumn: null },
     });
     await context.prisma.sprint.delete({ where: { sprintId: args.sprintId } });
-    getEventBus().emit('sprint.deleted', {
-      orgId: user.orgId, userId: user.userId, projectId: sprint.projectId,
-      timestamp: new Date().toISOString(),
+    emitSprintEvent('sprint.deleted', { orgId: user.orgId, userId: user.userId }, {
+      projectId: sprint.projectId,
       sprintId: sprint.sprintId, sprintName: sprint.name,
     });
     return true;
@@ -648,9 +645,8 @@ export const sprintMutations = {
       orderBy: { createdAt: 'asc' },
     });
 
-    getEventBus().emit('sprint.closed', {
-      orgId: user.orgId, userId: user.userId, projectId: sprint.projectId,
-      timestamp: new Date().toISOString(),
+    emitSprintEvent('sprint.closed', { orgId: user.orgId, userId: user.userId }, {
+      projectId: sprint.projectId,
       sprint: { sprintId: closedSprint.sprintId, name: closedSprint.name, projectId: closedSprint.projectId, orgId: closedSprint.orgId },
     });
     return { sprint: closedSprint, nextSprint: nextSprint ?? null };

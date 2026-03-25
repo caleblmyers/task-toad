@@ -5,7 +5,7 @@ export type { Project as SharedProject } from '@tasktoad/shared-types';
 import { AuthorizationError, NotFoundError, ValidationError } from '../errors.js';
 import { requireAuth, requireOrg, requireProjectAccess, requireApiKey } from './auth.js';
 import { parseInput, CreateProjectInput, requireProject } from '../../utils/resolverHelpers.js';
-import { getEventBus } from '../../infrastructure/eventbus/index.js';
+import { emitProjectEvent, emitTaskEvent } from '../../infrastructure/eventbus/emitters.js';
 
 // ── Project queries ──
 
@@ -373,9 +373,8 @@ export const projectMutations = {
     if (args.name && args.name !== project.name) {
       changes.name = { old: project.name, new: args.name };
     }
-    getEventBus().emit('project.updated', {
-      orgId: user.orgId, userId: user.userId, projectId: args.projectId,
-      timestamp: new Date().toISOString(),
+    emitProjectEvent('project.updated', { orgId: user.orgId, userId: user.userId }, {
+      projectId: args.projectId,
       changes,
     });
     return updated;
@@ -454,9 +453,8 @@ export const projectMutations = {
       where: { projectId: args.projectId },
       data: { archived: args.archived },
     });
-    getEventBus().emit('project.archived', {
-      orgId: user.orgId, userId: user.userId, projectId: args.projectId,
-      timestamp: new Date().toISOString(),
+    emitProjectEvent('project.archived', { orgId: user.orgId, userId: user.userId }, {
+      projectId: args.projectId,
       archived: args.archived,
     });
     return result;
@@ -494,13 +492,9 @@ export const projectMutations = {
       select: { taskId: true, title: true, status: true, taskType: true, orgId: true },
     });
 
-    const bus = getEventBus();
     for (const task of autoCompleteTasks) {
-      bus.emit('task.updated', {
-        orgId: user.orgId,
-        userId: user.userId,
+      emitTaskEvent('task.updated', { orgId: user.orgId, userId: user.userId }, {
         projectId: args.projectId,
-        timestamp: new Date().toISOString(),
         task: {
           taskId: task.taskId,
           title: task.title,
