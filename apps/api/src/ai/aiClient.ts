@@ -20,7 +20,7 @@ const clientCache = new Map<string, Anthropic>();
 function getClient(apiKey: string): Anthropic {
   let client = clientCache.get(apiKey);
   if (!client) {
-    client = new Anthropic({ apiKey, maxRetries: 0 });
+    client = new Anthropic({ apiKey, maxRetries: 0, timeout: 10 * 60 * 1000 });
     clientCache.set(apiKey, client);
   }
   return client;
@@ -282,8 +282,13 @@ export async function callAIStructured<T>(
 
   checkPromptSize(systemPrompt, userPrompt, maxTokens);
 
-  // Convert Zod schema to JSON Schema for tool input
-  const jsonSchema = z.toJSONSchema(schema, { reused: 'ref' });
+  // Convert Zod schema to JSON Schema for tool input.
+  // Tool input_schema must be type: 'object', so wrap arrays in an object.
+  const rawJsonSchema = z.toJSONSchema(schema, { reused: 'ref' }) as Record<string, unknown>;
+  const isArrayAtTop = rawJsonSchema.type === 'array';
+  const jsonSchema = isArrayAtTop
+    ? { type: 'object', properties: { items: rawJsonSchema }, required: ['items'] }
+    : rawJsonSchema;
 
   let lastError: unknown;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -325,8 +330,13 @@ export async function callAIStructured<T>(
         throw new GraphQLError('AI did not return structured output');
       }
 
+      // Unwrap if we wrapped an array in an object
+      const rawInput = isArrayAtTop
+        ? (toolBlock.input as Record<string, unknown>).items
+        : toolBlock.input;
+
       // Validate against Zod schema
-      const result = schema.safeParse(toolBlock.input);
+      const result = schema.safeParse(rawInput);
       if (!result.success) {
         log.error({ issues: result.error.issues.slice(0, 3) }, 'Structured output validation failed');
         throw new GraphQLError('AI response did not match expected format');

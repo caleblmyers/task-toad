@@ -95,21 +95,59 @@ The autopilot pipeline is the product. PM features are the dashboard. This docum
 
 ## Implementation Priority
 
-**Phase 1 (immediate — enables the core loop):**
-1. Action Pipeline Rewrite (branch-based execution) — see todos.md for full spec
-2. Fix planner to always include create_pr + review_pr for connected repos
-3. Execution result forwarding between steps
+### Phase 0: Foundation fixes (DONE)
 
-**Phase 2 (next — makes it an autopilot):**
-4. Dependency inference during decomposition
-5. Cross-task orchestration (project-level DAG scheduler)
-6. Structured completion summaries for context threading
+Infrastructure work that persists regardless of pipeline changes:
+- [x] Action ID remapping — AI placeholder IDs (`action_0`) mapped to real UUIDs on plan commit
+- [x] Structured output via tool_use — code generation returns guaranteed valid JSON
+- [x] Scaffold commits via installation token — attributed to TaskToad bot
+- [x] Empty repo commit fix — Contents API bootstraps first file
+- [x] GitHub OAuth for personal account repo creation
+- [x] `executeActionPlan` allows resuming paused plans (approval gate)
+- [x] Approve & Continue UI for actions requiring approval
+- [x] Switched AI model to Sonnet 4
 
-**Phase 3 (later — competitive moat):**
-7. Parallel execution streams
+### Phase 1: Pipeline rewrite — branch-based execution (CURRENT)
+
+**Goal:** One happy path works reliably: describe project → scaffold repo → create task → auto-complete → working PR on GitHub. All code gen commits to a feature branch, steps see each other's work, pipeline ends with a real PR.
+
+See todos.md "Action Pipeline Rewrite" section for the full implementation spec.
+
+**Scope includes:**
+1. Feature branch creation when plan starts executing
+2. `generate_code` commits to feature branch after generating
+3. Subsequent steps read the branch (see previous commits for context)
+4. `create_pr` opens PR from existing feature branch (not from scratch)
+5. `write_docs` commits to the same branch
+6. Planner always includes `create_pr` + `review_pr` for connected repos
+7. End-to-end: new project → scaffold → task → auto-complete → PR on GitHub
+8. SSE real-time updates during action execution (fix stale frontend closure)
+9. Verify full chain works: generate_code → create_pr → review_pr → monitor_ci
+
+**What "done" looks like:** A new user can sign up, create a project, connect GitHub, describe a feature, and get a PR with generated code — without errors, without manual intervention beyond approval gates. Each step's output is visible on GitHub as commits on a feature branch.
+
+### Phase 2: Context threading (the real differentiator)
+
+3. Execution result forwarding between steps (structured summaries, not just raw files)
+4. Cross-task context summaries — when a task completes, downstream tasks get structured context
+5. Dependency-aware execution ordering across tasks
+
+### Phase 3: Orchestration improvements (makes it an autopilot)
+
+6. Dependency inference during decomposition (planner outputs dependency graph)
+7. Cross-task orchestration (project-level DAG scheduler)
 8. Re-planning on failure
-9. Agent abstraction (pluggable AI backends)
-10. Merge orchestration + progress dashboard
+9. Parallel execution streams
+
+### Phase 4: Competitive moat (later)
+
+10. Agent abstraction (pluggable AI backends — Claude Code, Codex, etc.)
+11. Merge orchestration + progress dashboard
+12. Multi-project orchestration
+
+### Refactoring
+
+A parallel codebase audit is running (staff-level review of architecture, abstractions, hotspots). Refactoring should be done alongside pipeline work, not as a separate phase. When implementing Phase 0-1, incorporate audit findings for files being touched (e.g., if `actionExecutor.ts` needs decomposition, do it as part of the branch-based execution work).
 
 ---
 
@@ -118,5 +156,8 @@ The autopilot pipeline is the product. PM features are the dashboard. This docum
 Standard PM features. The dashboard is good enough. Don't invest in:
 - Sprint column reordering, priority color coding, mobile polish
 - Advanced automation, scheduled reports
+- Pricing/billing (no paying users yet)
+- Landing page (product doesn't work end-to-end yet)
 - SSO, audit logs (enterprise — build when there are enterprise customers)
+- Refactoring for its own sake (fold into pipeline work)
 - Any feature that doesn't directly improve decomposition, context threading, or orchestration

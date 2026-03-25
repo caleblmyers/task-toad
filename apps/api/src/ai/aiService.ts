@@ -37,7 +37,7 @@ import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupRepo
 
 import { FEATURE_CONFIG } from './aiConfig.js';
 import { callAI, callAIStructured, type PromptLogContext } from './aiClient.js';
-// parseJSON still used by direct callers (e.g. action executors); not used by callAndParse anymore
+import { parseJSON } from './responseParser.js';
 import { checkAIRateLimit } from '../utils/aiRateLimiter.js';
 import {
   buildProjectOptionsPrompt,
@@ -79,8 +79,12 @@ import {
 // App-level retry for transient AI errors
 // ---------------------------------------------------------------------------
 
-// isTransientError, callWithRetry, isArraySchema removed — structured output (callAIStructured)
-// handles retries and guarantees valid JSON via grammar-constrained decoding.
+function isArraySchema(schema: z.ZodType<unknown>): boolean {
+  const def = schema._def as { type?: string; in?: z.ZodType<unknown> };
+  if (def.type === 'array') return true;
+  if (def.type === 'pipe' && def.in) return isArraySchema(def.in);
+  return false;
+}
 
 async function callAndParse<T>(
   apiKey: string,
@@ -96,18 +100,66 @@ async function callAndParse<T>(
   }
 
   try {
-    // Use structured output — grammar-constrained JSON, no parsing issues
-    const result = await callAIStructured({
+    // Use structured output (tool_use) for features that generate file content — guaranteed valid JSON
+    if (config.useStructuredOutput) {
+      const result = await callAIStructured({
+        apiKey,
+        systemPrompt: prompt.systemPrompt,
+        userPrompt: prompt.userPrompt,
+        maxTokens: config.maxTokens,
+        feature,
+        model: config.model,
+        promptLogContext,
+      }, schema);
+      return result.parsed;
+    }
+
+    // Standard path: callAI + parseJSON (works for all other features)
+    const prefill = isArraySchema(schema as z.ZodType<unknown>) ? '[' : '{';
+    const result = await callAI({
       apiKey,
       systemPrompt: prompt.systemPrompt,
       userPrompt: prompt.userPrompt,
       maxTokens: config.maxTokens,
       feature,
-      model: config.model,
+      cacheTTLMs: config.cacheTTLMs,
+      prefill,
       promptLogContext,
-    }, schema);
+      model: config.model,
+    });
 
-    return result.parsed;
+    if (result.usage.stopReason === 'max_tokens') {
+      log.warn({ feature, outputTokens: result.usage.outputTokens, maxTokens: config.maxTokens }, 'AI response truncated');
+      throw new GraphQLError('AI response was too long and got cut off. Try simplifying the task.', {
+        extensions: { code: 'AI_RESPONSE_TRUNCATED' },
+      });
+    }
+
+    try {
+      return parseJSON(result.raw, schema);
+    } catch (err) {
+      if (config.retryOnValidationFailure && !result.cached) {
+        log.warn({ feature }, 'Validation failed, retrying once');
+        const retry = await callAI({
+          apiKey,
+          systemPrompt: prompt.systemPrompt,
+          userPrompt: prompt.userPrompt,
+          maxTokens: config.maxTokens,
+          feature,
+          cacheTTLMs: 0,
+          prefill,
+          promptLogContext,
+          model: config.model,
+        });
+        if (retry.usage.stopReason === 'max_tokens') {
+          throw new GraphQLError('AI response was too long and got cut off. Try simplifying the task.', {
+            extensions: { code: 'AI_RESPONSE_TRUNCATED' },
+          });
+        }
+        return parseJSON(retry.raw, schema);
+      }
+      throw err;
+    }
   } catch (err) {
     Sentry.captureException(err, {
       tags: { source: 'ai', feature },

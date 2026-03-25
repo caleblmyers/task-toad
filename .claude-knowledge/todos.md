@@ -73,6 +73,53 @@ Infrastructure jobs/listeners (slack, SLA, cron) load org plan from DB per-event
 - [ ] Auth retry: add test for UNAUTHENTICATED error detection and token refresh in gql() client
 - [ ] Saved views: test coverage for filter capture (round-trip save → load with all filter types)
 
+### Pre-Pipeline Refactors (Wave 61 — quick wins before pipeline rewrite)
+
+Foundation cleanup for files we'll be touching heavily during Phase 1. Do these first so the pipeline rewrite starts from a cleaner base.
+
+1. **Token manager utility (R1)** (~20 min)
+   - Extract `utils/tokenManager.ts` with `generateTokenPair(user)` and `setAuthCookies(res, tokens)`
+   - Consolidates 4 identical JWT generation + cookie setting blocks (~120 lines duplicated)
+   - Files: `apps/api/src/graphql/resolvers/auth.ts`, `apps/api/src/app.ts` (refresh handler)
+   - Acceptance: All auth tests pass. Single source of truth for token mechanics.
+
+2. **Event emission helpers (R4)** (~25 min)
+   - Create domain-specific emission helpers: `emitTaskEvent(type, user, task)`, `emitSprintEvent(type, user, sprint)`, etc.
+   - Consolidates 30+ manual `getEventBus().emit()` calls with hand-built payloads
+   - Common metadata (orgId, userId, timestamp) handled by helpers
+   - Files: new `apps/api/src/infrastructure/eventbus/emitters.ts`, then incrementally update resolver files
+   - Acceptance: All existing events still fire with correct payloads. Helpers are used in at least the task and sprint resolvers.
+   - **Important for pipeline:** We'll be adding new events for branch operations in Phase 1 — better to have helpers first.
+
+3. **Unused exports cleanup (R14)** (~5 min)
+   - Remove `hasExecutor` from `actions/registry.ts` (exported, never imported)
+   - Remove `onAny` from `eventbus/port.ts` (defined, never called)
+   - Files: `apps/api/src/actions/registry.ts`, `apps/api/src/infrastructure/eventbus/port.ts`
+   - Trivial, no risk.
+
+**Parallelism:** All 3 are independent. Can be one swarm wave with 1-2 workers.
+
+### Fold Into Pipeline Rewrite (do alongside Phase 1, not separately)
+
+These improve files we'll be rewriting for branch-based execution:
+
+- **R10: actionExecutor side-effect extraction** — Move insight generation to a listener on `task.action_completed`. Move `in_review` transition to a listener on `task.action_plan_completed`. Do this as part of the actionExecutor.ts rewrite in pipeline task 1.
+- **R13: Executor config validation** — Add Zod schemas for each executor's config. Do this when touching executors for branch commit changes (pipeline tasks 2-4).
+- **R3: AI feature registry** (partial) — If aiService.ts needs further changes for the pipeline, consolidate the 40+ wrapper functions then. Otherwise defer.
+
+### Deferred Refactors (not blocking pipeline, do post-Phase 1)
+
+UI and code quality improvements that don't touch pipeline files:
+
+- **R2: useEditableField hook** — Extract from TaskDetailPanel/TaskFieldsPanel. ~200 lines saved. P2.
+- **R5: Split useProjectData god interface** — 100+ properties → focused sub-interfaces. P2. Medium complexity.
+- **R6: Metrics calculation extraction** — Inline velocity/burndown/cycle-time → `utils/metrics.ts`. P2.
+- **R7: Resolver auth/ownership guards** — `requireEntity<T>()` helper. P3. Wide blast radius, do incrementally.
+- **R8: TaskDetailPanel tab extraction** — 5 inline tabs → 5 components. P2.
+- **R9: Picker component consolidation** — Assignee/Watcher/Label pickers → shared components. P2.
+- **R11: queries.ts decomposition** — 1,011 lines → domain-split files. P3.
+- **R12: Chart utilities extraction** — Shared resize observer + axis formatting. P3.
+
 ### Action Pipeline Rewrite — Branch-Based Code Generation
 
 The action plan pipeline needs a fundamental rework so that generated code is committed incrementally to a feature branch, making each step visible to subsequent steps and ending with a real PR.

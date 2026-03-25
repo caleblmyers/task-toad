@@ -180,6 +180,7 @@ export const taskActionMutations = {
       data: { status: 'cancelled' },
     });
 
+    // Create the plan with actions
     const plan = await context.prisma.taskActionPlan.create({
       data: {
         taskId: args.taskId,
@@ -199,7 +200,35 @@ export const taskActionMutations = {
       include: { actions: { orderBy: { position: 'asc' } } },
     });
 
-    return plan;
+    // Remap AI placeholder IDs (action_0, action_1, ...) to real database UUIDs in action configs
+    const idMap = new Map<string, string>();
+    plan.actions.forEach((a, i) => idMap.set(`action_${i}`, a.id));
+
+    const configKeys = ['sourceActionId', 'sourcePRActionId', 'sourceMonitorActionId'];
+    for (const action of plan.actions) {
+      let config: Record<string, unknown>;
+      try { config = JSON.parse(action.config || '{}'); } catch { continue; }
+      let changed = false;
+      for (const key of configKeys) {
+        const ref = config[key] as string | undefined;
+        if (ref && idMap.has(ref)) {
+          config[key] = idMap.get(ref);
+          changed = true;
+        }
+      }
+      if (changed) {
+        await context.prisma.taskAction.update({
+          where: { id: action.id },
+          data: { config: JSON.stringify(config) },
+        });
+      }
+    }
+
+    // Re-fetch with updated configs
+    return context.prisma.taskActionPlan.findUnique({
+      where: { id: plan.id },
+      include: { actions: { orderBy: { position: 'asc' } } },
+    });
   },
 
   executeActionPlan: async (_parent: unknown, args: { planId: string }, context: Context) => {
@@ -210,7 +239,7 @@ export const taskActionMutations = {
     });
 
     if (!plan || plan.orgId !== user.orgId) throw new NotFoundError('Action plan not found');
-    if (plan.status !== 'approved' && plan.status !== 'failed') {
+    if (plan.status !== 'approved' && plan.status !== 'failed' && plan.status !== 'executing') {
       throw new ValidationError(`Cannot execute plan in '${plan.status}' status`);
     }
 

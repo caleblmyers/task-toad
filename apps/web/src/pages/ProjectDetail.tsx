@@ -392,6 +392,7 @@ export default function ProjectDetail() {
     onSkipAction: d.handleSkipAction,
     onRetryAction: d.handleRetryAction,
     onCancelActionPlan: d.handleCancelActionPlan,
+    onExecuteActionPlan: async (planId: string) => { await d.handleExecuteActionPlan(planId); },
     timeSummary,
     onLogTime: logTime,
     onDeleteTimeEntry: deleteTimeEntry,

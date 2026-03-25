@@ -108,10 +108,11 @@ interface ActionProgressPanelProps {
   onSkip: (actionId: string) => Promise<void>;
   onRetry: (actionId: string) => Promise<void>;
   onCancel: (planId: string) => Promise<void>;
+  onExecute?: (planId: string) => Promise<void>;
 }
 
 function ActionItem({ action, onCompleteManual, onSkip, onRetry }: {
-  action: TaskActionType;
+  action: TaskActionType & { _isNext?: boolean };
   onCompleteManual: (id: string) => Promise<void>;
   onSkip: (id: string) => Promise<void>;
   onRetry: (id: string) => Promise<void>;
@@ -120,9 +121,11 @@ function ActionItem({ action, onCompleteManual, onSkip, onRetry }: {
   const canComplete = isManual && (action.status === 'pending' || action.status === 'executing');
   const canSkip = action.status === 'pending';
   const canRetry = action.status === 'failed';
+  const isAwaitingApproval = action.status === 'pending' && action.requiresApproval && action._isNext;
 
   return (
     <div className={`flex items-start gap-3 p-3 rounded-lg border ${
+      isAwaitingApproval ? 'border-amber-300 bg-amber-50' :
       action.status === 'executing' ? 'border-blue-200 bg-blue-50' :
       action.status === 'failed' ? 'border-red-200 bg-red-50' :
       action.status === 'completed' ? 'border-green-200 bg-green-50' :
@@ -184,11 +187,16 @@ function ActionItem({ action, onCompleteManual, onSkip, onRetry }: {
   );
 }
 
-export default function ActionProgressPanel({ plan, onCompleteManual, onSkip, onRetry, onCancel }: ActionProgressPanelProps) {
+export default function ActionProgressPanel({ plan, onCompleteManual, onSkip, onRetry, onCancel, onExecute }: ActionProgressPanelProps) {
   const completedCount = plan.actions.filter((a) => a.status === 'completed').length;
   const totalCount = plan.actions.length;
   const isActive = plan.status === 'executing' || plan.status === 'approved';
   const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  // Detect "waiting for approval" — plan is executing, no action is currently running, and next pending action requires approval
+  const hasRunningAction = plan.actions.some((a) => a.status === 'executing');
+  const nextPending = plan.actions.find((a) => a.status === 'pending');
+  const waitingForApproval = plan.status === 'executing' && !hasRunningAction && nextPending?.requiresApproval;
 
   return (
     <div className="mb-4" aria-live="polite">
@@ -227,11 +235,25 @@ export default function ActionProgressPanel({ plan, onCompleteManual, onSkip, on
         <p className="text-xs text-slate-500 mb-3">{plan.summary}</p>
       )}
 
+      {waitingForApproval && onExecute && (
+        <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
+          <p className="text-sm text-amber-800">
+            Next step requires approval: <span className="font-medium">{nextPending.label}</span>
+          </p>
+          <button
+            onClick={() => onExecute(plan.id)}
+            className="text-xs px-3 py-1.5 bg-amber-500 text-white rounded hover:bg-amber-600 font-medium"
+          >
+            Approve &amp; Continue
+          </button>
+        </div>
+      )}
+
       <div className="space-y-2">
         {plan.actions.map((action) => (
           <ActionItem
             key={action.id}
-            action={action}
+            action={nextPending?.id === action.id ? { ...action, _isNext: true } : action}
             onCompleteManual={onCompleteManual}
             onSkip={onSkip}
             onRetry={onRetry}

@@ -100,6 +100,7 @@ export interface TaskDetailPanelProps {
   onSkipAction?: (actionId: string) => Promise<void>;
   onRetryAction?: (actionId: string) => Promise<void>;
   onCancelActionPlan?: (planId: string) => Promise<void>;
+  onExecuteActionPlan?: (planId: string) => Promise<void>;
   timeSummary?: TaskTimeSummary | null;
   onLogTime?: (taskId: string, durationMinutes: number, loggedDate: string, description?: string, billable?: boolean) => Promise<unknown>;
   onDeleteTimeEntry?: (timeEntryId: string, taskId: string) => Promise<void>;
@@ -120,7 +121,7 @@ function PanelContent({
   onCreateSubtask,
   onReviewPR, reviewResult, reviewLoading,
   onAutoComplete, autoCompleteLoading,
-  actionPlan, onCompleteManualAction, onSkipAction, onRetryAction, onCancelActionPlan,
+  actionPlan, onCompleteManualAction, onSkipAction, onRetryAction, onCancelActionPlan, onExecuteActionPlan,
   timeSummary, onLogTime, onDeleteTimeEntry,
   onSelectTask,
 }: Omit<TaskDetailPanelProps, 'onClose' | 'isDrawer'>) {
@@ -538,6 +539,7 @@ function PanelContent({
           onSkip={onSkipAction}
           onRetry={onRetryAction}
           onCancel={onCancelActionPlan}
+          onExecute={onExecuteActionPlan}
         />
       )}
 
