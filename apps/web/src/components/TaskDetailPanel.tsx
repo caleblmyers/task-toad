@@ -1,27 +1,16 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import type { Task, Sprint, OrgUser, Comment, Activity, Label, CodeReview, Attachment, TaskActionPlan } from '../types';
+import type { Task, Sprint, OrgUser, Comment, Activity, Label, CodeReview, TaskActionPlan } from '../types';
 import type { TaskTimeSummary } from '@tasktoad/shared-types';
-import ActionProgressPanel from './ActionProgressPanel';
 import { gql } from '../api/client';
-import { TASK_ANCESTORS_QUERY, TASK_INSIGHTS_QUERY, GENERATE_MANUAL_TASK_SPEC_MUTATION } from '../api/queries';
-import ManualTaskSpecView from './taskdetail/ManualTaskSpecView';
-import type { ManualTaskSpec } from './taskdetail/ManualTaskSpecView';
-import { useEditableField } from '../hooks/useEditableField';
-import CommentSection from './CommentSection';
-import ActivityFeed from './ActivityFeed';
-import MarkdownRenderer from './shared/MarkdownRenderer';
-import MarkdownEditor from './shared/MarkdownEditor';
+import { TASK_ANCESTORS_QUERY, TASK_INSIGHTS_QUERY } from '../api/queries';
 import Tabs from './shared/Tabs';
 import TaskTitleEditor from './taskdetail/TaskTitleEditor';
-import TaskFieldsPanel from './taskdetail/TaskFieldsPanel';
-import TaskGitHubSection from './taskdetail/TaskGitHubSection';
-import TaskDependenciesSection from './taskdetail/TaskDependenciesSection';
-import TaskSubtasksSection from './taskdetail/TaskSubtasksSection';
-import TaskAIHistory from './taskdetail/TaskAIHistory';
-import TaskAIReviewSection from './taskdetail/TaskAIReviewSection';
-import InsightPanel from './taskdetail/InsightPanel';
 import type { TaskInsight } from './taskdetail/InsightPanel';
-import Badge from './shared/Badge';
+import DetailsTab from './taskdetail/DetailsTab';
+import ActivityTab from './taskdetail/ActivityTab';
+import RelationsTab from './taskdetail/RelationsTab';
+import ActionsTab from './taskdetail/ActionsTab';
+import InsightsTab from './taskdetail/InsightsTab';
 
 interface TaskAncestor {
   taskId: string;
@@ -29,22 +18,6 @@ interface TaskAncestor {
   status: string;
   taskType: string;
 }
-
-function parseTools(raw?: string | null): Array<{ name: string; category: string; reason?: string }> {
-  if (!raw) return [];
-  try { return JSON.parse(raw); } catch { return []; }
-}
-
-const categoryVariant: Record<string, 'purple' | 'info' | 'warning' | 'success' | 'accent' | 'neutral'> = {
-  'ai-model': 'purple',
-  'code-editor': 'info',
-  'design-tool': 'purple',
-  'database': 'warning',
-  'cloud-service': 'info',
-  'communication': 'success',
-  'testing': 'accent',
-  'other': 'neutral',
-};
 
 export interface TaskDetailPanelProps {
   task: Task;
@@ -126,10 +99,8 @@ function PanelContent({
   timeSummary, onLogTime, onDeleteTimeEntry,
   onSelectTask,
 }: Omit<TaskDetailPanelProps, 'onClose' | 'isDrawer'>) {
-  // Disable editing when user lacks EDIT_TASKS permission
   const canEdit = canDo ? canDo('EDIT_TASKS') : true;
   const isDisabled = disabled || !canEdit;
-  const tools = parseTools(task.suggestedTools);
   const [ancestors, setAncestors] = useState<TaskAncestor[]>([]);
 
   useEffect(() => {
@@ -147,422 +118,7 @@ function PanelContent({
   const [insightCount, setInsightCount] = useState(0);
   const [fetchedInsights, setFetchedInsights] = useState<TaskInsight[]>([]);
 
-  const descField = useEditableField(
-    task.description ?? '',
-    async (val) => { if (onUpdateTask) await onUpdateTask(task.taskId, { description: val }); },
-  );
-  const instrField = useEditableField(
-    task.instructions ?? '',
-    async (val) => { if (onUpdateTask) await onUpdateTask(task.taskId, { instructions: val }); },
-  );
-  const acField = useEditableField(
-    task.acceptanceCriteria ?? '',
-    async (val) => { if (onUpdateTask) await onUpdateTask(task.taskId, { acceptanceCriteria: val }); },
-  );
-  const [uploading, setUploading] = useState(false);
-  const [localAttachments, setLocalAttachments] = useState<Attachment[]>(task.attachments ?? []);
-  const [manualSpec, setManualSpec] = useState<ManualTaskSpec | null>(null);
-  const [specLoading, setSpecLoading] = useState(false);
-
-  const handleUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const res = await fetch(`/api/uploads/${task.taskId}`, {
-        method: 'POST',
-        credentials: 'include',
-        body: formData,
-      });
-      if (res.ok) {
-        const attachment = await res.json() as Attachment;
-        setLocalAttachments(prev => [attachment, ...prev]);
-      }
-    } finally {
-      setUploading(false);
-      e.target.value = '';
-    }
-  }, [task.taskId]);
-
-  const handleDeleteAttachment = useCallback(async (attachmentId: string) => {
-    try {
-      await gql<{ deleteAttachment: boolean }>(
-        `mutation($attachmentId: ID!) { deleteAttachment(attachmentId: $attachmentId) }`,
-        { attachmentId },
-      );
-      setLocalAttachments(prev => prev.filter(a => a.attachmentId !== attachmentId));
-    } catch { /* ignore */ }
-  }, []);
-
-  const detailsTab = (
-    <section aria-labelledby="task-tab-details-heading">
-      <h3 id="task-tab-details-heading" className="sr-only">Task Details</h3>
-
-      <TaskFieldsPanel
-        task={task}
-        sprints={sprints}
-        orgUsers={orgUsers}
-        statuses={statuses}
-        labels={labels}
-        disabled={isDisabled}
-        currentUserId={currentUserId}
-        onStatusChange={onStatusChange}
-        onAssignSprint={onAssignSprint}
-        onAssignUser={onAssignUser}
-        onDueDateChange={onDueDateChange}
-        onUpdateTask={onUpdateTask}
-        onAddTaskLabel={onAddTaskLabel}
-        onRemoveTaskLabel={onRemoveTaskLabel}
-        onCreateLabel={onCreateLabel}
-        onAddWatcher={onAddWatcher}
-        onRemoveWatcher={onRemoveWatcher}
-        timeSummary={timeSummary}
-        onLogTime={canDo && !canDo('LOG_TIME') ? undefined : onLogTime}
-        onDeleteTimeEntry={onDeleteTimeEntry}
-      />
-
-      {/* Recurrence */}
-      <div className="mb-4">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">
-          {task.recurrenceRule && <span className="mr-1">↻</span>}Recurrence
-        </p>
-        <select
-          value={task.recurrenceRule ?? ''}
-          onChange={(e) => {
-            const rule = e.target.value || null;
-            if (onUpdateTask) {
-              (onUpdateTask as (taskId: string, updates: Record<string, unknown>) => Promise<void>)(
-                task.taskId,
-                { recurrenceRule: rule },
-              );
-            }
-          }}
-          disabled={isDisabled}
-          className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 bg-white dark:bg-slate-800 dark:text-slate-200"
-        >
-          <option value="">None</option>
-          <option value="0 9 * * *">Daily (9am)</option>
-          <option value="0 9 * * 1">Weekly (Monday)</option>
-          <option value="0 9 * * 5">Weekly (Friday)</option>
-          <option value="0 9 1,15 * *">Biweekly (1st &amp; 15th)</option>
-          <option value="0 9 1 * *">Monthly (1st)</option>
-        </select>
-      </div>
-
-      {/* Description */}
-      <div className="mb-4">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">Description</p>
-        {descField.isEditing ? (
-          <MarkdownEditor
-            value={descField.value}
-            onChange={descField.setValue}
-            onSave={descField.save}
-            onCancel={descField.cancel}
-            placeholder="Add a description…"
-            rows={4}
-          />
-        ) : task.description ? (
-          <button
-            type="button"
-            className="w-full text-left cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded p-1 -m-1"
-            onClick={() => { if (!isDisabled) descField.startEdit(); }}
-            disabled={isDisabled}
-            aria-label="Edit description"
-          >
-            <MarkdownRenderer content={task.description} />
-          </button>
-        ) : (
-          <button
-            onClick={() => { if (!isDisabled) descField.startEdit(); }}
-            className="text-xs text-slate-500 hover:text-slate-600"
-            disabled={isDisabled}
-          >
-            + Add description
-          </button>
-        )}
-      </div>
-
-      {/* Acceptance Criteria */}
-      <div className="mb-4">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">
-          <span className="mr-1">&#10003;</span>Acceptance Criteria
-        </p>
-        {acField.isEditing ? (
-          <MarkdownEditor
-            value={acField.value}
-            onChange={acField.setValue}
-            onSave={acField.save}
-            onCancel={acField.cancel}
-            placeholder="Add acceptance criteria…"
-            rows={4}
-          />
-        ) : task.acceptanceCriteria ? (
-          <button
-            type="button"
-            className="w-full text-left cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded p-1 -m-1"
-            onClick={() => { if (!isDisabled) acField.startEdit(); }}
-            disabled={isDisabled}
-            aria-label="Edit acceptance criteria"
-          >
-            <MarkdownRenderer content={task.acceptanceCriteria} />
-          </button>
-        ) : (
-          <button
-            onClick={() => { if (!isDisabled) acField.startEdit(); }}
-            className="text-xs text-slate-500 hover:text-slate-600"
-            disabled={isDisabled}
-          >
-            + Add acceptance criteria
-          </button>
-        )}
-      </div>
-
-      {/* Instructions */}
-      <div className="mb-4">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">Instructions</p>
-        {instrField.isEditing ? (
-          <MarkdownEditor
-            value={instrField.value}
-            onChange={instrField.setValue}
-            onSave={instrField.save}
-            onCancel={instrField.cancel}
-            placeholder="Add instructions…"
-            rows={6}
-          />
-        ) : task.instructions ? (
-          <button
-            type="button"
-            className="w-full text-left bg-slate-50 dark:bg-slate-800 rounded-lg p-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700"
-            onClick={() => { if (!isDisabled) instrField.startEdit(); }}
-            disabled={isDisabled}
-            aria-label="Edit instructions"
-          >
-            <MarkdownRenderer content={task.instructions} />
-          </button>
-        ) : (
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => onGenerateInstructions(task)}
-              disabled={isDisabled || generatingInstructions === task.taskId}
-              className="px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 dark:text-slate-200"
-            >
-              {generatingInstructions === task.taskId ? 'Generating…' : '✦ Generate instructions'}
-            </button>
-            <button
-              onClick={() => { if (!isDisabled) instrField.startEdit(); }}
-              className="text-xs text-slate-500 hover:text-slate-600 px-2"
-              disabled={isDisabled}
-            >
-              Write manually
-            </button>
-          </div>
-        )}
-        {task.instructions && !instrField.isEditing && (
-          <ManualTaskSpecView
-            spec={manualSpec}
-            loading={specLoading}
-            onGenerate={async () => {
-              setSpecLoading(true);
-              try {
-                const data = await gql<{ generateManualTaskSpec: ManualTaskSpec }>(
-                  GENERATE_MANUAL_TASK_SPEC_MUTATION,
-                  { taskId: task.taskId }
-                );
-                setManualSpec(data.generateManualTaskSpec);
-              } catch {
-                // silently fail — button stays available
-              } finally {
-                setSpecLoading(false);
-              }
-            }}
-          />
-        )}
-      </div>
-
-      <TaskGitHubSection
-        task={task}
-        projectHasRepo={projectHasRepo}
-        disabled={isDisabled}
-        onSyncToGitHub={onSyncToGitHub}
-      />
-    </section>
-  );
-
-  const activityTab = (
-    <section aria-labelledby="task-tab-activity-heading">
-      <h3 id="task-tab-activity-heading" className="sr-only">Activity</h3>
-
-      <div className="mb-4">
-        <CommentSection
-          comments={comments}
-          currentUserId={currentUserId}
-          isAdmin={isAdmin}
-          orgUsers={orgUsers}
-          onCreateComment={onCreateComment}
-          onUpdateComment={onUpdateComment}
-          onDeleteComment={onDeleteComment}
-          disabled={canDo ? !canDo('CREATE_COMMENTS') : false}
-        />
-      </div>
-
-      <TaskAIHistory taskId={task.taskId} />
-
-      <div>
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">Activity</p>
-        <ActivityFeed activities={activities} />
-      </div>
-    </section>
-  );
-
-  const relationsTab = (
-    <section aria-labelledby="task-tab-relations-heading">
-      <h3 id="task-tab-relations-heading" className="sr-only">Relations</h3>
-
-      <TaskDependenciesSection
-        task={task}
-        allTasks={allTasks}
-        disabled={isDisabled}
-        onAddDependency={onAddDependency}
-        onRemoveDependency={onRemoveDependency}
-      />
-
-      <TaskSubtasksSection
-        task={task}
-        subtasks={subtasks}
-        statuses={statuses}
-        generatingInstructions={generatingInstructions}
-        disabled={isDisabled}
-        onSubtaskStatusChange={onSubtaskStatusChange}
-        onGenerateInstructions={onGenerateInstructions}
-        onCreateSubtask={onCreateSubtask}
-        onAutoComplete={onAutoComplete}
-        autoCompleteLoading={autoCompleteLoading}
-      />
-
-      {/* Attachments */}
-      <div className="mb-4">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">Attachments</p>
-        {localAttachments.length > 0 && (
-          <ul className="space-y-1 mb-2">
-            {localAttachments.map(a => (
-              <li key={a.attachmentId} className="flex items-center justify-between text-sm bg-slate-50 dark:bg-slate-800 rounded px-2 py-1">
-                <a
-                  href={`/api/uploads/${a.attachmentId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 dark:text-blue-400 hover:underline truncate mr-2"
-                >
-                  {a.fileName}
-                </a>
-                <span className="flex items-center gap-2 text-xs text-slate-500 flex-shrink-0">
-                  {a.sizeBytes < 1024 ? `${a.sizeBytes} B` : a.sizeBytes < 1048576 ? `${(a.sizeBytes / 1024).toFixed(1)} KB` : `${(a.sizeBytes / 1048576).toFixed(1)} MB`}
-                  <button
-                    onClick={() => handleDeleteAttachment(a.attachmentId)}
-                    className="text-red-400 hover:text-red-600"
-                    disabled={isDisabled}
-                    aria-label={`Delete attachment ${a.fileName}`}
-                  >
-                    ✕
-                  </button>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <label className={`inline-flex items-center gap-1 text-xs px-2 py-1 border border-slate-300 dark:border-slate-600 rounded cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 ${isDisabled || uploading ? 'opacity-50 pointer-events-none' : ''}`}>
-          {uploading ? 'Uploading…' : '+ Attach file'}
-          <input type="file" className="hidden" onChange={handleUpload} disabled={isDisabled || uploading} />
-        </label>
-      </div>
-
-      {/* Suggested Tools */}
-      {tools.length > 0 && (
-        <div className="mb-4">
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">Suggested Tools</p>
-          <div className="flex flex-wrap gap-2">
-            {tools.map((tool, i) => (
-              <Badge key={i} variant={categoryVariant[tool.category] ?? 'neutral'} className="px-2.5 py-1.5 rounded-lg">
-                <span className="font-semibold">{tool.name}</span>
-                <span className="ml-1 opacity-60">· {tool.category}</span>
-                {tool.reason && <p className="mt-0.5 opacity-75 font-normal">{tool.reason}</p>}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      )}
-    </section>
-  );
-
-  const actionsTab = (
-    <section aria-labelledby="task-tab-actions-heading">
-      <h3 id="task-tab-actions-heading" className="sr-only">Actions</h3>
-
-      {/* AI Review */}
-      {onReviewPR && task.pullRequests && task.pullRequests.length > 0 && (
-        <div className="mb-4">
-          <button
-            type="button"
-            onClick={() => onReviewPR(task.taskId, task.pullRequests![0].prNumber)}
-            disabled={isDisabled || reviewLoading}
-            className="px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 dark:text-slate-200"
-          >
-            {reviewLoading ? 'Reviewing…' : '✦ AI Review'}
-          </button>
-        </div>
-      )}
-
-      <TaskAIReviewSection review={reviewResult ?? null} loading={reviewLoading ?? false} />
-
-      {/* Auto-Complete for leaf tasks */}
-      {subtasks.length === 0 && task.taskType !== 'epic' && task.taskType !== 'story' && task.instructions && onAutoComplete && (
-        <div className="mb-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => onAutoComplete(task)}
-            disabled={isDisabled || autoCompleteLoading}
-            className="px-3 py-1.5 text-sm border border-indigo-300 dark:border-indigo-600 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/30 disabled:opacity-50"
-          >
-            {autoCompleteLoading ? 'Planning…' : '⚡ Auto-Complete'}
-          </button>
-        </div>
-      )}
-
-      {actionPlan && onCompleteManualAction && onSkipAction && onRetryAction && onCancelActionPlan && (
-        <ActionProgressPanel
-          plan={actionPlan}
-          onCompleteManual={onCompleteManualAction}
-          onSkip={onSkipAction}
-          onRetry={onRetryAction}
-          onCancel={onCancelActionPlan}
-          onExecute={onExecuteActionPlan}
-        />
-      )}
-
-      {/* Archive / Unarchive */}
-      {onArchiveTask && (
-        <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
-          <button
-            type="button"
-            onClick={() => onArchiveTask(task.taskId, !task.archived)}
-            disabled={isDisabled || (canDo ? !canDo('DELETE_TASKS') : false)}
-            title={canDo && !canDo('DELETE_TASKS') ? "You don't have permission to archive tasks" : undefined}
-            className={`text-sm px-3 py-1.5 rounded border ${
-              task.archived
-                ? 'text-slate-600 border-slate-300 hover:bg-slate-50'
-                : 'text-red-600 border-red-200 hover:bg-red-50'
-            } disabled:opacity-50`}
-          >
-            {task.archived ? 'Unarchive task' : 'Archive task'}
-          </button>
-        </div>
-      )}
-    </section>
-  );
-
-  // Fetch insights for tab badge count + pass to InsightPanel
+  // Fetch insights for tab badge count
   useEffect(() => {
     if (!task.autoComplete) {
       setInsightCount(0);
@@ -591,40 +147,131 @@ function PanelContent({
 
   const showInsightsTab = task.autoComplete || insightCount > 0;
 
-  const insightsTab = showInsightsTab ? (
-    <section className="space-y-4">
-      <InsightPanel
-        projectId={task.projectId}
-        taskId={task.taskId}
-        initialInsights={fetchedInsights}
-        onApplyInsight={onUpdateTask ? handleApplyInsight : undefined}
-      />
-    </section>
-  ) : null;
-
   const insightsLabel = insightCount > 0
     ? `Insights (${insightCount})`
     : 'Insights';
 
   const tabs = useMemo(() => {
     const result = [
-      { id: 'details', label: 'Details', content: detailsTab },
-      { id: 'activity', label: 'Activity', content: activityTab },
-      { id: 'relations', label: 'Relations', content: relationsTab },
-      { id: 'actions', label: 'Actions', content: actionsTab },
+      {
+        id: 'details',
+        label: 'Details',
+        content: (
+          <DetailsTab
+            task={task}
+            sprints={sprints}
+            orgUsers={orgUsers}
+            statuses={statuses}
+            labels={labels}
+            disabled={isDisabled}
+            currentUserId={currentUserId}
+            generatingInstructions={generatingInstructions}
+            projectHasRepo={projectHasRepo}
+            can={canDo}
+            onStatusChange={onStatusChange}
+            onAssignSprint={onAssignSprint}
+            onAssignUser={onAssignUser}
+            onDueDateChange={onDueDateChange}
+            onUpdateTask={onUpdateTask}
+            onAddTaskLabel={onAddTaskLabel}
+            onRemoveTaskLabel={onRemoveTaskLabel}
+            onCreateLabel={onCreateLabel}
+            onAddWatcher={onAddWatcher}
+            onRemoveWatcher={onRemoveWatcher}
+            onGenerateInstructions={onGenerateInstructions}
+            onSyncToGitHub={onSyncToGitHub}
+            timeSummary={timeSummary}
+            onLogTime={onLogTime}
+            onDeleteTimeEntry={onDeleteTimeEntry}
+          />
+        ),
+      },
+      {
+        id: 'activity',
+        label: 'Activity',
+        content: (
+          <ActivityTab
+            taskId={task.taskId}
+            comments={comments}
+            activities={activities}
+            currentUserId={currentUserId}
+            isAdmin={isAdmin}
+            orgUsers={orgUsers}
+            onCreateComment={onCreateComment}
+            onUpdateComment={onUpdateComment}
+            onDeleteComment={onDeleteComment}
+            commentsDisabled={canDo ? !canDo('CREATE_COMMENTS') : false}
+          />
+        ),
+      },
+      {
+        id: 'relations',
+        label: 'Relations',
+        content: (
+          <RelationsTab
+            task={task}
+            subtasks={subtasks}
+            statuses={statuses}
+            allTasks={allTasks}
+            disabled={isDisabled}
+            generatingInstructions={generatingInstructions}
+            onAddDependency={onAddDependency}
+            onRemoveDependency={onRemoveDependency}
+            onSubtaskStatusChange={onSubtaskStatusChange}
+            onGenerateInstructions={onGenerateInstructions}
+            onCreateSubtask={onCreateSubtask}
+            onAutoComplete={onAutoComplete}
+            autoCompleteLoading={autoCompleteLoading}
+          />
+        ),
+      },
+      {
+        id: 'actions',
+        label: 'Actions',
+        content: (
+          <ActionsTab
+            task={task}
+            subtasks={subtasks}
+            disabled={isDisabled}
+            can={canDo}
+            onReviewPR={onReviewPR}
+            reviewResult={reviewResult}
+            reviewLoading={reviewLoading}
+            onAutoComplete={onAutoComplete}
+            autoCompleteLoading={autoCompleteLoading}
+            actionPlan={actionPlan}
+            onCompleteManualAction={onCompleteManualAction}
+            onSkipAction={onSkipAction}
+            onRetryAction={onRetryAction}
+            onCancelActionPlan={onCancelActionPlan}
+            onExecuteActionPlan={onExecuteActionPlan}
+            onArchiveTask={onArchiveTask}
+          />
+        ),
+      },
     ];
-    if (showInsightsTab && insightsTab) {
-      result.push({ id: 'insights', label: insightsLabel, content: insightsTab });
+    if (showInsightsTab) {
+      result.push({
+        id: 'insights',
+        label: insightsLabel,
+        content: (
+          <InsightsTab
+            projectId={task.projectId}
+            taskId={task.taskId}
+            fetchedInsights={fetchedInsights}
+            onApplyInsight={onUpdateTask ? handleApplyInsight : undefined}
+          />
+        ),
+      });
     }
     return result;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     task, subtasks, editingTitle, editTitleValue, generatingInstructions,
     sprints, orgUsers, statuses, allTasks, comments, activities, labels,
-    disabled, projectHasRepo, descField, instrField, acField,
-    uploading, localAttachments, reviewResult, reviewLoading,
-    autoCompleteLoading, actionPlan, timeSummary, tools.length, ancestors,
-    showInsightsTab, insightCount, fetchedInsights, manualSpec, specLoading,
+    disabled, projectHasRepo, reviewResult, reviewLoading,
+    autoCompleteLoading, actionPlan, timeSummary, ancestors,
+    showInsightsTab, insightCount, fetchedInsights,
   ]);
 
   return (
