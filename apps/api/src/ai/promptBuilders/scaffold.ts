@@ -24,12 +24,12 @@ Template: ${templateBlock}
 Project name: ${projectBlock}
 Project description: ${descBlock}${optionsBlock}
 
-Create all the files needed for a production-ready starter project using this template. Include:
-- Package configuration (package.json, tsconfig.json, etc.)
-- Entry point files
-- Basic project structure with source directories
-- Configuration files (.gitignore, .eslintrc, etc.)
-- A README.md with setup instructions
+Create the ABSOLUTE MINIMUM scaffold to get a running "hello world" — 3 to 5 files MAXIMUM. Include ONLY:
+- Dependency file (package.json, requirements.txt, etc.)
+- Single entry point file (under 30 lines)
+- .gitignore (one line per entry, common ignores only)
+
+Do NOT include: README, test files, CI configs, Docker files, linter configs, tsconfig, or any config beyond the dependency file. Every file content must be under 40 lines.
 
 Return JSON:
 {

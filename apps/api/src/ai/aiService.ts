@@ -34,10 +34,10 @@ import {
   ManualTaskSpecSchema,
 } from './aiTypes.js';
 import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse, DriftAnalysis, TrendAnalysis, ActionPlanResponse, ReleaseNotes, OnboardingQuestionsResponse, HierarchicalPlanResponse, TaskInsightsResponse, ManualTaskSpec } from './aiTypes.js';
-import Anthropic from '@anthropic-ai/sdk';
+
 import { FEATURE_CONFIG } from './aiConfig.js';
-import { callAI, type PromptLogContext } from './aiClient.js';
-import { parseJSON } from './responseParser.js';
+import { callAI, callAIStructured, type PromptLogContext } from './aiClient.js';
+// parseJSON still used by direct callers (e.g. action executors); not used by callAndParse anymore
 import { checkAIRateLimit } from '../utils/aiRateLimiter.js';
 import {
   buildProjectOptionsPrompt,
@@ -79,43 +79,8 @@ import {
 // App-level retry for transient AI errors
 // ---------------------------------------------------------------------------
 
-function isTransientError(err: unknown): boolean {
-  if (err instanceof Anthropic.APIConnectionError) return true;
-  if (err instanceof Anthropic.InternalServerError) return true;
-  // 5xx mapped to GraphQLError with specific codes
-  if (err instanceof GraphQLError) {
-    const code = err.extensions?.code as string | undefined;
-    if (code === 'AI_SERVER_ERROR' || code === 'AI_UNAVAILABLE') return true;
-  }
-  return false;
-}
-
-async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 2): Promise<T> {
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (err) {
-      if (attempt === maxRetries || !isTransientError(err)) throw err;
-      const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
-      log.info({ attempt, delayMs: delay }, 'Retrying AI call after transient error');
-      await new Promise((resolve) => setTimeout(resolve, delay));
-    }
-  }
-  throw new Error('unreachable');
-}
-
-// ---------------------------------------------------------------------------
-// Retry-on-validation-failure helper
-// ---------------------------------------------------------------------------
-
-/** Detect whether a Zod schema expects an array at the top level. */
-function isArraySchema(schema: z.ZodType<unknown>): boolean {
-  const def = schema._def as { type?: string; in?: z.ZodType<unknown> };
-  if (def.type === 'array') return true;
-  // Unwrap ZodPipe (e.g. .transform(), .refine() in Zod v4)
-  if (def.type === 'pipe' && def.in) return isArraySchema(def.in);
-  return false;
-}
+// isTransientError, callWithRetry, isArraySchema removed — structured output (callAIStructured)
+// handles retries and guarantees valid JSON via grammar-constrained decoding.
 
 async function callAndParse<T>(
   apiKey: string,
@@ -125,58 +90,24 @@ async function callAndParse<T>(
   promptLogContext?: PromptLogContext
 ): Promise<T> {
   const config = FEATURE_CONFIG[feature];
-  const prefill = isArraySchema(schema as z.ZodType<unknown>) ? '[' : '{';
 
   if (promptLogContext?.orgId) {
     await checkAIRateLimit(promptLogContext.prisma, promptLogContext.orgId);
   }
 
   try {
-    const result = await callWithRetry(() => callAI({
+    // Use structured output — grammar-constrained JSON, no parsing issues
+    const result = await callAIStructured({
       apiKey,
       systemPrompt: prompt.systemPrompt,
       userPrompt: prompt.userPrompt,
       maxTokens: config.maxTokens,
       feature,
-      cacheTTLMs: config.cacheTTLMs,
-      prefill,
+      model: config.model,
       promptLogContext,
-    }));
+    }, schema);
 
-    if (result.usage.stopReason === 'max_tokens') {
-      log.warn({ feature, outputTokens: result.usage.outputTokens, maxTokens: config.maxTokens }, 'AI response truncated (hit max_tokens)');
-      throw new GraphQLError('AI response was too long and got cut off. Try simplifying the task or breaking it into smaller pieces.', {
-        extensions: { code: 'AI_RESPONSE_TRUNCATED' },
-      });
-    }
-
-    try {
-      return parseJSON(result.raw, schema);
-    } catch (err) {
-      if (config.retryOnValidationFailure && !result.cached) {
-        log.warn({ feature }, 'Validation failed, retrying once');
-        const retry = await callWithRetry(() => callAI({
-          apiKey,
-          systemPrompt: prompt.systemPrompt,
-          userPrompt: prompt.userPrompt,
-          maxTokens: config.maxTokens,
-          feature,
-          cacheTTLMs: 0, // skip cache on retry
-          prefill,
-          promptLogContext,
-        }));
-
-        if (retry.usage.stopReason === 'max_tokens') {
-          log.warn({ feature, outputTokens: retry.usage.outputTokens, maxTokens: config.maxTokens }, 'AI retry also truncated');
-          throw new GraphQLError('AI response was too long and got cut off. Try simplifying the task or breaking it into smaller pieces.', {
-            extensions: { code: 'AI_RESPONSE_TRUNCATED' },
-          });
-        }
-
-        return parseJSON(retry.raw, schema);
-      }
-      throw err;
-    }
+    return result.parsed;
   } catch (err) {
     Sentry.captureException(err, {
       tags: { source: 'ai', feature },

@@ -98,9 +98,10 @@ async function githubRestRequest<T>(
  * Returns null if the ref doesn't exist (e.g. empty repo).
  */
 export async function getDefaultBranchOid(
-  repo: GitHubRepoLink
+  repo: GitHubRepoLink,
+  tokenOverride?: string
 ): Promise<string | null> {
-  const token = await getInstallationToken(repo.installationId);
+  const token = tokenOverride ?? await getInstallationToken(repo.installationId);
   const qualifiedRef = `refs/heads/${repo.defaultBranch}`;
 
   const data = await githubRequest<GetBranchOidResponse>(token, GET_DEFAULT_BRANCH_OID, {
@@ -213,9 +214,10 @@ export async function createBranch(
 export async function commitFiles(
   repo: GitHubRepoLink,
   input: CommitInput,
-  headOid: string
+  headOid: string,
+  tokenOverride?: string
 ): Promise<{ oid: string; url: string }> {
-  const token = await getInstallationToken(repo.installationId);
+  const token = tokenOverride ?? await getInstallationToken(repo.installationId);
 
   const fileChanges: Record<string, unknown> = {};
 
@@ -262,60 +264,52 @@ export async function commitFiles(
 export async function commitFilesToEmptyRepo(
   repo: GitHubRepoLink,
   files: Array<{ path: string; content: string }>,
-  message: string
+  message: string,
+  tokenOverride?: string
 ): Promise<{ oid: string; url: string }> {
-  const token = await getInstallationToken(repo.installationId);
+  const token = tokenOverride ?? await getInstallationToken(repo.installationId);
   const owner = encodeURIComponent(repo.repositoryOwner);
   const name = encodeURIComponent(repo.repositoryName);
   const repoPath = `/repos/${owner}/${name}`;
 
   try {
-    // 1. Create blobs for each file
-    const blobShas = await Promise.all(
-      files.map(async (file) => {
-        const blob = await githubRestRequest<{ sha: string }>(
-          token,
-          'POST',
-          `${repoPath}/git/blobs`,
-          { content: Buffer.from(file.content).toString('base64'), encoding: 'base64' }
-        );
-        return { path: file.path, sha: blob.sha };
-      })
-    );
+    // GitHub's Git Data API (blobs/trees/commits/refs) doesn't work on truly empty repos.
+    // Bootstrap with the Contents API which handles empty repos, then add remaining files via GraphQL.
 
-    // 2. Create tree
-    const tree = await githubRestRequest<{ sha: string }>(
+    // 1. Create the first file via Contents API (initializes the repo with a commit)
+    const firstFile = files[0];
+    const createResult = await githubRestRequest<{ commit: { sha: string; html_url: string } }>(
       token,
-      'POST',
-      `${repoPath}/git/trees`,
+      'PUT',
+      `${repoPath}/contents/${encodeURIComponent(firstFile.path)}`,
       {
-        tree: blobShas.map((b) => ({
-          path: b.path,
-          mode: '100644',
-          type: 'blob',
-          sha: b.sha,
-        })),
+        message,
+        content: Buffer.from(firstFile.content).toString('base64'),
+        branch: repo.defaultBranch,
       }
     );
 
-    // 3. Create commit (empty parents = initial commit)
-    const commit = await githubRestRequest<{ sha: string; html_url: string }>(
-      token,
-      'POST',
-      `${repoPath}/git/commits`,
-      { message, tree: tree.sha, parents: [] }
-    );
+    const initialOid = createResult.commit.sha;
+    let commitUrl = createResult.commit.html_url;
 
-    // 4. Create ref pointing to the new commit
-    await githubRestRequest(
-      token,
-      'POST',
-      `${repoPath}/git/refs`,
-      { ref: `refs/heads/${repo.defaultBranch}`, sha: commit.sha }
-    );
+    // 2. If there are more files, commit them via GraphQL (repo is no longer empty)
+    if (files.length > 1) {
+      const remainingFiles = files.slice(1);
+      const result = await commitFiles(
+        repo,
+        {
+          branch: repo.defaultBranch,
+          message: `chore: add scaffold files`,
+          additions: remainingFiles,
+        },
+        initialOid,
+        tokenOverride
+      );
+      commitUrl = result.url;
+    }
 
-    logCommit(repo.repositoryOwner, repo.repositoryName, repo.defaultBranch, commit.sha);
-    return { oid: commit.sha, url: commit.html_url };
+    logCommit(repo.repositoryOwner, repo.repositoryName, repo.defaultBranch, initialOid);
+    return { oid: initialOid, url: commitUrl };
   } catch (error) {
     logApiError('commitFilesToEmptyRepo', error, {
       repo: `${repo.repositoryOwner}/${repo.repositoryName}`,

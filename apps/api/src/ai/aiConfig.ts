@@ -4,7 +4,7 @@ import type { AIFeature } from './aiTypes.js';
 // Model configuration
 // ---------------------------------------------------------------------------
 
-export const AI_MODEL = 'claude-haiku-4-5-20251001';
+export const AI_MODEL = 'claude-sonnet-4-20250514';
 export const CONTEXT_WINDOW = 200_000;
 
 // ---------------------------------------------------------------------------
@@ -15,6 +15,7 @@ interface FeatureConfig {
   maxTokens: number;
   cacheTTLMs: number; // 0 = no cache
   retryOnValidationFailure: boolean;
+  model?: string; // override AI_MODEL for this feature
 }
 
 export const FEATURE_CONFIG: Record<AIFeature, FeatureConfig> = {
@@ -54,11 +55,11 @@ export const FEATURE_CONFIG: Record<AIFeature, FeatureConfig> = {
 };
 
 // ---------------------------------------------------------------------------
-// Cost constants (Haiku per-token pricing, USD)
+// Cost constants (Sonnet per-token pricing, USD)
 // ---------------------------------------------------------------------------
 
-export const COST_PER_INPUT_TOKEN = 0.000001;   // $1.00 / 1M input tokens
-export const COST_PER_OUTPUT_TOKEN = 0.000005;  // $5.00 / 1M output tokens
+export const COST_PER_INPUT_TOKEN = 0.000003;   // $3.00 / 1M input tokens
+export const COST_PER_OUTPUT_TOKEN = 0.000015;  // $15.00 / 1M output tokens
 
 // ---------------------------------------------------------------------------
 // System prompts

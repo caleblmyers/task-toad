@@ -1,11 +1,8 @@
 import { z } from 'zod';
 import type { ActionExecutor, ActionContext, ActionResult } from '../types.js';
-import { FEATURE_CONFIG } from '../../ai/aiConfig.js';
-import { callAI } from '../../ai/aiClient.js';
-import { parseJSON } from '../../ai/responseParser.js';
+import { callAIStructured } from '../../ai/aiClient.js';
 import { SYSTEM_JSON } from '../../ai/aiConfig.js';
 import { userInput } from '../../ai/promptBuilder.js';
-import { truncate, MAX_KB_CHARS } from '../../ai/promptBuilders/utils.js';
 
 interface WriteDocsConfig {
   docType: 'readme' | 'api-docs' | 'changelog';
@@ -29,46 +26,29 @@ export const writeDocsExecutor: ActionExecutor = {
 
     const docType = config.docType || 'readme';
 
-    const prompt = {
-      systemPrompt: SYSTEM_JSON,
-      userPrompt: `Generate ${docType} documentation for this task.
-
-Task: ${userInput('title', task.title)}
-Description: ${userInput('description', task.description ?? '')}
-Instructions: ${userInput('instructions', task.instructions ?? '')}
-Project: ${userInput('project', project.name)}
-${project.description ? `Project description: ${userInput('projectDescription', project.description)}` : ''}
-${ctx.knowledgeContext ? `\nKnowledge Base:\n${userInput('knowledge_base', truncate(ctx.knowledgeContext, MAX_KB_CHARS))}` : ''}
-
-Return JSON:
-{
-  "files": [{ "path": string, "content": string, "description": string }],
-  "summary": string
-}
-Generate appropriate markdown documentation. Use sensible file paths relative to the project root.`,
-    };
-
     // Check for cancellation before calling AI
     if (signal?.aborted) {
       throw new DOMException('Action cancelled', 'AbortError');
     }
 
-    // Reuse generateCode config as the closest match for doc generation
-    const featureConfig = FEATURE_CONFIG.generateCode;
-    const result = await callAI({
+    const result = await callAIStructured({
       apiKey,
-      systemPrompt: prompt.systemPrompt,
-      userPrompt: prompt.userPrompt,
-      maxTokens: featureConfig.maxTokens,
-      feature: 'generateCode',
-      cacheTTLMs: 0,
-      prefill: '{',
-    });
+      systemPrompt: SYSTEM_JSON,
+      userPrompt: `Generate a concise ${docType} doc for this task (under 100 lines).
 
-    const parsed = parseJSON(result.raw, DocsResultSchema);
+Task: ${userInput('title', task.title)}
+Description: ${userInput('description', task.description ?? '')}
+Project: ${userInput('project', project.name)}
+${project.description ? `Project description: ${userInput('projectDescription', project.description)}` : ''}
+
+Generate ONE documentation file. Keep it brief — project overview, setup steps, and basic usage.`,
+      maxTokens: 4096,
+      feature: 'generateCode',
+    }, DocsResultSchema);
+
     return {
       success: true,
-      data: { files: parsed.files, summary: parsed.summary },
+      data: { files: result.parsed.files, summary: result.parsed.summary },
     };
   },
 };

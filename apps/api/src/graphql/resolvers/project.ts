@@ -546,6 +546,7 @@ export const projectMutations = {
 
     // Commit files to GitHub
     const { getDefaultBranchOid, commitFilesToEmptyRepo, commitFiles } = await import('../../github/index.js');
+    const { decryptIfEncrypted } = await import('../../utils/encryption.js');
     const filesToCommit = result.files.map((f) => ({ path: f.path, content: f.content }));
     const commitMessage = `chore: scaffold ${args.template} project`;
 
@@ -557,13 +558,29 @@ export const projectMutations = {
       defaultBranch,
     };
 
-    const headOid = await getDefaultBranchOid(repoData);
+    // For personal GitHub accounts, use the user's OAuth token instead of installation token
+    let githubToken: string | undefined;
+    const installation = await context.prisma.gitHubInstallation.findUnique({
+      where: { installationId: project.githubInstallationId },
+      select: { accountType: true },
+    });
+    if (installation?.accountType === 'User' && context.user) {
+      const user = await context.prisma.user.findUnique({
+        where: { userId: context.user.userId },
+        select: { githubTokenEncrypted: true },
+      });
+      if (user?.githubTokenEncrypted) {
+        githubToken = decryptIfEncrypted(user.githubTokenEncrypted);
+      }
+    }
+
+    const headOid = await getDefaultBranchOid(repoData, githubToken);
 
     let commitUrl: string | null = null;
 
     if (!headOid) {
       // Empty repo — use REST Git Data API
-      const commitResult = await commitFilesToEmptyRepo(repoData, filesToCommit, commitMessage);
+      const commitResult = await commitFilesToEmptyRepo(repoData, filesToCommit, commitMessage, githubToken);
       commitUrl = commitResult.url;
     } else {
       // Existing repo — commit directly to default branch
@@ -574,7 +591,8 @@ export const projectMutations = {
           message: commitMessage,
           additions: filesToCommit,
         },
-        headOid
+        headOid,
+        githubToken
       );
       commitUrl = commitResult.url;
     }

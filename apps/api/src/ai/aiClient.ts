@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { GraphQLError } from 'graphql';
+import { z } from 'zod';
 import type { AIFeature, AIUsage } from './aiTypes.js';
 import { AI_MODEL } from './aiConfig.js';
 import { logAICall } from './aiLogger.js';
@@ -128,6 +129,8 @@ export interface CallAIParams {
   promptLogContext?: PromptLogContext;
   /** Prefill the assistant response to force structured output (e.g. '[' for arrays, '{' for objects). */
   prefill?: string;
+  /** Override the default AI model for this call. */
+  model?: string;
 }
 
 export interface CallAIResult {
@@ -137,7 +140,8 @@ export interface CallAIResult {
 }
 
 export async function callAI(params: CallAIParams): Promise<CallAIResult> {
-  const { apiKey, systemPrompt, userPrompt, maxTokens, feature, cacheTTLMs = 0, promptLogContext, prefill } = params;
+  const { apiKey, systemPrompt, userPrompt, maxTokens, feature, cacheTTLMs = 0, promptLogContext, prefill, model: modelOverride } = params;
+  const model = modelOverride ?? AI_MODEL;
 
   // Check cache first
   if (cacheTTLMs > 0) {
@@ -146,7 +150,7 @@ export async function callAI(params: CallAIParams): Promise<CallAIResult> {
     if (cached) {
       logAICall({
         feature,
-        model: AI_MODEL,
+        model,
         usage: { inputTokens: 0, outputTokens: 0, stopReason: 'cache_hit' },
         latencyMs: 0,
         cached: true,
@@ -169,7 +173,7 @@ export async function callAI(params: CallAIParams): Promise<CallAIResult> {
     const start = Date.now();
     try {
       const response = await getClient(apiKey).messages.create({
-        model: AI_MODEL,
+        model,
         max_tokens: maxTokens,
         system: systemPrompt,
         messages: [
@@ -185,7 +189,7 @@ export async function callAI(params: CallAIParams): Promise<CallAIResult> {
         stopReason: response.stop_reason ?? 'unknown',
       };
 
-      logAICall({ feature, model: AI_MODEL, usage, latencyMs, cached: false });
+      logAICall({ feature, model, usage, latencyMs, cached: false });
       aiCallTotal.inc({ feature, status: 'success' });
       aiCallDuration.observe({ feature }, latencyMs / 1000);
 
@@ -217,7 +221,7 @@ export async function callAI(params: CallAIParams): Promise<CallAIResult> {
             outputTokens: usage.outputTokens,
             costUSD,
             latencyMs,
-            model: AI_MODEL,
+            model,
             cached: false,
             expiresAt,
           },
@@ -240,5 +244,134 @@ export async function callAI(params: CallAIParams): Promise<CallAIResult> {
     }
   }
   // Should not reach here, but just in case
+  throw lastError;
+}
+
+// ---------------------------------------------------------------------------
+// Structured output — grammar-constrained JSON via Anthropic SDK
+// ---------------------------------------------------------------------------
+
+export interface CallAIStructuredParams {
+  apiKey: string;
+  systemPrompt: string;
+  userPrompt: string;
+  maxTokens: number;
+  feature: AIFeature;
+  model?: string;
+  promptLogContext?: PromptLogContext;
+}
+
+export interface CallAIStructuredResult<T> {
+  parsed: T;
+  usage: AIUsage;
+}
+
+/**
+ * Call Claude with structured output via tool_use.
+ *
+ * Defines a fake tool whose input_schema matches the Zod schema,
+ * then forces the model to call it. The tool input is always valid
+ * parsed JSON — no stripFences/repairJSON needed. Works on all Claude models.
+ */
+export async function callAIStructured<T>(
+  params: CallAIStructuredParams,
+  schema: z.ZodType<T>
+): Promise<CallAIStructuredResult<T>> {
+  const { apiKey, systemPrompt, userPrompt, maxTokens, feature, model: modelOverride, promptLogContext } = params;
+  const model = modelOverride ?? AI_MODEL;
+
+  checkPromptSize(systemPrompt, userPrompt, maxTokens);
+
+  // Convert Zod schema to JSON Schema for tool input
+  const jsonSchema = z.toJSONSchema(schema, { reused: 'ref' });
+
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    if (attempt > 0) {
+      const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+      log.info({ feature, attempt, delayMs: delay }, 'Retrying structured AI call');
+      await sleep(delay);
+    }
+
+    const start = Date.now();
+    try {
+      const response = await getClient(apiKey).messages.create({
+        model,
+        max_tokens: maxTokens,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+        tools: [{
+          name: 'structured_response',
+          description: 'Return the structured response',
+          input_schema: jsonSchema as Anthropic.Tool.InputSchema,
+        }],
+        tool_choice: { type: 'tool', name: 'structured_response' },
+      });
+
+      const latencyMs = Date.now() - start;
+      const usage: AIUsage = {
+        inputTokens: response.usage.input_tokens,
+        outputTokens: response.usage.output_tokens,
+        stopReason: response.stop_reason ?? 'unknown',
+      };
+
+      logAICall({ feature, model, usage, latencyMs, cached: false });
+      aiCallTotal.inc({ feature, status: 'success' });
+      aiCallDuration.observe({ feature }, latencyMs / 1000);
+
+      // Extract the tool input — already parsed JSON
+      const toolBlock = response.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
+      if (!toolBlock) {
+        throw new GraphQLError('AI did not return structured output');
+      }
+
+      // Validate against Zod schema
+      const result = schema.safeParse(toolBlock.input);
+      if (!result.success) {
+        log.error({ issues: result.error.issues.slice(0, 3) }, 'Structured output validation failed');
+        throw new GraphQLError('AI response did not match expected format');
+      }
+
+      const parsed = result.data;
+
+      // Persist prompt log (fire-and-forget)
+      if (promptLogContext && promptLogContext.promptLoggingEnabled !== false) {
+        const costUSD = usage.inputTokens * 0.000003 + usage.outputTokens * 0.000015;
+        const expiresAt = new Date(Date.now() + PROMPT_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+        const raw = JSON.stringify(parsed);
+        promptLogContext.prisma.aIPromptLog.create({
+          data: {
+            orgId: promptLogContext.orgId,
+            userId: promptLogContext.userId,
+            feature,
+            taskId: promptLogContext.taskId ?? null,
+            projectId: promptLogContext.projectId ?? null,
+            input: redactSensitive(userPrompt.slice(0, 10000)),
+            output: redactSensitive(raw.slice(0, 10000)),
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens,
+            costUSD,
+            latencyMs,
+            model,
+            cached: false,
+            expiresAt,
+          },
+        }).catch((err: unknown) => log.warn({ err }, 'Failed to persist AI prompt log'));
+      }
+
+      return { parsed, usage };
+    } catch (err) {
+      aiCallTotal.inc({ feature, status: 'error' });
+      try {
+        mapAnthropicError(err);
+      } catch (mapped) {
+        if (attempt < MAX_RETRIES && isRetryableAIError(mapped)) {
+          lastError = mapped;
+          continue;
+        }
+        throw mapped;
+      }
+    }
+  }
   throw lastError;
 }
