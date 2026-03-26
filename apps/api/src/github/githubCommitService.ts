@@ -157,9 +157,10 @@ function slugify(title: string): string {
 export async function createBranch(
   repo: GitHubRepoLink,
   taskId: string,
-  taskTitle?: string
+  taskTitle?: string,
+  tokenOverride?: string
 ): Promise<{ branchName: string; baseOid: string }> {
-  const token = await getInstallationToken(repo.installationId);
+  const token = tokenOverride ?? await getInstallationToken(repo.installationId);
   const slug = taskTitle ? slugify(taskTitle) : 'ai';
   const baseBranchName = `task-${taskId}-${slug}`;
   const qualifiedRef = `refs/heads/${repo.defaultBranch}`;

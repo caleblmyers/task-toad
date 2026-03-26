@@ -66,6 +66,7 @@ Generate ONE documentation file. Keep it brief — project overview, setup steps
             additions: parsed.files.map(f => ({ path: f.path, content: f.content })),
           },
           ctx.plan.headOid,
+          ctx.userGitHubToken,
         );
         headOid = commitResult.oid;
       } catch (commitErr) {

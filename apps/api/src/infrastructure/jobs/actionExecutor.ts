@@ -83,6 +83,25 @@ export function createHandler(prisma: PrismaClient) {
           }
         : null;
 
+    // Load user's GitHub OAuth token for personal account installations
+    let userGitHubToken: string | undefined;
+    if (repo) {
+      const installation = await prisma.gitHubInstallation.findUnique({
+        where: { installationId: repo.installationId },
+        select: { accountType: true },
+      });
+      if (installation?.accountType === 'User') {
+        const userRecord = await prisma.user.findUnique({
+          where: { userId },
+          select: { githubTokenEncrypted: true },
+        });
+        if (userRecord?.githubTokenEncrypted) {
+          const { decryptIfEncrypted } = await import('../../utils/encryption.js');
+          userGitHubToken = decryptIfEncrypted(userRecord.githubTokenEncrypted);
+        }
+      }
+    }
+
     // Create feature branch on first action of a plan when repo is connected
     if (repo && !plan.branchName) {
       // Re-read plan to guard against concurrent execution
@@ -95,7 +114,7 @@ export function createHandler(prisma: PrismaClient) {
         plan.branchName = freshPlan.branchName;
         plan.headOid = freshPlan.headOid;
       } else {
-        const { branchName, baseOid } = await createBranch(repo, task.taskId, task.title);
+        const { branchName, baseOid } = await createBranch(repo, task.taskId, task.title, userGitHubToken);
         await prisma.taskActionPlan.update({
           where: { id: plan.id },
           data: { branchName, headOid: baseOid },
@@ -196,6 +215,7 @@ export function createHandler(prisma: PrismaClient) {
       orgId,
       userId,
       prisma,
+      userGitHubToken,
       previousResults,
       signal: abortController.signal,
     };
