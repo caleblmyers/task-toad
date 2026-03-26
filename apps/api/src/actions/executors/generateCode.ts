@@ -1,10 +1,12 @@
+import { z } from 'zod';
 import type { ActionExecutor, ActionContext, ActionResult } from '../types.js';
 import { generateCode as aiGenerateCode } from '../../ai/aiService.js';
-import { getProjectRepo, fetchProjectFileTree } from '../../github/index.js';
+import { fetchProjectFileTree } from '../../github/githubFileService.js';
+import { commitFiles } from '../../github/githubCommitService.js';
 
-interface GenerateCodeConfig {
-  styleGuide?: string;
-}
+const GenerateCodeConfigSchema = z.object({
+  styleGuide: z.string().optional(),
+}).passthrough();
 
 export const generateCodeExecutor: ActionExecutor = {
   type: 'generate_code',
@@ -21,14 +23,13 @@ export const generateCodeExecutor: ActionExecutor = {
       throw new DOMException('Action cancelled', 'AbortError');
     }
 
-    // Fetch project file tree for context if repo is connected
+    // Fetch project file tree for context (use feature branch if available)
     let projectFiles: Array<{ path: string; language: string; size: number }> | undefined;
-    const repo = await getProjectRepo(task.projectId);
-    if (repo) {
-      projectFiles = await fetchProjectFileTree(repo).catch(() => undefined);
+    if (ctx.repo) {
+      projectFiles = await fetchProjectFileTree(ctx.repo, ctx.plan.branchName ?? undefined).catch(() => undefined);
     }
 
-    const config: GenerateCodeConfig = JSON.parse(ctx.action.config || '{}');
+    const config = GenerateCodeConfigSchema.parse(JSON.parse(ctx.action.config || '{}'));
 
     // Check for cancellation before calling AI
     if (signal?.aborted) {
@@ -52,12 +53,28 @@ export const generateCodeExecutor: ActionExecutor = {
       throw new DOMException('Action cancelled', 'AbortError');
     }
 
+    // Commit generated files to feature branch if repo is connected
+    let headOid: string | undefined;
+    if (ctx.repo && ctx.plan.branchName && ctx.plan.headOid) {
+      const commitResult = await commitFiles(
+        ctx.repo,
+        {
+          branch: ctx.plan.branchName,
+          message: `feat: ${ctx.task.title}`,
+          additions: result.files.map((f: { path: string; content: string }) => ({ path: f.path, content: f.content })),
+        },
+        ctx.plan.headOid,
+      );
+      headOid = commitResult.oid;
+    }
+
     return {
       success: true,
       data: {
         files: result.files,
         summary: result.summary,
         estimatedTokensUsed: result.estimatedTokensUsed,
+        headOid,
       },
     };
   },

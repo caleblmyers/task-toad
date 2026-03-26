@@ -89,17 +89,17 @@ export async function fetchFileContent(
   return Buffer.from(data.content, 'base64').toString('utf8');
 }
 
-export async function fetchProjectFileTree(repo: GitHubRepoLink): Promise<ProjectFile[]> {
-  const cacheKey = `filetree:${repo.repositoryOwner}:${repo.repositoryName}`;
+export async function fetchProjectFileTree(repo: GitHubRepoLink, branch?: string): Promise<ProjectFile[]> {
+  const resolvedBranch = branch ?? repo.defaultBranch;
+  const cacheKey = `filetree:${repo.repositoryOwner}:${repo.repositoryName}:${resolvedBranch}`;
   const cached = getCached<ProjectFile[]>(cacheKey);
   if (cached) return cached;
 
   try {
     const token = await getInstallationToken(repo.installationId);
-    const branch = repo.defaultBranch;
 
     // Use REST recursive tree API — returns the full tree in one call
-    const url = `https://api.github.com/repos/${encodeURIComponent(repo.repositoryOwner)}/${encodeURIComponent(repo.repositoryName)}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
+    const url = `https://api.github.com/repos/${encodeURIComponent(repo.repositoryOwner)}/${encodeURIComponent(repo.repositoryName)}/git/trees/${encodeURIComponent(resolvedBranch)}?recursive=1`;
     const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
