@@ -174,6 +174,15 @@ export const taskActionMutations = {
       throw new ValidationError('Action plan must have at least one action');
     }
 
+    // Validate: GitHub-connected projects must include create_pr after generate_code
+    const actionTypes = args.actions.map((a) => a.actionType);
+    if (actionTypes.includes('generate_code')) {
+      const project = await context.loaders.projectById.load(task.projectId);
+      if (project?.githubRepositoryId && !actionTypes.includes('create_pr')) {
+        throw new ValidationError('Plans for GitHub-connected projects must include create_pr after generate_code.');
+      }
+    }
+
     // Cancel any existing draft/executing plans for this task
     await context.prisma.taskActionPlan.updateMany({
       where: { taskId: args.taskId, status: { in: ['draft', 'approved', 'executing'] } },

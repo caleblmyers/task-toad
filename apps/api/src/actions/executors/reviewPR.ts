@@ -1,17 +1,35 @@
+import { z } from 'zod';
 import type { ActionExecutor, ActionContext, ActionResult } from '../types.js';
 import { getPullRequestDiff } from '../../github/githubPullRequestService.js';
-import { reviewCode } from '../../ai/aiService.js';
+import { callAIStructured } from '../../ai/aiClient.js';
+import { CodeReviewSchema } from '../../ai/aiTypes.js';
 
-interface ReviewPRConfig {
-  sourcePRActionId: string; // ID of the create_pr action whose result contains PR number
-}
+const ReviewPRConfigSchema = z.object({
+  sourcePRActionId: z.string(),
+}).passthrough();
+
+const SKEPTICAL_REVIEW_SYSTEM_PROMPT = `You are an independent, skeptical code reviewer. You are NOT the same AI that wrote this code. Your job is to find problems, not to approve.
+
+You must respond with a structured JSON tool call. Be thorough and critical.
+
+Key review focus areas:
+- **Security vulnerabilities:** injection attacks, auth bypass, data exposure, insecure defaults, missing input validation at system boundaries
+- **Missing error handling and edge cases:** unchecked nulls, unhandled promise rejections, race conditions, empty/malformed input
+- **Code standards violations:** inconsistent naming, poor structure, anti-patterns, dead code, missing types
+- **Architectural concerns:** tight coupling, scalability issues, maintainability problems, violation of separation of concerns
+- **Missing tests or test coverage gaps:** untested error paths, missing edge case coverage, brittle test assertions
+- **Performance issues:** N+1 queries, unnecessary allocations, blocking operations, missing pagination, unbounded loops
+
+Default to being critical. A review that finds nothing wrong should be rare — most code has at least minor issues. If the changes look genuinely clean, approve but still note areas for improvement.
+
+Do NOT rubber-stamp. Do NOT assume the code is correct because an AI wrote it. Look for what could go wrong in production.`;
 
 export const reviewPRExecutor: ActionExecutor = {
   type: 'review_pr',
 
   async execute(ctx: ActionContext): Promise<ActionResult> {
     const { task, apiKey, prisma, signal } = ctx;
-    const config: ReviewPRConfig = JSON.parse(ctx.action.config || '{}');
+    const config = ReviewPRConfigSchema.parse(JSON.parse(ctx.action.config || '{}'));
 
     // Get PR number from a previous create_pr action result
     const prResult = ctx.previousResults.get(config.sourcePRActionId) as
@@ -54,14 +72,39 @@ export const reviewPRExecutor: ActionExecutor = {
       throw new DOMException('Action cancelled', 'AbortError');
     }
 
-    // Run AI code review
-    const review = await reviewCode(apiKey, {
-      taskTitle: task.title,
-      taskDescription: task.description ?? '',
-      taskInstructions: task.instructions ?? undefined,
-      diff,
-      projectName: project.name ?? ctx.project.name,
-    });
+    // Build user prompt with task context
+    const instructionsLine = task.instructions
+      ? `\nInstructions: ${task.instructions.slice(0, 800)}`
+      : '';
+
+    const userPrompt = `Review the following code changes. You are an independent reviewer — be skeptical and thorough.
+
+Task: ${task.title}
+Description: ${(task.description ?? '').slice(0, 400)}${instructionsLine}
+Project: ${project.name ?? ctx.project.name}
+
+Diff (unified format):
+${diff.slice(0, 6000)}
+
+Return JSON:
+{
+  "summary": string,
+  "approved": boolean,
+  "comments": [{ "file": string, "line": number | null, "severity": "info" | "warning" | "error", "comment": string }],
+  "suggestions": string[]
+}
+Focus on actionable feedback. Be specific about file paths and line numbers when possible. Flag security issues, missing error handling, and potential production failures.`;
+
+    // Call AI with skeptical reviewer system prompt
+    const result = await callAIStructured({
+      apiKey,
+      systemPrompt: SKEPTICAL_REVIEW_SYSTEM_PROMPT,
+      userPrompt,
+      maxTokens: 4096,
+      feature: 'reviewCode',
+    }, CodeReviewSchema);
+
+    const review = result.parsed;
 
     // Always return success — a negative review is information, not a failure
     return {

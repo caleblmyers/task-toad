@@ -274,7 +274,7 @@ export function buildPlanTaskActionsPrompt(data: {
     ? `\nSuggested Tools: ${userInput('suggested_tools', data.suggestedTools)}`
     : '';
   const repoLine = data.hasGitHubRepo
-    ? '\nThis project has a connected GitHub repository, so create_pr and review_pr actions are available after code generation.'
+    ? '\nIMPORTANT: This project has a connected GitHub repository (hasGitHubRepo = true). The plan MUST end with the sequence: generate_code → create_pr → review_pr. The create_pr and review_pr steps are REQUIRED, not optional.'
     : '\nNo GitHub repo is connected — do not include create_pr or review_pr actions.';
 
   return {
@@ -291,12 +291,12 @@ ${data.knowledgeBase ? `Knowledge Base:\n${userInput('knowledge_base', truncate(
 Available action types: ${data.availableActionTypes.join(', ')}
 
 Action type guide:
-- generate_code: Generate implementation code files. Config: { "styleGuide"?: string }
-- create_pr: Create a GitHub pull request from previously generated code. Config: { "sourceActionId": "<id of generate_code action>" }. ONLY use if GitHub repo is connected.
-- review_pr: Review the PR created by a prior create_pr action. Config: { "sourcePRActionId": "<id of create_pr action>" }. ONLY use after create_pr.
+- generate_code: Generate implementation code AND commit it to a feature branch. Files are visible on GitHub immediately after this step. Config: { "styleGuide"?: string }
+- create_pr: Open a pull request from the existing feature branch to the default branch. Does NOT create the branch or commit files — those are already done by generate_code. Config: { "sourceActionId": "<id of generate_code action>" }. ONLY use if GitHub repo is connected.
+- review_pr: Review the PR as an independent, skeptical code reviewer. Config: { "sourcePRActionId": "<id of create_pr action>" }. ONLY use after create_pr.
 - monitor_ci: Monitor GitHub Actions CI status for a PR. Polls check runs until they pass or fail (max 30 min). Config: { "sourcePRActionId": "<id of create_pr action>" }. ONLY use after review_pr.
 - fix_ci: Attempt to auto-fix CI failures by analyzing error logs and committing a fix. One retry only. Config: { "sourceMonitorActionId": "<id of monitor_ci action>", "sourcePRActionId": "<id of create_pr action>" }. ONLY use after monitor_ci.
-- write_docs: Generate documentation (README, API docs, changelog). Config: { "docType": "readme" | "api-docs" | "changelog" }
+- write_docs: Generate documentation AND commit it to the feature branch. Config: { "docType": "readme" | "api-docs" | "changelog" }
 - manual_step: A step the user must complete manually. Config: { "description": string, "checklist"?: string[] }
 
 Rules:
@@ -306,8 +306,9 @@ Rules:
 4. Set requiresApproval to true for actions that modify external systems (create_pr) and false for safe actions (generate_code, write_docs, review_pr, monitor_ci, fix_ci).
 5. Keep the plan focused — typically 2–6 actions. Don't over-plan.
 6. create_pr must always reference a prior generate_code action via sourceActionId (use a placeholder ID like "action_0" referring to the action at index 0).
-7. If the plan includes create_pr, always follow it with review_pr. review_pr should have requiresApproval: false.
+7. If the project has a GitHub repository (hasGitHubRepo is true), the plan MUST end with: generate_code → create_pr → review_pr. The create_pr and review_pr steps are REQUIRED, not optional. review_pr should have requiresApproval: false.
 8. If the plan includes create_pr and review_pr, optionally add monitor_ci after review_pr to verify CI passes, followed by fix_ci as a fallback.
+9. Task instructions should describe WHAT to build, not which specific library or vendor to use. Keep instructions implementation-agnostic.
 
 Return JSON:
 {
