@@ -212,6 +212,42 @@ export function createHandler(prisma: PrismaClient) {
       knowledgeContext = project.knowledgeBase;
     }
 
+    // Load upstream task completion summaries for cross-task context
+    // Note: completionSummary column is added by a separate migration — use raw query
+    // to avoid Prisma type errors until the migration is applied.
+    let upstreamTaskContext: string | undefined;
+    try {
+      const upstreamRows = await prisma.$queryRaw<
+        Array<{ title: string; completion_summary: string | null; status: string }>
+      >`
+        SELECT t.title, t.completion_summary, t.status
+        FROM task_dependencies td
+        JOIN tasks t ON t.task_id = td.source_task_id
+        WHERE td.target_task_id = ${task.taskId}
+          AND td.link_type IN ('blocks', 'informs')
+          AND t.status = 'done'
+          AND t.completion_summary IS NOT NULL
+      `;
+
+      const completedUpstream = upstreamRows.map((row) => {
+        const summary = JSON.parse(row.completion_summary!) as Record<string, unknown>;
+        return (
+          `## Upstream: ${row.title}\n` +
+          `What was built: ${(summary.whatWasBuilt as string) || 'N/A'}\n` +
+          `Files: ${((summary.filesChanged as string[]) || []).join(', ')}\n` +
+          (summary.apiContracts ? `API contracts: ${JSON.stringify(summary.apiContracts)}\n` : '') +
+          (summary.keyDecisions ? `Key decisions: ${((summary.keyDecisions as string[]) || []).join('; ')}\n` : '') +
+          (summary.dependencyInfo ? `Note: ${summary.dependencyInfo as string}\n` : '')
+        );
+      });
+
+      if (completedUpstream.length > 0) {
+        upstreamTaskContext = completedUpstream.join('\n');
+      }
+    } catch (err) {
+      log.warn({ err, taskId: task.taskId }, 'Failed to load upstream task context (non-blocking)');
+    }
+
     // Create AbortController for this plan's active action
     const abortController = new AbortController();
     activeControllers.set(planId, abortController);
@@ -231,6 +267,7 @@ export function createHandler(prisma: PrismaClient) {
       userGitHubToken,
       previousResults,
       previousStepContext: previousSummaries.length > 0 ? previousSummaries.join('\n') : undefined,
+      upstreamTaskContext,
       signal: abortController.signal,
     };
 

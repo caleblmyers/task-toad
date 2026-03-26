@@ -40,6 +40,9 @@ export const generateCodeExecutor: ActionExecutor = {
     if (ctx.previousStepContext) {
       fullContext = `## Previous Steps in This Plan\n${ctx.previousStepContext}\n\n${fullContext}`;
     }
+    if (ctx.upstreamTaskContext) {
+      fullContext = `## Upstream Task Context\n${ctx.upstreamTaskContext}\n\n${fullContext}`;
+    }
 
     const result = await aiGenerateCode(
       apiKey,

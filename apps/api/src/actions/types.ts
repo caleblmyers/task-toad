@@ -17,6 +17,7 @@ export interface ActionContext {
   prisma: PrismaClient;
   previousResults: Map<string, unknown>; // actionId → parsed result from earlier steps
   previousStepContext?: string; // Formatted summary of completed actions in this plan
+  upstreamTaskContext?: string; // Completion summaries from upstream dependency tasks
   userGitHubToken?: string; // User's GitHub OAuth token for personal account operations
   signal?: AbortSignal; // cancellation signal — check in long-running actions
 }
