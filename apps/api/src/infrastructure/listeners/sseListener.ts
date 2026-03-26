@@ -38,6 +38,16 @@ export function register(bus: EventBus): void {
     sseManager.broadcast(e.orgId, 'sprint.closed', { sprint: e.sprint });
   });
 
+  bus.on('task.action_started', (e) => {
+    sseManager.broadcast(e.orgId, 'task.action_started', {
+      actionId: e.actionId,
+      actionType: e.actionType,
+      actionLabel: e.actionLabel,
+      planId: e.planId,
+      taskId: e.taskId,
+    });
+  });
+
   bus.on('task.action_completed', (e) => {
     sseManager.broadcast(e.orgId, 'task.action_completed', {
       actionId: e.actionId,
@@ -52,6 +62,7 @@ export function register(bus: EventBus): void {
     sseManager.broadcast(e.orgId, 'task.action_plan_completed', {
       planId: e.planId,
       taskId: e.taskId,
+      taskTitle: e.taskTitle,
     });
   });
 

@@ -195,6 +195,20 @@ export function createHandler(prisma: PrismaClient) {
       data: { status: 'executing', startedAt: new Date() },
     });
 
+    // Emit action started event for real-time UI updates
+    const startBus = getEventBus();
+    startBus.emit('task.action_started', {
+      orgId,
+      userId,
+      projectId: task.projectId,
+      timestamp: new Date().toISOString(),
+      actionId,
+      actionType: action.actionType,
+      actionLabel: action.label,
+      planId,
+      taskId: task.taskId,
+    });
+
     try {
       // Check if already aborted before executing
       if (abortController.signal.aborted) {
@@ -386,6 +400,7 @@ export function createHandler(prisma: PrismaClient) {
           timestamp: new Date().toISOString(),
           planId,
           taskId: task.taskId,
+          taskTitle: task.title,
         });
       }
 

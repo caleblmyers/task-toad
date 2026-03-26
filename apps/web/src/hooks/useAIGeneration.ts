@@ -215,6 +215,24 @@ export function useAIGeneration({
         EXECUTE_ACTION_PLAN_MUTATION, { planId },
       );
       setActionPlan(data.executeActionPlan);
+
+      // The mutation enqueues the next action asynchronously — refetch after a short
+      // delay so the UI shows the action transitioning to "executing" even if the
+      // SSE event hasn't arrived yet.
+      const taskId = data.executeActionPlan.taskId;
+      if (taskId) {
+        setTimeout(async () => {
+          try {
+            const refreshed = await gql<{ taskActionPlan: TaskActionPlan | null }>(
+              TASK_ACTION_PLAN_QUERY, { taskId },
+            );
+            if (refreshed.taskActionPlan) setActionPlan(refreshed.taskActionPlan);
+          } catch {
+            // ignore — SSE will catch up
+          }
+        }, 1500);
+      }
+
       return data.executeActionPlan;
     } catch (error) {
       setErr(error instanceof Error ? error.message : 'Failed to execute action plan');

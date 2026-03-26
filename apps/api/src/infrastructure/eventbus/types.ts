@@ -105,6 +105,13 @@ export interface DomainEventMap {
   'project.archived': BaseEventPayload & {
     archived: boolean;
   };
+  'task.action_started': BaseEventPayload & {
+    actionId: string;
+    actionType: string;
+    actionLabel: string;
+    planId: string;
+    taskId: string;
+  };
   'task.action_completed': BaseEventPayload & {
     actionId: string;
     actionType: string;
@@ -115,6 +122,7 @@ export interface DomainEventMap {
   'task.action_plan_completed': BaseEventPayload & {
     planId: string;
     taskId: string;
+    taskTitle: string;
   };
   'task.action_plan_failed': BaseEventPayload & {
     planId: string;

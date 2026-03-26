@@ -47,7 +47,10 @@ All 5 implementation tasks completed:
 - [ ] **Add concurrency guard for branch creation** — prevent two concurrent actions from creating branches with mismatched OIDs (use optimistic locking or transaction)
 
 ### High Priority (P1)
-- [ ] **Define review-blocking behavior** — decide if unapproved reviews should fail the action plan or just notify; post AI review feedback as GitHub PR comment
+- [x] **Post AI review to GitHub PR** — review_pr executor now posts as APPROVE/REQUEST_CHANGES via GitHub REST API *(hotfix)*
+- [x] **SSE: task.action_started event** — UI now updates when actions begin executing, not just when they complete *(hotfix)*
+- [x] **Approve & Continue UI refresh** — refetch action plan after approve so UI reflects executing state *(hotfix)*
+- [ ] **fix_review executor** — when review_pr requests changes, generate fix commits for small issues (typos, missing error handling, simple bugs). For larger issues (architectural, missing features, new endpoints), create backlog tasks instead of fixing inline. Needs: new executor, planner includes it after review_pr when changes requested, logic to classify issue size.
 - [ ] **Add integration test suite for branch flow** — branch creation, sequential commits, commit failure handling, review outcomes (~5 tests, mock GitHub API)
 - [ ] **Implement OAuth token routing for personal repos** — use user's OAuth token for personal GitHub accounts instead of app installation token
 

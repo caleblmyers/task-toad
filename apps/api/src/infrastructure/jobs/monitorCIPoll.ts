@@ -168,6 +168,7 @@ export function createHandler(prisma: PrismaClient) {
           timestamp: new Date().toISOString(),
           planId: action.planId,
           taskId: action.plan.task.taskId,
+          taskTitle: action.plan.task.title,
         });
       }
 

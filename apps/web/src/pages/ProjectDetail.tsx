@@ -145,9 +145,9 @@ export default function ProjectDetail() {
 
   // SSE: refresh action plan when action events arrive for the selected task + toast notifications
   useSSEListener(
-    ['task.action_completed', 'task.action_plan_completed', 'task.action_plan_failed', 'task.blocked', 'task.unblocked', 'task.created', 'task.updated', 'tasks.bulk_updated', 'approval.requested', 'approval.decided'],
+    ['task.action_started', 'task.action_completed', 'task.action_plan_completed', 'task.action_plan_failed', 'task.blocked', 'task.unblocked', 'task.created', 'task.updated', 'tasks.bulk_updated', 'approval.requested', 'approval.decided'],
     (event: string, data: unknown) => {
-      if (event === 'task.action_completed' || event === 'task.action_plan_completed') {
+      if (event === 'task.action_started' || event === 'task.action_completed' || event === 'task.action_plan_completed') {
         const payload = data as { taskId?: string; taskTitle?: string };
         if (payload?.taskId && d.selectedTask?.taskId === payload.taskId) {
           void d.loadActionPlan(payload.taskId);

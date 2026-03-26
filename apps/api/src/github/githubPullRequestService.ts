@@ -150,6 +150,44 @@ export async function getPullRequestFiles(
   return results;
 }
 
+/**
+ * Post a review on a pull request via GitHub REST API.
+ * Posts as a single review with an overall comment body.
+ */
+export async function postPullRequestReview(
+  installationId: string,
+  owner: string,
+  repo: string,
+  prNumber: number,
+  body: string,
+  event: 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES' = 'COMMENT'
+): Promise<void> {
+  const token = await getInstallationToken(installationId);
+
+  const response = await fetch(
+    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/reviews`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github+json',
+        'Content-Type': 'application/json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+      body: JSON.stringify({ body, event }),
+    }
+  );
+
+  if (!response.ok) {
+    const text = await response.text();
+    logApiError('postPullRequestReview', new Error(`HTTP ${response.status}: ${text}`), {
+      repo: `${owner}/${repo}`,
+      prNumber,
+    });
+    throw new Error(`Failed to post PR review: ${response.status}`);
+  }
+}
+
 const CREATE_PULL_REQUEST = `
   mutation CreatePullRequest(
     $repositoryId: ID!,
