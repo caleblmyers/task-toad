@@ -532,7 +532,12 @@ export async function projectChat(
     question: string;
     projectName: string;
     projectDescription?: string | null;
-    tasks: Array<{ taskId: string; title: string; status: string; priority: string; assignee?: string | null; sprintName?: string | null }>;
+    tasks: Array<{
+      taskId: string; title: string; status: string; priority: string;
+      assignee?: string | null; sprintName?: string | null;
+      blockedBy?: string[]; blocks?: string[];
+      completionSummary?: string;
+    }>;
     sprints: Array<{ name: string; isActive: boolean; taskCount: number }>;
     recentActivity: Array<{ action: string; field?: string | null; taskTitle?: string | null; createdAt: string }>;
     knowledgeBase?: string | null;

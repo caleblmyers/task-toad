@@ -12,6 +12,7 @@ import { buildPromptLogContext, enforceBudget, ROOT_OR_EPIC_CHILD } from './help
 import { getProjectRepo } from '../../../github/index.js';
 import { listRecentCommits, listOpenPullRequests } from '../../../github/githubFileService.js';
 import { requireProject } from '../../../utils/resolverHelpers.js';
+import { retrieveRelevantKnowledge } from '../../../ai/knowledgeRetrieval.js';
 
 export const analysisQueries = {
   projectChat: async (
@@ -28,7 +29,22 @@ export const analysisQueries = {
 
     const tasks = await context.prisma.task.findMany({
       where: { projectId: args.projectId, archived: false, taskType: { not: 'epic' }, ...ROOT_OR_EPIC_CHILD },
-      include: { assignee: { select: { email: true } }, sprint: { select: { name: true } } },
+      include: {
+        assignee: { select: { email: true } },
+        sprint: { select: { name: true } },
+        dependenciesAsSource: {
+          select: {
+            linkType: true,
+            targetTask: { select: { title: true, status: true } },
+          },
+        },
+        dependenciesAsTarget: {
+          select: {
+            linkType: true,
+            sourceTask: { select: { title: true, status: true } },
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
@@ -51,19 +67,45 @@ export const analysisQueries = {
       : [];
     const taskTitleMap = new Map(activityTasks.map((t: { taskId: string; title: string }) => [t.taskId, t.title]));
 
+    // Use KB retrieval instead of legacy knowledgeBase field
+    let knowledgeBase: string | null = null;
+    try {
+      knowledgeBase = await retrieveRelevantKnowledge(context.prisma, args.projectId, args.question, apiKey);
+    } catch {
+      knowledgeBase = project.knowledgeBase;  // fallback
+    }
+
     const plc = await buildPromptLogContext(context);
     return aiProjectChat(apiKey, {
       question: args.question,
       projectName: project.name,
       projectDescription: project.description,
-      tasks: tasks.map((t: { taskId: string; title: string; status: string; priority: string; assignee: { email: string } | null; sprint: { name: string } | null }) => ({
-        taskId: t.taskId,
-        title: t.title,
-        status: t.status,
-        priority: t.priority,
-        assignee: t.assignee?.email ?? null,
-        sprintName: t.sprint?.name ?? null,
-      })),
+      tasks: tasks.map((t) => {
+        // completionSummary field added by migration — use optional chaining
+        const taskRecord = t as typeof t & { completionSummary?: string | null };
+        let completionSummary: string | undefined;
+        if (taskRecord.completionSummary) {
+          try {
+            const parsed = JSON.parse(taskRecord.completionSummary) as Record<string, unknown>;
+            completionSummary = (parsed.whatWasBuilt as string) || undefined;
+          } catch { /* ignore parse errors */ }
+        }
+        return {
+          taskId: t.taskId,
+          title: t.title,
+          status: t.status,
+          priority: t.priority,
+          assignee: t.assignee?.email ?? null,
+          sprintName: t.sprint?.name ?? null,
+          blockedBy: t.dependenciesAsTarget
+            .filter((d) => d.linkType === 'blocks')
+            .map((d) => d.sourceTask.title),
+          blocks: t.dependenciesAsSource
+            .filter((d) => d.linkType === 'blocks')
+            .map((d) => d.targetTask.title),
+          completionSummary,
+        };
+      }),
       sprints: sprints.map((s: { name: string; isActive: boolean; _count: { tasks: number } }) => ({
         name: s.name,
         isActive: s.isActive,
@@ -75,7 +117,7 @@ export const analysisQueries = {
         taskTitle: a.taskId ? taskTitleMap.get(a.taskId) ?? null : null,
         createdAt: a.createdAt.toISOString(),
       })),
-      knowledgeBase: project.knowledgeBase,
+      knowledgeBase,
     }, plc);
   },
 

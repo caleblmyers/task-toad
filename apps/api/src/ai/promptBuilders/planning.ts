@@ -199,14 +199,27 @@ export function buildProjectChatPrompt(data: {
   question: string;
   projectName: string;
   projectDescription?: string | null;
-  tasks: Array<{ taskId: string; title: string; status: string; priority: string; assignee?: string | null; sprintName?: string | null }>;
+  tasks: Array<{
+    taskId: string; title: string; status: string; priority: string;
+    assignee?: string | null; sprintName?: string | null;
+    blockedBy?: string[]; blocks?: string[];
+    completionSummary?: string;
+  }>;
   sprints: Array<{ name: string; isActive: boolean; taskCount: number }>;
   recentActivity: Array<{ action: string; field?: string | null; taskTitle?: string | null; createdAt: string }>;
   knowledgeBase?: string | null;
 }): Prompt {
   const taskLines = data.tasks
     .slice(0, 50)
-    .map((t) => `[${t.taskId}] "${t.title}" — ${t.status}, ${t.priority}${t.assignee ? `, assigned: ${t.assignee}` : ''}${t.sprintName ? `, sprint: ${t.sprintName}` : ''}`)
+    .map((t) => {
+      let line = `[${t.taskId}] "${t.title}" — ${t.status}, ${t.priority}`;
+      if (t.assignee) line += `, assigned: ${t.assignee}`;
+      if (t.sprintName) line += `, sprint: ${t.sprintName}`;
+      if (t.blockedBy && t.blockedBy.length > 0) line += ` | blocked by: ${t.blockedBy.join(', ')}`;
+      if (t.blocks && t.blocks.length > 0) line += ` | blocks: ${t.blocks.join(', ')}`;
+      if (t.completionSummary) line += ` | completed: ${t.completionSummary}`;
+      return line;
+    })
     .join('\n');
 
   const sprintLines = data.sprints
