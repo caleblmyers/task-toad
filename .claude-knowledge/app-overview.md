@@ -97,7 +97,7 @@ Browser → Vite dev server (localhost:5173)
 | GraphQL resolvers (domain-split) | `apps/api/src/graphql/resolvers/*.ts` |
 | AI subsystem | `apps/api/src/ai/` (aiService, promptBuilder, aiTypes, etc.) |
 | KB retrieval (AI-based entry selection) | `apps/api/src/ai/knowledgeRetrieval.ts` |
-| Action plan executors | `apps/api/src/actions/executors/` (generateCode, createPR, reviewPR, writeDocs, manualStep) |
+| Action plan executors | `apps/api/src/actions/executors/` (generateCode, createPR, reviewPR, fixReview, writeDocs, manualStep, monitorCI, fixCI) |
 | Action plan registry | `apps/api/src/actions/registry.ts` + `index.ts` |
 | Job executor (action pipeline) | `apps/api/src/infrastructure/jobs/actionExecutor.ts` |
 | Event bus (typed domain events) | `apps/api/src/infrastructure/eventbus/` |

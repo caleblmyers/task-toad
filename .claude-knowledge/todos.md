@@ -1,8 +1,8 @@
 # TaskToad — Remaining Work & Tracking
 
-64 swarm waves completed. 349 tests. **Strategic pivot to closed-source SaaS autopilot — building the three pillars (decomposition, context threading, orchestration).**
+65 swarm waves completed. 354 tests. **Strategic pivot to closed-source SaaS autopilot — building the three pillars (decomposition, context threading, orchestration).**
 
-**Phase 1 core implementation complete (Wave 64).** Next: manual end-to-end test, then Phase 1 follow-ups + Phase 1.5 planning. See `autopilot-pillars.md` for the full spec.
+**Phase 1 complete (Waves 64-65 + hotfixes).** Pipeline: generate_code → create_pr → review_pr → fix_review. Next: Phase 1.5 (onboarding redesign). See `autopilot-pillars.md` for the full spec.
 
 ---
 
@@ -13,9 +13,10 @@
 - [x] Remove `TASKTOAD_LICENSE` env var and self-host override code *(Wave 63)*
 - [x] Remove Docker self-hosting config — deploy profile removed from `docker-compose` *(Wave 63)*
 - [x] Project bootstrap modals should not be dismissable by clicking outside during an active process *(Wave 63)*
-- [ ] `license.ts` still logs "No license key — running in open source mode" at startup — update log message to reflect closed-source model
-- [ ] Add test coverage for Modal `closeOnOverlayClick` prop behavior
-- [ ] ProjectSetupWizard test has `act(...)` warning — wrap state updates in test
+- [x] "open source mode" comments updated to "free plan" in permissions.ts *(Wave 65)*
+- [x] Add test coverage for Modal `closeOnOverlayClick` prop behavior *(Wave 65)*
+- [x] ProjectSetupWizard test has `act(...)` warning — wrap state updates in test *(Wave 65)*
+- [x] Update stale "open source mode" comments in permissions.ts to "free plan" *(Wave 65)*
 
 ## Investigate
 
@@ -43,16 +44,21 @@ All 5 implementation tasks completed:
 ## Phase 1 Follow-Ups
 
 ### Critical (P0)
-- [ ] **Catch commitFiles failures in generateCode/writeDocs** — if commit fails, mark action as failed to prevent headOid mismatch on next action
-- [ ] **Add concurrency guard for branch creation** — prevent two concurrent actions from creating branches with mismatched OIDs (use optimistic locking or transaction)
+- [x] **Catch commitFiles failures in generateCode/writeDocs** — try/catch returns structured failure, prevents headOid corruption *(Wave 65)*
+- [x] **Add concurrency guard for branch creation** — optimistic re-read of plan before creating branch *(Wave 65)*
 
 ### High Priority (P1)
 - [x] **Post AI review to GitHub PR** — review_pr executor now posts as APPROVE/REQUEST_CHANGES via GitHub REST API *(hotfix)*
 - [x] **SSE: task.action_started event** — UI now updates when actions begin executing, not just when they complete *(hotfix)*
 - [x] **Approve & Continue UI refresh** — refetch action plan after approve so UI reflects executing state *(hotfix)*
-- [ ] **fix_review executor** — when review_pr requests changes, generate fix commits for small issues (typos, missing error handling, simple bugs). For larger issues (architectural, missing features, new endpoints), create backlog tasks instead of fixing inline. Needs: new executor, planner includes it after review_pr when changes requested, logic to classify issue size.
+- [x] **fix_review executor** — auto-fixes small review issues, creates backlog tasks for larger ones. Planner enforces generate_code → create_pr → review_pr → fix_review pipeline. Validation in commitActionPlan. *(Wave 65)*
 - [ ] **Add integration test suite for branch flow** — branch creation, sequential commits, commit failure handling, review outcomes (~5 tests, mock GitHub API)
-- [ ] **Implement OAuth token routing for personal repos** — use user's OAuth token for personal GitHub accounts instead of app installation token
+- [x] **Implement OAuth token routing for personal repos** — loads user OAuth token for personal accounts, passes through ActionContext to createBranch and commitFiles *(Wave 65)*
+
+### Wave 65 Follow-Ups
+- [ ] **fix_review executor: pass userGitHubToken** — the new fixReview.ts commits to branch but doesn't pass `ctx.userGitHubToken` to `commitFiles` (task-002 added the field after task-003 was written). One-line fix.
+- [ ] **fix_review: test coverage** — no unit tests for fixReview executor. Should test: approved review skip, AI fix generation, deferred issue → backlog task creation, duplicate task detection.
+- [ ] **Pre-existing lint warning** — `ProjectDetail.tsx:106` has a missing `useEffect` dependency `'d'` that shows in every lint run. Low priority but noisy.
 
 ### Medium Priority (P2)
 - [ ] **Branch cleanup strategy** — decide: auto-delete failed/cancelled plan branches, tag with prefix, or retention policy
@@ -88,7 +94,7 @@ All 5 implementation tasks completed:
 
 ### Code Quality
 - [ ] Fix integration test DB isolation (10 files, 23 tests, FK constraint violations) — blocks `pnpm test` as merge gate
-- [ ] Fix React act() warnings in ProjectSetupWizard tests
+- [x] Fix React act() warnings in ProjectSetupWizard tests *(Wave 65)*
 - [ ] merge-worker.sh: auto-detect lockfile changes and run pnpm install before validation
 
 ### Feature Requests
@@ -135,5 +141,6 @@ All 5 implementation tasks completed:
 | 62 | 2026-03-25 | Deferred refactors: useEditableField (R2), tab extraction (R8), picker consolidation (R9), metrics (R6), queries split (R11), chart utilities (R12) |
 | 63 | 2026-03-25 | Quick hits: closed-source cleanup, modal dismiss fix, session security fix |
 | 64 | 2026-03-26 | Phase 1: branch-based pipeline — branch management, generateCode/writeDocs commit, createPR rewrite, planner enforcement, skeptical reviewer |
+| 65 | 2026-03-26 | Phase 1 follow-ups: commitFiles error handling, concurrency guard, OAuth routing, fix_review executor, quick hits (Modal tests, act() fix, open-source refs) |
 
 Full wave details in `changelog.md`.

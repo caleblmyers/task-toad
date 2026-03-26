@@ -4,6 +4,54 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-26 (Wave 65 — Phase 1 follow-ups)
+
+### Wave 65: Phase 1 Follow-ups — Pipeline Robustness + fix_review (3 workers, 5 tasks)
+
+**Hotfixes committed before wave (on main):**
+- Added `task.action_started` SSE event — UI updates when actions begin executing
+- Added `taskTitle` to `task.action_plan_completed` — toast notifications now show task name
+- `review_pr` executor posts review to GitHub PR as APPROVE/REQUEST_CHANGES via REST API
+- Added `postPullRequestReview()` to githubPullRequestService.ts
+- `useAIGeneration` refetches action plan 1.5s after Approve & Continue for immediate UI feedback
+
+**Worker 1 — task-001: Pipeline robustness:**
+- Wrapped `commitFiles()` calls in try/catch in generateCode.ts and writeDocs.ts — returns structured failure with error message instead of letting exceptions corrupt plan state
+- Added concurrency guard in actionExecutor.ts — re-reads plan before branch creation to prevent duplicate branches from double-fired jobs
+
+**Worker 1 — task-002: OAuth token routing:**
+- Added `tokenOverride` parameter to `createBranch()` in githubCommitService.ts
+- Added `userGitHubToken` field to ActionContext
+- actionExecutor loads user's encrypted GitHub OAuth token for personal account installations
+- Passes token through to `createBranch()` and `commitFiles()` calls
+- generateCode and writeDocs executors pass `ctx.userGitHubToken` to commitFiles
+
+**Worker 2 — task-003: fix_review executor:**
+- New `fixReview.ts` executor — processes AI review feedback
+- Approved reviews: skipped (no-op with success)
+- Requested changes: AI classifies issues as small fixes vs deferred
+- Small fixes: generates code changes, commits to branch
+- Large issues: creates backlog tasks with duplicate detection (fuzzy title match)
+- Registered in actions/index.ts, added `fix_review` to ActionPlanItemSchema
+- Planner prompt updated: full pipeline is now `generate_code → create_pr → review_pr → fix_review`
+
+**Worker 3 — task-004: Quick hits:**
+- Updated "open source mode" comments in permissions.ts to "free plan"
+- Created Modal.test.tsx with 5 tests covering closeOnOverlayClick behavior
+- Fixed act() warnings in ProjectSetupWizard.test.tsx
+
+**Worker 3 — task-005: commitActionPlan validation:**
+- Extended existing GitHub plan validation to require `fix_review` after `review_pr`
+
+**Process:** All 5 tasks merged on first review — zero rejections. Blocker: uncommitted hotfixes on main delayed first merge (committed mid-wave).
+
+### Open follow-ups
+- fix_review executor doesn't pass `ctx.userGitHubToken` to commitFiles (one-line fix, task-003 written before task-002 merged)
+- fix_review needs test coverage (approved skip, AI fix gen, deferred → backlog, duplicate detection)
+- Pre-existing lint warning: ProjectDetail.tsx:106 missing useEffect dependency 'd'
+
+---
+
 ## 2026-03-26 (Wave 64 — Phase 1: branch-based pipeline)
 
 ### Wave 64: Phase 1 Pipeline Rewrite — Branch-Based Code Generation (3 workers, 5 tasks)
@@ -51,33 +99,6 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 - Branch cleanup strategy for failed/cancelled plans
 - Extract insight generation + in_review transition to event listeners (R10)
 - Audit executor config Zod: manual_step and monitor_ci schemas missing
-
----
-
-## 2026-03-25 (Wave 63 — quick hits)
-
-### Wave 63: Quick Hits Before Phase 1 (3 workers, 3 tasks)
-
-**Worker 1 — task-001: Closed-source cleanup:**
-- Replaced LICENSE (AGPL-3.0 → proprietary copyright)
-- Deleted CONTRIBUTING.md
-- Removed `TASKTOAD_LICENSE` env var and `SELF_HOST_OVERRIDE` from license.ts
-- Removed Docker deploy profile from docker-compose.yml
-- Cleaned references from CLAUDE.md and app-overview.md
-
-**Worker 2 — task-002: Modal dismissal fix:**
-- Added `closeOnOverlayClick` prop to Modal component (default true)
-- ProjectSetupWizard prevents overlay dismiss during active operations
-
-**Worker 3 — task-003: Session security fix:**
-- Added user-keyed remount (`key={userId}`) to App routes — prevents stale data across logout/login cycles
-
-**Process:** task-001 had one rejection (typo: double closing paren in CLAUDE.md). Fixed and merged. Tasks 2+3 merged on first review.
-
-### Open follow-ups
-- license.ts still logs "open source mode" at startup — update log message
-- Add test coverage for Modal closeOnOverlayClick
-- Add integration test for logout→login-as-different-user flow
 
 ---
 
@@ -274,6 +295,7 @@ Three follow-up fixes after re-testing Wave 56 on production:
 
 ## Older Entries (one-line summaries)
 
+- **2026-03-25** — Wave 63: Quick hits — closed-source cleanup (LICENSE, CONTRIBUTING, TASKTOAD_LICENSE, Docker), modal dismiss fix, session security fix.
 - **2026-03-24** — Wave 59: Per-org licensing — plan column on Org, license.ts rewrite, 33 resolver call sites, infrastructure per-event checks.
 - **2026-03-24** — Wave 58: Project scaffolding — scaffold mutation, ProjectSetupWizard (4-step), empty repo commit, framework templates, planner prompt fix.
 - **2026-03-23** — Wave 57: Premium feature gating — license.ts utility, resolver/infrastructure/frontend gating for 8 premium features, useLicenseFeatures hook.
