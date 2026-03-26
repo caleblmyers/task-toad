@@ -228,12 +228,18 @@ export const projectQueries = {
     };
   },
 
-  scaffoldTemplates: () => [
-    { name: 'nextjs', label: 'Next.js', description: 'React + TypeScript + Tailwind' },
-    { name: 'vite-react', label: 'Vite + React', description: 'SPA with TypeScript' },
-    { name: 'express-ts', label: 'Express + TypeScript', description: 'Node.js API' },
-    { name: 'python-fastapi', label: 'Python + FastAPI', description: 'Python API' },
-  ],
+  recommendStack: async (_parent: unknown, args: { projectId: string }, context: Context) => {
+    const { project } = await requireProject(context, args.projectId);
+    const apiKey = requireApiKey(context);
+    const { recommendStack: aiRecommendStack } = await import('../../ai/aiService.js');
+    return aiRecommendStack(
+      apiKey,
+      project.name,
+      project.description ?? '',
+      undefined,
+      { prisma: context.prisma, orgId: context.user!.orgId!, userId: context.user!.userId },
+    );
+  },
 
   savedFilters: async (_parent: unknown, args: { projectId: string }, context: Context) => {
     const user = requireAuth(context);
@@ -497,7 +503,7 @@ export const projectMutations = {
 
   scaffoldProject: async (
     _parent: unknown,
-    args: { projectId: string; template: string; options?: string | null },
+    args: { projectId: string; config: { framework: string; language: string; packages: string[]; projectType: string }; options?: string | null },
     context: Context
   ) => {
     const { project } = await requireProject(context, args.projectId);
@@ -513,7 +519,7 @@ export const projectMutations = {
     const { scaffoldProject: aiScaffold } = await import('../../ai/aiService.js');
     const result = await aiScaffold(
       apiKey,
-      args.template,
+      args.config,
       project.name,
       project.description ?? '',
       args.options,
@@ -523,7 +529,7 @@ export const projectMutations = {
     // Commit files to GitHub — always use installation token so commits are attributed to the TaskToad bot
     const { getDefaultBranchOid, commitFilesToEmptyRepo, commitFiles } = await import('../../github/index.js');
     const filesToCommit = result.files.map((f) => ({ path: f.path, content: f.content }));
-    const commitMessage = `chore: scaffold ${args.template} project`;
+    const commitMessage = `chore: scaffold ${args.config.framework} ${args.config.projectType} project`;
 
     const repoData = {
       repositoryId: project.githubRepositoryId,

@@ -330,6 +330,29 @@ export const ReleaseNotesSchema = z.object({
 
 export type ReleaseNotes = z.infer<typeof ReleaseNotesSchema>;
 
+export const StackConfigSchema = z.object({
+  framework: z.string(),
+  language: z.string(),
+  packages: z.array(z.string()),
+  projectType: z.enum(['full-stack', 'api-only', 'frontend-only']),
+});
+
+export const StackOptionSchema = z.object({
+  label: z.string(),
+  description: z.string(),
+  rationale: z.string(),
+  config: StackConfigSchema,
+});
+
+export const StackRecommendationSchema = z.object({
+  recommended: StackOptionSchema,
+  alternatives: z.array(StackOptionSchema),
+});
+
+export type StackConfig = z.infer<typeof StackConfigSchema>;
+export type StackOption = z.infer<typeof StackOptionSchema>;
+export type StackRecommendation = z.infer<typeof StackRecommendationSchema>;
+
 export type AIFeature =
   | 'generateReleaseNotes'
   | 'planTaskActions'
@@ -363,7 +386,8 @@ export type AIFeature =
   | 'generateHierarchicalPlan'
   | 'generateTaskInsights'
   | 'generateManualTaskSpec'
-  | 'scaffoldProject';
+  | 'scaffoldProject'
+  | 'recommendStack';
 
 export const ProjectChatResponseSchema = z.object({
   answer: z.string(),

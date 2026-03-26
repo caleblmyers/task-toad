@@ -47,4 +47,4 @@ export { buildGenerateTaskInsightsPrompt } from './insights.js';
 
 export { buildManualTaskSpecPrompt } from './manualSpec.js';
 
-export { buildScaffoldPrompt } from './scaffold.js';
+export { buildScaffoldPrompt, buildRecommendStackPrompt } from './scaffold.js';

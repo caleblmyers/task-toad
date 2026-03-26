@@ -35,4 +35,5 @@ export {
   buildGenerateTaskInsightsPrompt,
   buildManualTaskSpecPrompt,
   buildScaffoldPrompt,
+  buildRecommendStackPrompt,
 } from './promptBuilders/index.js';

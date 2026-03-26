@@ -90,10 +90,11 @@ export const projectTypeDefs = /* GraphQL */ `
     commitUrl: String
   }
 
-  type ScaffoldTemplate {
-    name: String!
-    label: String!
-    description: String!
+  input ScaffoldConfigInput {
+    framework: String!
+    language: String!
+    packages: [String!]!
+    projectType: String!
   }
 `;
 
@@ -110,8 +111,6 @@ export const projectQueryFields = /* GraphQL */ `
   sharedViews(projectId: ID!): [SavedFilter!]!
   """Get aggregate rollup metrics across all projects in the org."""
   portfolioRollup: PortfolioRollup!
-  """Get available scaffold templates."""
-  scaffoldTemplates: [ScaffoldTemplate!]!
 `;
 
 export const projectMutationFields = /* GraphQL */ `
@@ -127,6 +126,6 @@ export const projectMutationFields = /* GraphQL */ `
   deleteFilter(savedFilterId: ID!): Boolean!
   """Create a GitHub repo if needed and trigger auto-complete for all eligible tasks."""
   autoStartProject(projectId: ID!): Project!
-  """Generate a project scaffold from a template and commit it to the GitHub repo."""
-  scaffoldProject(projectId: ID!, template: String!, options: String): ScaffoldResult!
+  """Generate a project scaffold from a structured config and commit it to the GitHub repo."""
+  scaffoldProject(projectId: ID!, config: ScaffoldConfigInput!, options: String): ScaffoldResult!
 `;

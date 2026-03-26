@@ -165,6 +165,25 @@ export const aiTypeDefs = /* GraphQL */ `
     insights: [String!]!
     recommendations: [String!]!
   }
+
+  type StackConfig {
+    framework: String!
+    language: String!
+    packages: [String!]!
+    projectType: String!
+  }
+
+  type StackOption {
+    label: String!
+    description: String!
+    rationale: String!
+    config: StackConfig!
+  }
+
+  type StackRecommendation {
+    recommended: StackOption!
+    alternatives: [StackOption!]!
+  }
 `;
 
 export const aiQueryFields = /* GraphQL */ `
@@ -182,6 +201,8 @@ export const aiQueryFields = /* GraphQL */ `
   analyzeRepoDrift(projectId: ID!): DriftAnalysis!
   """Preview a hierarchical plan (epics → tasks → subtasks) before committing."""
   previewHierarchicalPlan(projectId: ID!, prompt: String!): HierarchicalPlanPreview!
+  """Recommend a tech stack for a project based on its description."""
+  recommendStack(projectId: ID!): StackRecommendation!
 `;
 
 export const aiMutationFields = /* GraphQL */ `

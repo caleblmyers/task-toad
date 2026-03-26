@@ -32,8 +32,9 @@ import {
   ReleaseNotesSchema,
   TaskInsightsResponseSchema,
   ManualTaskSpecSchema,
+  StackRecommendationSchema,
 } from './aiTypes.js';
-import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse, DriftAnalysis, TrendAnalysis, ActionPlanResponse, ReleaseNotes, OnboardingQuestionsResponse, HierarchicalPlanResponse, TaskInsightsResponse, ManualTaskSpec } from './aiTypes.js';
+import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse, DriftAnalysis, TrendAnalysis, ActionPlanResponse, ReleaseNotes, OnboardingQuestionsResponse, HierarchicalPlanResponse, TaskInsightsResponse, ManualTaskSpec, StackRecommendation } from './aiTypes.js';
 
 import { FEATURE_CONFIG } from './aiConfig.js';
 import { callAI, callAIStructured, type PromptLogContext } from './aiClient.js';
@@ -73,6 +74,7 @@ import {
   buildGenerateTaskInsightsPrompt,
   buildManualTaskSpecPrompt,
   buildScaffoldPrompt,
+  buildRecommendStackPrompt,
 } from './promptBuilder.js';
 
 // ---------------------------------------------------------------------------
@@ -708,17 +710,28 @@ export async function generateManualTaskSpec(
 
 export async function scaffoldProject(
   apiKey: string,
-  template: string,
+  config: { framework: string; language: string; packages: string[]; projectType: string },
   projectName: string,
   projectDescription: string,
   options?: string | null,
   promptLogContext?: PromptLogContext
 ): Promise<CodeGeneration> {
   const p = buildScaffoldPrompt({
-    template,
+    config,
     projectName,
     projectDescription,
     ...(options ? { options } : {}),
   });
   return callAndParse(apiKey, 'scaffoldProject', p, CodeGenerationSchema, promptLogContext);
+}
+
+export async function recommendStack(
+  apiKey: string,
+  projectName: string,
+  projectDescription: string,
+  additionalContext?: string,
+  promptLogContext?: PromptLogContext
+): Promise<StackRecommendation> {
+  const p = buildRecommendStackPrompt({ projectName, projectDescription, additionalContext });
+  return callAndParse(apiKey, 'recommendStack', p, StackRecommendationSchema, promptLogContext);
 }
