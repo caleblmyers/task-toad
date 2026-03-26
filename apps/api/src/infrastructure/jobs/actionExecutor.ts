@@ -157,10 +157,23 @@ export function createHandler(prisma: PrismaClient) {
       orderBy: { position: 'asc' },
     });
     const previousResults = new Map<string, unknown>();
+    const previousSummaries: string[] = [];
     for (const prev of previousActions) {
       if (prev.result) {
         try {
-          previousResults.set(prev.id, JSON.parse(prev.result));
+          const parsed = JSON.parse(prev.result) as Record<string, unknown>;
+          previousResults.set(prev.id, parsed);
+          const summary = (parsed.summary as string) || '';
+          const files =
+            (parsed.files as Array<{ path: string }>) ||
+            (parsed.data as { files?: Array<{ path: string }> } | undefined)?.files ||
+            [];
+          if (summary || files.length > 0) {
+            const fileList = files.map((f) => f.path).join(', ');
+            previousSummaries.push(
+              `Step "${prev.label}" (${prev.actionType}): ${summary}${fileList ? ` [Files: ${fileList}]` : ''}`,
+            );
+          }
         } catch {
           // ignore parse errors
         }
@@ -217,6 +230,7 @@ export function createHandler(prisma: PrismaClient) {
       prisma,
       userGitHubToken,
       previousResults,
+      previousStepContext: previousSummaries.length > 0 ? previousSummaries.join('\n') : undefined,
       signal: abortController.signal,
     };
 

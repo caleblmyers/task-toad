@@ -36,6 +36,11 @@ export const generateCodeExecutor: ActionExecutor = {
       throw new DOMException('Action cancelled', 'AbortError');
     }
 
+    let fullContext = ctx.knowledgeContext ?? project.knowledgeBase ?? '';
+    if (ctx.previousStepContext) {
+      fullContext = `## Previous Steps in This Plan\n${ctx.previousStepContext}\n\n${fullContext}`;
+    }
+
     const result = await aiGenerateCode(
       apiKey,
       task.title,
@@ -45,7 +50,7 @@ export const generateCodeExecutor: ActionExecutor = {
       project.description ?? '',
       projectFiles,
       config.styleGuide ?? null,
-      ctx.knowledgeContext ?? project.knowledgeBase,
+      fullContext || null,
     );
 
     // Check for cancellation after AI response

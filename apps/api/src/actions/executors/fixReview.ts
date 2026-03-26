@@ -68,6 +68,11 @@ Only fix small, clear issues: typos, missing error handling, simple bugs, naming
 For larger issues (architectural changes, new features, redesigns, missing test suites), output them as \`deferredIssues\` — do NOT attempt to fix them.
 Return valid JSON matching the required schema.`;
 
+    let contextSection = '';
+    if (ctx.previousStepContext) {
+      contextSection = `\nPrevious steps in this plan:\n${ctx.previousStepContext}\n`;
+    }
+
     const userPrompt = `Fix the issues found in this code review.
 
 Task: ${task.title}
@@ -81,7 +86,7 @@ ${suggestionLines ? `\nGeneral Suggestions:\n- ${suggestionLines}` : ''}
 
 Project: ${project.name}
 ${project.description ? `Project Description: ${project.description}` : ''}
-
+${contextSection}
 Generate fixes for small issues and defer larger ones. Each fix should contain the complete file content for the file being fixed.`;
 
     const aiResult = await callAIStructured(

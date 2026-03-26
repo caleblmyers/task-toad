@@ -32,6 +32,11 @@ export const writeDocsExecutor: ActionExecutor = {
       throw new DOMException('Action cancelled', 'AbortError');
     }
 
+    let contextSection = '';
+    if (ctx.previousStepContext) {
+      contextSection = `\nPrevious steps in this plan:\n${ctx.previousStepContext}\n`;
+    }
+
     const result = await callAIStructured({
       apiKey,
       systemPrompt: SYSTEM_JSON,
@@ -41,7 +46,7 @@ Task: ${userInput('title', task.title)}
 Description: ${userInput('description', task.description ?? '')}
 Project: ${userInput('project', project.name)}
 ${project.description ? `Project description: ${userInput('projectDescription', project.description)}` : ''}
-
+${contextSection}
 Generate ONE documentation file. Keep it brief — project overview, setup steps, and basic usage.`,
       maxTokens: 4096,
       feature: 'generateCode',
