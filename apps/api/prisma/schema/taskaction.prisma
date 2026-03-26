@@ -4,6 +4,8 @@ model TaskActionPlan {
   orgId       String   @map("org_id")
   status      String   @default("draft") // draft | approved | executing | completed | failed | cancelled
   summary     String?  @db.Text
+  branchName  String?  @map("branch_name")
+  headOid     String?  @map("head_oid")
   createdById String   @map("created_by_id")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")

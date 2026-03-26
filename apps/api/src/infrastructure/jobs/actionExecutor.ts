@@ -9,6 +9,8 @@ import { getEventBus } from '../eventbus/index.js';
 import { getJobQueue } from '../jobqueue/index.js';
 import { retrieveRelevantKnowledge } from '../../ai/knowledgeRetrieval.js';
 import { generateTaskInsights } from '../../ai/aiService.js';
+import { createBranch } from '../../github/githubCommitService.js';
+import type { GitHubRepoLink } from '../../github/githubTypes.js';
 
 const log = createChildLogger('action-executor');
 
@@ -67,6 +69,30 @@ export function createHandler(prisma: PrismaClient) {
 
     const task = action.plan.task;
     const project = task.project;
+    const plan = action.plan;
+
+    // Build GitHubRepoLink from project fields
+    const repo: GitHubRepoLink | null =
+      project.githubRepositoryId && project.githubInstallationId
+        ? {
+            repositoryId: project.githubRepositoryId,
+            repositoryName: project.githubRepositoryName ?? '',
+            repositoryOwner: project.githubRepositoryOwner ?? '',
+            installationId: project.githubInstallationId,
+            defaultBranch: project.githubDefaultBranch ?? 'main',
+          }
+        : null;
+
+    // Create feature branch on first action of a plan when repo is connected
+    if (repo && !plan.branchName) {
+      const { branchName, baseOid } = await createBranch(repo, task.taskId, task.title);
+      await prisma.taskActionPlan.update({
+        where: { id: plan.id },
+        data: { branchName, headOid: baseOid },
+      });
+      plan.branchName = branchName;
+      plan.headOid = baseOid;
+    }
 
     // Check budget for AI-consuming actions
     const actionType = action.actionType as ActionType;
@@ -153,6 +179,8 @@ export function createHandler(prisma: PrismaClient) {
       task: { taskId: task.taskId, title: task.title, description: task.description, instructions: task.instructions, projectId: task.projectId },
       project: { projectId: project.projectId, name: project.name, description: project.description, knowledgeBase: project.knowledgeBase },
       knowledgeContext,
+      repo,
+      plan: { id: plan.id, branchName: plan.branchName, headOid: plan.headOid },
       apiKey,
       orgId,
       userId,
@@ -183,6 +211,14 @@ export function createHandler(prisma: PrismaClient) {
       }
 
       if (result.success) {
+        // Update plan's headOid if the action committed to the branch
+        if (result.data?.headOid && typeof result.data.headOid === 'string') {
+          await prisma.taskActionPlan.update({
+            where: { id: planId },
+            data: { headOid: result.data.headOid },
+          });
+        }
+
         await prisma.taskAction.update({
           where: { id: actionId },
           data: {

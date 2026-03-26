@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import type { GitHubRepoLink } from '../github/githubTypes.js';
 
 export type ActionType = 'generate_code' | 'create_pr' | 'review_pr' | 'write_docs' | 'manual_step' | 'monitor_ci' | 'fix_ci';
 
@@ -8,6 +9,8 @@ export interface ActionContext {
   task: { taskId: string; title: string; description: string | null; instructions: string | null; projectId: string };
   project: { projectId: string; name: string; description: string | null; knowledgeBase: string | null };
   knowledgeContext: string | null;
+  repo: GitHubRepoLink | null; // project's connected GitHub repo
+  plan: { id: string; branchName: string | null; headOid: string | null }; // plan's branch state
   apiKey: string;
   orgId: string;
   userId: string;
