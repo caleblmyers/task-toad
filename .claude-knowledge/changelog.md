@@ -4,6 +4,52 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-26 (Wave 66 — Phase 1.5: onboarding redesign)
+
+### Wave 66: Phase 1.5 Onboarding Redesign (3 workers, 5 tasks)
+
+**Worker 1 — task-001: Backend AI stack recommendations:**
+- New `recommendStack` AI feature — takes project name + description, returns recommended stack with rationale + 2-3 alternatives
+- Each recommendation includes structured config: framework, language, packages, projectType
+- New `StackRecommendationSchema` in aiTypes.ts
+- `scaffoldProject` mutation now accepts `ScaffoldConfigInput` (structured config) instead of `template` string
+- `buildScaffoldPrompt` generates natural language stack description from config
+- Removed `scaffoldTemplates` hardcoded query
+- New `recommendStack` GraphQL query
+
+**Worker 1 — task-004: AI context files in scaffold:**
+- Updated scaffold prompt to always generate `CLAUDE.md` at repo root
+- CLAUDE.md includes project name, dev commands, tech stack, directory structure
+- File limit increased from 3-5 to 4-7 to accommodate context files
+
+**Worker 2 — task-002: ProjectSetupWizard rewrite:**
+- Replaced hardcoded template grid with AI recommendation step
+- Shows recommended stack (prominent card with rationale) + alternatives (smaller cards)
+- Custom option: text input for "Or describe what you want"
+- New `analyze` step for existing repos: optional intent prompt → `bootstrapProjectFromRepo`
+- Pre-fetches recommendation in background during GitHub step
+- Updated all 15 tests to match new wizard behavior (rejected on first review for stale tests, fixed and re-submitted)
+
+**Worker 3 — task-003: Interview removal + context textarea:**
+- Deleted `OnboardingWizard.tsx` component
+- Removed all OnboardingWizard triggers from ProjectDetail.tsx
+- Removed `showOnboarding` from navigation state
+- Added optional "Additional context" textarea to NewProject page
+- Additional context saved as KnowledgeEntry after project creation
+
+**Worker 3 — task-005: KB seeding from stack choice:**
+- After successful scaffold, creates KB entry with tech stack details (framework, language, packages, project type)
+- Source: 'scaffold', category: 'architecture'
+
+**Process:** task-002 rejected once (8 stale tests), fixed and re-merged. task-005 used type cast workaround for cross-worker dependency. All other tasks merged on first review.
+
+### Open follow-ups
+- Clean up redundant type cast in scaffoldProject resolver (`(args as Record<string, unknown>).config`)
+- Wire analyzeIntent textarea to bootstrapProjectFromRepo mutation (collects input but doesn't pass it)
+- Remove dead backend mutations (`generateOnboardingQuestions`, `saveOnboardingAnswers`)
+
+---
+
 ## 2026-03-26 (Wave 65 — Phase 1 follow-ups)
 
 ### Wave 65: Phase 1 Follow-ups — Pipeline Robustness + fix_review (3 workers, 5 tasks)
@@ -99,37 +145,6 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 - Branch cleanup strategy for failed/cancelled plans
 - Extract insight generation + in_review transition to event listeners (R10)
 - Audit executor config Zod: manual_step and monitor_ci schemas missing
-
----
-
-## 2026-03-25 (Wave 62 — deferred refactors)
-
-### Wave 62: Codebase Refactors from Audit (3 workers, 6 tasks)
-
-**Worker 1 — task-001: useEditableField hook (R2):**
-- Extracted `hooks/useEditableField.ts` from TaskDetailPanel's 3 repeated editing state pairs
-
-**Worker 1 — task-002: Tab extraction (R8):**
-- Extracted 5 inline tabs from TaskDetailPanel into standalone components: DetailsTab, ActivityTab, RelationsTab, ActionsTab, InsightsTab
-- TaskDetailPanel reduced from ~695 lines to orchestration + tab rendering
-
-**Worker 1 — task-003: Picker consolidation (R9):**
-- Created `shared/MultiPicker.tsx` — generic multi-select component
-- TaskFieldsPanel uses it for assignees, watchers, and labels (with custom rendering + label creation)
-
-**Worker 2 — task-004: Metrics extraction (R6):**
-- Created `utils/metricsCalc.ts` with calculateVelocity, calculateCycleTime, percentile, calculateHealthScore
-- sprint.ts and project.ts resolvers use shared utilities (eliminated duplicate calculations)
-
-**Worker 2 — task-005: queries.ts decomposition (R11):**
-- Split 1,011-line queries.ts into domain files: auth, project, task, sprint, ai, github, misc + barrel index
-- Consolidated 8 UPDATE_TASK_* mutations via factory function
-
-**Worker 3 — task-006: Chart utilities (R12):**
-- Created `hooks/useResizableContainer.ts` and `utils/chartFormatting.ts`
-- 4 chart components updated to use shared utilities (eliminated 6 ResizeObserver duplications + 3 fmtDate duplications)
-
-**Process:** All 6 merged on first review, zero rejections. Pre-existing integration test failures (19 tests) remain — noted in issues.md.
 
 ---
 
@@ -296,6 +311,7 @@ Three follow-up fixes after re-testing Wave 56 on production:
 ## Older Entries (one-line summaries)
 
 - **2026-03-25** — Wave 63: Quick hits — closed-source cleanup (LICENSE, CONTRIBUTING, TASKTOAD_LICENSE, Docker), modal dismiss fix, session security fix.
+- **2026-03-25** — Wave 62: Deferred refactors — useEditableField (R2), tab extraction (R8), picker consolidation (R9), metrics calc (R6), queries split (R11), chart utilities (R12).
 - **2026-03-24** — Wave 59: Per-org licensing — plan column on Org, license.ts rewrite, 33 resolver call sites, infrastructure per-event checks.
 - **2026-03-24** — Wave 58: Project scaffolding — scaffold mutation, ProjectSetupWizard (4-step), empty repo commit, framework templates, planner prompt fix.
 - **2026-03-23** — Wave 57: Premium feature gating — license.ts utility, resolver/infrastructure/frontend gating for 8 premium features, useLicenseFeatures hook.

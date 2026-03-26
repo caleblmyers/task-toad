@@ -1,8 +1,8 @@
 # TaskToad — Remaining Work & Tracking
 
-65 swarm waves completed. 354 tests. **Strategic pivot to closed-source SaaS autopilot — building the three pillars (decomposition, context threading, orchestration).**
+66 swarm waves completed. 356 tests. **Strategic pivot to closed-source SaaS autopilot — building the three pillars (decomposition, context threading, orchestration).**
 
-**Phase 1 complete (Waves 64-65 + hotfixes).** Pipeline: generate_code → create_pr → review_pr → fix_review. Next: Phase 1.5 (onboarding redesign). See `autopilot-pillars.md` for the full spec.
+**Phase 1.5 complete (Wave 66).** AI stack recommendations, existing repo onboarding, interview removed. Next: manual e2e test (Phases 1+1.5), then Phase 2 (context threading). See `autopilot-pillars.md` for the full spec.
 
 ---
 
@@ -54,6 +54,11 @@ All 5 implementation tasks completed:
 - [x] **fix_review executor** — auto-fixes small review issues, creates backlog tasks for larger ones. Planner enforces generate_code → create_pr → review_pr → fix_review pipeline. Validation in commitActionPlan. *(Wave 65)*
 - [ ] **Add integration test suite for branch flow** — branch creation, sequential commits, commit failure handling, review outcomes (~5 tests, mock GitHub API)
 - [x] **Implement OAuth token routing for personal repos** — loads user OAuth token for personal accounts, passes through ActionContext to createBranch and commitFiles *(Wave 65)*
+
+### Wave 66 Follow-Ups (Onboarding Redesign)
+- [ ] **Clean up redundant type cast in scaffoldProject resolver** — `(args as Record<string, unknown>).config` in KB seeding block should just use `args.config` directly (task-001 already typed it)
+- [ ] **Wire analyzeIntent to bootstrapProjectFromRepo** — the "What would you like to build?" textarea in the analyze step collects input but doesn't pass it to the mutation. Either pass it as context or remove the textarea.
+- [ ] **Remove dead backend mutations** — `generateOnboardingQuestions` and `saveOnboardingAnswers` are unused after OnboardingWizard removal (frontend deleted, backend stays for now)
 
 ### Wave 65 Follow-Ups
 - [ ] **fix_review executor: pass userGitHubToken** — the new fixReview.ts commits to branch but doesn't pass `ctx.userGitHubToken` to `commitFiles` (task-002 added the field after task-003 was written). One-line fix.
@@ -142,5 +147,6 @@ All 5 implementation tasks completed:
 | 63 | 2026-03-25 | Quick hits: closed-source cleanup, modal dismiss fix, session security fix |
 | 64 | 2026-03-26 | Phase 1: branch-based pipeline — branch management, generateCode/writeDocs commit, createPR rewrite, planner enforcement, skeptical reviewer |
 | 65 | 2026-03-26 | Phase 1 follow-ups: commitFiles error handling, concurrency guard, OAuth routing, fix_review executor, quick hits (Modal tests, act() fix, open-source refs) |
+| 66 | 2026-03-26 | Phase 1.5: AI stack recommendations, scaffold config, existing repo onboarding, interview removal, CLAUDE.md in scaffold, KB seeding from stack choice |
 
 Full wave details in `changelog.md`.
