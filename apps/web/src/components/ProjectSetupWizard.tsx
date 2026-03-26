@@ -7,6 +7,8 @@ import {
   SCAFFOLD_PROJECT_MUTATION,
   CREATE_GITHUB_REPO_MUTATION,
   ME_QUERY,
+  RECOMMEND_STACK_QUERY,
+  BOOTSTRAP_REPO_MUTATION,
 } from '../api/queries';
 import type { GitHubInstallation, GitHubRepoLink, MeResponse } from '../types';
 
@@ -17,7 +19,7 @@ interface ProjectSetupWizardProps {
   onSkip: () => void;
 }
 
-type WizardStep = 'github' | 'template' | 'scaffolding' | 'done';
+type WizardStep = 'github' | 'recommend' | 'scaffolding' | 'analyze' | 'done';
 
 interface ScaffoldResult {
   success: boolean;
@@ -26,13 +28,24 @@ interface ScaffoldResult {
   commitUrl: string | null;
 }
 
-interface ScaffoldTemplate {
-  name: string;
-  label: string;
-  description: string;
+interface StackConfig {
+  framework: string;
+  language: string;
+  packages: string[];
+  projectType: string;
 }
 
-const SCAFFOLD_TEMPLATES_QUERY = `query { scaffoldTemplates { name label description } }`;
+interface StackOption {
+  label: string;
+  description: string;
+  rationale: string;
+  config: StackConfig;
+}
+
+interface StackRecommendation {
+  recommended: StackOption;
+  alternatives: StackOption[];
+}
 
 export default function ProjectSetupWizard({
   isOpen,
@@ -44,15 +57,24 @@ export default function ProjectSetupWizard({
   const [installations, setInstallations] = useState<GitHubInstallation[] | null>(null);
   const [loadingInstallations, setLoadingInstallations] = useState(true);
   const [creatingRepo, setCreatingRepo] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [scaffoldResult, setScaffoldResult] = useState<ScaffoldResult | null>(null);
   const [scaffolding, setScaffolding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showRepoModal, setShowRepoModal] = useState(false);
   const [selectedInstallation, setSelectedInstallation] = useState<string | null>(null);
   const [githubLogin, setGithubLogin] = useState<string | null>(null);
-  const [templates, setTemplates] = useState<ScaffoldTemplate[]>([]);
-  const [loadingTemplates, setLoadingTemplates] = useState(false);
+
+  // Recommendation state
+  const [recommendation, setRecommendation] = useState<StackRecommendation | null>(null);
+  const [loadingRecommendation, setLoadingRecommendation] = useState(false);
+  const [selectedConfig, setSelectedConfig] = useState<StackConfig | null>(null);
+  const [customDescription, setCustomDescription] = useState('');
+  const [expandedAlt, setExpandedAlt] = useState<number | null>(null);
+
+  // Analyze (existing repo) state
+  const [analyzeIntent, setAnalyzeIntent] = useState('');
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeComplete, setAnalyzeComplete] = useState(false);
 
   // Fetch GitHub installations and user's GitHub connection on mount
   useEffect(() => {
@@ -83,15 +105,15 @@ export default function ProjectSetupWizard({
     return () => window.removeEventListener('message', handleMessage);
   }, [isOpen]);
 
-  // Fetch scaffold templates when reaching template step
+  // Pre-fetch recommendation as soon as we have a projectId (background fetch during github step)
   useEffect(() => {
-    if (step !== 'template' || templates.length > 0) return;
-    setLoadingTemplates(true);
-    gql<{ scaffoldTemplates: ScaffoldTemplate[] }>(SCAFFOLD_TEMPLATES_QUERY)
-      .then((data) => setTemplates(data.scaffoldTemplates))
-      .catch(() => setTemplates([]))
-      .finally(() => setLoadingTemplates(false));
-  }, [step, templates.length]);
+    if (!isOpen || !projectId || recommendation || loadingRecommendation) return;
+    setLoadingRecommendation(true);
+    gql<{ recommendStack: StackRecommendation }>(RECOMMEND_STACK_QUERY, { projectId })
+      .then((data) => setRecommendation(data.recommendStack))
+      .catch(() => {/* Will retry when reaching recommend step */})
+      .finally(() => setLoadingRecommendation(false));
+  }, [isOpen, projectId, recommendation, loadingRecommendation]);
 
   const handleCreateRepo = useCallback(async () => {
     if (!installations || !selectedInstallation) return;
@@ -105,7 +127,7 @@ export default function ProjectSetupWizard({
         installationId: installation.installationId,
         ownerLogin: installation.accountLogin,
       });
-      setStep('template');
+      setStep('recommend');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create repository');
     } finally {
@@ -127,36 +149,60 @@ export default function ProjectSetupWizard({
 
   const handleRepoConnected = useCallback(() => {
     setShowRepoModal(false);
-    setStep('template');
+    setStep('analyze');
   }, []);
 
-  const handleSelectTemplate = useCallback((template: string) => {
-    setSelectedTemplate(template);
+  const handleSelectConfig = useCallback((config: StackConfig) => {
+    setSelectedConfig(config);
     setStep('scaffolding');
   }, []);
 
-  const handleScaffold = useCallback(async (template: string) => {
+  const handleCustomScaffold = useCallback(() => {
+    if (!customDescription.trim()) return;
+    setSelectedConfig(null);
+    setStep('scaffolding');
+  }, [customDescription]);
+
+  const handleScaffold = useCallback(async () => {
     setScaffolding(true);
     setError(null);
     try {
-      const data = await gql<{ scaffoldProject: ScaffoldResult }>(SCAFFOLD_PROJECT_MUTATION, {
-        projectId,
-        template,
-      });
+      const variables: Record<string, unknown> = { projectId };
+      if (selectedConfig) {
+        variables.config = selectedConfig;
+      } else {
+        // Custom description — use a generic config and pass description as options
+        variables.config = { framework: 'custom', language: 'custom', packages: [], projectType: 'full-stack' };
+        variables.options = customDescription;
+      }
+      const data = await gql<{ scaffoldProject: ScaffoldResult }>(SCAFFOLD_PROJECT_MUTATION, variables);
       setScaffoldResult(data.scaffoldProject);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to scaffold project');
     } finally {
       setScaffolding(false);
     }
-  }, [projectId]);
+  }, [projectId, selectedConfig, customDescription]);
 
   // Trigger scaffold when entering the scaffolding step
   useEffect(() => {
-    if (step === 'scaffolding' && selectedTemplate && !scaffoldResult && !scaffolding && !error) {
-      void handleScaffold(selectedTemplate);
+    if (step === 'scaffolding' && !scaffoldResult && !scaffolding && !error) {
+      void handleScaffold();
     }
-  }, [step, selectedTemplate, scaffoldResult, scaffolding, error, handleScaffold]);
+  }, [step, scaffoldResult, scaffolding, error, handleScaffold]);
+
+  const handleAnalyze = useCallback(async () => {
+    setAnalyzing(true);
+    setError(null);
+    try {
+      await gql<{ bootstrapProjectFromRepo: unknown[] }>(BOOTSTRAP_REPO_MUTATION, { projectId });
+      setAnalyzeComplete(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to analyze repository');
+    } finally {
+      setAnalyzing(false);
+    }
+  }, [projectId]);
 
   // Handle done step
   useEffect(() => {
@@ -165,11 +211,22 @@ export default function ProjectSetupWizard({
     }
   }, [step, onComplete]);
 
+  // Retry recommendation fetch if it failed and we're on the recommend step
+  useEffect(() => {
+    if (step === 'recommend' && !recommendation && !loadingRecommendation) {
+      setLoadingRecommendation(true);
+      gql<{ recommendStack: StackRecommendation }>(RECOMMEND_STACK_QUERY, { projectId })
+        .then((data) => setRecommendation(data.recommendStack))
+        .catch(() => setError('Failed to generate stack recommendations'))
+        .finally(() => setLoadingRecommendation(false));
+    }
+  }, [step, recommendation, loadingRecommendation, projectId]);
+
   const hasInstallations = installations && installations.length > 0;
 
   return (
     <>
-      <Modal isOpen={isOpen && !showRepoModal} onClose={onSkip} title="Set Up Your Project" size="lg" closeOnOverlayClick={!creatingRepo && !scaffolding && step === 'github'}>
+      <Modal isOpen={isOpen && !showRepoModal} onClose={onSkip} title="Set Up Your Project" size="lg" closeOnOverlayClick={!creatingRepo && !scaffolding && !analyzing && step === 'github'}>
         <div className="p-6">
           {step === 'github' && (
             <div className="space-y-4">
@@ -276,46 +333,174 @@ export default function ProjectSetupWizard({
             </div>
           )}
 
-          {step === 'template' && (
+          {step === 'recommend' && (
             <div className="space-y-4">
               <div className="text-center mb-6">
                 <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-200">
-                  Choose a Template
+                  Choose Your Stack
                 </h2>
                 <p className="text-slate-600 dark:text-slate-400 mt-1">
-                  Scaffold your project with a starter template.
+                  AI-recommended tech stack based on your project description.
                 </p>
               </div>
 
-              {loadingTemplates ? (
-                <div className="flex justify-center py-8">
+              {loadingRecommendation ? (
+                <div className="flex flex-col items-center py-8 gap-3">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-500" />
+                  <p className="text-slate-500 dark:text-slate-400 text-sm">Analyzing your project...</p>
                 </div>
-              ) : (
-              <div className="grid grid-cols-2 gap-3">
-                {templates.map((t) => (
+              ) : recommendation ? (
+                <div className="space-y-4">
+                  {/* Recommended option */}
                   <button
-                    key={t.name}
                     type="button"
-                    onClick={() => handleSelectTemplate(t.name)}
-                    className="text-left p-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-500 transition-colors"
+                    onClick={() => handleSelectConfig(recommendation.recommended.config)}
+                    className="w-full text-left p-4 rounded-lg border-2 border-violet-300 dark:border-violet-600 bg-violet-50 dark:bg-violet-900/20 hover:border-violet-500 dark:hover:border-violet-400 transition-colors"
                   >
-                    <p className="font-semibold text-slate-800 dark:text-slate-200">{t.label}</p>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t.description}</p>
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-semibold text-violet-800 dark:text-violet-200">{recommendation.recommended.label}</p>
+                      <span className="text-xs font-medium bg-violet-200 dark:bg-violet-700 text-violet-700 dark:text-violet-200 px-2 py-0.5 rounded-full">Recommended</span>
+                    </div>
+                    <p className="text-violet-700 dark:text-violet-300 text-sm">{recommendation.recommended.description}</p>
+                    <p className="text-violet-600 dark:text-violet-400 text-xs mt-2">{recommendation.recommended.rationale}</p>
                   </button>
-                ))}
+
+                  {/* Alternatives */}
+                  {recommendation.alternatives.map((alt, i) => (
+                    <button
+                      key={alt.label}
+                      type="button"
+                      onClick={() => handleSelectConfig(alt.config)}
+                      onMouseEnter={() => setExpandedAlt(i)}
+                      onMouseLeave={() => setExpandedAlt(null)}
+                      className="w-full text-left p-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-500 transition-colors"
+                    >
+                      <p className="font-semibold text-slate-800 dark:text-slate-200">{alt.label}</p>
+                      <p className="text-slate-500 dark:text-slate-400 text-sm">{alt.description}</p>
+                      {expandedAlt === i && (
+                        <p className="text-slate-500 dark:text-slate-400 text-xs mt-2">{alt.rationale}</p>
+                      )}
+                    </button>
+                  ))}
+
+                  {/* Custom option */}
+                  <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">
+                      Or describe what you want
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={customDescription}
+                        onChange={(e) => setCustomDescription(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleCustomScaffold();
+                        }}
+                        placeholder="e.g. Python Django with PostgreSQL"
+                        className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400"
+                      />
+                      <Button onClick={handleCustomScaffold} disabled={!customDescription.trim()}>
+                        Scaffold
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="text-center mt-4">
+                    <button
+                      type="button"
+                      onClick={() => setStep('done')}
+                      className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+                    >
+                      Skip — I&apos;ll set up code myself
+                    </button>
+                  </div>
+                </div>
+              ) : error ? (
+                <div className="text-center space-y-4">
+                  <p className="text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 rounded-lg p-3">
+                    {error}
+                  </p>
+                  <div className="flex justify-center gap-3">
+                    <Button
+                      onClick={() => {
+                        setError(null);
+                        setRecommendation(null);
+                      }}
+                    >
+                      Retry
+                    </Button>
+                    <Button variant="ghost" onClick={() => setStep('done')}>
+                      Skip
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {step === 'analyze' && (
+            <div className="space-y-4">
+              <div className="text-center mb-6">
+                <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-200">
+                  Analyze Your Repository
+                </h2>
+                <p className="text-slate-600 dark:text-slate-400 mt-1">
+                  We&apos;ll scan your repo to understand the codebase and generate a project profile.
+                </p>
               </div>
+
+              {!analyzing && !analyzeComplete && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      What would you like to build? <span className="text-slate-400">(optional)</span>
+                    </label>
+                    <textarea
+                      value={analyzeIntent}
+                      onChange={(e) => setAnalyzeIntent(e.target.value)}
+                      placeholder="Describe your goals, upcoming features, or what you'd like TaskToad to help with..."
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400"
+                      rows={3}
+                    />
+                  </div>
+                  <div className="flex justify-center gap-3">
+                    <Button onClick={handleAnalyze}>
+                      Analyze &amp; Plan
+                    </Button>
+                    <Button variant="ghost" onClick={() => setStep('done')}>
+                      Skip
+                    </Button>
+                  </div>
+                </div>
               )}
 
-              <div className="text-center mt-4">
-                <button
-                  type="button"
-                  onClick={() => setStep('done')}
-                  className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
-                >
-                  Skip — I&apos;ll set up code myself
-                </button>
-              </div>
+              {analyzing && (
+                <div className="flex flex-col items-center py-8 gap-3">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-violet-500" />
+                  <p className="text-slate-600 dark:text-slate-400">Analyzing your repository...</p>
+                </div>
+              )}
+
+              {analyzeComplete && (
+                <div className="text-center space-y-4 py-4">
+                  <div className="text-3xl text-green-500">&#10003;</div>
+                  <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
+                    Repository analyzed
+                  </h3>
+                  <p className="text-slate-600 dark:text-slate-400 text-sm max-w-md mx-auto">
+                    Your project profile and knowledge base have been generated from the repo contents.
+                  </p>
+                  <div>
+                    <Button onClick={() => setStep('done')}>Continue</Button>
+                  </div>
+                </div>
+              )}
+
+              {error && !analyzing && !analyzeComplete && (
+                <div className="text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 rounded-lg p-3">
+                  {error}
+                </div>
+              )}
             </div>
           )}
 
@@ -363,7 +548,7 @@ export default function ProjectSetupWizard({
                       onClick={() => {
                         setError(null);
                         setScaffoldResult(null);
-                        void handleScaffold(selectedTemplate!);
+                        void handleScaffold();
                       }}
                     >
                       Retry

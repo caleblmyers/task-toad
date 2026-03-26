@@ -28,12 +28,22 @@ const MOCK_INSTALLATIONS = [
   },
 ];
 
-const MOCK_TEMPLATES = [
-  { name: 'nextjs', label: 'Next.js', description: 'React + TypeScript + Tailwind' },
-  { name: 'vite-react', label: 'Vite + React', description: 'SPA with TypeScript' },
-  { name: 'express-ts', label: 'Express + TypeScript', description: 'Node.js API' },
-  { name: 'python-fastapi', label: 'Python + FastAPI', description: 'Python API' },
-];
+const MOCK_RECOMMENDATION = {
+  recommended: {
+    label: 'Next.js + TypeScript',
+    description: 'Full-stack React framework with TypeScript',
+    rationale: 'Best fit for a modern web app with SSR support',
+    config: { framework: 'nextjs', language: 'typescript', packages: ['prisma', 'tailwindcss'], projectType: 'full-stack' },
+  },
+  alternatives: [
+    {
+      label: 'Vite + React',
+      description: 'Fast SPA with React and TypeScript',
+      rationale: 'Great for client-heavy apps without SSR needs',
+      config: { framework: 'vite-react', language: 'typescript', packages: ['tailwindcss'], projectType: 'frontend-only' },
+    },
+  ],
+};
 
 const defaultProps = {
   isOpen: true,
@@ -45,7 +55,7 @@ const defaultProps = {
 function setupGqlMock(overrides: Record<string, unknown> = {}) {
   const defaults: Record<string, unknown> = {
     githubInstallations: MOCK_INSTALLATIONS,
-    scaffoldTemplates: MOCK_TEMPLATES,
+    recommendStack: MOCK_RECOMMENDATION,
     ...overrides,
   };
 
@@ -56,8 +66,11 @@ function setupGqlMock(overrides: Record<string, unknown> = {}) {
     if (query.includes('{ me {') || query.includes('{ me{')) {
       return Promise.resolve({ me: defaults.me ?? { githubLogin: null } });
     }
-    if (query.includes('scaffoldTemplates')) {
-      return Promise.resolve({ scaffoldTemplates: defaults.scaffoldTemplates });
+    if (query.includes('recommendStack')) {
+      if (defaults.recommendError) {
+        return Promise.reject(new Error(defaults.recommendError as string));
+      }
+      return Promise.resolve({ recommendStack: defaults.recommendStack });
     }
     if (query.includes('scaffoldProject')) {
       if (defaults.scaffoldError) {
@@ -83,6 +96,9 @@ function setupGqlMock(overrides: Record<string, unknown> = {}) {
         },
       });
     }
+    if (query.includes('bootstrapProjectFromRepo')) {
+      return Promise.resolve({ bootstrapProjectFromRepo: [] });
+    }
     return Promise.resolve({});
   });
 }
@@ -99,7 +115,6 @@ describe('ProjectSetupWizard', () => {
     render(<ProjectSetupWizard {...defaultProps} isOpen={true} />);
     expect(screen.getByText('Set Up Your Project')).toBeInTheDocument();
 
-    // Wait for async useEffect to settle (installations + me query)
     await waitFor(() => {
       expect(mockGql).toHaveBeenCalled();
     });
@@ -133,7 +148,7 @@ describe('ProjectSetupWizard', () => {
     });
   });
 
-  it('advances to template step when skip is clicked', async () => {
+  it('advances to done step when skip is clicked with no installations', async () => {
     setupGqlMock({ githubInstallations: [] });
     render(<ProjectSetupWizard {...defaultProps} />);
 
@@ -141,7 +156,6 @@ describe('ProjectSetupWizard', () => {
       expect(screen.getByText(/Skip for now/)).toBeInTheDocument();
     });
 
-    // Clicking skip with no installations goes to done step
     fireEvent.click(screen.getByText(/Skip for now/));
 
     await waitFor(() => {
@@ -149,7 +163,7 @@ describe('ProjectSetupWizard', () => {
     });
   });
 
-  it('advances to template step after clicking skip with installations', async () => {
+  it('advances to done step when skip is clicked with installations', async () => {
     setupGqlMock();
     render(<ProjectSetupWizard {...defaultProps} />);
 
@@ -157,7 +171,6 @@ describe('ProjectSetupWizard', () => {
       expect(screen.getByText('Skip for now')).toBeInTheDocument();
     });
 
-    // With installations, "Skip for now" goes to done
     fireEvent.click(screen.getByText('Skip for now'));
 
     await waitFor(() => {
@@ -165,13 +178,12 @@ describe('ProjectSetupWizard', () => {
     });
   });
 
-  // ── Template step ──
+  // ── Recommend step ──
 
-  it('fetches and displays templates from API', async () => {
+  it('shows AI recommendations after creating a new repo', async () => {
     setupGqlMock();
     render(<ProjectSetupWizard {...defaultProps} />);
 
-    // Wait for installations to load, then create a repo to advance
     await waitFor(() => {
       expect(screen.getByText('Create new repo')).toBeInTheDocument();
     });
@@ -179,24 +191,17 @@ describe('ProjectSetupWizard', () => {
     fireEvent.click(screen.getByText('Create new repo'));
 
     await waitFor(() => {
-      expect(screen.getByText('Choose a Template')).toBeInTheDocument();
+      expect(screen.getByText('Choose Your Stack')).toBeInTheDocument();
     });
 
-    // Templates should be fetched and displayed
     await waitFor(() => {
-      expect(screen.getByText('Next.js')).toBeInTheDocument();
+      expect(screen.getByText('Next.js + TypeScript')).toBeInTheDocument();
     });
+    expect(screen.getByText('Recommended')).toBeInTheDocument();
     expect(screen.getByText('Vite + React')).toBeInTheDocument();
-    expect(screen.getByText('Express + TypeScript')).toBeInTheDocument();
-    expect(screen.getByText('Python + FastAPI')).toBeInTheDocument();
-
-    // Verify scaffoldTemplates query was called
-    expect(mockGql).toHaveBeenCalledWith(
-      expect.stringContaining('scaffoldTemplates'),
-    );
   });
 
-  it('advances to scaffolding step when selecting a template', async () => {
+  it('advances to scaffolding step when selecting a recommendation', async () => {
     setupGqlMock();
     render(<ProjectSetupWizard {...defaultProps} />);
 
@@ -206,10 +211,10 @@ describe('ProjectSetupWizard', () => {
     fireEvent.click(screen.getByText('Create new repo'));
 
     await waitFor(() => {
-      expect(screen.getByText('Next.js')).toBeInTheDocument();
+      expect(screen.getByText('Next.js + TypeScript')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('Next.js'));
+    fireEvent.click(screen.getByText('Next.js + TypeScript'));
 
     await waitFor(() => {
       expect(screen.getByText('Generating project files...')).toBeInTheDocument();
@@ -218,7 +223,7 @@ describe('ProjectSetupWizard', () => {
 
   // ── Scaffolding step ──
 
-  it('triggers scaffoldProject mutation with correct arguments', async () => {
+  it('triggers scaffoldProject mutation with config object', async () => {
     setupGqlMock();
     render(<ProjectSetupWizard {...defaultProps} />);
 
@@ -228,14 +233,17 @@ describe('ProjectSetupWizard', () => {
     fireEvent.click(screen.getByText('Create new repo'));
 
     await waitFor(() => {
-      expect(screen.getByText('Next.js')).toBeInTheDocument();
+      expect(screen.getByText('Next.js + TypeScript')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('Next.js'));
+    fireEvent.click(screen.getByText('Next.js + TypeScript'));
 
     await waitFor(() => {
       expect(mockGql).toHaveBeenCalledWith(
         expect.stringContaining('scaffoldProject'),
-        { projectId: 'proj-1', template: 'nextjs' },
+        {
+          projectId: 'proj-1',
+          config: { framework: 'nextjs', language: 'typescript', packages: ['prisma', 'tailwindcss'], projectType: 'full-stack' },
+        },
       );
     });
   });
@@ -250,9 +258,9 @@ describe('ProjectSetupWizard', () => {
     fireEvent.click(screen.getByText('Create new repo'));
 
     await waitFor(() => {
-      expect(screen.getByText('Next.js')).toBeInTheDocument();
+      expect(screen.getByText('Next.js + TypeScript')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('Next.js'));
+    fireEvent.click(screen.getByText('Next.js + TypeScript'));
 
     await waitFor(() => {
       expect(screen.getByText('Created 5 files')).toBeInTheDocument();
@@ -272,9 +280,9 @@ describe('ProjectSetupWizard', () => {
     fireEvent.click(screen.getByText('Create new repo'));
 
     await waitFor(() => {
-      expect(screen.getByText('Next.js')).toBeInTheDocument();
+      expect(screen.getByText('Next.js + TypeScript')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('Next.js'));
+    fireEvent.click(screen.getByText('Next.js + TypeScript'));
 
     await waitFor(() => {
       expect(screen.getByText('AI generation failed')).toBeInTheDocument();
@@ -284,11 +292,9 @@ describe('ProjectSetupWizard', () => {
   });
 
   it('retries scaffold on retry button click', async () => {
-    // First call fails, second succeeds
     let callCount = 0;
     setupGqlMock({ scaffoldError: 'Temporary failure' });
 
-    // Override to allow retry to succeed
     const origImpl = mockGql.getMockImplementation()!;
     mockGql.mockImplementation((query: string, vars?: Record<string, unknown>) => {
       if (query.includes('scaffoldProject')) {
@@ -316,9 +322,9 @@ describe('ProjectSetupWizard', () => {
     fireEvent.click(screen.getByText('Create new repo'));
 
     await waitFor(() => {
-      expect(screen.getByText('Next.js')).toBeInTheDocument();
+      expect(screen.getByText('Next.js + TypeScript')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('Next.js'));
+    fireEvent.click(screen.getByText('Next.js + TypeScript'));
 
     await waitFor(() => {
       expect(screen.getByText('Retry')).toBeInTheDocument();
@@ -343,9 +349,9 @@ describe('ProjectSetupWizard', () => {
     fireEvent.click(screen.getByText('Create new repo'));
 
     await waitFor(() => {
-      expect(screen.getByText('Next.js')).toBeInTheDocument();
+      expect(screen.getByText('Next.js + TypeScript')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('Next.js'));
+    fireEvent.click(screen.getByText('Next.js + TypeScript'));
 
     await waitFor(() => {
       expect(screen.getByText('Continue')).toBeInTheDocument();
@@ -367,7 +373,6 @@ describe('ProjectSetupWizard', () => {
       expect(screen.getByText('Set Up Your Project')).toBeInTheDocument();
     });
 
-    // Modal's onClose is wired to onSkip — simulate Escape key
     fireEvent.keyDown(document, { key: 'Escape' });
 
     await waitFor(() => {
@@ -375,7 +380,7 @@ describe('ProjectSetupWizard', () => {
     });
   });
 
-  it('allows skipping from template step', async () => {
+  it('allows skipping from recommend step', async () => {
     setupGqlMock();
     render(<ProjectSetupWizard {...defaultProps} />);
 
@@ -392,6 +397,38 @@ describe('ProjectSetupWizard', () => {
 
     await waitFor(() => {
       expect(defaultProps.onComplete).toHaveBeenCalled();
+    });
+  });
+
+  // ── Analyze step (existing repo) ──
+
+  it('shows analyze step when connecting an existing repo', async () => {
+    setupGqlMock();
+    render(<ProjectSetupWizard {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Connect existing repo')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Connect existing repo'));
+
+    // GitHubRepoModal opens — simulate its onConnected callback
+    // The modal wrapper calls onConnected which sets step to 'analyze'
+    // Since the modal is mocked, we verify it renders
+    await waitFor(() => {
+      expect(screen.getByTestId('github-repo-modal')).toBeInTheDocument();
+    });
+  });
+
+  it('pre-fetches recommendations during GitHub step', async () => {
+    setupGqlMock();
+    render(<ProjectSetupWizard {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(mockGql).toHaveBeenCalledWith(
+        expect.stringContaining('recommendStack'),
+        { projectId: 'proj-1' },
+      );
     });
   });
 });

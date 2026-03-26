@@ -88,6 +88,21 @@ export const COMMIT_HIERARCHICAL_PLAN_MUTATION = `mutation CommitHierarchicalPla
   commitHierarchicalPlan(projectId: $projectId, epics: $epics, clearExisting: $clearExisting) { ${TASK_FIELDS} }
 }`;
 
+// ── Stack Recommendation ──
+
+export const RECOMMEND_STACK_QUERY = `query RecommendStack($projectId: ID!) {
+  recommendStack(projectId: $projectId) {
+    recommended {
+      label description rationale
+      config { framework language packages projectType }
+    }
+    alternatives {
+      label description rationale
+      config { framework language packages projectType }
+    }
+  }
+}`;
+
 // ── Bootstrap / Repo ──
 
 export const BOOTSTRAP_REPO_MUTATION = `mutation BootstrapFromRepo($projectId: ID!) {

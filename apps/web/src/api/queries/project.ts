@@ -77,8 +77,8 @@ export const PROJECT_ACTIVITIES_QUERY = `query Activities($projectId: ID!) { act
 
 // ── Project Setup ──
 
-export const SCAFFOLD_PROJECT_MUTATION = `mutation ScaffoldProject($projectId: ID!, $template: String!, $options: String) {
-  scaffoldProject(projectId: $projectId, template: $template, options: $options) {
+export const SCAFFOLD_PROJECT_MUTATION = `mutation ScaffoldProject($projectId: ID!, $config: ScaffoldConfigInput!, $options: String) {
+  scaffoldProject(projectId: $projectId, config: $config, options: $options) {
     success filesCreated summary commitUrl
   }
 }`;
