@@ -174,13 +174,15 @@ export const taskActionMutations = {
       throw new ValidationError('Action plan must have at least one action');
     }
 
-    // Validate: GitHub-connected projects must include create_pr after generate_code
+    // Validate: GitHub-connected projects must include the full pipeline
     const actionTypes = args.actions.map((a) => a.actionType);
-    if (actionTypes.includes('generate_code')) {
-      const project = await context.loaders.projectById.load(task.projectId);
-      if (project?.githubRepositoryId && !actionTypes.includes('create_pr')) {
-        throw new ValidationError('Plans for GitHub-connected projects must include create_pr after generate_code.');
-      }
+    const project = await context.loaders.projectById.load(task.projectId);
+    const hasRepo = !!project?.githubRepositoryId;
+    if (hasRepo && actionTypes.includes('generate_code') && !actionTypes.includes('create_pr')) {
+      throw new ValidationError('Plans for GitHub-connected projects must include create_pr after generate_code.');
+    }
+    if (hasRepo && actionTypes.includes('review_pr') && !actionTypes.includes('fix_review')) {
+      throw new ValidationError('Plans with review_pr must include fix_review to handle review feedback.');
     }
 
     // Cancel any existing draft/executing plans for this task
@@ -213,7 +215,7 @@ export const taskActionMutations = {
     const idMap = new Map<string, string>();
     plan.actions.forEach((a, i) => idMap.set(`action_${i}`, a.id));
 
-    const configKeys = ['sourceActionId', 'sourcePRActionId', 'sourceMonitorActionId'];
+    const configKeys = ['sourceActionId', 'sourcePRActionId', 'sourceMonitorActionId', 'sourceReviewActionId'];
     for (const action of plan.actions) {
       let config: Record<string, unknown>;
       try { config = JSON.parse(action.config || '{}'); } catch { continue; }

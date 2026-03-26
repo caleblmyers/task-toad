@@ -83,7 +83,7 @@ export async function requirePermission(
   // org:admin bypasses all permission checks
   if (user.role === 'org:admin') return user;
 
-  // In open source mode, skip project role checks — all org members get default permissions
+  // On free plan, skip project role checks — all org members get default permissions
   if (!isPremiumEnabled(context.org?.plan)) return user;
 
   // Look up project membership
@@ -113,7 +113,7 @@ export async function getPermissionsForProject(
   // org:admin gets all permissions
   if (user.role === 'org:admin') return [...ALL_PERMISSIONS];
 
-  // In open source mode, all org members get default permissions
+  // On free plan, all org members get default permissions
   if (!isPremiumEnabled(context.org?.plan)) return [...DEFAULT_PERMISSIONS];
 
   const membership = await context.prisma.projectMember.findUnique({

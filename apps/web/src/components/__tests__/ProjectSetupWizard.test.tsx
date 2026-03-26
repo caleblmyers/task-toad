@@ -53,6 +53,9 @@ function setupGqlMock(overrides: Record<string, unknown> = {}) {
     if (query.includes('githubInstallations')) {
       return Promise.resolve({ githubInstallations: defaults.githubInstallations });
     }
+    if (query.includes('{ me {') || query.includes('{ me{')) {
+      return Promise.resolve({ me: defaults.me ?? { githubLogin: null } });
+    }
     if (query.includes('scaffoldTemplates')) {
       return Promise.resolve({ scaffoldTemplates: defaults.scaffoldTemplates });
     }
@@ -95,6 +98,11 @@ describe('ProjectSetupWizard', () => {
     setupGqlMock();
     render(<ProjectSetupWizard {...defaultProps} isOpen={true} />);
     expect(screen.getByText('Set Up Your Project')).toBeInTheDocument();
+
+    // Wait for async useEffect to settle (installations + me query)
+    await waitFor(() => {
+      expect(mockGql).toHaveBeenCalled();
+    });
   });
 
   it('does not render when isOpen is false', () => {
