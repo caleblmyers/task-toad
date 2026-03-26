@@ -4,6 +4,51 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-26 (Wave 67 — Phase 2: context threading)
+
+### Wave 67: Phase 2 Context Threading (3 workers, 5 tasks)
+
+**Worker 1 — task-001: Execution result forwarding:**
+- Added `previousStepContext` to ActionContext — formatted summaries of completed actions in the plan
+- actionExecutor builds summaries from completed action results (summary + file list)
+- generateCode, writeDocs, fixReview executors prepend step context to knowledge context for AI
+- Second `generate_code` step now knows what the first step built
+
+**Worker 1 — task-003: Upstream task context wiring:**
+- Added `upstreamTaskContext` to ActionContext
+- actionExecutor loads `completionSummary` from upstream dependency tasks (blocks/informs links)
+- Formats upstream context: whatWasBuilt, filesChanged, apiContracts, keyDecisions, gotchas
+- generateCode prepends upstream context before previousStepContext in knowledge context
+- Task #5 now receives structured context from tasks #1-4
+
+**Worker 2 — task-002: Cross-task completion summaries:**
+- Added `completionSummary` field to Task model (migration)
+- New `TaskCompletionSummarySchema` in aiTypes: whatWasBuilt, filesChanged, apiContracts, keyDecisions, gotchas, dependencyInfo
+- New `generateCompletionSummary` AI function in aiService
+- actionExecutor generates and stores completion summary when plan completes (non-blocking)
+
+**Worker 2 — task-004: Failure context propagation:**
+- Failed actions now store structured context in result field (error, errorCode, isRetryable, timestamp)
+- Added `failureContext` to ActionContext
+- On retry, previous failure context is loaded and passed to executor
+- generateCode tells AI: "Previous attempt failed because X. Try a different approach."
+
+**Worker 3 — task-005: projectChat upgrade:**
+- projectChat now uses `retrieveRelevantKnowledge()` instead of legacy `project.knowledgeBase` field
+- Task dependencies (blockedBy/blocks) included in AI context
+- Completion summaries from done tasks included in AI context
+
+**Process:** task-004 had merge conflict with task-003 (both added fields to ActionContext/types.ts). Sent back for rebase. All other tasks merged on first review.
+
+### Open follow-ups
+- Task status → done transition: completionSummary generated at plan completion (→ in_review) but orchestrator triggers on status → done. Verify transition happens.
+- writeDocs/fixReview need upstreamTaskContext and failureContext wired in (only generateCode got them)
+- Test coverage for context threading (previousStepContext, upstream loading, failure round-trip, completion summary)
+- projectChat completionSummary type assertion — replace with proper Prisma include after migration
+- Rate limiting for completionSummary AI calls
+
+---
+
 ## 2026-03-26 (Wave 66 — Phase 1.5: onboarding redesign)
 
 ### Wave 66: Phase 1.5 Onboarding Redesign (3 workers, 5 tasks)
@@ -148,33 +193,6 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-03-25 (Wave 61 — pre-pipeline refactors)
-
-### Wave 61: Pre-Pipeline Refactors (2 workers, 4 tasks)
-
-**Worker 1 — task-001: Token manager utility (R1):**
-- Extracted `utils/tokenManager.ts` with `generateTokenPair`, `setAuthCookies`, `hashRefreshToken`
-- Consolidated 4 identical JWT+cookie blocks from login, verifyEmail, acceptInvite, and refresh handler
-
-**Worker 1 — task-002: Unused exports cleanup (R14):**
-- Removed `has()` from action registry (exported, never imported)
-- Removed `onAny()` from EventBus port interface and adapter (test-only, not production)
-
-**Worker 2 — task-003: Event emission helpers (R4):**
-- Created `eventbus/emitters.ts` with `emitTaskEvent`, `emitSprintEvent`, `emitProjectEvent`, `emitCommentEvent`
-- Updated task/mutations.ts, sprint.ts, project.ts to use helpers (16 emit calls consolidated)
-
-**Worker 2 — task-004: Custom project option:**
-- Added "Describe your own" card to NewProject page with title/description inputs
-- Visually distinct (dashed border), auto-selects when typing, deselects AI options
-
-**Process:** All 4 merged on first review, zero rejections. Reviewer noted pre-existing integration test failures (23 tests, FK constraint violations) — added to todos.
-
-### Open follow-ups
-- Integration test DB isolation failures (10 files, 23 tests) — pre-existing, added to todos
-
----
-
 ## 2026-03-24 (Wave 60 — scaffolding + licensing follow-ups)
 
 ### Wave 60: Wave 58/59 Follow-ups (3 workers, 4 tasks)
@@ -312,6 +330,7 @@ Three follow-up fixes after re-testing Wave 56 on production:
 
 - **2026-03-25** — Wave 63: Quick hits — closed-source cleanup (LICENSE, CONTRIBUTING, TASKTOAD_LICENSE, Docker), modal dismiss fix, session security fix.
 - **2026-03-25** — Wave 62: Deferred refactors — useEditableField (R2), tab extraction (R8), picker consolidation (R9), metrics calc (R6), queries split (R11), chart utilities (R12).
+- **2026-03-25** — Wave 61: Pre-pipeline refactors — token manager (R1), event helpers (R4), unused exports (R14), custom project option.
 - **2026-03-24** — Wave 59: Per-org licensing — plan column on Org, license.ts rewrite, 33 resolver call sites, infrastructure per-event checks.
 - **2026-03-24** — Wave 58: Project scaffolding — scaffold mutation, ProjectSetupWizard (4-step), empty repo commit, framework templates, planner prompt fix.
 - **2026-03-23** — Wave 57: Premium feature gating — license.ts utility, resolver/infrastructure/frontend gating for 8 premium features, useLicenseFeatures hook.

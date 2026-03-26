@@ -27,7 +27,7 @@ User              — id, email, passwordHash, orgId, role, tokenVersion, emailV
 Org               — id, name, anthropicApiKeyEncrypted, monthlyBudgetCentsUSD, plan ("free"|"paid")
 Project           — id, name, description, orgId, statuses? (JSON)
 Sprint            — id, name, orgId, projectId, isActive, columns (JSON), wipLimits (JSON), startDate?, endDate?
-Task              — id, title, status, projectId, orgId, parentTaskId?, sprintId?, sprintColumn?, taskType
+Task              — id, title, status, projectId, orgId, parentTaskId?, sprintId?, sprintColumn?, taskType, completionSummary? (JSON)
                     priority, estimatedHours, storyPoints, description, instructions, autoComplete
 TaskAssignee      — taskId, userId (join table, multiple assignees)
 TaskWatcher       — taskId, userId (join table, auto-added on create/assign/mention)

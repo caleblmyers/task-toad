@@ -1,8 +1,8 @@
 # TaskToad — Remaining Work & Tracking
 
-66 swarm waves completed. 356 tests. **Strategic pivot to closed-source SaaS autopilot — building the three pillars (decomposition, context threading, orchestration).**
+67 swarm waves completed. 356 tests. **Strategic pivot to closed-source SaaS autopilot — building the three pillars (decomposition, context threading, orchestration).**
 
-**Phase 1.5 complete (Wave 66).** AI stack recommendations, existing repo onboarding, interview removed. Next: manual e2e test (Phases 1+1.5), then Phase 2 (context threading). See `autopilot-pillars.md` for the full spec.
+**Phase 2 core complete (Wave 67).** Context threading: execution result forwarding, cross-task completion summaries, upstream context wiring, failure propagation, projectChat upgrade. Next: Phase 3 (orchestration) or manual e2e test. See `autopilot-pillars.md` for the full spec.
 
 ---
 
@@ -54,6 +54,13 @@ All 5 implementation tasks completed:
 - [x] **fix_review executor** — auto-fixes small review issues, creates backlog tasks for larger ones. Planner enforces generate_code → create_pr → review_pr → fix_review pipeline. Validation in commitActionPlan. *(Wave 65)*
 - [ ] **Add integration test suite for branch flow** — branch creation, sequential commits, commit failure handling, review outcomes (~5 tests, mock GitHub API)
 - [x] **Implement OAuth token routing for personal repos** — loads user OAuth token for personal accounts, passes through ActionContext to createBranch and commitFiles *(Wave 65)*
+
+### Wave 67 Follow-Ups (Context Threading)
+- [ ] **Task status → done transition after review** — completionSummary is generated when the action plan completes (status → in_review), but orchestrator only triggers downstream tasks when status → done. Verify the in_review → done transition happens (manual or automated) so downstream tasks actually receive upstream context.
+- [ ] **writeDocs/fixReview: add upstreamTaskContext and failureContext** — task-001 added previousStepContext to writeDocs and fixReview, but upstreamTaskContext (task-003) and failureContext (task-004) were only wired into generateCode. Apply the same pattern to writeDocs.ts and fixReview.ts.
+- [ ] **Test coverage for context threading** — no unit tests for: previousStepContext building, upstream summary loading (raw SQL query in actionExecutor), failure context round-trip, completion summary generation. Add tests for each.
+- [ ] **projectChat: handle missing completionSummary gracefully** — task-005 uses type assertion `as typeof t & { completionSummary?: string | null }` — once task-002's migration is applied and prisma generate runs, replace with proper Prisma include field.
+- [ ] **Rate limiting for completionSummary generation** — each plan completion triggers an AI call for summary generation. Consider caching or skipping if budget is exhausted.
 
 ### Wave 66 Follow-Ups (Onboarding Redesign)
 - [ ] **Clean up redundant type cast in scaffoldProject resolver** — `(args as Record<string, unknown>).config` in KB seeding block should just use `args.config` directly (task-001 already typed it)
@@ -148,5 +155,6 @@ All 5 implementation tasks completed:
 | 64 | 2026-03-26 | Phase 1: branch-based pipeline — branch management, generateCode/writeDocs commit, createPR rewrite, planner enforcement, skeptical reviewer |
 | 65 | 2026-03-26 | Phase 1 follow-ups: commitFiles error handling, concurrency guard, OAuth routing, fix_review executor, quick hits (Modal tests, act() fix, open-source refs) |
 | 66 | 2026-03-26 | Phase 1.5: AI stack recommendations, scaffold config, existing repo onboarding, interview removal, CLAUDE.md in scaffold, KB seeding from stack choice |
+| 67 | 2026-03-26 | Phase 2: context threading — execution result forwarding, completion summaries, upstream context wiring, failure propagation, projectChat KB+deps |
 
 Full wave details in `changelog.md`.
