@@ -37,6 +37,9 @@ export const generateCodeExecutor: ActionExecutor = {
     }
 
     let fullContext = ctx.knowledgeContext ?? project.knowledgeBase ?? '';
+    if (ctx.failureContext) {
+      fullContext = `## Previous Attempt Failed\n${ctx.failureContext}\n\n${fullContext}`;
+    }
     if (ctx.previousStepContext) {
       fullContext = `## Previous Steps in This Plan\n${ctx.previousStepContext}\n\n${fullContext}`;
     }

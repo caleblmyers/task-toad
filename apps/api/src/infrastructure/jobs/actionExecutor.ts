@@ -248,6 +248,23 @@ export function createHandler(prisma: PrismaClient) {
       log.warn({ err, taskId: task.taskId }, 'Failed to load upstream task context (non-blocking)');
     }
 
+    // Load previous failed attempt context for this action (if retrying)
+    let failureContext: string | undefined;
+    const previousAttempt = await prisma.taskAction.findUnique({
+      where: { id: actionId },
+      select: { result: true },
+    });
+    if (previousAttempt?.result) {
+      try {
+        const parsed = JSON.parse(previousAttempt.result) as Record<string, unknown>;
+        if (parsed.failed) {
+          failureContext = `Previous attempt failed: ${parsed.error}${parsed.errorCode ? `. Error code: ${parsed.errorCode}` : ''}. Avoid the same approach.`;
+        }
+      } catch {
+        // ignore parse errors
+      }
+    }
+
     // Create AbortController for this plan's active action
     const abortController = new AbortController();
     activeControllers.set(planId, abortController);
@@ -268,6 +285,7 @@ export function createHandler(prisma: PrismaClient) {
       previousResults,
       previousStepContext: previousSummaries.length > 0 ? previousSummaries.join('\n') : undefined,
       upstreamTaskContext,
+      failureContext,
       signal: abortController.signal,
     };
 
@@ -535,7 +553,18 @@ export function createHandler(prisma: PrismaClient) {
 
       await prisma.taskAction.update({
         where: { id: actionId },
-        data: { status: 'failed', errorMessage },
+        data: {
+          status: 'failed',
+          errorMessage,
+          result: JSON.stringify({
+            failed: true,
+            error: errorMessage,
+            errorCode,
+            isRetryable,
+            attemptedAt: new Date().toISOString(),
+            actionType: action.actionType,
+          }),
+        },
       });
       await prisma.taskActionPlan.update({
         where: { id: planId },
