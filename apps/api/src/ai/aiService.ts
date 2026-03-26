@@ -33,8 +33,9 @@ import {
   TaskInsightsResponseSchema,
   ManualTaskSpecSchema,
   StackRecommendationSchema,
+  TaskCompletionSummarySchema,
 } from './aiTypes.js';
-import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse, DriftAnalysis, TrendAnalysis, ActionPlanResponse, ReleaseNotes, OnboardingQuestionsResponse, HierarchicalPlanResponse, TaskInsightsResponse, ManualTaskSpec, StackRecommendation } from './aiTypes.js';
+import type { ProjectOption, TaskPlan, SprintPlan, TaskInstructions, StandupReport, SprintReport, HealthAnalysis, MeetingNotesExtraction, CodeGeneration, GeneratedFile, CodeReview, IssueDecomposition, ReviewFix, BugReportTask, PRDBreakdown, SprintTransition, RepoBootstrap, ProjectChatResponse, DriftAnalysis, TrendAnalysis, ActionPlanResponse, ReleaseNotes, OnboardingQuestionsResponse, HierarchicalPlanResponse, TaskInsightsResponse, ManualTaskSpec, StackRecommendation, TaskCompletionSummary } from './aiTypes.js';
 
 import { FEATURE_CONFIG } from './aiConfig.js';
 import { callAI, callAIStructured, type PromptLogContext } from './aiClient.js';
@@ -734,4 +735,23 @@ export async function recommendStack(
 ): Promise<StackRecommendation> {
   const p = buildRecommendStackPrompt({ projectName, projectDescription, additionalContext });
   return callAndParse(apiKey, 'recommendStack', p, StackRecommendationSchema, promptLogContext);
+}
+
+export async function generateCompletionSummary(
+  apiKey: string,
+  taskTitle: string,
+  taskInstructions: string,
+  actionResults: Array<{ actionType: string; label: string; summary?: string; files?: Array<{ path: string }> }>,
+  projectName: string,
+  promptLogContext?: PromptLogContext
+): Promise<TaskCompletionSummary> {
+  const resultsText = actionResults.map(r => {
+    const files = r.files?.map(f => f.path).join(', ') || 'none';
+    return `- ${r.label} (${r.actionType}): ${r.summary || 'No summary'}. Files: ${files}`;
+  }).join('\n');
+
+  const systemPrompt = 'You are a technical summarizer. Analyze the completed task actions and produce a structured summary focused on what downstream tasks need to know. Return ONLY valid JSON — no prose, no markdown fences.';
+  const userPrompt = `Project: ${projectName}\nTask: ${taskTitle}\nInstructions: ${taskInstructions}\n\nCompleted actions:\n${resultsText}\n\nProduce a JSON summary with these fields:\n- whatWasBuilt: 1-2 sentence summary of what was accomplished\n- filesChanged: array of file paths that were created or modified\n- apiContracts: array of {endpoint, method, description} for any API endpoints created (empty array if none)\n- keyDecisions: array of key technical decisions made (empty array if none)\n- gotchas: array of things downstream tasks should watch out for (empty array if none)\n- dependencyInfo: optional string about what downstream tasks need to know`;
+
+  return callAndParse(apiKey, 'generateCompletionSummary', { systemPrompt, userPrompt }, TaskCompletionSummarySchema, promptLogContext);
 }

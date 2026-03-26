@@ -387,7 +387,8 @@ export type AIFeature =
   | 'generateTaskInsights'
   | 'generateManualTaskSpec'
   | 'scaffoldProject'
-  | 'recommendStack';
+  | 'recommendStack'
+  | 'generateCompletionSummary';
 
 export const ProjectChatResponseSchema = z.object({
   answer: z.string(),
@@ -449,6 +450,21 @@ export const ManualTaskSpecSchema = z.object({
 
 export type ManualTaskSpecFile = z.infer<typeof ManualTaskSpecFileSchema>;
 export type ManualTaskSpec = z.infer<typeof ManualTaskSpecSchema>;
+
+export const TaskCompletionSummarySchema = z.object({
+  whatWasBuilt: z.string(),
+  filesChanged: z.array(z.string()),
+  apiContracts: z.array(z.object({
+    endpoint: z.string(),
+    method: z.string(),
+    description: z.string(),
+  })).optional().default([]),
+  keyDecisions: z.array(z.string()).optional().default([]),
+  gotchas: z.array(z.string()).optional().default([]),
+  dependencyInfo: z.string().optional(),
+});
+
+export type TaskCompletionSummary = z.infer<typeof TaskCompletionSummarySchema>;
 
 export interface AIUsage {
   inputTokens: number;

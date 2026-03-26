@@ -8,7 +8,7 @@ import { isRetryableAIError } from '../../ai/aiClient.js';
 import { getEventBus } from '../eventbus/index.js';
 import { getJobQueue } from '../jobqueue/index.js';
 import { retrieveRelevantKnowledge } from '../../ai/knowledgeRetrieval.js';
-import { generateTaskInsights } from '../../ai/aiService.js';
+import { generateTaskInsights, generateCompletionSummary } from '../../ai/aiService.js';
 import { createBranch } from '../../github/githubCommitService.js';
 import type { GitHubRepoLink } from '../../github/githubTypes.js';
 
@@ -436,6 +436,41 @@ export function createHandler(prisma: PrismaClient) {
               status: { old: previousStatus, new: 'in_review' },
             },
           });
+        }
+
+        // Generate cross-task completion summary
+        if (apiKey) {
+          try {
+            const summaryActions = await prisma.taskAction.findMany({
+              where: { planId, status: 'completed' },
+              orderBy: { position: 'asc' },
+              select: { actionType: true, label: true, result: true },
+            });
+            const actionResults = summaryActions.map(a => {
+              const parsed = a.result ? JSON.parse(a.result) as Record<string, unknown> : {};
+              return {
+                actionType: a.actionType,
+                label: a.label,
+                summary: (parsed.summary as string) || (parsed.data as Record<string, unknown>)?.summary as string | undefined,
+                files: (parsed.files as Array<{ path: string }>) || (parsed.data as Record<string, unknown>)?.files as Array<{ path: string }> | undefined,
+              };
+            });
+
+            const summary = await generateCompletionSummary(
+              apiKey,
+              task.title,
+              task.instructions || '',
+              actionResults,
+              project.name,
+            );
+
+            await prisma.task.update({
+              where: { taskId: task.taskId },
+              data: { completionSummary: JSON.stringify(summary) },
+            });
+          } catch (err) {
+            log.warn({ err, taskId: task.taskId }, 'Completion summary generation failed (non-blocking)');
+          }
         }
 
         bus.emit('task.action_plan_completed', {

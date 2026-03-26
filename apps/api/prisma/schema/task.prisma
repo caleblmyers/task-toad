@@ -50,6 +50,7 @@ model Task {
   insightsAsTarget     TaskInsight[] @relation("InsightTarget")
   slaTimers            SLATimer[]
   approvals            Approval[]
+  completionSummary    String?  @map("completion_summary") @db.Text
 
   @@index([projectId])
   @@index([parentTaskId])
