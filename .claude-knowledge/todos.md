@@ -1,8 +1,8 @@
 # TaskToad — Remaining Work & Tracking
 
-62 swarm waves completed. 349 tests. **Strategic pivot to closed-source SaaS autopilot — building the three pillars (decomposition, context threading, orchestration).**
+64 swarm waves completed. 349 tests. **Strategic pivot to closed-source SaaS autopilot — building the three pillars (decomposition, context threading, orchestration).**
 
-**Current focus: Phase 1 — Pipeline rewrite (branch-based execution).** See `autopilot-pillars.md` for the full spec.
+**Phase 1 core implementation complete (Wave 64).** Next: manual end-to-end test, then Phase 1 follow-ups + Phase 1.5 planning. See `autopilot-pillars.md` for the full spec.
 
 ---
 
@@ -24,48 +24,42 @@
 
 ---
 
-## Phase 1: Pipeline Rewrite — Branch-Based Code Generation
+## Phase 1: Pipeline Rewrite — Branch-Based Code Generation *(Wave 64 — DONE)*
 
-See `autopilot-pillars.md` for the full phase roadmap and spec.
+All 5 implementation tasks completed:
+- [x] Branch management in actionExecutor.ts — branchName/headOid on TaskActionPlan, feature branch at plan start *(Wave 64)*
+- [x] generateCode executor commits to branch — files committed after AI gen, headOid updated *(Wave 64)*
+- [x] writeDocs executor commits to branch — same pattern as generateCode *(Wave 64)*
+- [x] createPR executor uses existing branch — opens PR from feature branch, no file creation *(Wave 64)*
+- [x] Planner enforces create_pr + review_pr — code + prompt enforcement, skeptical reviewer prompt *(Wave 64)*
+- [x] Zod config validation for all executors (R13 partial) *(Wave 64)*
+- [x] monitor_ci + fix_ci added to ActionPlanItemSchema *(Wave 64)*
+- [x] fetchProjectFileTree accepts branch parameter for context *(Wave 64)*
 
-**Implementation tasks (5 vertical slices):**
+**Next:** Manual end-to-end test (new project → scaffold → task → auto-complete → PR on GitHub).
 
-1. **Branch management in actionExecutor.ts** (~45 min)
-   - Create feature branch when plan starts executing
-   - Store `branchName` and `headOid` on `TaskActionPlan` model (new fields, migration needed)
-   - Pass branch context to executors via `ActionContext`
-   - For personal GitHub accounts, pass user's OAuth token
-   - **Fold in R10:** Extract side effects (insight generation, in_review transition) into event listeners
-   - **Fold in R13:** Add Zod config validation for executor configs
-   - Files: `actionExecutor.ts`, `actions/types.ts`, prisma schema, migration
+---
 
-2. **Update generateCode executor to commit** (~45 min)
-   - Commit generated files to feature branch after AI generation
-   - Update `headOid` on plan after each commit
-   - Read feature branch file tree (not main) for context
-   - **Fold in R13:** Zod schema for GenerateCodeConfig
-   - Files: `executors/generateCode.ts`, `actionExecutor.ts`
+## Phase 1 Follow-Ups
 
-3. **Update writeDocs executor to commit** (~30 min)
-   - Same commit pattern as generateCode
-   - **Fold in R13:** Zod schema for WriteDocsConfig
-   - Files: `executors/writeDocs.ts`
+### Critical (P0)
+- [ ] **Catch commitFiles failures in generateCode/writeDocs** — if commit fails, mark action as failed to prevent headOid mismatch on next action
+- [ ] **Add concurrency guard for branch creation** — prevent two concurrent actions from creating branches with mismatched OIDs (use optimistic locking or transaction)
 
-4. **Update createPR executor to use existing branch** (~30 min)
-   - Open PR from feature branch to default branch (no file creation)
-   - Read branch name from plan context
-   - **Fold in R13:** Zod schema for CreatePRConfig
-   - Files: `executors/createPR.ts`
+### High Priority (P1)
+- [ ] **Define review-blocking behavior** — decide if unapproved reviews should fail the action plan or just notify; post AI review feedback as GitHub PR comment
+- [ ] **Add integration test suite for branch flow** — branch creation, sequential commits, commit failure handling, review outcomes (~5 tests, mock GitHub API)
+- [ ] **Implement OAuth token routing for personal repos** — use user's OAuth token for personal GitHub accounts instead of app installation token
 
-5. **Fix planner + improve review_pr** (~30 min)
-   - Always include `create_pr` + `review_pr` for connected repos (enforce in code)
-   - Update prompt: tasks should be generic, not vendor-specific
-   - Improve `review_pr` to act as skeptical reviewer (security, standards)
-   - Files: `resolvers/taskaction.ts`, `promptBuilders/planning.ts`
+### Medium Priority (P2)
+- [ ] **Branch cleanup strategy** — decide: auto-delete failed/cancelled plan branches, tag with prefix, or retention policy
+- [ ] **Extract insight generation + in_review transition to event listeners** (R10) — move from actionExecutor handler to async event-driven pattern
+- [ ] **Audit executor config Zod validation** — verify manual_step and monitor_ci have schemas (others are done)
 
-**Parallelism:** Tasks 1+5 parallel. Tasks 2+3 depend on 1. Task 4 depends on 2.
-
-**After Phase 1:** Manual end-to-end test (new project → scaffold → task → auto-complete → PR on GitHub).
+### Manual Testing
+- [ ] End-to-end: new project → scaffold → task → auto-complete → branch created → PR opened → review posted
+- [ ] Verify concurrent plan execution doesn't corrupt branch state
+- [ ] Verify failed plan leaves branch in recoverable state
 
 ---
 
@@ -136,5 +130,7 @@ See `autopilot-pillars.md` for the full phase roadmap and spec.
 | 60 | 2026-03-24 | Scaffolding + licensing follow-ups (default branch, template registry, KB auto-populate, wizard tests, orgPlan, Plans tab) |
 | 61 | 2026-03-25 | Pre-pipeline refactors: token manager (R1), event helpers (R4), unused exports (R14), custom project option |
 | 62 | 2026-03-25 | Deferred refactors: useEditableField (R2), tab extraction (R8), picker consolidation (R9), metrics (R6), queries split (R11), chart utilities (R12) |
+| 63 | 2026-03-25 | Quick hits: closed-source cleanup, modal dismiss fix, session security fix |
+| 64 | 2026-03-26 | Phase 1: branch-based pipeline — branch management, generateCode/writeDocs commit, createPR rewrite, planner enforcement, skeptical reviewer |
 
 Full wave details in `changelog.md`.

@@ -58,7 +58,7 @@ FieldPermission   — id, projectId, orgId, fieldName, allowedRoles (JSON)
 RefreshToken      — id, userId, tokenHash (unique), expiresAt, userAgent?, createdAt
 ProjectMember     — projectId, userId, role (viewer/editor/admin)
 CustomField       — id, projectId, name, fieldType, options?
-ActionPlan        — id, taskId, status, actions (ordered)
+ActionPlan        — id, taskId, status, branchName?, headOid?, actions (ordered)
 GitHubInstallation, GitHubCommitLink, GitHubPullRequestLink
 WebhookEndpoint   — id, orgId, url, secret (encrypted), events, isActive
 WebhookDelivery   — id, endpointId, event, payload, status, attemptCount
@@ -188,5 +188,5 @@ Browser → Vite dev server (localhost:5173)
 - **Input blocking during generation:** All toolbar buttons, forms, view toggles, and detail panel inputs are disabled while any AI operation is in flight (`isGenerating` flag)
 - **Navigation warning:** `beforeunload` listener prevents accidental tab close during AI generation; `popstate` handler intercepts browser back/forward with a confirm dialog. If the user proceeds, the in-flight request is aborted via `AbortController`
 - **Status ↔ column sync:** Changing task status in the detail panel auto-moves it to the matching kanban column; dragging a task to a new column auto-updates its status. Mapping is fuzzy (e.g. "In Progress" ↔ `in_progress`, "Done"/"Completed" ↔ `done`)
-- **Auto-Complete pipeline:** Tasks with instructions show an "Auto-Complete" button that generates an action plan (via AI), then executes it step-by-step: `generate_code` → `create_pr` → `review_pr`. Progress updates in real-time via SSE. On completion, task status transitions to `in_review`. The standalone "Generate code" button has been removed — Auto-Complete is the sole code gen entry point.
+- **Auto-Complete pipeline:** Tasks with instructions show an "Auto-Complete" button that generates an action plan (via AI), then executes it step-by-step: `generate_code` → `create_pr` → `review_pr`. A feature branch is created when the plan starts executing; `generate_code` and `write_docs` commit directly to the branch; `create_pr` opens a PR from the existing branch. Progress updates in real-time via SSE. On completion, task status transitions to `in_review`. The standalone "Generate code" button has been removed — Auto-Complete is the sole code gen entry point.
 - **Action plan progress:** `ActionProgressPanel` renders live step-by-step progress with status icons, inline review results (approval badge, severity-colored comments, suggestions), and controls for manual steps/retry/skip/cancel.

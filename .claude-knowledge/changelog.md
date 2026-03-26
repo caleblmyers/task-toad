@@ -4,6 +4,56 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-26 (Wave 64 — Phase 1: branch-based pipeline)
+
+### Wave 64: Phase 1 Pipeline Rewrite — Branch-Based Code Generation (3 workers, 5 tasks)
+
+**Worker 1 — task-001: Branch management foundation:**
+- Added `branchName` and `headOid` fields to `TaskActionPlan` model with migration.
+- Added `repo` (GitHubRepoLink | null) and `plan` ({ id, branchName, headOid }) to `ActionContext` interface.
+- `actionExecutor.ts`: loads project GitHub repo, creates feature branch on first action of a plan, passes branch context to all executors, updates `headOid` after actions that commit.
+
+**Worker 1 — task-002: generateCode commits to branch:**
+- After AI generates code, commits files to the feature branch via `commitFiles()`.
+- Returns `headOid` in result for plan state tracking.
+- `fetchProjectFileTree()` now accepts optional `branch` parameter — subsequent `generate_code` steps in the same plan see previously committed files.
+- Cache key includes branch name to prevent stale results.
+- Added Zod config validation (GenerateCodeConfigSchema).
+
+**Worker 2 — task-003: Planner + skeptical reviewer:**
+- Planning prompt now requires `create_pr` + `review_pr` for GitHub-connected repos (explicit rule + updated action type descriptions reflecting branch-based execution).
+- `commitActionPlan` resolver validates that GitHub-connected plans include `create_pr` when they have `generate_code`.
+- `review_pr` executor uses a skeptical reviewer system prompt — positioned as independent reviewer focused on security, error handling, standards, and architectural concerns.
+- Added `monitor_ci` and `fix_ci` to `ActionPlanItemSchema` enum.
+- Added Zod config validation (ReviewPRConfigSchema).
+
+**Worker 3 — task-004: writeDocs commits to branch:**
+- After AI generates documentation, commits files to feature branch.
+- Returns `headOid` for plan state tracking.
+- Added Zod config validation (WriteDocsConfigSchema).
+
+**Worker 3 — task-005: createPR uses existing branch:**
+- Completely rewritten — no longer calls `createPullRequestFromTask()` (which created branch + committed files + opened PR).
+- Opens PR directly from existing feature branch using `createPullRequest()`.
+- AI-enriched PR description with fallback template.
+- Creates `GitHubPullRequestLink` record in database.
+- `sourceActionId` config is now optional (branch comes from plan context).
+- Added Zod config validation (CreatePRConfigSchema).
+
+**Process:** All 5 tasks merged on first review — zero rejections. Clean wave.
+
+### Open follow-ups
+- Catch commitFiles failures in generateCode/writeDocs (prevent headOid mismatch)
+- Add concurrency guard for branch creation (optimistic locking)
+- Define review-blocking behavior (unapproved reviews → fail or notify?)
+- Integration tests for branch flow (~5 tests, mock GitHub API)
+- OAuth token routing for personal repos
+- Branch cleanup strategy for failed/cancelled plans
+- Extract insight generation + in_review transition to event listeners (R10)
+- Audit executor config Zod: manual_step and monitor_ci schemas missing
+
+---
+
 ## 2026-03-25 (Wave 63 — quick hits)
 
 ### Wave 63: Quick Hits Before Phase 1 (3 workers, 3 tasks)
@@ -123,90 +173,6 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-03-24 (Wave 59 — per-org licensing)
-
-### Wave 59: Per-Org Licensing (2 workers, 2 tasks)
-
-**Worker 1 — task-001: license.ts rewrite + resolver call sites:**
-- Added `plan` column to Org model (default "free") with migration.
-- Rewrote `license.ts`: `isPremiumEnabled(orgPlan?)`, `requireLicense(feature, orgPlan?)`, `getEnabledFeatures(orgPlan?)`. `TASKTOAD_LICENSE` env var is now a self-host override.
-- Updated all 33 `requireLicense` calls across 6 resolver files to pass `context.org?.plan`.
-- Added `getOrgPlan()` helper for extracting plan from context.
-
-**Worker 2 — task-002: infrastructure + permissions + org type:**
-- Infrastructure jobs/listeners (slack, SLA, cron) now load org plan from DB per-event instead of module-level boolean check.
-- `permissions.ts`: `isPremiumEnabled` calls now pass `context.org?.plan`.
-- `task/mutations.ts`: workflow role restriction check passes org plan.
-- Added `plan: String!` to Org GraphQL type.
-- Updated `licenseFeatures` field resolver to pass `org.plan`.
-- Verified `context.ts` includes `plan` in org select.
-
-**Process:** task-001 had one rejection (typecheck failure — `isPremiumEnabled` still used as boolean in task/mutations.ts). task-002 had merge conflicts with task-001's license.ts rewrite — reviewer resolved by keeping main's version.
-
----
-
-## 2026-03-24 (Wave 58 — project scaffolding)
-
-### Wave 58: Project Scaffolding for Fresh Codebases (3 workers, 3 tasks)
-
-**Worker 1 — task-001: Backend scaffold mutation + prompt fix:**
-- New `scaffoldProject` GraphQL mutation: generates framework scaffold via AI, commits to GitHub repo (handles empty repos with no prior commits via REST Git Data API).
-- New `buildScaffoldPrompt()` in `apps/api/src/ai/promptBuilders/scaffold.ts` — instructs AI to generate complete project scaffold for a given framework template.
-- New `commitFilesToEmptyRepo()` in `githubCommitService.ts` — creates initial commit on empty repos using blob → tree → commit → ref flow.
-- Added `scaffoldProject` AI feature to `aiTypes.ts` and `aiConfig.ts`.
-- Fixed planner prompt: added Rule 3 prohibiting `manual_step` for project initialization tools (create-next-app, create-vite, etc.) — instructs AI to use `generate_code` instead.
-
-**Worker 2 — task-002: Frontend ProjectSetupWizard:**
-- New `ProjectSetupWizard.tsx` component — multi-step wizard shown after project creation.
-- Step 1: GitHub connection (connect existing / create new / skip).
-- Step 2: Framework template selection (Next.js, Vite+React, Express+TS, Python+FastAPI).
-- Step 3: Scaffolding progress (calls mutation, shows file count + summary).
-- Added `SCAFFOLD_PROJECT_MUTATION` to queries.ts.
-
-**Worker 3 — task-003: Integration wiring:**
-- Modified `NewProject.tsx` to pass `showSetup: true` in navigation state after project creation.
-- Modified `ProjectDetail.tsx` to show `ProjectSetupWizard` before the onboarding wizard when `showSetup` is set.
-
-**Open follow-ups:**
-- `commitFilesToEmptyRepo` hardcodes `refs/heads/main` — should respect `repo.defaultBranch`
-- Add unit tests for ProjectSetupWizard
-- Template list is hardcoded client-side — consider server-side template registry
-- Knowledge base auto-population after scaffold (trigger KB ingestion from committed files)
-
----
-
-## 2026-03-23 (Wave 57 — open core license flag system)
-
-### Wave 57: Premium Feature Gating (3 workers, 3 tasks)
-
-**Worker 1 — task-001: License Utility + Resolver Gating:**
-- Created `apps/api/src/utils/license.ts` with `isPremiumEnabled`, `requireLicense()`, `getEnabledFeatures()`, `LicenseFeature` type.
-- Added `LicenseError` class to `errors.ts` with `LICENSE_REQUIRED` GraphQL error code.
-- Added `licenseFeatures: [String!]!` to Org GraphQL type with field resolver.
-- Gated all resolvers for: Slack, Initiatives, SLA, Approvals, Field Permissions.
-
-**Worker 2 — task-002: Infrastructure Gating + Permissions Bypass:**
-- Gated listeners (Slack, SLA) and jobs (SLA breach checker, cron scheduler) — early return when unlicensed.
-- Bypassed project role permission checks in `requirePermission()` and `getPermissionsForProject()` when unlicensed — all org members get default editor permissions.
-- Gated `addProjectMember`/`removeProjectMember`/`updateProjectMemberRole` behind `requireLicense('project_roles')`.
-- Gated cron automation fields — `requireLicense('cron_automations')` when `cronExpression` present.
-- Wrapped workflow role restriction check in `if (isPremiumEnabled)` in task mutations.
-
-**Worker 3 — task-003: Frontend Feature Gating:**
-- Created `useLicenseFeatures()` hook — fetches `org.licenseFeatures`, caches result, provides `hasFeature()` helper.
-- Hid Slack settings in OrgSettings when unlicensed.
-- Hid Members and Field Permissions tabs in ProjectSettingsModal when unlicensed.
-- Hid cron schedule fields in AutomationTab when unlicensed.
-
-**Open follow-ups:**
-- WorkflowTab role restriction UI still visible without license (missing from task-003 file list)
-- AutomationTab cron input fields in create/edit form not fully gated (only display hidden)
-- Test coverage for license gating needed
-
-**Process:** Both workers 1 and 2 created `license.ts` — conflict resolved by reviewer keeping worker-1's version. All tasks merged on first review.
-
----
-
 ## 2026-03-23 (Wave 56 — bug fixes from manual testing Round 2)
 
 ### Wave 56: Bug Fixes from Production Testing (3 workers, 6 tasks)
@@ -308,6 +274,9 @@ Three follow-up fixes after re-testing Wave 56 on production:
 
 ## Older Entries (one-line summaries)
 
+- **2026-03-24** — Wave 59: Per-org licensing — plan column on Org, license.ts rewrite, 33 resolver call sites, infrastructure per-event checks.
+- **2026-03-24** — Wave 58: Project scaffolding — scaffold mutation, ProjectSetupWizard (4-step), empty repo commit, framework templates, planner prompt fix.
+- **2026-03-23** — Wave 57: Premium feature gating — license.ts utility, resolver/infrastructure/frontend gating for 8 premium features, useLicenseFeatures hook.
 - **2026-03-21** — Wave 50: TQL parser + frontend integration, follow-up fixes (field permissions, initiative edit/DataLoader/dark mode, approval history, timesheet UX, configurable approvers, SSE approver info).
 - **2026-03-21** — Wave 49: Cross-project initiatives, workflow permissions (allowedRoles enforcement), field-level edit restrictions, polish (timesheet delete/keyboard, approval SSE, control chart window, merge script cherry-pick fix).
 - **2026-03-21** — Wave 48: P2 features (timesheet view, approval workflows), follow-up polish (burndown tests, control chart mode, heatmap display names, auto-tracking multi-assignee + tests).
