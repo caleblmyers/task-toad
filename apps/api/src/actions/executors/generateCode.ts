@@ -56,16 +56,21 @@ export const generateCodeExecutor: ActionExecutor = {
     // Commit generated files to feature branch if repo is connected
     let headOid: string | undefined;
     if (ctx.repo && ctx.plan.branchName && ctx.plan.headOid) {
-      const commitResult = await commitFiles(
-        ctx.repo,
-        {
-          branch: ctx.plan.branchName,
-          message: `feat: ${ctx.task.title}`,
-          additions: result.files.map((f: { path: string; content: string }) => ({ path: f.path, content: f.content })),
-        },
-        ctx.plan.headOid,
-      );
-      headOid = commitResult.oid;
+      try {
+        const commitResult = await commitFiles(
+          ctx.repo,
+          {
+            branch: ctx.plan.branchName,
+            message: `feat: ${ctx.task.title}`,
+            additions: result.files.map((f: { path: string; content: string }) => ({ path: f.path, content: f.content })),
+          },
+          ctx.plan.headOid,
+        );
+        headOid = commitResult.oid;
+      } catch (commitErr) {
+        const msg = commitErr instanceof Error ? commitErr.message : 'Unknown commit error';
+        return { success: false, data: { error: `Failed to commit generated code to branch: ${msg}`, files: result.files, summary: result.summary } };
+      }
     }
 
     return {

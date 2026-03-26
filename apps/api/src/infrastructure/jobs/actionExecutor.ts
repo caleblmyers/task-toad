@@ -85,13 +85,24 @@ export function createHandler(prisma: PrismaClient) {
 
     // Create feature branch on first action of a plan when repo is connected
     if (repo && !plan.branchName) {
-      const { branchName, baseOid } = await createBranch(repo, task.taskId, task.title);
-      await prisma.taskActionPlan.update({
+      // Re-read plan to guard against concurrent execution
+      const freshPlan = await prisma.taskActionPlan.findUnique({
         where: { id: plan.id },
-        data: { branchName, headOid: baseOid },
+        select: { branchName: true, headOid: true },
       });
-      plan.branchName = branchName;
-      plan.headOid = baseOid;
+      if (freshPlan?.branchName) {
+        // Another action already created the branch
+        plan.branchName = freshPlan.branchName;
+        plan.headOid = freshPlan.headOid;
+      } else {
+        const { branchName, baseOid } = await createBranch(repo, task.taskId, task.title);
+        await prisma.taskActionPlan.update({
+          where: { id: plan.id },
+          data: { branchName, headOid: baseOid },
+        });
+        plan.branchName = branchName;
+        plan.headOid = baseOid;
+      }
     }
 
     // Check budget for AI-consuming actions
