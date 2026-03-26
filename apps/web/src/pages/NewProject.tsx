@@ -41,6 +41,7 @@ export default function NewProject() {
   const [refineText, setRefineText] = useState('');
   const [showRefine, setShowRefine] = useState(false);
   const [refining, setRefining] = useState(false);
+  const [additionalContext, setAdditionalContext] = useState('');
   const [creating, setCreating] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -89,9 +90,20 @@ export default function NewProject() {
         }`,
         { prompt: state.prompt, title: selected.title, description: selected.description }
       );
+      const projectId = data.createProjectFromOption.projectId;
+      if (additionalContext.trim()) {
+        await gql<{ createKnowledgeEntry: { knowledgeEntryId: string } }>(
+          `mutation CreateKnowledgeEntry($projectId: ID!, $title: String!, $content: String!, $source: String, $category: String) {
+            createKnowledgeEntry(projectId: $projectId, title: $title, content: $content, source: $source, category: $category) {
+              knowledgeEntryId
+            }
+          }`,
+          { projectId, title: 'Additional project context', content: additionalContext.trim(), source: 'user', category: 'context' }
+        );
+      }
       sessionStorage.removeItem(SESSION_KEY);
-      navigate(`/app/projects/${data.createProjectFromOption.projectId}`, {
-        state: { autoPreview: true, showOnboarding: true, showSetup: true },
+      navigate(`/app/projects/${projectId}`, {
+        state: { autoPreview: true, showSetup: true },
       });
     } catch (error) {
       setErr(error instanceof Error ? error.message : 'Failed to create project');
@@ -185,6 +197,22 @@ export default function NewProject() {
           </div>
         )}
       </div>
+
+      {/* Additional context textarea — shown when an option is selected or custom mode is active */}
+      {(selected || customMode) && (
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            Anything else the AI should know? <span className="text-slate-400">(optional)</span>
+          </label>
+          <textarea
+            value={additionalContext}
+            onChange={(e) => setAdditionalContext(e.target.value)}
+            placeholder="Tech preferences, constraints, deployment targets, team conventions..."
+            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400"
+            rows={3}
+          />
+        </div>
+      )}
 
       {err && <p className="text-sm text-red-600 mb-4">{err}</p>}
 

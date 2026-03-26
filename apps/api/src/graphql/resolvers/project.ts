@@ -597,6 +597,29 @@ export const projectMutations = {
       });
     }
 
+    // Save stack recommendation rationale as KB entry
+    // args.config is provided when scaffolding from an AI stack recommendation (task-001)
+    const config = (args as Record<string, unknown>).config as { framework: string; language: string; projectType: string; packages: string[] } | undefined;
+    if (config) {
+      const stackSummary = [
+        `Framework: ${config.framework}`,
+        `Language: ${config.language}`,
+        `Type: ${config.projectType}`,
+        config.packages.length > 0 ? `Key packages: ${config.packages.join(', ')}` : '',
+      ].filter(Boolean).join('\n');
+
+      await context.prisma.knowledgeEntry.create({
+        data: {
+          projectId: args.projectId,
+          orgId: context.org!.orgId,
+          title: 'Tech Stack',
+          content: stackSummary,
+          source: 'scaffold',
+          category: 'architecture',
+        },
+      });
+    }
+
     return {
       success: true,
       filesCreated: result.files.length,
