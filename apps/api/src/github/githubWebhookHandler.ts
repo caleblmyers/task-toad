@@ -152,15 +152,24 @@ async function handleInstallationRepositoriesEvent(payload: GitHubWebhookEvent):
   }
 }
 
-function emitTaskUpdatedEvent(
+async function resolveOrgAdminUserId(orgId: string): Promise<string> {
+  const admin = await prisma.user.findFirst({
+    where: { orgId, role: 'org:admin' },
+    select: { userId: true },
+  });
+  return admin?.userId ?? orgId;
+}
+
+async function emitTaskUpdatedEvent(
   task: { taskId: string; title: string; status: string; projectId: string; orgId: string; taskType: string },
   previousStatus: string,
   newStatus: string,
-): void {
+): Promise<void> {
+  const userId = await resolveOrgAdminUserId(task.orgId);
   const bus = getEventBus();
   bus.emit('task.updated', {
     orgId: task.orgId,
-    userId: 'system',
+    userId,
     projectId: task.projectId,
     timestamp: new Date().toISOString(),
     task: { taskId: task.taskId, title: task.title, status: newStatus, projectId: task.projectId, orgId: task.orgId, taskType: task.taskType },
@@ -182,13 +191,13 @@ async function handleIssuesEvent(payload: GitHubWebhookEvent): Promise<void> {
     case 'closed': {
       const previousStatus = task.status;
       await prisma.task.update({ where: { taskId: task.taskId }, data: { status: 'done' } });
-      emitTaskUpdatedEvent(task, previousStatus, 'done');
+      await emitTaskUpdatedEvent(task, previousStatus, 'done');
       break;
     }
     case 'reopened': {
       const previousStatus = task.status;
       await prisma.task.update({ where: { taskId: task.taskId }, data: { status: 'todo' } });
-      emitTaskUpdatedEvent(task, previousStatus, 'todo');
+      await emitTaskUpdatedEvent(task, previousStatus, 'todo');
       break;
     }
     default:
@@ -213,7 +222,7 @@ async function handlePullRequestEvent(payload: GitHubWebhookEvent): Promise<void
         if (task) {
           const previousStatus = task.status;
           await prisma.task.update({ where: { taskId: task.taskId }, data: { status: 'done' } });
-          emitTaskUpdatedEvent(task, previousStatus, 'done');
+          await emitTaskUpdatedEvent(task, previousStatus, 'done');
         }
       }
       break;
@@ -242,7 +251,7 @@ async function handlePullRequestReviewEvent(payload: GitHubWebhookEvent): Promis
     where: { taskId: task.taskId },
     data: { status: 'done', sprintColumn: 'Done' },
   });
-  emitTaskUpdatedEvent(task, previousStatus, 'done');
+  await emitTaskUpdatedEvent(task, previousStatus, 'done');
 }
 
 async function handlePushEvent(payload: GitHubWebhookEvent): Promise<void> {

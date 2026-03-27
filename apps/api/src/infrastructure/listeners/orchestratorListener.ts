@@ -13,6 +13,42 @@ import { orchestratorTasksEnqueued, orchestratorFailures, orchestratorConcurrenc
 
 const log = createChildLogger('orchestrator-listener');
 
+/**
+ * Atomically increment a session progress counter using raw SQL to avoid
+ * read-modify-write race conditions under concurrent plan completions.
+ */
+async function atomicIncrementProgress(
+  prisma: PrismaClient,
+  sessionId: string,
+  field: 'tasksCompleted' | 'tasksFailed' | 'tasksSkipped',
+): Promise<void> {
+  const defaultJson = '{"tasksCompleted":0,"tasksFailed":0,"tasksSkipped":0,"tokensUsed":0,"estimatedCostCents":0}';
+  await prisma.$executeRaw`
+    UPDATE sessions SET progress = jsonb_set(
+      COALESCE(progress::jsonb, ${defaultJson}::jsonb),
+      ${`{${field}}`}::text[],
+      (COALESCE((progress::jsonb->>${field})::int, 0) + 1)::text::jsonb
+    )
+    WHERE session_id = ${sessionId}
+  `;
+}
+
+/**
+ * Read fresh session progress after an atomic increment.
+ */
+async function readSessionProgress(
+  prisma: PrismaClient,
+  sessionId: string,
+): Promise<{ tasksCompleted: number; tasksFailed: number; tasksSkipped: number; tokensUsed: number; estimatedCostCents: number }> {
+  const session = await prisma.session.findUnique({ where: { id: sessionId }, select: { progress: true } });
+  if (!session?.progress) {
+    return { tasksCompleted: 0, tasksFailed: 0, tasksSkipped: 0, tokensUsed: 0, estimatedCostCents: 0 };
+  }
+  return JSON.parse(session.progress) as {
+    tasksCompleted: number; tasksFailed: number; tasksSkipped: number; tokensUsed: number; estimatedCostCents: number;
+  };
+}
+
 /** Max concurrent executing action plans per project */
 const MAX_CONCURRENT_PER_PROJECT = 3;
 
@@ -296,20 +332,11 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
       if (session) {
         const taskIds = JSON.parse(session.taskIds) as string[];
         if (taskIds.includes(taskId)) {
-          const progress = session.progress
-            ? (JSON.parse(session.progress) as {
-                tasksCompleted: number;
-                tasksFailed: number;
-                tasksSkipped: number;
-                tokensUsed: number;
-                estimatedCostCents: number;
-              })
-            : { tasksCompleted: 0, tasksFailed: 0, tasksSkipped: 0, tokensUsed: 0, estimatedCostCents: 0 };
-          progress.tasksCompleted++;
-          await prisma.session.update({
-            where: { id: session.id },
-            data: { progress: JSON.stringify(progress) },
-          });
+          // Atomic increment to avoid lost-update race under concurrent completions
+          await atomicIncrementProgress(prisma, session.id, 'tasksCompleted');
+
+          // Re-read fresh progress after atomic update
+          const progress = await readSessionProgress(prisma, session.id);
 
           // Check if all session tasks are done
           const totalProcessed = progress.tasksCompleted + progress.tasksFailed + progress.tasksSkipped;
@@ -377,21 +404,12 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
         const taskIds = JSON.parse(session.taskIds) as string[];
         if (taskIds.includes(taskId)) {
           const config = JSON.parse(session.config) as { failurePolicy: string; maxRetries?: number };
-          const progress = session.progress
-            ? (JSON.parse(session.progress) as {
-                tasksCompleted: number;
-                tasksFailed: number;
-                tasksSkipped: number;
-                tokensUsed: number;
-                estimatedCostCents: number;
-              })
-            : { tasksCompleted: 0, tasksFailed: 0, tasksSkipped: 0, tokensUsed: 0, estimatedCostCents: 0 };
 
           if (config.failurePolicy === 'pause_immediately') {
-            progress.tasksFailed++;
+            await atomicIncrementProgress(prisma, session.id, 'tasksFailed');
             await prisma.session.update({
               where: { id: session.id },
-              data: { status: 'paused', pausedAt: new Date(), progress: JSON.stringify(progress) },
+              data: { status: 'paused', pausedAt: new Date() },
             });
             bus.emit('session.paused', {
               orgId,
@@ -402,14 +420,13 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
             });
             log.info({ sessionId: session.id, taskId }, 'Session paused — task failed (pause_immediately policy)');
           } else if (config.failurePolicy === 'skip_and_continue') {
-            progress.tasksSkipped++;
-            await prisma.session.update({
-              where: { id: session.id },
-              data: { progress: JSON.stringify(progress) },
-            });
+            await atomicIncrementProgress(prisma, session.id, 'tasksSkipped');
+
+            // Re-read fresh progress after atomic update
+            const updatedProgress = await readSessionProgress(prisma, session.id);
 
             // Check if all tasks processed
-            const totalProcessed = progress.tasksCompleted + progress.tasksFailed + progress.tasksSkipped;
+            const totalProcessed = updatedProgress.tasksCompleted + updatedProgress.tasksFailed + updatedProgress.tasksSkipped;
             if (totalProcessed >= taskIds.length) {
               await prisma.session.update({
                 where: { id: session.id },
@@ -426,11 +443,7 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
             log.info({ sessionId: session.id, taskId }, 'Task skipped in session (skip_and_continue policy)');
           } else {
             // retry_then_pause — increment failure, the existing retry logic handles actual retries
-            progress.tasksFailed++;
-            await prisma.session.update({
-              where: { id: session.id },
-              data: { progress: JSON.stringify(progress) },
-            });
+            await atomicIncrementProgress(prisma, session.id, 'tasksFailed');
           }
         }
       }
