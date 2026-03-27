@@ -7,17 +7,33 @@ interface ChatReference {
   title: string;
 }
 
-interface ChatMessage {
+export interface ChatAction {
+  type: string;
+  label: string;
+  data: string;
+}
+
+export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   references?: ChatReference[];
+  suggestedActions?: ChatAction[];
   timestamp: Date;
 }
 
 interface ProjectChatResponse {
   answer: string;
   references: ChatReference[];
+  suggestedActions: ChatAction[];
 }
+
+const APPLY_CHAT_ACTION_MUTATION = `
+  mutation ApplyChatAction($projectId: ID!, $action: ChatActionInput!) {
+    applyChatAction(projectId: $projectId, action: $action) {
+      success message taskId
+    }
+  }
+`;
 
 export function useProjectChat(projectId: string | undefined) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -35,6 +51,7 @@ export function useProjectChat(projectId: string | undefined) {
           projectChat(projectId: $projectId, question: $question) {
             answer
             references { type id title }
+            suggestedActions { type label data }
           }
         }`,
         { projectId, question }
@@ -45,6 +62,7 @@ export function useProjectChat(projectId: string | undefined) {
           role: 'assistant',
           content: data.projectChat.answer,
           references: data.projectChat.references,
+          suggestedActions: data.projectChat.suggestedActions,
           timestamp: new Date(),
         },
       ]);
@@ -62,9 +80,22 @@ export function useProjectChat(projectId: string | undefined) {
     }
   }, [projectId]);
 
+  const applyAction = useCallback(async (action: ChatAction): Promise<boolean> => {
+    if (!projectId) return false;
+    try {
+      const result = await gql<{ applyChatAction: { success: boolean; message: string; taskId?: string } }>(
+        APPLY_CHAT_ACTION_MUTATION,
+        { projectId, action: { type: action.type, data: action.data } }
+      );
+      return result.applyChatAction.success;
+    } catch {
+      return false;
+    }
+  }, [projectId]);
+
   const clearChat = useCallback(() => {
     setMessages([]);
   }, []);
 
-  return { messages, loading, sendMessage, clearChat };
+  return { messages, loading, sendMessage, applyAction, clearChat };
 }

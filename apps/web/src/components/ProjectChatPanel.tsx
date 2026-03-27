@@ -1,16 +1,20 @@
 import { useState, useRef, useEffect } from 'react';
 import { useProjectChat } from '../hooks/useProjectChat';
+import type { ChatAction } from '../hooks/useProjectChat';
 import { IconClose } from './shared/Icons';
 import Modal from './shared/Modal';
 
 interface ProjectChatPanelProps {
   projectId: string;
   onClose: () => void;
+  onSelectTask?: (taskId: string) => void;
+  addToast?: (type: 'success' | 'error' | 'info', message: string) => void;
 }
 
-export default function ProjectChatPanel({ projectId, onClose }: ProjectChatPanelProps) {
-  const { messages, loading, sendMessage, clearChat } = useProjectChat(projectId);
+export default function ProjectChatPanel({ projectId, onClose, onSelectTask, addToast }: ProjectChatPanelProps) {
+  const { messages, loading, sendMessage, applyAction, clearChat } = useProjectChat(projectId);
   const [input, setInput] = useState('');
+  const [appliedActions, setAppliedActions] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -26,6 +30,16 @@ export default function ProjectChatPanel({ projectId, onClose }: ProjectChatPane
     if (!input.trim() || loading) return;
     sendMessage(input.trim());
     setInput('');
+  };
+
+  const handleApply = async (action: ChatAction, actionKey: string) => {
+    const success = await applyAction(action);
+    if (success) {
+      setAppliedActions((prev) => new Set([...prev, actionKey]));
+      addToast?.('success', action.label);
+    } else {
+      addToast?.('error', `Failed: ${action.label}`);
+    }
   };
 
   return (
@@ -67,15 +81,53 @@ export default function ProjectChatPanel({ projectId, onClose }: ProjectChatPane
                 {msg.references && msg.references.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
                     {msg.references.map((ref, j) => (
-                      <span
-                        key={j}
-                        className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-white/20 text-slate-500"
-                        title={`${ref.type}: ${ref.id}`}
-                      >
-                        <span className="font-medium">{ref.type}</span>
-                        {ref.title}
-                      </span>
+                      ref.type === 'task' && onSelectTask ? (
+                        <button
+                          key={j}
+                          onClick={() => onSelectTask(ref.id)}
+                          className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-white/20 text-violet-600 hover:bg-violet-100 cursor-pointer transition-colors"
+                          title={`${ref.type}: ${ref.id}`}
+                        >
+                          <span className="font-medium">{ref.type}</span>
+                          {ref.title}
+                        </button>
+                      ) : (
+                        <span
+                          key={j}
+                          className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-white/20 text-slate-500"
+                          title={`${ref.type}: ${ref.id}`}
+                        >
+                          <span className="font-medium">{ref.type}</span>
+                          {ref.title}
+                        </span>
+                      )
                     ))}
+                  </div>
+                )}
+                {msg.suggestedActions && msg.suggestedActions.length > 0 && (
+                  <div className="mt-2 space-y-1.5">
+                    {msg.suggestedActions.map((action, j) => {
+                      const actionKey = `${msg.timestamp.getTime()}-${j}`;
+                      const isApplied = appliedActions.has(actionKey);
+                      return (
+                        <button
+                          key={j}
+                          onClick={() => handleApply(action, actionKey)}
+                          disabled={isApplied}
+                          className={`flex items-center gap-2 w-full text-left px-3 py-2 rounded-lg text-xs border transition-colors ${
+                            isApplied
+                              ? 'bg-green-50 border-green-200 text-green-700 cursor-default'
+                              : 'bg-white border-slate-200 hover:border-violet-300 hover:bg-violet-50 text-slate-700'
+                          }`}
+                        >
+                          <span className="flex-1">{action.label}</span>
+                          {isApplied
+                            ? <span className="text-green-600 text-xs">Applied</span>
+                            : <span className="text-violet-600 text-xs font-medium">Apply</span>
+                          }
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
