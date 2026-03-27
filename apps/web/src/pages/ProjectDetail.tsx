@@ -46,6 +46,7 @@ const ActionPlanDialog = lazyWithRetry(() => import('../components/ActionPlanDia
 const ReleaseListPanel = lazyWithRetry(() => import('../components/ReleaseListPanel'));
 const ReleaseModal = lazyWithRetry(() => import('../components/ReleaseModal'));
 const ExecutionDashboard = lazyWithRetry(() => import('../components/ExecutionDashboard'));
+const WhatNextPanel = lazyWithRetry(() => import('../components/WhatNextPanel'));
 const TimesheetView = lazyWithRetry(() => import('../components/TimesheetView'));
 import { TaskListSkeleton, KanbanBoardSkeleton } from '../components/Skeleton';
 import ToastContainer from '../components/shared/ToastContainer';
@@ -113,7 +114,7 @@ export default function ProjectDetail() {
   // Consolidated modal state — replaces 8+ individual booleans
   const [activeModal, setActiveModal] = useState<string | null>(null);
   // View panels that replace the main content (not modal overlays)
-  const [activePanel, setActivePanel] = useState<'standup' | 'health' | 'trends' | 'cycle-time' | 'execution-dashboard' | null>(null);
+  const [activePanel, setActivePanel] = useState<'standup' | 'health' | 'trends' | 'cycle-time' | 'execution-dashboard' | 'what-next' | null>(null);
   // Kanban swimlane grouping
   const [groupBy, setGroupBy] = useState<'assignee' | 'priority' | 'epic' | null>(() => {
     const saved = localStorage.getItem('kanban-groupBy');
@@ -249,6 +250,11 @@ export default function ProjectDetail() {
     }
     if (modal === 'cycle-time') {
       setActivePanel('cycle-time');
+      d.setSummary(null);
+      return;
+    }
+    if (modal === 'what-next') {
+      setActivePanel('what-next');
       d.setSummary(null);
       return;
     }
@@ -485,6 +491,14 @@ export default function ProjectDetail() {
               <ExecutionDashboard
                 projectId={d.projectId}
                 onClose={() => setActivePanel(null)}
+              />
+            </Suspense>
+          ) : activePanel === 'what-next' && d.projectId ? (
+            <Suspense fallback={lazyFallback}>
+              <WhatNextPanel
+                projectId={d.projectId}
+                onClose={() => setActivePanel(null)}
+                onApplied={() => void d.loadTasks(filterInput)}
               />
             </Suspense>
           ) : d.summary ? (
