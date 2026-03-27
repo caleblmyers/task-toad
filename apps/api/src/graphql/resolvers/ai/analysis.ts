@@ -13,6 +13,9 @@ import { getProjectRepo } from '../../../github/index.js';
 import { listRecentCommits, listOpenPullRequests } from '../../../github/githubFileService.js';
 import { requireProject } from '../../../utils/resolverHelpers.js';
 import { retrieveRelevantKnowledge } from '../../../ai/knowledgeRetrieval.js';
+import { createChildLogger } from '../../../utils/logger.js';
+
+const log = createChildLogger('analysis');
 
 export const analysisQueries = {
   projectChat: async (
@@ -81,7 +84,7 @@ export const analysisQueries = {
     }
 
     const plc = await buildPromptLogContext(context);
-    return aiProjectChat(apiKey, {
+    const result = await aiProjectChat(apiKey, {
       question: args.question,
       projectName: project.name,
       projectDescription: project.description,
@@ -122,6 +125,14 @@ export const analysisQueries = {
       })),
       knowledgeBase,
     }, plc);
+
+    return {
+      ...result,
+      suggestedActions: result.suggestedActions.map((a) => ({
+        ...a,
+        data: JSON.stringify(a.data),
+      })),
+    };
   },
 
   analyzeRepoDrift: async (
@@ -381,5 +392,76 @@ export const analysisQueries = {
 
     const plc = await buildPromptLogContext(context);
     return aiExtractTasksFromNotes(apiKey, args.notes, project.name, teamMembers, plc);
+  },
+};
+
+export const analysisMutations = {
+  applyChatAction: async (
+    _parent: unknown,
+    args: { projectId: string; action: { type: string; data: string } },
+    context: Context
+  ) => {
+    const { project } = await requireProject(context, args.projectId);
+    const user = requireOrg(context);
+
+    let data: Record<string, unknown>;
+    try {
+      data = JSON.parse(args.action.data) as Record<string, unknown>;
+    } catch {
+      return { success: false, message: 'Invalid action data: must be valid JSON' };
+    }
+
+    switch (args.action.type) {
+      case 'create_task': {
+        const task = await context.prisma.task.create({
+          data: {
+            title: data.title as string,
+            description: (data.description as string) || null,
+            status: (data.status as string) || 'todo',
+            priority: (data.priority as string) || 'medium',
+            projectId: args.projectId,
+            orgId: user.orgId,
+            taskType: 'task',
+            parentTaskId: (data.parentTaskId as string) || null,
+          },
+        });
+        log.info({ taskId: task.taskId, projectId: project.projectId }, 'Chat action: created task');
+        return { success: true, message: `Created task: ${task.title}`, taskId: task.taskId };
+      }
+      case 'update_task': {
+        const updates: Record<string, unknown> = {};
+        if (data.title) updates.title = data.title;
+        if (data.description) updates.description = data.description;
+        if (data.status) updates.status = data.status;
+        if (data.priority) updates.priority = data.priority;
+        await context.prisma.task.update({
+          where: { taskId: data.taskId as string },
+          data: updates,
+        });
+        log.info({ taskId: data.taskId, projectId: project.projectId }, 'Chat action: updated task');
+        return { success: true, message: 'Updated task', taskId: data.taskId as string };
+      }
+      case 'add_dependency': {
+        await context.prisma.taskDependency.create({
+          data: {
+            sourceTaskId: data.sourceTaskId as string,
+            targetTaskId: data.targetTaskId as string,
+            linkType: (data.linkType as string) || 'blocks',
+          },
+        });
+        log.info({ sourceTaskId: data.sourceTaskId, targetTaskId: data.targetTaskId, projectId: project.projectId }, 'Chat action: added dependency');
+        return { success: true, message: 'Added dependency', taskId: data.sourceTaskId as string };
+      }
+      case 'update_status': {
+        await context.prisma.task.update({
+          where: { taskId: data.taskId as string },
+          data: { status: data.status as string },
+        });
+        log.info({ taskId: data.taskId, status: data.status, projectId: project.projectId }, 'Chat action: updated status');
+        return { success: true, message: `Updated status to ${data.status}`, taskId: data.taskId as string };
+      }
+      default:
+        return { success: false, message: `Unknown action type: ${args.action.type}` };
+    }
   },
 };

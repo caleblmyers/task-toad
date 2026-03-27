@@ -390,6 +390,12 @@ export type AIFeature =
   | 'recommendStack'
   | 'generateCompletionSummary';
 
+export const ChatActionSchema = z.object({
+  type: z.enum(['create_task', 'update_task', 'add_dependency', 'update_status']),
+  label: z.string(),
+  data: z.record(z.string(), z.unknown()),
+});
+
 export const ProjectChatResponseSchema = z.object({
   answer: z.string(),
   references: z.array(z.object({
@@ -397,8 +403,10 @@ export const ProjectChatResponseSchema = z.object({
     id: z.string(),
     title: z.string(),
   })).optional().default([]),
+  suggestedActions: z.array(ChatActionSchema).optional().default([]),
 });
 
+export type ChatAction = z.infer<typeof ChatActionSchema>;
 export type ProjectChatResponse = z.infer<typeof ProjectChatResponseSchema>;
 
 export const DriftAnalysisSchema = z.object({

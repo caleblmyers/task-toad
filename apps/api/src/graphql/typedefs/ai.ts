@@ -100,9 +100,27 @@ export const aiTypeDefs = /* GraphQL */ `
     title: String!
   }
 
+  type ChatAction {
+    type: String!
+    label: String!
+    data: String!
+  }
+
   type ProjectChatResponse {
     answer: String!
     references: [ChatReference!]!
+    suggestedActions: [ChatAction!]!
+  }
+
+  input ChatActionInput {
+    type: String!
+    data: String!
+  }
+
+  type ApplyChatActionResult {
+    success: Boolean!
+    message: String!
+    taskId: ID
   }
 
   type DriftOutdatedTask {
@@ -248,6 +266,8 @@ export const aiMutationFields = /* GraphQL */ `
   bootstrapProjectFromRepo(projectId: ID!): [Task!]!
   """Refresh the repo profile (knowledge base) from the linked GitHub repository."""
   refreshRepoProfile(projectId: ID!): Project!
+  """Apply a suggested action from projectChat (create task, update status, etc.)."""
+  applyChatAction(projectId: ID!, action: ChatActionInput!): ApplyChatActionResult!
   """Create a new execution session for a set of tasks."""
   createSession(projectId: ID!, taskIds: [ID!]!, config: SessionConfigInput!): Session!
   """Start a draft session — marks included tasks for auto-complete and triggers orchestration."""

@@ -261,10 +261,21 @@ ${truncate(data.question, 500)}
 Return JSON:
 {
   "answer": string,
-  "references": [{ "type": "task" | "sprint" | "activity", "id": string, "title": string }]
+  "references": [{ "type": "task" | "sprint" | "activity", "id": string, "title": string }],
+  "suggestedActions": [{ "type": string, "label": string, "data": object }]
 }
 "answer" — clear, concise answer grounded in the project data above.
-"references" — specific tasks, sprints, or activities you referenced in your answer. Use taskId for tasks, sprint name for sprints. Only include items you actually mentioned.`,
+"references" — specific tasks, sprints, or activities you referenced in your answer. Use taskId for tasks, sprint name for sprints. Only include items you actually mentioned.
+"suggestedActions" — when your answer implies actions the user could take, include them. Action types:
+- "create_task": data = { title, description, priority?, status?, parentTaskId? }
+- "update_task": data = { taskId, title?, description?, status?, priority? }
+- "add_dependency": data = { sourceTaskId, targetTaskId, linkType } (linkType: "blocks" or "informs")
+- "update_status": data = { taskId, status }
+Examples:
+- "You're missing error handling" → [{ type: "create_task", label: "Create: Add error handling to API endpoints", data: { title: "Add error handling to API endpoints", description: "...", priority: "high" } }]
+- "Task X should block Task Y" → [{ type: "add_dependency", label: "Add dependency: X blocks Y", data: { sourceTaskId: "...", targetTaskId: "...", linkType: "blocks" } }]
+- "This task is done" → [{ type: "update_status", label: "Mark as done: ...", data: { taskId: "...", status: "done" } }]
+Only suggest actions when clearly warranted by the question/context. Don't force actions into every response. Use exact taskIds from the tasks list — never fabricate IDs. Return an empty array if no actions are appropriate.`,
   };
 }
 
