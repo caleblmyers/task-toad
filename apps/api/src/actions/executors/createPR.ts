@@ -84,7 +84,7 @@ export const createPRExecutor: ActionExecutor = {
 
     return {
       success: true,
-      data: { url: result.url, number: result.number, branch: ctx.plan.branchName },
+      data: { url: result.url, number: result.number, pullRequestId: result.pullRequestId, branch: ctx.plan.branchName },
     };
   },
 };

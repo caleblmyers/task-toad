@@ -298,7 +298,7 @@ export function buildPlanTaskActionsPrompt(data: {
     ? `\nSuggested Tools: ${userInput('suggested_tools', data.suggestedTools)}`
     : '';
   const repoLine = data.hasGitHubRepo
-    ? '\nIMPORTANT: This project has a connected GitHub repository (hasGitHubRepo = true). The plan MUST include the sequence: generate_code → create_pr → review_pr → fix_review. All four steps are REQUIRED, not optional.'
+    ? '\nIMPORTANT: This project has a connected GitHub repository (hasGitHubRepo = true). The plan MUST include the sequence: generate_code → create_pr → review_pr → fix_review → merge_pr. All five steps are REQUIRED, not optional.'
     : '\nNo GitHub repo is connected — do not include create_pr or review_pr actions.';
 
   return {
@@ -321,6 +321,7 @@ Action type guide:
 - monitor_ci: Monitor GitHub Actions CI status for a PR. Polls check runs until they pass or fail (max 30 min). Config: { "sourcePRActionId": "<id of create_pr action>" }. ONLY use after review_pr.
 - fix_ci: Attempt to auto-fix CI failures by analyzing error logs and committing a fix. One retry only. Config: { "sourceMonitorActionId": "<id of monitor_ci action>", "sourcePRActionId": "<id of create_pr action>" }. ONLY use after monitor_ci.
 - fix_review: Process review feedback — auto-fix small issues (typos, missing error handling, simple bugs) by committing to the branch. Creates backlog tasks for larger issues (architectural, new features). Config: { "sourceReviewActionId": "<id of review_pr action>" }. ALWAYS include after review_pr.
+- merge_pr: Merge the pull request on GitHub (squash merge by default). Config: { "sourcePRActionId": "<id of create_pr action>", "mergeMethod"?: "SQUASH" | "MERGE" | "REBASE" }. ALWAYS include as the final step after fix_review when a GitHub repo is connected.
 - write_docs: Generate documentation AND commit it to the feature branch. Config: { "docType": "readme" | "api-docs" | "changelog" }
 - manual_step: A step the user must complete manually. Config: { "description": string, "checklist"?: string[] }
 
@@ -328,11 +329,11 @@ Rules:
 1. Order actions logically — code gen before PR creation, setup before implementation.
 2. Use manual_step ONLY for actions that truly cannot be automated (e.g., obtaining third-party API keys). NEVER include deployment, hosting, CI/CD setup, or infrastructure provisioning steps — TaskToad generates code and creates PRs only. The user manages their own deployment.
 3. NEVER use manual_step for project initialization or deployment. No create-next-app, no Vercel, no Railway, no Docker, no AWS. Use generate_code to create project structure directly as files.
-4. Set requiresApproval to true for actions that modify external systems (create_pr) and false for safe actions (generate_code, write_docs, review_pr, monitor_ci, fix_ci).
+4. Set requiresApproval to false for all actions. The autopilot pipeline runs end-to-end without pausing.
 5. Keep the plan focused — typically 2–6 actions. Don't over-plan.
 6. create_pr must always reference a prior generate_code action via sourceActionId (use a placeholder ID like "action_0" referring to the action at index 0).
-7. If the project has a GitHub repository (hasGitHubRepo is true), the plan MUST include: generate_code → create_pr → review_pr → fix_review. All four steps are REQUIRED, not optional. review_pr and fix_review should have requiresApproval: false.
-8. If the plan includes create_pr and review_pr, optionally add monitor_ci after fix_review to verify CI passes, followed by fix_ci as a fallback.
+7. If the project has a GitHub repository (hasGitHubRepo is true), the plan MUST include: generate_code → create_pr → review_pr → fix_review → merge_pr. All five steps are REQUIRED, not optional. review_pr, fix_review, and merge_pr should have requiresApproval: false.
+8. If the plan includes create_pr and review_pr, optionally add monitor_ci after fix_review (before merge_pr) to verify CI passes, followed by fix_ci as a fallback.
 9. Task instructions should describe WHAT to build, not which specific library or vendor to use. Keep instructions implementation-agnostic.
 
 Return JSON:

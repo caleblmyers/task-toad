@@ -5,6 +5,7 @@
  */
 
 import { logApiError } from './githubLogger.js';
+import { getInstallationToken, clearInstallationToken } from './githubAppAuth.js';
 
 const GITHUB_GRAPHQL_ENDPOINT = 'https://api.github.com/graphql';
 const MAX_RETRIES = 3;
@@ -20,26 +21,43 @@ interface GraphQLResponse<T> {
  *
  * Retries on transient errors (5xx, network failures) and respects
  * rate-limit headers with automatic backoff.
+ *
+ * Pass `installationId` to enable automatic re-authentication on 401.
+ * When a 401 is received, the cached token is cleared and a fresh one
+ * is obtained before retrying.
  */
 export async function githubRequest<T>(
   installationToken: string,
   query: string,
-  variables?: Record<string, unknown>
+  variables?: Record<string, unknown>,
+  installationId?: string,
 ): Promise<T> {
   let lastError: Error | null = null;
+  let token = installationToken;
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       const response = await fetch(GITHUB_GRAPHQL_ENDPOINT, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${installationToken}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
           Accept: 'application/vnd.github+json',
           'X-GitHub-Api-Version': '2022-11-28',
         },
         body: JSON.stringify({ query, variables }),
       });
+
+      // Handle 401 — clear cached token and retry with a fresh one
+      if (response.status === 401 && installationId && attempt < MAX_RETRIES) {
+        clearInstallationToken(installationId);
+        token = await getInstallationToken(installationId);
+        logApiError('token_expired', new Error('401 Bad credentials — re-authenticating'), {
+          installationId,
+          attempt,
+        });
+        continue;
+      }
 
       // Handle rate limiting
       if (response.status === 403 || response.status === 429) {
@@ -119,4 +137,29 @@ export async function githubRequest<T>(
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Execute a GitHub REST API request with automatic 401 re-authentication.
+ *
+ * Clears the cached token and retries once on 401 Bad Credentials.
+ */
+export async function githubRestRequest(
+  installationId: string,
+  url: string,
+  options: RequestInit & { headers: Record<string, string> },
+): Promise<Response> {
+  let token = await getInstallationToken(installationId);
+  options.headers['Authorization'] = `Bearer ${token}`;
+
+  let response = await fetch(url, options);
+
+  if (response.status === 401) {
+    clearInstallationToken(installationId);
+    token = await getInstallationToken(installationId);
+    options.headers['Authorization'] = `Bearer ${token}`;
+    response = await fetch(url, options);
+  }
+
+  return response;
 }

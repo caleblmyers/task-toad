@@ -33,6 +33,10 @@ class SSEManager {
     for (const client of this.clients.values()) {
       if (client.orgId === orgId) {
         client.res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+        // Flush immediately to prevent any buffering layer from holding SSE data
+        if (typeof (client.res as unknown as { flush?: () => void }).flush === 'function') {
+          (client.res as unknown as { flush: () => void }).flush();
+        }
       }
     }
   }

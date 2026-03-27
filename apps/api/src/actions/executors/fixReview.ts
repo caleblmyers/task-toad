@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { ActionExecutor, ActionContext, ActionResult } from '../types.js';
 import { commitFiles } from '../../github/githubCommitService.js';
+import { getPullRequestFiles } from '../../github/githubPullRequestService.js';
 import { callAIStructured } from '../../ai/aiClient.js';
 import { createChildLogger } from '../../utils/logger.js';
 
@@ -33,39 +34,82 @@ export const fixReviewExecutor: ActionExecutor = {
     const config = FixReviewConfigSchema.parse(JSON.parse(ctx.action.config || '{}'));
 
     // Get review result from previous review_pr action
-    const reviewResult = previousResults.get(config.sourceReviewActionId) as
-      | { approved?: boolean; summary?: string; comments?: Array<{ file: string; line?: number; severity: string; comment: string }>; suggestions?: string[] }
+    // The review_pr executor stores results as { review: { approved, comments, suggestions, summary }, approved, prNumber }
+    const rawReviewResult = previousResults.get(config.sourceReviewActionId) as
+      | { review?: { approved?: boolean; summary?: string; comments?: Array<{ file: string; line?: number; severity: string; comment: string }>; suggestions?: string[] }; approved?: boolean; prNumber?: number }
       | undefined;
 
-    if (!reviewResult) {
+    if (!rawReviewResult) {
       return { success: false, data: { error: 'No review result found from source review_pr action' } };
     }
 
+    // Unwrap nested review object — the actual review data lives under .review
+    type ReviewData = { approved?: boolean; summary?: string; comments?: Array<{ file: string; line?: number; severity: string; comment: string }>; suggestions?: string[] };
+    const review: ReviewData = rawReviewResult.review ?? rawReviewResult as unknown as ReviewData;
+    const approved = rawReviewResult.approved ?? review.approved;
+
     // If review was approved, nothing to fix
-    if (reviewResult.approved === true) {
+    if (approved === true) {
       return { success: true, data: { skipped: true, reason: 'Review approved, no fixes needed' } };
     }
 
     // Build review feedback context for AI
-    const commentLines = reviewResult.comments?.length
-      ? reviewResult.comments
+    const comments = review.comments ?? [];
+    const commentLines = comments.length > 0
+      ? comments
           .slice(0, 30)
           .map((c) => `${c.file}${c.line ? `:${c.line}` : ''} [${c.severity}] ${c.comment}`)
           .join('\n')
       : '(no specific comments)';
 
-    const suggestionLines = reviewResult.suggestions?.length
-      ? reviewResult.suggestions.join('\n- ')
+    const suggestionLines = review.suggestions?.length
+      ? review.suggestions.join('\n- ')
       : '';
+
+    // Fetch the actual source code from the PR so the AI can generate accurate fixes
+    let sourceCodeContext = '';
+    const prNumber = rawReviewResult.prNumber;
+    if (prNumber && ctx.repo) {
+      try {
+        const project = await ctx.prisma.project.findUnique({
+          where: { projectId: task.projectId },
+          select: { githubInstallationId: true, githubRepositoryOwner: true, githubRepositoryName: true },
+        });
+        if (project?.githubInstallationId && project.githubRepositoryOwner && project.githubRepositoryName) {
+          // Only fetch files that were mentioned in review comments
+          const mentionedFiles = new Set(comments.map((c: { file: string }) => c.file));
+          const allFiles = await getPullRequestFiles(
+            project.githubInstallationId,
+            project.githubRepositoryOwner,
+            project.githubRepositoryName,
+            prNumber,
+          );
+          const relevantFiles = allFiles.filter((f) => mentionedFiles.has(f.path));
+          if (relevantFiles.length > 0) {
+            sourceCodeContext = relevantFiles
+              .map((f) => `### ${f.path}\n\`\`\`\n${f.content.slice(0, 4000)}\n\`\`\``)
+              .join('\n\n');
+          }
+        }
+      } catch (err) {
+        log.warn({ err, prNumber }, 'Failed to fetch PR files for fix context (non-blocking)');
+      }
+    }
 
     // Check for cancellation before AI call
     if (signal?.aborted) {
       throw new DOMException('Action cancelled', 'AbortError');
     }
 
-    const systemPrompt = `You are a code fix agent. You receive code review feedback and generate fixes.
-Only fix small, clear issues: typos, missing error handling, simple bugs, naming issues, missing null checks.
-For larger issues (architectural changes, new features, redesigns, missing test suites), output them as \`deferredIssues\` — do NOT attempt to fix them.
+    const systemPrompt = `You are a code fix agent. You receive code review feedback along with the current source code and produce corrected files and well-scoped follow-up tasks.
+
+Your goal is cohesive, production-quality code — not just patching individual lines. Consider how review comments relate to each other and address them holistically. A single well-thought-out refactor that resolves five related comments is better than five isolated patches.
+
+**Fixing:** Apply every improvement you can deliver correctly in one commit. This includes security hardening, input validation, error handling, naming, structure, and any other concrete code change. Use the full source code provided to ensure your fixes are accurate and complete. Each fix must contain the COMPLETE file content.
+
+**Deferring:** Create focused, actionable tasks for work that genuinely can't be done well in this commit — things that need new infrastructure (rate limiting middleware, test suites), cross-cutting changes across files you don't have, or design decisions that need human input. Each deferred task should have a clear title and enough description that someone can pick it up independently.
+
+Use your judgment. The bar is: will this fix make the code better without introducing new problems? If yes, fix it.
 Return valid JSON matching the required schema.`;
 
     // Build full context from upstream tasks, previous steps, and failure history
@@ -90,16 +134,17 @@ Return valid JSON matching the required schema.`;
 Task: ${task.title}
 ${task.instructions ? `Instructions: ${task.instructions}` : ''}
 
-Review Summary: ${reviewResult.summary || '(no summary)'}
+Review Summary: ${review.summary || '(no summary)'}
 
 Review Comments:
 ${commentLines}
 ${suggestionLines ? `\nGeneral Suggestions:\n- ${suggestionLines}` : ''}
+${sourceCodeContext ? `\n## Current Source Code (files mentioned in review)\n${sourceCodeContext}` : ''}
 
 Project: ${project.name}
 ${project.description ? `Project Description: ${project.description}` : ''}
 ${contextSection}
-Generate fixes for small issues and defer larger ones. Each fix should contain the complete file content for the file being fixed.`;
+Address the review holistically. Fix everything you can do well in one commit. Defer what genuinely needs separate work, with clear actionable descriptions.`;
 
     const aiResult = await callAIStructured(
       {

@@ -4,6 +4,56 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-27 (Pipeline Hardening — post-Wave 70)
+
+### SSE Real-Time Fix
+- **Root cause found:** `compression()` middleware was buffering SSE `res.write()` calls — events stuck in gzip buffer until enough data accumulated
+- SSE endpoint excluded from compression filter in `app.ts`
+- `sseManager.broadcast()` now calls `res.flush()` after every write
+- Heartbeat and initial connect events also flushed
+
+### Action Plan UI Improvements
+- Executing steps now use indigo styling (distinct from pending blue)
+- Action-type-specific status messages while executing (e.g., "Writing code and committing to branch…", "AI is reviewing the code changes…")
+- Added labels for all action types: fix_review, merge_pr, monitor_ci, fix_ci
+- Stall detection: "Resume" button when plan is executing but no action is running
+- Failed plan recovery: "Retry Plan" button for failed plans
+
+### `merge_pr` Action Type (new)
+- New executor: `apps/api/src/actions/executors/mergePR.ts` — squash merges PR via GitHub GraphQL API
+- `mergePullRequest()` added to `githubPullRequestService.ts`
+- Registered in executor registry, Zod schema, and planning prompt
+- Pipeline now: `generate_code → create_pr → review_pr → fix_review → merge_pr`
+- `create_pr` result now includes `pullRequestId` (GraphQL node ID) for merge step
+- All action types default to `requiresApproval: false` — pipeline runs end-to-end
+
+### Task Status Transitions from Action Plan
+- Plan starts → task moves `todo` → `in_progress`
+- `review_pr` starts → task moves `in_progress` → `in_review`
+- Plan completes with merge/fix → task moves to `done`; review not approved → back to `in_progress`
+- All transitions also update `sprintColumn` to keep board view in sync
+
+### GitHub 401 Auto-Reauthentication
+- `githubRequest()` accepts optional `installationId` — on 401, clears token cache, gets fresh token, retries
+- New `githubRestRequest()` helper for REST endpoints with same 401 retry logic
+- All GitHub services (`commitService`, `pullRequestService`, `repositoryService`, `issueService`) threaded through
+
+### Action Executor Resilience
+- Setup failures (branch creation, auth) now caught by outer try/catch — marks plan as `failed` with error message instead of leaving it stuck in `executing`
+- SSE `task.action_plan_failed` event emitted so UI shows retry button immediately
+
+### `fix_review` Executor Overhaul
+- **Bug fix:** Was reading `reviewResult.comments` but data was nested under `reviewResult.review.comments` — never saw the 13 review comments
+- Now fetches actual PR source code from GitHub for files mentioned in review
+- Broadened scope: fixes security vulnerabilities, validation gaps, error handling — not just typos
+- Holistic approach: AI considers how issues relate, makes judgment calls about fix vs defer
+- Deferred tasks get clear, actionable descriptions
+
+### `CodeReviewSchema` Fix
+- `line` field now allows `null` (`z.number().nullable().optional()`) — AI returns null for file-level comments with no specific line
+
+---
+
 ## 2026-03-27 (Wave 70 — actionable AI assistant)
 
 ### Wave 70: Actionable AI Assistant + Dependency Inference (3 workers, 5 tasks)

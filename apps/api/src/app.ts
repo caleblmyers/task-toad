@@ -167,8 +167,13 @@ app.post('/api/github/webhooks', express.raw({ type: 'application/json' }), hand
 // Slack slash command endpoint — URL-encoded form data from Slack
 app.post('/api/slack/commands', express.urlencoded({ extended: false }), handleSlackCommand);
 
-// Compress responses
-app.use(compression());
+// Compress responses — skip SSE endpoint (compression buffers res.write, breaking real-time delivery)
+app.use(compression({
+  filter: (req, res) => {
+    if (req.path === '/events' || req.path === '/api/events') return false;
+    return compression.filter(req, res);
+  },
+}));
 
 // Body size limit
 app.use(express.json({ limit: '1mb' }));
@@ -248,12 +253,13 @@ app.get(['/events', '/api/events'], async (req, res) => {
       'Connection': 'keep-alive',
     });
     res.write('event: connected\ndata: {}\n\n');
+    res.flush?.();
 
     const clientId = crypto.randomUUID();
     sseManager.addClient(clientId, user.orgId, user.userId, res);
 
     // Heartbeat every 30s
-    const heartbeat = setInterval(() => res.write(': heartbeat\n\n'), 30000);
+    const heartbeat = setInterval(() => { res.write(': heartbeat\n\n'); res.flush?.(); }, 30000);
     res.on('close', () => clearInterval(heartbeat));
   } catch {
     res.status(401).json({ error: 'Invalid token' });

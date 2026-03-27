@@ -116,7 +116,7 @@ export async function connectRepoToProject(
 ): Promise<GitHubRepoLink> {
   const token = await getInstallationToken(installationId);
 
-  const data = await githubRequest<GetRepoResponse>(token, GET_REPOSITORY, { owner, name });
+  const data = await githubRequest<GetRepoResponse>(token, GET_REPOSITORY, { owner, name }, installationId);
   if (!data.repository) {
     throw new Error(`Repository ${owner}/${name} not found or not accessible`);
   }
@@ -208,7 +208,7 @@ export async function createRepoForProject(
       const token = await getInstallationToken(installationId);
       const ownerData = await githubRequest<GetOwnerIdResponse>(token, GET_OWNER_ID, {
         login: ownerLogin,
-      });
+      }, installationId);
       if (!ownerData.repositoryOwner) {
         throw new Error(`GitHub owner "${ownerLogin}" not found`);
       }
@@ -216,7 +216,7 @@ export async function createRepoForProject(
         name: repoName,
         visibility: 'PRIVATE',
         ownerId: ownerData.repositoryOwner.id,
-      });
+      }, installationId);
       repoNode = data.createRepository.repository;
     }
     logRepoCreation(repoNode.owner.login, repoNode.name, repoNode.id);

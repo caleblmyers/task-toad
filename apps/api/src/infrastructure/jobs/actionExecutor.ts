@@ -14,6 +14,13 @@ import type { GitHubRepoLink } from '../../github/githubTypes.js';
 
 const log = createChildLogger('action-executor');
 
+const STATUS_TO_COLUMN: Record<string, string> = {
+  todo: 'To Do',
+  in_progress: 'In Progress',
+  in_review: 'In Review',
+  done: 'Done',
+};
+
 // ── AbortController management for cancellation ──
 const activeControllers = new Map<string, AbortController>();
 
@@ -66,6 +73,10 @@ export function createHandler(prisma: PrismaClient) {
       log.warn({ actionId, status: action.status }, 'Action not in pending state');
       return;
     }
+
+    // Wrap entire execution so setup failures (branch creation, auth) mark the plan as failed
+    // instead of leaving it stuck in 'executing' with all actions 'pending'.
+    try {
 
     const task = action.plan.task;
     const project = task.project;
@@ -309,6 +320,31 @@ export function createHandler(prisma: PrismaClient) {
       taskId: task.taskId,
     });
 
+    // Transition task status based on which action is starting
+    {
+      const currentTask = await prisma.task.findUnique({ where: { taskId: task.taskId }, select: { status: true } });
+      const currentStatus = currentTask?.status ?? task.status;
+      let newStatus: string | null = null;
+
+      if (currentStatus === 'todo') {
+        newStatus = 'in_progress';
+      } else if (actionType === 'review_pr' && currentStatus === 'in_progress') {
+        newStatus = 'in_review';
+      }
+
+      if (newStatus) {
+        await prisma.task.update({
+          where: { taskId: task.taskId },
+          data: { status: newStatus, sprintColumn: STATUS_TO_COLUMN[newStatus] ?? undefined },
+        });
+        startBus.emit('task.updated', {
+          orgId, userId, projectId: task.projectId, timestamp: new Date().toISOString(),
+          task: { taskId: task.taskId, title: task.title, status: newStatus, projectId: task.projectId, orgId: task.orgId, taskType: task.taskType },
+          changes: { status: { old: currentStatus, new: newStatus } },
+        });
+      }
+    }
+
     try {
       // Check if already aborted before executing
       if (abortController.signal.aborted) {
@@ -467,53 +503,60 @@ export function createHandler(prisma: PrismaClient) {
           where: { planId, status: 'completed' },
           select: { actionType: true, result: true },
         });
-        const hasReview = completedActions.some((a) => a.actionType === 'review_pr');
+
+        // Determine target status from completed actions
+        let targetStatus: string | null = null;
+        const hasMerge = completedActions.some((a) => a.actionType === 'merge_pr');
         const hasFixReview = completedActions.some((a) => a.actionType === 'fix_review');
 
-        if (hasReview || hasFixReview) {
-          // Determine target status: done if review approved or fix_review handled it
-          let targetStatus = 'in_review';
-
-          // If fix_review ran, the fixes are committed — transition to done
-          if (hasFixReview) {
-            targetStatus = 'done';
-          } else {
-            // Check if the review was approved
-            const reviewAction = completedActions.find((a) => a.actionType === 'review_pr');
-            if (reviewAction?.result) {
-              try {
-                const reviewResult = JSON.parse(reviewAction.result) as Record<string, unknown>;
-                if (reviewResult.approved || (reviewResult.data as Record<string, unknown> | undefined)?.approved) {
-                  targetStatus = 'done';
-                }
-              } catch {
-                // ignore parse errors — default to in_review
-              }
+        if (hasMerge) {
+          // PR was merged — task is done
+          targetStatus = 'done';
+        } else if (hasFixReview) {
+          // Fix review ran (fixes committed) but no merge — done
+          targetStatus = 'done';
+        } else {
+          // Check if review was approved
+          const reviewAction = completedActions.find((a) => a.actionType === 'review_pr');
+          if (reviewAction?.result) {
+            try {
+              const reviewResult = JSON.parse(reviewAction.result) as Record<string, unknown>;
+              const approved = reviewResult.approved || (reviewResult.data as Record<string, unknown> | undefined)?.approved;
+              targetStatus = approved ? 'done' : 'in_progress';
+            } catch {
+              targetStatus = 'in_progress';
             }
           }
+        }
 
-          const previousStatus = task.status;
-          const updatedTask = await prisma.task.update({
-            where: { taskId: task.taskId },
-            data: { status: targetStatus },
-          });
-          bus.emit('task.updated', {
-            orgId,
-            userId,
-            projectId: task.projectId,
-            timestamp: new Date().toISOString(),
-            task: {
-              taskId: updatedTask.taskId,
-              title: updatedTask.title,
-              status: updatedTask.status,
-              projectId: updatedTask.projectId,
-              orgId: updatedTask.orgId,
-              taskType: updatedTask.taskType,
-            },
-            changes: {
-              status: { old: previousStatus, new: targetStatus },
-            },
-          });
+        if (targetStatus) {
+          // Re-read current task status to get the latest value
+          const currentTask = await prisma.task.findUnique({ where: { taskId: task.taskId }, select: { status: true } });
+          const previousStatus = currentTask?.status ?? task.status;
+
+          if (previousStatus !== targetStatus) {
+            const updatedTask = await prisma.task.update({
+              where: { taskId: task.taskId },
+              data: { status: targetStatus, sprintColumn: STATUS_TO_COLUMN[targetStatus] ?? undefined },
+            });
+            bus.emit('task.updated', {
+              orgId,
+              userId,
+              projectId: task.projectId,
+              timestamp: new Date().toISOString(),
+              task: {
+                taskId: updatedTask.taskId,
+                title: updatedTask.title,
+                status: updatedTask.status,
+                projectId: updatedTask.projectId,
+                orgId: updatedTask.orgId,
+                taskType: updatedTask.taskType,
+              },
+              changes: {
+                status: { old: previousStatus, new: targetStatus },
+              },
+            });
+          }
         }
 
         // Generate cross-task completion summary
@@ -615,6 +658,37 @@ export function createHandler(prisma: PrismaClient) {
         planId,
         taskId: task.taskId,
         taskTitle: task.title,
+        lastFailedActionId: actionId,
+        lastFailedActionType: action.actionType,
+        errorMessage,
+      });
+    }
+
+    } catch (setupErr) {
+      // Setup failed (branch creation, auth, context loading) — mark plan as failed
+      // so the user sees a "Retry" button instead of a stalled plan.
+      const errorMessage = setupErr instanceof Error ? setupErr.message : 'Setup failed';
+      log.error({ err: setupErr, actionId, planId }, 'Action setup failed, marking plan as failed');
+
+      await prisma.taskAction.update({
+        where: { id: actionId },
+        data: { status: 'failed', errorMessage },
+      }).catch(() => { /* best-effort */ });
+
+      await prisma.taskActionPlan.update({
+        where: { id: planId },
+        data: { status: 'failed' },
+      }).catch(() => { /* best-effort */ });
+
+      const bus = getEventBus();
+      bus.emit('task.action_plan_failed', {
+        orgId,
+        userId,
+        projectId: action.plan.task.projectId,
+        timestamp: new Date().toISOString(),
+        planId,
+        taskId: action.plan.task.taskId,
+        taskTitle: action.plan.task.title,
         lastFailedActionId: actionId,
         lastFailedActionType: action.actionType,
         errorMessage,

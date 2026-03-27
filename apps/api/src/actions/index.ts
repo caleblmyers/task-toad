@@ -7,6 +7,7 @@ import { manualStepExecutor } from './executors/manualStep.js';
 import { monitorCIExecutor } from './executors/monitorCI.js';
 import { fixCIExecutor } from './executors/fixCI.js';
 import { fixReviewExecutor } from './executors/fixReview.js';
+import { mergePRExecutor } from './executors/mergePR.js';
 
 export function registerExecutors(): void {
   register(generateCodeExecutor);
@@ -17,6 +18,7 @@ export function registerExecutors(): void {
   register(monitorCIExecutor);
   register(fixCIExecutor);
   register(fixReviewExecutor);
+  register(mergePRExecutor);
 }
 
 export { get as getExecutor, availableTypes } from './registry.js';

@@ -132,7 +132,7 @@ export type CodeGeneration = z.infer<typeof CodeGenerationSchema>;
 
 export const CodeReviewCommentSchema = z.object({
   file: z.string().describe('file path'),
-  line: z.number().optional().describe('line number if applicable'),
+  line: z.number().nullable().optional().describe('line number if applicable'),
   severity: z.enum(['info', 'warning', 'error']).describe('severity level'),
   comment: z.string().describe('review comment'),
 });
@@ -312,7 +312,7 @@ export type TaskInsightItem = z.infer<typeof TaskInsightItemSchema>;
 export type TaskInsightsResponse = z.infer<typeof TaskInsightsResponseSchema>;
 
 export const ActionPlanItemSchema = z.object({
-  actionType: z.enum(['generate_code', 'create_pr', 'review_pr', 'write_docs', 'manual_step', 'monitor_ci', 'fix_ci', 'fix_review']),
+  actionType: z.enum(['generate_code', 'create_pr', 'review_pr', 'write_docs', 'manual_step', 'monitor_ci', 'fix_ci', 'fix_review', 'merge_pr']),
   label: z.string(),
   config: z.record(z.string(), z.unknown()),
   requiresApproval: z.boolean(),

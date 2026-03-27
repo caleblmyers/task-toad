@@ -1,7 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import type { GitHubRepoLink } from '../github/githubTypes.js';
 
-export type ActionType = 'generate_code' | 'create_pr' | 'review_pr' | 'write_docs' | 'manual_step' | 'monitor_ci' | 'fix_ci' | 'fix_review';
+export type ActionType = 'generate_code' | 'create_pr' | 'review_pr' | 'write_docs' | 'manual_step' | 'monitor_ci' | 'fix_ci' | 'fix_review' | 'merge_pr';
 
 export interface ActionContext {
   action: { id: string; actionType: string; config: string; label: string };

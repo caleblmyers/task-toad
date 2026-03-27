@@ -108,7 +108,7 @@ export async function getDefaultBranchOid(
     owner: repo.repositoryOwner,
     name: repo.repositoryName,
     ref: qualifiedRef,
-  });
+  }, repo.installationId);
 
   return data.repository.ref?.target.oid ?? null;
 }
@@ -120,13 +120,14 @@ async function getBranchOid(
   token: string,
   owner: string,
   name: string,
-  ref: string
+  ref: string,
+  installationId?: string,
 ): Promise<string> {
   const data = await githubRequest<GetBranchOidResponse>(token, GET_DEFAULT_BRANCH_OID, {
     owner,
     name,
     ref,
-  });
+  }, installationId);
 
   if (!data.repository.ref) {
     throw new Error(`Ref "${ref}" not found in ${owner}/${name}`);
@@ -165,7 +166,7 @@ export async function createBranch(
   const baseBranchName = `task-${taskId}-${slug}`;
   const qualifiedRef = `refs/heads/${repo.defaultBranch}`;
 
-  const baseOid = await getBranchOid(token, repo.repositoryOwner, repo.repositoryName, qualifiedRef);
+  const baseOid = await getBranchOid(token, repo.repositoryOwner, repo.repositoryName, qualifiedRef, repo.installationId);
 
   // Try creating with the base name, then retry with random suffix on conflict
   const candidates = [baseBranchName];
@@ -176,7 +177,7 @@ export async function createBranch(
         repositoryId: repo.repositoryId,
         name: `refs/heads/${branchName}`,
         oid: baseOid,
-      });
+      }, repo.installationId);
       logBranchCreation(repo.repositoryOwner, repo.repositoryName, branchName);
       return { branchName, baseOid };
     } catch (error) {
@@ -193,7 +194,8 @@ export async function createBranch(
           token,
           repo.repositoryOwner,
           repo.repositoryName,
-          `refs/heads/${branchName}`
+          `refs/heads/${branchName}`,
+          repo.installationId,
         );
         return { branchName, baseOid: existingOid };
       }
@@ -242,7 +244,7 @@ export async function commitFiles(
       message: { headline: input.message },
       fileChanges,
       expectedHeadOid: headOid,
-    });
+    }, repo.installationId);
 
     const { oid, url } = data.createCommitOnBranch.commit;
     logCommit(repo.repositoryOwner, repo.repositoryName, input.branch, oid);

@@ -2,7 +2,7 @@
  * Pull request creation via GitHub GraphQL API.
  */
 
-import { githubRequest } from './githubAppClient.js';
+import { githubRequest, githubRestRequest } from './githubAppClient.js';
 import { getInstallationToken } from './githubAppAuth.js';
 import type { CreatePullRequestInput, PullRequestResult, GitHubRepoLink } from './githubTypes.js';
 import { logPullRequest, logApiError } from './githubLogger.js';
@@ -16,18 +16,13 @@ export async function getPullRequestDiff(
   repo: string,
   prNumber: number
 ): Promise<string> {
-  const token = await getInstallationToken(installationId);
-
-  const response = await fetch(
-    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/vnd.github.v3.diff',
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-    }
-  );
+  const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`;
+  const response = await githubRestRequest(installationId, url, {
+    headers: {
+      Accept: 'application/vnd.github.v3.diff',
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+  });
 
   if (!response.ok) {
     const body = await response.text();
@@ -56,18 +51,13 @@ export async function getPullRequestComments(
   repo: string,
   prNumber: number
 ): Promise<PRComment[]> {
-  const token = await getInstallationToken(installationId);
-
-  const response = await fetch(
-    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/comments`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-    }
-  );
+  const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/comments`;
+  const response = await githubRestRequest(installationId, url, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+  });
 
   if (!response.ok) {
     logApiError('getPullRequestComments', new Error(`HTTP ${response.status}`), {
@@ -96,18 +86,13 @@ export async function getPullRequestFiles(
   repo: string,
   prNumber: number
 ): Promise<Array<{ path: string; content: string }>> {
-  const token = await getInstallationToken(installationId);
-
-  const response = await fetch(
-    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/files`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-    }
-  );
+  const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/files`;
+  const response = await githubRestRequest(installationId, url, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+  });
 
   if (!response.ok) {
     logApiError('getPullRequestFiles', new Error(`HTTP ${response.status}`), {
@@ -125,9 +110,8 @@ export async function getPullRequestFiles(
     if (file.status === 'removed') continue;
 
     try {
-      const contentResponse = await fetch(file.contents_url, {
+      const contentResponse = await githubRestRequest(installationId, file.contents_url, {
         headers: {
-          Authorization: `Bearer ${token}`,
           Accept: 'application/vnd.github+json',
           'X-GitHub-Api-Version': '2022-11-28',
         },
@@ -162,21 +146,16 @@ export async function postPullRequestReview(
   body: string,
   event: 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES' = 'COMMENT'
 ): Promise<void> {
-  const token = await getInstallationToken(installationId);
-
-  const response = await fetch(
-    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/reviews`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/vnd.github+json',
-        'Content-Type': 'application/json',
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-      body: JSON.stringify({ body, event }),
-    }
-  );
+  const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/reviews`;
+  const response = await githubRestRequest(installationId, url, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+    body: JSON.stringify({ body, event }),
+  });
 
   if (!response.ok) {
     const text = await response.text();
@@ -185,6 +164,59 @@ export async function postPullRequestReview(
       prNumber,
     });
     throw new Error(`Failed to post PR review: ${response.status}`);
+  }
+}
+
+const MERGE_PULL_REQUEST = `
+  mutation MergePullRequest($pullRequestId: ID!, $mergeMethod: PullRequestMergeMethod) {
+    mergePullRequest(input: {
+      pullRequestId: $pullRequestId,
+      mergeMethod: $mergeMethod
+    }) {
+      pullRequest {
+        id
+        number
+        url
+        merged
+        state
+      }
+    }
+  }
+`;
+
+interface MergePullRequestResponse {
+  mergePullRequest: {
+    pullRequest: {
+      id: string;
+      number: number;
+      url: string;
+      merged: boolean;
+      state: string;
+    };
+  };
+}
+
+/**
+ * Merge a pull request on GitHub via GraphQL.
+ */
+export async function mergePullRequest(
+  installationId: string,
+  pullRequestId: string,
+  mergeMethod: 'SQUASH' | 'MERGE' | 'REBASE' = 'SQUASH',
+): Promise<{ merged: boolean; url: string; number: number }> {
+  const token = await getInstallationToken(installationId);
+
+  try {
+    const data = await githubRequest<MergePullRequestResponse>(token, MERGE_PULL_REQUEST, {
+      pullRequestId,
+      mergeMethod,
+    }, installationId);
+
+    const pr = data.mergePullRequest.pullRequest;
+    return { merged: pr.merged, url: pr.url, number: pr.number };
+  } catch (error) {
+    logApiError('mergePullRequest', error, { pullRequestId, mergeMethod });
+    throw error;
   }
 }
 
@@ -240,7 +272,7 @@ export async function createPullRequest(
       headRefName: input.headRefName,
       title: input.title,
       body: input.body,
-    });
+    }, repo.installationId);
 
     const pr = data.createPullRequest.pullRequest;
     logPullRequest(repo.repositoryOwner, repo.repositoryName, pr.number, pr.url);

@@ -60,7 +60,8 @@ export async function createGitHubIssue(
     `query($owner: String!, $name: String!) {
       repository(owner: $owner, name: $name) { id }
     }`,
-    { owner, name: repo }
+    { owner, name: repo },
+    installationId,
   );
 
   const result = await githubRequest<CreateIssueResponse>(
@@ -70,7 +71,8 @@ export async function createGitHubIssue(
         issue { id number url }
       }
     }`,
-    { input: { repositoryId: repoData.repository.id, title, body: body ?? '' } }
+    { input: { repositoryId: repoData.repository.id, title, body: body ?? '' } },
+    installationId,
   );
 
   return {
@@ -95,7 +97,8 @@ export async function updateGitHubIssueState(
       `mutation($input: UpdateIssueInput!) {
         updateIssue(input: $input) { issue { id state } }
       }`,
-      { input: { id: issueNodeId, state } }
+      { input: { id: issueNodeId, state } },
+      installationId,
     );
   } catch (error) {
     logApiError('updateGitHubIssueState', error, { issueNodeId, state });
@@ -121,7 +124,8 @@ export async function getGitHubIssue(
         }
       }
     }`,
-    { id: issueNodeId }
+    { id: issueNodeId },
+    installationId,
   );
   return {
     state: result.node.state,
@@ -151,7 +155,8 @@ export async function getGitHubIssueByNumber(
         }
       }
     }`,
-    { owner, name: repo, number: issueNumber }
+    { owner, name: repo, number: issueNumber },
+    installationId,
   );
   const issue = result.repository.issue;
   return {

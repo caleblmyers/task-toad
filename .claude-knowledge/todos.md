@@ -1,8 +1,8 @@
 # TaskToad — Remaining Work & Tracking
 
-70 swarm waves completed. 356 tests. 0 lint warnings. **Autopilot for software projects — all three pillars + AI assistant implemented.**
+70 swarm waves completed + pipeline hardening session. 356 tests. 0 lint warnings. **Autopilot for software projects — all three pillars + AI assistant implemented.**
 
-**Actionable AI assistant complete (Wave 70).** projectChat suggests actions with Apply buttons, What's Next? prioritizes work, dependency inference in planner. See `autopilot-pillars.md` for the full spec.
+**Pipeline hardening (post-Wave 70).** SSE real-time fix, merge_pr executor, 401 auto-reauth, fix_review overhaul, task status transitions with board sync, stall recovery UI. See changelog for details.
 
 ---
 
@@ -48,39 +48,21 @@ All 5 implementation tasks completed:
 - [x] **Add concurrency guard for branch creation** — optimistic re-read of plan before creating branch *(Wave 65)*
 
 ### High Priority (P1)
-- [x] **Post AI review to GitHub PR** — review_pr executor now posts as APPROVE/REQUEST_CHANGES via GitHub REST API *(hotfix)*
-- [x] **SSE: task.action_started event** — UI now updates when actions begin executing, not just when they complete *(hotfix)*
-- [x] **Approve & Continue UI refresh** — refetch action plan after approve so UI reflects executing state *(hotfix)*
-- [x] **fix_review executor** — auto-fixes small review issues, creates backlog tasks for larger ones. Planner enforces generate_code → create_pr → review_pr → fix_review pipeline. Validation in commitActionPlan. *(Wave 65)*
 - [ ] **Add integration test suite for branch flow** — branch creation, sequential commits, commit failure handling, review outcomes (~5 tests, mock GitHub API)
-- [x] **Implement OAuth token routing for personal repos** — loads user OAuth token for personal accounts, passes through ActionContext to createBranch and commitFiles *(Wave 65)*
 
 ### Wave 68 Follow-Ups (Sessions & Orchestration)
 - [ ] **Session progress: track token usage and cost** — session progress `tokensUsed` and `estimatedCostCents` are initialized to 0 but never updated by the orchestrator. Wire AI usage tracking from action plan execution into session progress.
 - [ ] **Session time limit enforcement** — `timeLimitMinutes` is in SessionConfig but not checked by the orchestrator. Add a time limit check alongside budget/scope checks.
 - [ ] **Session resume (start paused session)** — `startSession` allows re-starting paused sessions, but doesn't un-set `autoComplete` on tasks if they were removed from the session. Consider edge cases.
 - [ ] **replanFailedTask: extracting shared plan creation logic** — replanFailedTask duplicates the plan creation + ID remapping pattern from commitActionPlan. Consider extracting into a shared helper to reduce drift.
-- [x] **Session progress race condition** — fixed: atomic SQL jsonb_set increments in orchestratorListener *(Wave 69)*
 - [ ] **Test coverage for sessions** — no unit tests for: session CRUD resolvers, session-aware orchestration, budget/scope limit checks, failure policy handling. Add tests.
-- [x] **SessionDialog error handling** — fixed: inline error display in SessionDialog *(Wave 69)*
-- [x] **Webhook event userId** — fixed: resolves org admin userId instead of 'system' *(Wave 69)*
 
 ### Wave 67 Follow-Ups (Context Threading)
-- [x] **Task status → done transition after review** — fixed: auto-transitions to done when review approved or fix_review completes *(Wave 69)*
-- [x] **writeDocs/fixReview: add upstreamTaskContext and failureContext** — fixed: all three context fields wired to writeDocs and fixReview *(Wave 69)*
 - [ ] **Test coverage for context threading** — no unit tests for: previousStepContext building, upstream summary loading (raw SQL query in actionExecutor), failure context round-trip, completion summary generation. Add tests for each.
-- [x] **projectChat: handle missing completionSummary gracefully** — fixed: proper Prisma select with completionSummary field *(Wave 69)*
 - [ ] **Rate limiting for completionSummary generation** — each plan completion triggers an AI call for summary generation. Consider caching or skipping if budget is exhausted.
 
-### Wave 66 Follow-Ups (Onboarding Redesign)
-- [x] **Clean up redundant type cast in scaffoldProject resolver** — fixed: uses args.config directly *(Wave 69)*
-- [x] **Wire analyzeIntent to bootstrapProjectFromRepo** — fixed: saved as KB entry before bootstrap *(Wave 69)*
-- [x] **Remove dead backend mutations** — fixed: onboarding mutations removed from GraphQL schema and resolvers *(Wave 69)*
-
 ### Wave 65 Follow-Ups
-- [x] **fix_review executor: pass userGitHubToken** — fixed: added to commitFiles call *(Wave 69)*
-- [ ] **fix_review: test coverage** — no unit tests for fixReview executor. Should test: approved review skip, AI fix generation, deferred issue → backlog task creation, duplicate task detection.
-- [x] **Pre-existing lint warning** — fixed: extracted deps from `d` before useEffect in ProjectDetail.tsx *(Wave 69)*
+- [ ] **fix_review: test coverage** — no unit tests for fixReview executor. Should test: approved review skip, AI fix generation with source code context, deferred issue → backlog task creation, duplicate task detection.
 
 ### Medium Priority (P2)
 - [ ] **Branch cleanup strategy** — decide: auto-delete failed/cancelled plan branches, tag with prefix, or retention policy
@@ -88,7 +70,7 @@ All 5 implementation tasks completed:
 - [ ] **Audit executor config Zod validation** — verify manual_step and monitor_ci have schemas (others are done)
 
 ### Manual Testing
-- [ ] End-to-end: new project → scaffold → task → auto-complete → branch created → PR opened → review posted
+- [x] End-to-end: new project → scaffold → task → auto-complete → branch created → PR opened → review posted → fix review → merge *(tested 2026-03-27)*
 - [ ] Verify concurrent plan execution doesn't corrupt branch state
 - [ ] Verify failed plan leaves branch in recoverable state
 
@@ -173,5 +155,6 @@ All 5 implementation tasks completed:
 | 68 | 2026-03-26 | Phase 3: orchestration — Session model, GitHub→orchestrator bridge, re-planning on failure, session-aware orchestrator, session UI |
 | 69 | 2026-03-26 | Follow-up cleanup: in_review→done transition, session race condition, context wiring, dead mutations, lint fix, type casts, analyzeIntent |
 | 70 | 2026-03-27 | Actionable AI: projectChat with suggestedActions + Apply, whatNext query, What's Next? panel, dependency inference in planner |
+| — | 2026-03-27 | Pipeline hardening: SSE real-time fix, merge_pr executor, 401 auto-reauth, fix_review overhaul, task status+column transitions, stall recovery UI |
 
 Full wave details in `changelog.md`.

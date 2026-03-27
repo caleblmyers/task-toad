@@ -10,7 +10,7 @@ const STATUS_ICONS: Record<string, string> = {
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'text-slate-400',
-  executing: 'text-blue-500 animate-pulse',
+  executing: 'text-indigo-600 animate-pulse',
   completed: 'text-green-600',
   failed: 'text-red-500',
   skipped: 'text-slate-300',
@@ -20,8 +20,24 @@ const ACTION_TYPE_LABELS: Record<string, string> = {
   generate_code: 'Generate Code',
   create_pr: 'Create PR',
   review_pr: 'AI Review',
+  fix_review: 'Fix Review',
+  merge_pr: 'Merge PR',
+  monitor_ci: 'Monitor CI',
+  fix_ci: 'Fix CI',
   write_docs: 'Write Docs',
   manual_step: 'Manual Step',
+};
+
+const EXECUTING_MESSAGES: Record<string, string> = {
+  generate_code: 'Writing code and committing to branch\u2026',
+  create_pr: 'Opening pull request on GitHub\u2026',
+  review_pr: 'AI is reviewing the code changes\u2026',
+  fix_review: 'Applying fixes from review feedback\u2026',
+  merge_pr: 'Merging pull request\u2026',
+  monitor_ci: 'Waiting for CI checks to complete\u2026',
+  fix_ci: 'Analyzing CI failures and applying fixes\u2026',
+  write_docs: 'Generating documentation\u2026',
+  manual_step: 'Waiting for manual completion\u2026',
 };
 
 interface ReviewComment {
@@ -126,7 +142,7 @@ function ActionItem({ action, onCompleteManual, onSkip, onRetry }: {
   return (
     <div className={`flex items-start gap-3 p-3 rounded-lg border ${
       isAwaitingApproval ? 'border-amber-300 bg-amber-50' :
-      action.status === 'executing' ? 'border-blue-200 bg-blue-50' :
+      action.status === 'executing' ? 'border-indigo-300 bg-indigo-50' :
       action.status === 'failed' ? 'border-red-200 bg-red-50' :
       action.status === 'completed' ? 'border-green-200 bg-green-50' :
       'border-slate-200 bg-white'
@@ -136,11 +152,16 @@ function ActionItem({ action, onCompleteManual, onSkip, onRetry }: {
       </span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-slate-800 truncate">{action.label}</p>
-          <span className="text-xs text-slate-400 flex-shrink-0">
+          <p className={`text-sm font-medium truncate ${action.status === 'executing' ? 'text-indigo-900' : 'text-slate-800'}`}>{action.label}</p>
+          <span className={`text-xs flex-shrink-0 ${action.status === 'executing' ? 'text-indigo-500' : 'text-slate-400'}`}>
             {ACTION_TYPE_LABELS[action.actionType] ?? action.actionType}
           </span>
         </div>
+        {action.status === 'executing' && (
+          <p className="text-xs text-indigo-600 mt-1 animate-pulse">
+            {EXECUTING_MESSAGES[action.actionType] ?? 'Processing\u2026'}
+          </p>
+        )}
         {action.errorMessage && (
           <p className="text-xs text-red-600 mt-1">{action.errorMessage}</p>
         )}
@@ -193,10 +214,14 @@ export default function ActionProgressPanel({ plan, onCompleteManual, onSkip, on
   const isActive = plan.status === 'executing' || plan.status === 'approved';
   const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
-  // Detect "waiting for approval" — plan is executing, no action is currently running, and next pending action requires approval
+  // Detect plan states that need user action
   const hasRunningAction = plan.actions.some((a) => a.status === 'executing');
   const nextPending = plan.actions.find((a) => a.status === 'pending');
   const waitingForApproval = plan.status === 'executing' && !hasRunningAction && nextPending?.requiresApproval;
+  // Stalled: plan says executing but no action is running and next action doesn't need approval
+  const isStalled = plan.status === 'executing' && !hasRunningAction && nextPending && !nextPending.requiresApproval;
+  // Failed plan with pending actions — can be retried
+  const canRetryPlan = plan.status === 'failed' && plan.actions.some((a) => a.status === 'pending' || a.status === 'failed');
 
   return (
     <div className="mb-4" aria-live="polite">
@@ -245,6 +270,34 @@ export default function ActionProgressPanel({ plan, onCompleteManual, onSkip, on
             className="text-xs px-3 py-1.5 bg-amber-500 text-white rounded hover:bg-amber-600 font-medium"
           >
             Approve &amp; Continue
+          </button>
+        </div>
+      )}
+
+      {isStalled && onExecute && (
+        <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between">
+          <p className="text-sm text-red-800">
+            Plan stalled — no action is running.
+          </p>
+          <button
+            onClick={() => onExecute(plan.id)}
+            className="text-xs px-3 py-1.5 bg-red-500 text-white rounded hover:bg-red-600 font-medium"
+          >
+            Resume
+          </button>
+        </div>
+      )}
+
+      {canRetryPlan && onExecute && (
+        <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between">
+          <p className="text-sm text-red-800">
+            Plan failed — retry to continue from where it left off.
+          </p>
+          <button
+            onClick={() => onExecute(plan.id)}
+            className="text-xs px-3 py-1.5 bg-red-500 text-white rounded hover:bg-red-600 font-medium"
+          >
+            Retry Plan
           </button>
         </div>
       )}

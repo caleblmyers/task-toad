@@ -92,8 +92,9 @@ pnpm --filter web lint
 
 Tasks with instructions can be auto-completed via the **Auto-Complete** button, which generates an action plan and executes it step-by-step via a job queue.
 
-- **Action types:** `generate_code`, `create_pr`, `review_pr`, `write_docs`, `manual_step`
-- **Pipeline flow (GitHub-connected projects):** `generate_code` → `create_pr` → `review_pr` → task status transitions to `in_review`
+- **Action types:** `generate_code`, `create_pr`, `review_pr`, `fix_review`, `merge_pr`, `write_docs`, `manual_step`, `monitor_ci`, `fix_ci`
+- **Pipeline flow (GitHub-connected projects):** `generate_code` → `create_pr` → `review_pr` → `fix_review` → `merge_pr`
+- **Task status transitions:** plan starts → `in_progress`, review starts → `in_review`, plan completes with merge → `done`. All transitions also update `sprintColumn` to keep board in sync.
 - **Executors:** `apps/api/src/actions/executors/` — one file per action type
 - **Registry:** `apps/api/src/actions/registry.ts` — maps action types to executors
 - **Job executor:** `apps/api/src/infrastructure/jobs/actionExecutor.ts` — processes actions sequentially, handles budget checks, emits SSE events
@@ -105,7 +106,8 @@ Tasks with instructions can be auto-completed via the **Auto-Complete** button, 
 ### Real-Time
 
 - **SSE:** Server-Sent Events via fetch-based client (not native `EventSource`) for real-time notifications and action plan progress. API: `apps/api/src/utils/sseManager.ts`. Client: `apps/web/src/hooks/useEventSource.ts`.
-- **SSE events:** `task.created`, `task.updated`, `tasks.bulk_updated`, `task.action_completed`, `task.action_plan_completed`, `sprint.created`, `sprint.updated`, `sprint.closed`
+- **SSE events:** `task.created`, `task.updated`, `tasks.bulk_updated`, `task.action_started`, `task.action_completed`, `task.action_plan_completed`, `task.action_plan_failed`, `task.blocked`, `task.unblocked`, `sprint.created`, `sprint.updated`, `sprint.closed`, `notification.created`, `approval.requested`, `approval.decided`
+- **SSE note:** Compression middleware must skip the SSE endpoint (`/events`, `/api/events`) — it buffers `res.write()` and breaks real-time delivery. All SSE writes call `res.flush()` after writing.
 
 ### Multiple Assignees
 
@@ -181,7 +183,7 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 - `apps/api/src/utils/sseManager.ts` — Server-Sent Events manager for real-time notifications
 - `apps/api/src/ai/knowledgeRetrieval.ts` — `retrieveRelevantKnowledge()` — AI-based KB entry selection for task context
 - `apps/api/prisma/schema/` — Domain-split Prisma schema files (auth, org, project, projectrole, task, sprint, comment, activity, notification, report, github, aiusage, slack, webhook, knowledgebase)
-- `apps/api/src/actions/` — Action plan executor registry and per-type executors (generateCode, createPR, reviewPR, writeDocs, manualStep)
+- `apps/api/src/actions/` — Action plan executor registry and per-type executors (generateCode, createPR, reviewPR, fixReview, mergePR, writeDocs, manualStep, monitorCI, fixCI)
 - `apps/api/src/infrastructure/jobs/actionExecutor.ts` — Job handler that processes action plan steps sequentially
 - `apps/api/src/infrastructure/eventbus/` — Typed domain event bus (task, sprint, action events)
 - `apps/api/src/routes/export.ts` — REST endpoints for project/activity CSV/JSON export
@@ -209,6 +211,11 @@ All packages extend `tsconfig.base.json`. Strict mode + `noUnusedLocals` + `noUn
 - `apps/web/.env` — `VITE_API_URL` (set to `/api` in dev; Vite proxy handles routing)
 
 Copy from `.env.example` and fill in values.
+
+## Interaction Style
+
+- **Use AskUserQuestion tool** when clarifying ambiguous requests or gathering preferences. Ask one focused question at a time — don't present numbered lists of options as plain text. The tool provides a proper interactive UI.
+- **Be conversational** — ask follow-up questions naturally, not as menus.
 
 ## Notes
 
