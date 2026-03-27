@@ -4,6 +4,50 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-27 (Wave 70 — actionable AI assistant)
+
+### Wave 70: Actionable AI Assistant + Dependency Inference (3 workers, 5 tasks)
+
+**Worker 1 — task-001: Actionable projectChat backend:**
+- Extended `ProjectChatResponseSchema` with `suggestedActions` array (ChatActionSchema)
+- Action types: `create_task`, `update_task`, `add_dependency`, `update_status`
+- Updated projectChat prompt to instruct AI to suggest actions when warranted
+- New `applyChatAction` mutation — executes the suggested action (creates tasks, updates status, adds deps)
+- GraphQL types: `ChatAction`, `ChatActionInput`, `ApplyChatActionResult`
+
+**Worker 1 — task-003: whatNext query:**
+- New `whatNext` AI query — analyzes project state, returns prioritized suggestions
+- Each suggestion has title, reason, priority, and a concrete ChatAction for one-click apply
+- Suggestions prioritize unblocked tasks and dependency-unblocking work
+- `WhatNextResponseSchema` with Zod validation
+
+**Worker 2 — task-002: Chat Apply buttons frontend:**
+- ProjectChatPanel renders suggested actions as buttons below each assistant message
+- Apply button calls `applyChatAction` mutation, shows success/failure toast
+- Applied actions disabled with green "Applied" state
+- Task references now clickable (navigate to task detail)
+
+**Worker 3 — task-004: What's Next? panel:**
+- New WhatNextPanel component — fetches whatNext query, displays suggestion cards
+- Each card: title, reason, priority badge, Apply button
+- "What's Next?" button added to project toolbar AI dropdown
+- Task list refreshes after applying suggestions
+
+**Worker 3 — task-005: Dependency inference in planner:**
+- Added `reason` field to hierarchical plan dependency schema
+- Prompt updated to instruct AI to explain why each dependency exists
+- Existing resolver already handled dependency creation with cycle detection
+
+**Process:** task-005 had 2 rejections — task description incorrectly claimed dependencies weren't implemented (they were). Worker eventually found the scope was just adding the `reason` field. task-004 required modifying ProjectToolbar.tsx (not in file list). All other tasks merged on first review.
+
+### Open follow-ups
+- Chat actions: input validation for applyChatAction (verify taskId belongs to project)
+- Chat actions: activity log entries when tasks created/updated via chat
+- WhatNextPanel: refresh button after applying actions
+- ProjectChatPanel: wire onSelectTask prop from ProjectDetail
+
+---
+
 ## 2026-03-26 (Wave 69 — follow-up cleanup)
 
 ### Wave 69: Follow-Up Cleanup (3 workers, 3 tasks)
@@ -171,54 +215,6 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-03-26 (Wave 65 — Phase 1 follow-ups)
-
-### Wave 65: Phase 1 Follow-ups — Pipeline Robustness + fix_review (3 workers, 5 tasks)
-
-**Hotfixes committed before wave (on main):**
-- Added `task.action_started` SSE event — UI updates when actions begin executing
-- Added `taskTitle` to `task.action_plan_completed` — toast notifications now show task name
-- `review_pr` executor posts review to GitHub PR as APPROVE/REQUEST_CHANGES via REST API
-- Added `postPullRequestReview()` to githubPullRequestService.ts
-- `useAIGeneration` refetches action plan 1.5s after Approve & Continue for immediate UI feedback
-
-**Worker 1 — task-001: Pipeline robustness:**
-- Wrapped `commitFiles()` calls in try/catch in generateCode.ts and writeDocs.ts — returns structured failure with error message instead of letting exceptions corrupt plan state
-- Added concurrency guard in actionExecutor.ts — re-reads plan before branch creation to prevent duplicate branches from double-fired jobs
-
-**Worker 1 — task-002: OAuth token routing:**
-- Added `tokenOverride` parameter to `createBranch()` in githubCommitService.ts
-- Added `userGitHubToken` field to ActionContext
-- actionExecutor loads user's encrypted GitHub OAuth token for personal account installations
-- Passes token through to `createBranch()` and `commitFiles()` calls
-- generateCode and writeDocs executors pass `ctx.userGitHubToken` to commitFiles
-
-**Worker 2 — task-003: fix_review executor:**
-- New `fixReview.ts` executor — processes AI review feedback
-- Approved reviews: skipped (no-op with success)
-- Requested changes: AI classifies issues as small fixes vs deferred
-- Small fixes: generates code changes, commits to branch
-- Large issues: creates backlog tasks with duplicate detection (fuzzy title match)
-- Registered in actions/index.ts, added `fix_review` to ActionPlanItemSchema
-- Planner prompt updated: full pipeline is now `generate_code → create_pr → review_pr → fix_review`
-
-**Worker 3 — task-004: Quick hits:**
-- Updated "open source mode" comments in permissions.ts to "free plan"
-- Created Modal.test.tsx with 5 tests covering closeOnOverlayClick behavior
-- Fixed act() warnings in ProjectSetupWizard.test.tsx
-
-**Worker 3 — task-005: commitActionPlan validation:**
-- Extended existing GitHub plan validation to require `fix_review` after `review_pr`
-
-**Process:** All 5 tasks merged on first review — zero rejections. Blocker: uncommitted hotfixes on main delayed first merge (committed mid-wave).
-
-### Open follow-ups
-- fix_review executor doesn't pass `ctx.userGitHubToken` to commitFiles (one-line fix, task-003 written before task-002 merged)
-- fix_review needs test coverage (approved skip, AI fix gen, deferred → backlog, duplicate detection)
-- Pre-existing lint warning: ProjectDetail.tsx:106 missing useEffect dependency 'd'
-
----
-
 ## 2026-03-26 (Wave 64 — Phase 1: branch-based pipeline)
 
 ### Wave 64: Phase 1 Pipeline Rewrite — Branch-Based Code Generation (3 workers, 5 tasks)
@@ -332,6 +328,7 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ## Older Entries (one-line summaries)
 
+- **2026-03-26** — Wave 65: Phase 1 follow-ups — commitFiles error handling, concurrency guard, OAuth routing, fix_review executor, Modal tests, act() fix, plan validation.
 - **2026-03-23** — Wave 56: Bug fixes from production testing — priority persistence, workflow restriction model, saved view filters, release burndown, silent auth failures, + 3 hotfixes.
 - **2026-03-25** — Wave 63: Quick hits — closed-source cleanup (LICENSE, CONTRIBUTING, TASKTOAD_LICENSE, Docker), modal dismiss fix, session security fix.
 - **2026-03-25** — Wave 62: Deferred refactors — useEditableField (R2), tab extraction (R8), picker consolidation (R9), metrics calc (R6), queries split (R11), chart utilities (R12).

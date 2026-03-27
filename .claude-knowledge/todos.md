@@ -1,8 +1,8 @@
 # TaskToad — Remaining Work & Tracking
 
-69 swarm waves completed. 356 tests. 0 lint warnings. **Strategic pivot to closed-source SaaS autopilot — all three pillars implemented.**
+70 swarm waves completed. 356 tests. 0 lint warnings. **Autopilot for software projects — all three pillars + AI assistant implemented.**
 
-**Follow-up cleanup complete (Wave 69).** Pipeline hardened: in_review→done transition, session race condition fixed, context wired to all executors, dead code removed. Ready for manual e2e test. See `autopilot-pillars.md` for the full spec.
+**Actionable AI assistant complete (Wave 70).** projectChat suggests actions with Apply buttons, What's Next? prioritizes work, dependency inference in planner. See `autopilot-pillars.md` for the full spec.
 
 ---
 
@@ -102,6 +102,10 @@ All 5 implementation tasks completed:
 - **R3: AI feature registry** — consolidate 40+ wrapper functions in aiService.ts. Do if touching file.
 
 ### UX Improvements
+- [ ] Chat actions: add input validation for applyChatAction (verify taskId belongs to project, validate required fields per action type)
+- [ ] Chat actions: add activity log entries when tasks are created/updated via chat actions
+- [ ] WhatNextPanel: add refresh button to re-fetch suggestions after applying actions
+- [ ] ProjectChatPanel: wire `onSelectTask` prop from ProjectDetail (currently optional, not passed)
 - [ ] Long-running AI operations need better loading states (descriptive, not just spinner)
 - [ ] Network latency during project init — show per-step progress
 - [ ] Sprints should be ordered; first sprint should auto-activate
@@ -168,5 +172,6 @@ All 5 implementation tasks completed:
 | 67 | 2026-03-26 | Phase 2: context threading — execution result forwarding, completion summaries, upstream context wiring, failure propagation, projectChat KB+deps |
 | 68 | 2026-03-26 | Phase 3: orchestration — Session model, GitHub→orchestrator bridge, re-planning on failure, session-aware orchestrator, session UI |
 | 69 | 2026-03-26 | Follow-up cleanup: in_review→done transition, session race condition, context wiring, dead mutations, lint fix, type casts, analyzeIntent |
+| 70 | 2026-03-27 | Actionable AI: projectChat with suggestedActions + Apply, whatNext query, What's Next? panel, dependency inference in planner |
 
 Full wave details in `changelog.md`.
