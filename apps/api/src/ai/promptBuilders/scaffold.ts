@@ -36,7 +36,7 @@ export function buildScaffoldPrompt(data: {
 
   return {
     systemPrompt: SYSTEM_JSON,
-    userPrompt: `Generate a complete project scaffold for the following stack configuration.
+    userPrompt: `Generate a project scaffold for the following stack configuration. The scaffold must produce a working app that starts with a single install + dev command.
 
 Stack:
 ${stackDescription}
@@ -44,20 +44,25 @@ ${stackDescription}
 Project name: ${projectBlock}
 Project description: ${descBlock}${optionsBlock}
 
-Create the ABSOLUTE MINIMUM scaffold to get a running "hello world" — 4 to 7 files MAXIMUM. Include ONLY:
-- Dependency file (package.json, requirements.txt, etc.)
-- Single entry point file (under 30 lines)
-- .gitignore (one line per entry, common ignores only)
-- CLAUDE.md (required — see below)
+**Requirements:**
+1. The scaffold must be a COMPLETE, BUILDABLE project. After \`npm install && npm run dev\` (or equivalent), the dev server must start without errors.
+2. Include every config file the framework requires to run — tsconfig.json, postcss.config.js/mjs, next.config.js/ts, tailwind.config.js/ts, etc. Do not skip config files.
+3. Include a minimal but functional entry point — not just "Coming Soon" text, but a basic working page that reflects the project's purpose (e.g., a layout with navigation placeholder, a simple data display, or an API health endpoint).
+4. Keep it lean — typically 8-15 files. No test files, CI configs, Docker files, or deployment configs.
 
-ALWAYS include a CLAUDE.md file at the repo root with:
-- Project name and one-line description
-- Development commands (install, dev, test, build)
-- Tech stack and key dependencies
-- Directory structure overview
-This file helps AI coding tools understand the project. Keep it concise (under 30 lines).
+**Required files:**
+- Dependency file (package.json, requirements.txt, etc.) with all dependencies needed to run
+- All framework config files (tsconfig, postcss, next.config, tailwind.config, etc.)
+- .gitignore with standard ignores for the framework
+- Entry point / main page with basic working UI
+- CLAUDE.md at repo root with:
+  - Project name and one-line description
+  - Development commands (install, dev, test, build)
+  - Tech stack and key dependencies
+  - Directory structure overview
+  Keep CLAUDE.md concise (under 30 lines).
 
-Do NOT include: README, test files, CI configs, Docker files, linter configs, tsconfig, or any config beyond the dependency file. Every file content must be under 40 lines.
+**Do NOT include:** README, test files, CI/CD configs, Docker files, deployment configs, .env files with secrets.
 
 Return JSON:
 {
