@@ -326,8 +326,8 @@ Action type guide:
 
 Rules:
 1. Order actions logically — code gen before PR creation, setup before implementation.
-2. Use manual_step for anything that can't be automated (account setup, API key configuration, manual testing, deployment).
-3. NEVER use manual_step for project initialization. Tools like create-next-app, create-vite, npm init all have non-interactive modes. Use generate_code to create the project structure directly as files — generate the equivalent boilerplate, don't tell the user to run a CLI command.
+2. Use manual_step ONLY for actions that truly cannot be automated (e.g., obtaining third-party API keys). NEVER include deployment, hosting, CI/CD setup, or infrastructure provisioning steps — TaskToad generates code and creates PRs only. The user manages their own deployment.
+3. NEVER use manual_step for project initialization or deployment. No create-next-app, no Vercel, no Railway, no Docker, no AWS. Use generate_code to create project structure directly as files.
 4. Set requiresApproval to true for actions that modify external systems (create_pr) and false for safe actions (generate_code, write_docs, review_pr, monitor_ci, fix_ci).
 5. Keep the plan focused — typically 2–6 actions. Don't over-plan.
 6. create_pr must always reference a prior generate_code action via sourceActionId (use a placeholder ID like "action_0" referring to the action at index 0).

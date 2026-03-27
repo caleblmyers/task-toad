@@ -112,7 +112,9 @@ Focus on actionable feedback. Be specific about file paths and line numbers when
     // Post review to GitHub as a PR review comment
     try {
       const reviewBody = formatReviewForGitHub(review);
-      const event = review.approved ? 'APPROVE' : 'REQUEST_CHANGES';
+      // Always use COMMENT — the bot created the PR, so it can't REQUEST_CHANGES on its own PR.
+      // The fix_review executor handles applying fixes from the review feedback.
+      const event = review.approved ? 'APPROVE' : 'COMMENT';
 
       await postPullRequestReview(
         project.githubInstallationId,
