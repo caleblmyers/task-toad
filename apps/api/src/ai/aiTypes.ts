@@ -258,6 +258,12 @@ export const HierarchicalSubtaskSchema = z.object({
   acceptanceCriteria: z.string().optional().default(''),
 });
 
+export const HierarchicalDependencySchema = z.object({
+  title: z.string(),
+  linkType: z.enum(['blocks', 'informs']),
+  reason: z.string().optional().default(''),
+});
+
 export const HierarchicalTaskSchema = z.object({
   title: z.string(),
   description: z.string(),
@@ -266,7 +272,7 @@ export const HierarchicalTaskSchema = z.object({
   acceptanceCriteria: z.string().optional().default(''),
   instructions: z.string().optional().default(''),
   autoComplete: z.boolean().optional().default(false),
-  dependsOn: z.array(z.object({ title: z.string(), linkType: z.enum(['blocks', 'informs']) })).optional().default([]),
+  dependsOn: z.array(HierarchicalDependencySchema).optional().default([]),
   subtasks: z.array(HierarchicalSubtaskSchema).optional().default([]),
 });
 
@@ -278,7 +284,7 @@ export const HierarchicalEpicSchema = z.object({
   acceptanceCriteria: z.string().optional().default(''),
   instructions: z.string().optional().default(''),
   autoComplete: z.boolean().optional().default(false),
-  dependsOn: z.array(z.object({ title: z.string(), linkType: z.enum(['blocks', 'informs']) })).optional().default([]),
+  dependsOn: z.array(HierarchicalDependencySchema).optional().default([]),
   tasks: z.array(HierarchicalTaskSchema).optional().default([]),
 });
 
@@ -286,6 +292,7 @@ export const HierarchicalPlanResponseSchema = z.object({
   epics: z.array(HierarchicalEpicSchema).min(1).max(10),
 });
 
+export type HierarchicalDependency = z.infer<typeof HierarchicalDependencySchema>;
 export type HierarchicalSubtask = z.infer<typeof HierarchicalSubtaskSchema>;
 export type HierarchicalTask = z.infer<typeof HierarchicalTaskSchema>;
 export type HierarchicalEpic = z.infer<typeof HierarchicalEpicSchema>;

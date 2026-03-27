@@ -510,7 +510,7 @@ export const generationMutations = {
           throw new ValidationError(`Cycle detected in dependencies: ${details}`);
         }
 
-        // Create TaskDependency records
+        // Create TaskDependency records (ignore duplicates gracefully)
         for (const edge of proposedEdges) {
           await tx.taskDependency.create({
             data: {
@@ -518,7 +518,7 @@ export const generationMutations = {
               targetTaskId: edge.targetTaskId,
               linkType: edge.linkType,
             },
-          });
+          }).catch(() => {});
         }
       }
 

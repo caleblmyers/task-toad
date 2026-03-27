@@ -41,9 +41,11 @@ Structure rules:
 2. Every node needs a title, description, estimatedHours, and priority (low/medium/high/critical).
 3. Tasks and epics can have "instructions" — implementation guidance for developers.
 4. Tasks can have "autoComplete: true" to mark them for automated execution.
-5. Tasks and epics can have "dependsOn" — an array of { "title": string, "linkType": "blocks" | "informs" } objects referencing OTHER epic/task titles (not self, not own children).
-   - "blocks" means the referenced item must complete before this one can start.
+5. Tasks and epics can have "dependsOn" — an array of { "title": string, "linkType": "blocks" | "informs", "reason": string } objects referencing OTHER epic/task titles (not self, not own children).
+   - "blocks" means the referenced item must complete before this one can start (e.g., "Set up database" blocks "Create API endpoints").
    - "informs" means the referenced item provides useful context but isn't blocking.
+   - "reason" explains why this dependency exists (e.g., "API endpoints need database tables to query against").
+   - Only add dependencies that are genuinely necessary — don't over-constrain the plan.
 6. Subtasks have: title, description, estimatedHours, priority, acceptanceCriteria.
 7. Each node should have "acceptanceCriteria" — a brief description of what "done" looks like.
 
@@ -57,7 +59,7 @@ Return JSON:
     "priority": "low" | "medium" | "high" | "critical",
     "acceptanceCriteria": string,
     "autoComplete": boolean,
-    "dependsOn": [{ "title": string, "linkType": "blocks" | "informs" }],
+    "dependsOn": [{ "title": string, "linkType": "blocks" | "informs", "reason": string }],
     "tasks": [{
       "title": string,
       "description": string,
@@ -66,7 +68,7 @@ Return JSON:
       "priority": "low" | "medium" | "high" | "critical",
       "acceptanceCriteria": string,
       "autoComplete": boolean,
-      "dependsOn": [{ "title": string, "linkType": "blocks" | "informs" }],
+      "dependsOn": [{ "title": string, "linkType": "blocks" | "informs", "reason": string }],
       "subtasks": [{
         "title": string,
         "description": string,
