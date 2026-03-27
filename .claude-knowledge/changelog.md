@@ -4,6 +4,56 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-26 (Wave 68 — Phase 3: orchestration)
+
+### Wave 68: Phase 3 Orchestration — Sessions + GitHub Bridge + Re-planning (3 workers, 5 tasks)
+
+**Worker 1 — task-001: GitHub → orchestrator bridge:**
+- Webhook handler now emits `task.updated` events after PR merges, PR review approvals, issue closes, and issue reopens
+- Uses `'system'` as userId for webhook-triggered events
+- Orchestrator automatically triggers downstream task execution when PRs are merged on GitHub
+- Closes the automation loop: TaskToad → GitHub → TaskToad
+
+**Worker 1 — task-002: Re-planning on failure:**
+- New `replanFailedTask` mutation — takes a failed plan, includes failure context in AI prompt, generates new plan with different approach
+- Old plan cancelled, new plan created with proper action ID remapping
+- AI sees: "Previous plan failed because X. Generate a new plan that avoids these failures."
+
+**Worker 2 — task-003: Session model + CRUD:**
+- New `Session` Prisma model: id, projectId, status, config (JSON), taskIds (JSON), progress (JSON), timestamps
+- Session config: autonomyLevel, budgetCapCents, failurePolicy, maxRetries, scopeLimit, timeLimitMinutes
+- GraphQL types + queries (`sessions`, `session`) + mutations (`createSession`, `startSession`, `pauseSession`, `cancelSession`)
+- `startSession` marks included tasks as `autoComplete: true` and triggers orchestration
+- Resolver registered in schema.ts with relations on Project, Org, User
+
+**Worker 2 — task-004: Session-aware orchestrator:**
+- Orchestrator filters eligible tasks to session tasks when a session is running
+- Budget cap check: pauses session when estimated cost exceeds cap
+- Scope limit check: completes session when task count reached
+- Failure policy: `pause_immediately`, `skip_and_continue`, `retry_then_pause`
+- Session progress updated on plan completion/failure
+- Session event types: `session.started`, `session.completed`, `session.failed`, `session.paused`
+- `session.started` event triggers initial orchestration
+
+**Worker 3 — task-005: Session UI:**
+- "Start Session" button on ExecutionDashboard
+- Session creation dialog: task selection checkboxes + config form (autonomy, budget, failure policy)
+- Active session banner: progress display, pause/cancel controls
+- SSE event listeners for real-time session status updates
+
+**Process:** No issues.md — clean wave, all 5 tasks merged without rejections.
+
+### Open follow-ups
+- Session progress: tokensUsed and estimatedCostCents never updated (initialized to 0)
+- Session time limit not enforced by orchestrator
+- replanFailedTask duplicates plan creation logic from commitActionPlan — extract shared helper
+- Session progress race condition (non-atomic JSON read/increment/write)
+- Test coverage for sessions (CRUD, orchestration, budget/scope, failure policy)
+- SessionDialog error handling (create/start failures silently caught)
+- Webhook userId 'system' — verify orchestrator handles gracefully
+
+---
+
 ## 2026-03-26 (Wave 67 — Phase 2: context threading)
 
 ### Wave 67: Phase 2 Context Threading (3 workers, 5 tasks)
@@ -193,40 +243,6 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-03-24 (Wave 60 — scaffolding + licensing follow-ups)
-
-### Wave 60: Wave 58/59 Follow-ups (3 workers, 4 tasks)
-
-**Worker 1 — task-001: Scaffolding fixes (default branch + template registry + KB auto-pop):**
-- Fixed `commitFilesToEmptyRepo` to use `repo.defaultBranch` instead of hardcoded `'main'`.
-- Added `scaffoldTemplates` GraphQL query — moved hardcoded template list from frontend to API.
-- Updated `ProjectSetupWizard` to fetch templates from API with loading state.
-- Added KB auto-population after scaffold — creates entries for key scaffolded files (capped at 10).
-
-**Worker 1 — task-002: ProjectSetupWizard unit tests:**
-- Added 13 test cases covering all 4 wizard steps (github, template, scaffolding, done).
-- Tests mock GraphQL calls, verify mutation arguments, cover error/loading states.
-- Note: React act() warnings present (console noise, tests pass).
-
-**Worker 2 — task-003: Licensing backend:**
-- Added `orgPlan` field to `me` query response (defaults to `'free'`).
-- Added `updateOrgPlan` admin-only mutation with `'free'`/`'paid'` validation.
-- Created `orgPlanCache.ts` — in-memory cache with 5-min TTL for SLA listener lookups.
-- Updated shared-types `Org` interface with `plan` and `licenseFeatures` fields.
-
-**Worker 3 — task-004: Licensing frontend:**
-- Updated `useLicenseFeatures` hook to read `orgPlan` from auth context instead of separate query.
-- Updated `ME_QUERY` to include `orgPlan` field.
-- Added "Plans" tab to OrgSettings with feature comparison table and placeholder upgrade CTA.
-
-**Process:** All 4 tasks merged on first review, zero rejections. Smooth wave.
-
-### Open follow-ups
-- React act() warnings in ProjectSetupWizard tests
-- `API: add plan field to org seed data / onboarding flow` still pending
-
----
-
 ## 2026-03-23 (Wave 56 — bug fixes from manual testing Round 2)
 
 ### Wave 56: Bug Fixes from Production Testing (3 workers, 6 tasks)
@@ -331,6 +347,7 @@ Three follow-up fixes after re-testing Wave 56 on production:
 - **2026-03-25** — Wave 63: Quick hits — closed-source cleanup (LICENSE, CONTRIBUTING, TASKTOAD_LICENSE, Docker), modal dismiss fix, session security fix.
 - **2026-03-25** — Wave 62: Deferred refactors — useEditableField (R2), tab extraction (R8), picker consolidation (R9), metrics calc (R6), queries split (R11), chart utilities (R12).
 - **2026-03-25** — Wave 61: Pre-pipeline refactors — token manager (R1), event helpers (R4), unused exports (R14), custom project option.
+- **2026-03-24** — Wave 60: Scaffolding + licensing follow-ups — default branch fix, template registry, KB auto-populate, wizard tests, orgPlan, Plans tab.
 - **2026-03-24** — Wave 59: Per-org licensing — plan column on Org, license.ts rewrite, 33 resolver call sites, infrastructure per-event checks.
 - **2026-03-24** — Wave 58: Project scaffolding — scaffold mutation, ProjectSetupWizard (4-step), empty repo commit, framework templates, planner prompt fix.
 - **2026-03-23** — Wave 57: Premium feature gating — license.ts utility, resolver/infrastructure/frontend gating for 8 premium features, useLicenseFeatures hook.

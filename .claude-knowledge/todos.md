@@ -1,8 +1,8 @@
 # TaskToad — Remaining Work & Tracking
 
-67 swarm waves completed. 356 tests. **Strategic pivot to closed-source SaaS autopilot — building the three pillars (decomposition, context threading, orchestration).**
+68 swarm waves completed. 356 tests. **Strategic pivot to closed-source SaaS autopilot — building the three pillars (decomposition, context threading, orchestration).**
 
-**Phase 2 core complete (Wave 67).** Context threading: execution result forwarding, cross-task completion summaries, upstream context wiring, failure propagation, projectChat upgrade. Next: Phase 3 (orchestration) or manual e2e test. See `autopilot-pillars.md` for the full spec.
+**Phase 3 core complete (Wave 68).** Sessions, GitHub→orchestrator bridge, re-planning on failure. All three pillars implemented. Next: manual e2e test, then follow-up polish or Phase 4. See `autopilot-pillars.md` for the full spec.
 
 ---
 
@@ -54,6 +54,16 @@ All 5 implementation tasks completed:
 - [x] **fix_review executor** — auto-fixes small review issues, creates backlog tasks for larger ones. Planner enforces generate_code → create_pr → review_pr → fix_review pipeline. Validation in commitActionPlan. *(Wave 65)*
 - [ ] **Add integration test suite for branch flow** — branch creation, sequential commits, commit failure handling, review outcomes (~5 tests, mock GitHub API)
 - [x] **Implement OAuth token routing for personal repos** — loads user OAuth token for personal accounts, passes through ActionContext to createBranch and commitFiles *(Wave 65)*
+
+### Wave 68 Follow-Ups (Sessions & Orchestration)
+- [ ] **Session progress: track token usage and cost** — session progress `tokensUsed` and `estimatedCostCents` are initialized to 0 but never updated by the orchestrator. Wire AI usage tracking from action plan execution into session progress.
+- [ ] **Session time limit enforcement** — `timeLimitMinutes` is in SessionConfig but not checked by the orchestrator. Add a time limit check alongside budget/scope checks.
+- [ ] **Session resume (start paused session)** — `startSession` allows re-starting paused sessions, but doesn't un-set `autoComplete` on tasks if they were removed from the session. Consider edge cases.
+- [ ] **replanFailedTask: extracting shared plan creation logic** — replanFailedTask duplicates the plan creation + ID remapping pattern from commitActionPlan. Consider extracting into a shared helper to reduce drift.
+- [ ] **Session progress race condition** — orchestratorListener reads/updates session progress non-atomically (read JSON → increment → write JSON). Under concurrent plan completions, counts could be lost. Consider using Prisma `$executeRaw` with JSON increment or advisory locks.
+- [ ] **Test coverage for sessions** — no unit tests for: session CRUD resolvers, session-aware orchestration, budget/scope limit checks, failure policy handling. Add tests.
+- [ ] **SessionDialog error handling** — create/start failures are silently caught. Show a toast or inline error message to the user.
+- [ ] **Webhook event userId** — task-001 uses `'system'` as userId for webhook-triggered events. Verify the orchestrator and listeners handle this gracefully (they may try to load the user).
 
 ### Wave 67 Follow-Ups (Context Threading)
 - [ ] **Task status → done transition after review** — completionSummary is generated when the action plan completes (status → in_review), but orchestrator only triggers downstream tasks when status → done. Verify the in_review → done transition happens (manual or automated) so downstream tasks actually receive upstream context.
@@ -156,5 +166,6 @@ All 5 implementation tasks completed:
 | 65 | 2026-03-26 | Phase 1 follow-ups: commitFiles error handling, concurrency guard, OAuth routing, fix_review executor, quick hits (Modal tests, act() fix, open-source refs) |
 | 66 | 2026-03-26 | Phase 1.5: AI stack recommendations, scaffold config, existing repo onboarding, interview removal, CLAUDE.md in scaffold, KB seeding from stack choice |
 | 67 | 2026-03-26 | Phase 2: context threading — execution result forwarding, completion summaries, upstream context wiring, failure propagation, projectChat KB+deps |
+| 68 | 2026-03-26 | Phase 3: orchestration — Session model, GitHub→orchestrator bridge, re-planning on failure, session-aware orchestrator, session UI |
 
 Full wave details in `changelog.md`.
