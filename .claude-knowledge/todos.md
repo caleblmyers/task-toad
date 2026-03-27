@@ -34,6 +34,11 @@ Pipeline mechanics work end-to-end. The critical gap is cross-task coherence —
 - [ ] On success: record in action result for confidence tracking
 - [ ] Consider making this opt-in per project (some repos won't have CI configured)
 
+### Evolve "AI Plan Sprint" into session planning
+- [ ] Replace the "AI plan sprint" button behavior — instead of distributing the whole backlog into a time-boxed sprint, generate a single coherent execution batch (like a swarm wave): 3-5 related tasks, dependency-ordered, scoped to a cohesive chunk of work
+- [ ] This is the natural entry point for the Session concept from `autopilot-pillars.md` — sessions replace sprints as the autopilot's organizing unit
+- [ ] UI: "Plan next session" instead of "AI plan sprint" — shows the proposed scope, dependency order, and estimated effort before execution
+
 ### R5: Sprint close reconciliation
 - [ ] In `closeSprint` resolver, after closing the sprint, optionally trigger a reconciliation check
 - [ ] Fetch the repo's current state, attempt a build, run any available tests
@@ -120,13 +125,28 @@ All 5 implementation tasks completed:
 - **R7: Resolver auth guards** — `requireEntity<T>()` helper. P3. Do incrementally.
 - **R3: AI feature registry** — consolidate 40+ wrapper functions in aiService.ts. Do if touching file.
 
-### UX Improvements
-- [ ] Chat actions: add input validation for applyChatAction (verify taskId belongs to project, validate required fields per action type)
-- [ ] Chat actions: add activity log entries when tasks are created/updated via chat actions
-- [ ] WhatNextPanel: add refresh button to re-fetch suggestions after applying actions
-- [ ] ProjectChatPanel: wire `onSelectTask` prop from ProjectDetail (currently optional, not passed)
+### Pipeline Quality (from 2026-03-27 notes)
+- [ ] Decomposition quality: tasks like "Set up API framework" are too broad for a single code generation pass (8 files, 6 review issues, 8 deferred). The planner should produce smaller, focused tasks that each yield a tight, reviewable PR. Add guidance to the hierarchical plan prompt about maximum task scope.
+- [ ] Deferred tasks from fix_review need proper context — currently orphaned backlog items. Should: inherit parent epic, add dependency from source task, include PR/file references. AI should output structured metadata (suggested epic, dependency type) not just title/description.
+- [ ] Optimize knowledge retrieval — AI call on every action step to filter KB entries is wasteful (5 extra calls per plan). Cache per task, raise the shortcut threshold, or just return all entries for small KB.
+- [ ] Branch/commit naming: descriptive text first, short ID suffix last — `configure-database-schema-3b03af` not `task-3b03af34-...-configure-database-schema`. See `githubCommitService.ts`.
+- [ ] Auto-Complete button: hide when action plan already exists. Show contextual state (progress/retry/results) instead.
+- [ ] Fix false stall detection — "Resume" button appears during normal inter-step delays. Add ~30s grace period or track `lastActionCompletedAt` from SSE.
+
+### Bootstrap Flow Redesign
+- [ ] **Single redesign** covering several related issues:
+  - Fix: race condition where GitHub repo modal appears behind review plan modal
+  - Rework project options: replace 3-option flow with single best interpretation + refinement
+  - Replace stacked modals with single-panel wizard (step 1 of N) — describe → plan review → GitHub connect → scaffold → done
+  - Plan generation UX: two-pass generation (epics first, then tasks fill in) or skeleton indicators
+- [ ] Default to backlog view after project creation — board is empty with no sprints
+
+### General UX
+- [ ] Chat actions: input validation for applyChatAction (verify taskId belongs to project)
+- [ ] Chat actions: activity log entries when tasks created/updated via chat
+- [ ] WhatNextPanel: refresh button after applying actions
+- [ ] ProjectChatPanel: wire `onSelectTask` prop from ProjectDetail
 - [ ] Long-running AI operations need better loading states (descriptive, not just spinner)
-- [ ] Network latency during project init — show per-step progress
 - [ ] Sprints should be ordered; first sprint should auto-activate
 - [ ] Close sprint should offer "create new sprint" option
 - [ ] Sprint columns should be reorderable
