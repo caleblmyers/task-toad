@@ -1,6 +1,7 @@
 node_modules
 dist
 cdk.out
+test-results
 
 # Env secrets (do not commit); .env.example files are kept in git
 .env
