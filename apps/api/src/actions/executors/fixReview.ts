@@ -68,9 +68,21 @@ Only fix small, clear issues: typos, missing error handling, simple bugs, naming
 For larger issues (architectural changes, new features, redesigns, missing test suites), output them as \`deferredIssues\` — do NOT attempt to fix them.
 Return valid JSON matching the required schema.`;
 
-    let contextSection = '';
+    // Build full context from upstream tasks, previous steps, and failure history
+    let fullContext = ctx.knowledgeContext ?? ctx.project.knowledgeBase ?? '';
+    if (ctx.upstreamTaskContext) {
+      fullContext = `## Upstream Task Context\n${ctx.upstreamTaskContext}\n\n${fullContext}`;
+    }
     if (ctx.previousStepContext) {
-      contextSection = `\nPrevious steps in this plan:\n${ctx.previousStepContext}\n`;
+      fullContext = `## Previous Steps in This Plan\n${ctx.previousStepContext}\n\n${fullContext}`;
+    }
+    if (ctx.failureContext) {
+      fullContext = `## Previous Attempt Failed\n${ctx.failureContext}\n\n${fullContext}`;
+    }
+
+    let contextSection = '';
+    if (fullContext.trim()) {
+      contextSection = `\nContext:\n${fullContext}\n`;
     }
 
     const userPrompt = `Fix the issues found in this code review.
@@ -123,6 +135,7 @@ Generate fixes for small issues and defer larger ones. Each fix should contain t
             additions: parsed.fixes.map((f) => ({ path: f.path, content: f.content })),
           },
           ctx.plan.headOid,
+          ctx.userGitHubToken,
         );
         headOid = commitResult.oid;
 

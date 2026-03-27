@@ -462,17 +462,40 @@ export function createHandler(prisma: PrismaClient) {
           data: { status: 'completed' },
         });
 
-        // If plan included a review_pr action, transition task to in_review
+        // Transition task status based on plan results
         const completedActions = await prisma.taskAction.findMany({
           where: { planId, status: 'completed' },
-          select: { actionType: true },
+          select: { actionType: true, result: true },
         });
         const hasReview = completedActions.some((a) => a.actionType === 'review_pr');
-        if (hasReview) {
+        const hasFixReview = completedActions.some((a) => a.actionType === 'fix_review');
+
+        if (hasReview || hasFixReview) {
+          // Determine target status: done if review approved or fix_review handled it
+          let targetStatus = 'in_review';
+
+          // If fix_review ran, the fixes are committed — transition to done
+          if (hasFixReview) {
+            targetStatus = 'done';
+          } else {
+            // Check if the review was approved
+            const reviewAction = completedActions.find((a) => a.actionType === 'review_pr');
+            if (reviewAction?.result) {
+              try {
+                const reviewResult = JSON.parse(reviewAction.result) as Record<string, unknown>;
+                if (reviewResult.approved || (reviewResult.data as Record<string, unknown> | undefined)?.approved) {
+                  targetStatus = 'done';
+                }
+              } catch {
+                // ignore parse errors — default to in_review
+              }
+            }
+          }
+
           const previousStatus = task.status;
           const updatedTask = await prisma.task.update({
             where: { taskId: task.taskId },
-            data: { status: 'in_review' },
+            data: { status: targetStatus },
           });
           bus.emit('task.updated', {
             orgId,
@@ -488,7 +511,7 @@ export function createHandler(prisma: PrismaClient) {
               taskType: updatedTask.taskType,
             },
             changes: {
-              status: { old: previousStatus, new: 'in_review' },
+              status: { old: previousStatus, new: targetStatus },
             },
           });
         }

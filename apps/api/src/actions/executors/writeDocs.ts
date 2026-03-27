@@ -32,9 +32,21 @@ export const writeDocsExecutor: ActionExecutor = {
       throw new DOMException('Action cancelled', 'AbortError');
     }
 
-    let contextSection = '';
+    // Build full context from upstream tasks, previous steps, and failure history
+    let fullContext = ctx.knowledgeContext ?? ctx.project.knowledgeBase ?? '';
+    if (ctx.upstreamTaskContext) {
+      fullContext = `## Upstream Task Context\n${ctx.upstreamTaskContext}\n\n${fullContext}`;
+    }
     if (ctx.previousStepContext) {
-      contextSection = `\nPrevious steps in this plan:\n${ctx.previousStepContext}\n`;
+      fullContext = `## Previous Steps in This Plan\n${ctx.previousStepContext}\n\n${fullContext}`;
+    }
+    if (ctx.failureContext) {
+      fullContext = `## Previous Attempt Failed\n${ctx.failureContext}\n\n${fullContext}`;
+    }
+
+    let contextSection = '';
+    if (fullContext.trim()) {
+      contextSection = `\nContext:\n${fullContext}\n`;
     }
 
     const result = await callAIStructured({
