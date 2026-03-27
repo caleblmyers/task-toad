@@ -7,14 +7,33 @@
 ## Autopilot Pipeline (Priority)
 
 ### Code Generation Coherence
-- [ ] **R1: Fetch repo file contents in generateCode** (highest impact) — fetch key files (schema, package.json, types, routes) from GitHub repo and include in AI prompt as "Current Codebase" section. Cap context to avoid token limits.
-- [ ] **R2: Schema-first constraint** — detect Prisma schema (or equivalent) in file tree, fetch contents, instruct AI to use exactly those models. Same for TypeScript type definitions.
-- [ ] **R3: Richer cross-task context** — include file paths changed and key type/schema definitions in upstreamTaskContext, not just prose summaries. Consider fetching PR diff from most recent upstream task.
+- [ ] **R1: Fetch repo file contents in generateCode** (highest impact)
+  - In `generateCode` executor, fetch key files from GitHub repo via a new `fetchRepoFiles` utility
+  - Which files: Prisma schema, package.json, tsconfig.json, existing route files, type definitions. Use file tree + heuristics (files modified in recent PRs, files matching task domain)
+  - Include in AI prompt as a "Current Codebase" section
+  - Cap total context to avoid token limits — prioritize schema/types/config, truncate large files
+- [ ] **R2: Schema-first constraint**
+  - In `buildGenerateCodePrompt`, detect if schema file (`schema.prisma`, `models.py`, `schema.sql`) exists in file tree
+  - Fetch contents, add explicit instruction: "Use exactly these model names, field names, and relations. Do not invent new models."
+  - Same pattern for TypeScript type definition files (`types/`, `interfaces/`)
+- [ ] **R3: Richer cross-task context**
+  - In `actionExecutor.ts`, include file paths changed and key type/schema definitions in `upstreamTaskContext`, not just prose summaries
+  - Consider fetching PR diff from most recent upstream task's merged PR
 - [ ] **Decomposition quality** — tasks like "Set up API framework" are too broad (8 files, 6 review issues, 8 deferred). Add guidance to hierarchical plan prompt about maximum task scope per code generation pass.
 
 ### Pipeline Steps
-- [ ] **R4: Post-merge build verification** — optional `verify_build` action after `merge_pr`. Run build command, create fix task on failure. Opt-in per project.
-- [ ] **R5: Sprint close reconciliation** — on `closeSprint`, trigger consistency check (build, imports, types). Auto-generate reconciliation task through normal pipeline if issues found.
+- [ ] **R4: Post-merge build verification**
+  - Add optional `verify_build` action type that runs after `merge_pr`
+  - Detect build command from package.json scripts or CLAUDE.md, run `npm install && npm run build` (or equivalent)
+  - On failure: create a fix task with build error output as instructions
+  - On success: record in action result for confidence tracking
+  - Opt-in per project (some repos won't have CI configured)
+- [ ] **R5: Sprint close reconciliation**
+  - In `closeSprint` resolver, optionally trigger a reconciliation check
+  - Fetch repo's current state, attempt build, run available tests
+  - If issues found (broken imports, type mismatches, build failures): auto-generate a reconciliation task with specific errors
+  - Reconciliation task goes through the normal action plan pipeline (generate_code → create_pr → review → merge)
+  - UI: show reconciliation status in close sprint dialog/result
 - [ ] **Deferred task context** — fix_review creates orphaned backlog items. Should: inherit parent epic, add dependency from source task, include PR/file references. AI should output structured metadata (epic, dependency type).
 - [ ] **Optimize knowledge retrieval** — AI call on every action step is wasteful (5 per plan). Cache per task at plan start, or return all entries for small KBs.
 - [ ] **Fix false stall detection** — "Resume" button appears during normal inter-step delays. Add ~30s grace period or track `lastActionCompletedAt` from SSE.
@@ -25,7 +44,7 @@
 - [ ] **Evolve "AI Plan Sprint" into session planning** — generate coherent execution batches (3-5 related tasks, dependency-ordered) instead of distributing whole backlog into time-boxed sprints. Natural entry point for Session concept.
 - [ ] **Session progress: track token usage and cost** — wire AI usage tracking into session progress.
 - [ ] **Session time limit enforcement** — check `timeLimitMinutes` alongside budget/scope checks.
-- [ ] **Session resume edge cases** — handle `autoComplete` flag when tasks removed from session.
+- [ ] **Session resume edge cases** — `startSession` allows re-starting paused sessions but doesn't un-set `autoComplete` on tasks removed from the session. Consider edge cases around task membership changes.
 - [ ] **Rate limiting for completionSummary generation** — consider caching or skipping if budget exhausted.
 
 ---
