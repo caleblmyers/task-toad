@@ -1,176 +1,106 @@
-# TaskToad — Remaining Work & Tracking
+# TaskToad — Remaining Work
 
-70 swarm waves completed + pipeline hardening session. 356 tests. 0 lint warnings. **Autopilot for software projects — all three pillars + AI assistant implemented.**
-
-**Pipeline hardening (post-Wave 70).** SSE real-time fix, merge_pr executor, 401 auto-reauth, fix_review overhaul, task status transitions with board sync, stall recovery UI.
-
-**First real pipeline test (2026-03-27).** US Lakes Information Portal — 4 tasks completed end-to-end. Pipeline mechanics work. Cross-task coherence is the critical gap. See `pipeline-analysis-2026-03-27.md`.
+70 swarm waves + pipeline hardening. First end-to-end pipeline test completed 2026-03-27. Pipeline mechanics work; cross-task coherence is the critical gap. See `pipeline-analysis-2026-03-27.md`.
 
 ---
 
-## Code Generation Coherence (Priority — from pipeline analysis 2026-03-27)
+## Autopilot Pipeline (Priority)
 
-Pipeline mechanics work end-to-end. The critical gap is cross-task coherence — each task generates code in isolation, producing conflicts when composed. See `pipeline-analysis-2026-03-27.md` for full analysis.
+### Code Generation Coherence
+- [ ] **R1: Fetch repo file contents in generateCode** (highest impact) — fetch key files (schema, package.json, types, routes) from GitHub repo and include in AI prompt as "Current Codebase" section. Cap context to avoid token limits.
+- [ ] **R2: Schema-first constraint** — detect Prisma schema (or equivalent) in file tree, fetch contents, instruct AI to use exactly those models. Same for TypeScript type definitions.
+- [ ] **R3: Richer cross-task context** — include file paths changed and key type/schema definitions in upstreamTaskContext, not just prose summaries. Consider fetching PR diff from most recent upstream task.
+- [ ] **Decomposition quality** — tasks like "Set up API framework" are too broad (8 files, 6 review issues, 8 deferred). Add guidance to hierarchical plan prompt about maximum task scope per code generation pass.
 
-### R1: Fetch repo file contents in generateCode (highest impact)
-- [ ] In `generateCode` executor, before calling the AI, fetch key files from the GitHub repo via `getPullRequestFiles` or a new `fetchRepoFiles` utility
-- [ ] Determine which files to fetch: Prisma schema, package.json, tsconfig.json, existing route files, type definition files. Use the file tree + heuristics (e.g., files modified in recent PRs, files matching the task's domain)
-- [ ] Include file contents in the AI prompt as a "Current Codebase" section
-- [ ] Cap total context to avoid token limits — prioritize schema/types/config, truncate large files
+### Pipeline Steps
+- [ ] **R4: Post-merge build verification** — optional `verify_build` action after `merge_pr`. Run build command, create fix task on failure. Opt-in per project.
+- [ ] **R5: Sprint close reconciliation** — on `closeSprint`, trigger consistency check (build, imports, types). Auto-generate reconciliation task through normal pipeline if issues found.
+- [ ] **Deferred task context** — fix_review creates orphaned backlog items. Should: inherit parent epic, add dependency from source task, include PR/file references. AI should output structured metadata (epic, dependency type).
+- [ ] **Optimize knowledge retrieval** — AI call on every action step is wasteful (5 per plan). Cache per task at plan start, or return all entries for small KBs.
+- [ ] **Fix false stall detection** — "Resume" button appears during normal inter-step delays. Add ~30s grace period or track `lastActionCompletedAt` from SSE.
+- [ ] **Auto-Complete button** — hide when action plan already exists. Show contextual state (progress/retry/results) instead.
+- [ ] **Branch/commit naming** — descriptive text first, short ID suffix last. `configure-database-schema-3b03af` not `task-UUID-slug`. See `githubCommitService.ts`.
 
-### R2: Schema-first constraint in code generation prompt
-- [ ] In `buildGenerateCodePrompt`, detect if a Prisma schema (or equivalent like `schema.prisma`, `models.py`, `schema.sql`) exists in the file tree
-- [ ] If found, fetch its contents and add an explicit instruction: "These are the data models. Use exactly these model names, field names, and relations. Do not invent new models or rename existing ones."
-- [ ] Same pattern for TypeScript type definition files — if `types/` or `interfaces/` exist, include them
-
-### R3: Richer cross-task context
-- [ ] In `actionExecutor.ts`, when building `upstreamTaskContext`, include file paths changed (from completionSummary) and key type/schema definitions, not just prose summaries
-- [ ] Consider fetching the PR diff from the most recent upstream task's merged PR as context
-
-### R4: Post-merge build verification
-- [ ] Add optional `verify_build` action type that runs after `merge_pr`
-- [ ] Executor clones the repo (or uses GitHub Actions), runs `npm install && npm run build` (or detected build command from package.json/CLAUDE.md)
-- [ ] On failure: create a fix task with the build error output as instructions
-- [ ] On success: record in action result for confidence tracking
-- [ ] Consider making this opt-in per project (some repos won't have CI configured)
-
-### Evolve "AI Plan Sprint" into session planning
-- [ ] Replace the "AI plan sprint" button behavior — instead of distributing the whole backlog into a time-boxed sprint, generate a single coherent execution batch (like a swarm wave): 3-5 related tasks, dependency-ordered, scoped to a cohesive chunk of work
-- [ ] This is the natural entry point for the Session concept from `autopilot-pillars.md` — sessions replace sprints as the autopilot's organizing unit
-- [ ] UI: "Plan next session" instead of "AI plan sprint" — shows the proposed scope, dependency order, and estimated effort before execution
-
-### R5: Sprint close reconciliation
-- [ ] In `closeSprint` resolver, after closing the sprint, optionally trigger a reconciliation check
-- [ ] Fetch the repo's current state, attempt a build, run any available tests
-- [ ] If inconsistencies found (broken imports, type mismatches, build failures): auto-generate a reconciliation task with specific errors
-- [ ] The reconciliation task goes through the normal action plan pipeline (generate_code to fix issues → create_pr → review → merge)
-- [ ] UI: show reconciliation status in the close sprint dialog/result
+### Sessions & Orchestration
+- [ ] **Evolve "AI Plan Sprint" into session planning** — generate coherent execution batches (3-5 related tasks, dependency-ordered) instead of distributing whole backlog into time-boxed sprints. Natural entry point for Session concept.
+- [ ] **Session progress: track token usage and cost** — wire AI usage tracking into session progress.
+- [ ] **Session time limit enforcement** — check `timeLimitMinutes` alongside budget/scope checks.
+- [ ] **Session resume edge cases** — handle `autoComplete` flag when tasks removed from session.
+- [ ] **Rate limiting for completionSummary generation** — consider caching or skipping if budget exhausted.
 
 ---
 
-## Quick Hits (before Phase 1)
+## Bootstrap Flow Redesign
 
-- [x] Replace `LICENSE` file — remove AGPL-3.0, add proprietary license text *(Wave 63)*
-- [x] Remove or rewrite `CONTRIBUTING.md` for closed source *(Wave 63)*
-- [x] Remove `TASKTOAD_LICENSE` env var and self-host override code *(Wave 63)*
-- [x] Remove Docker self-hosting config — deploy profile removed from `docker-compose` *(Wave 63)*
-- [x] Project bootstrap modals should not be dismissable by clicking outside during an active process *(Wave 63)*
-- [x] "open source mode" comments updated to "free plan" in permissions.ts *(Wave 65)*
-- [x] Add test coverage for Modal `closeOnOverlayClick` prop behavior *(Wave 65)*
-- [x] ProjectSetupWizard test has `act(...)` warning — wrap state updates in test *(Wave 65)*
-- [x] Update stale "open source mode" comments in permissions.ts to "free plan" *(Wave 65)*
-
-## Investigate
-
-- [x] **Session / cross-account data leak** — fixed: App tree remounts on user change via `key={userId}` *(Wave 63)*
-- [ ] Consider adding an integration test for the logout→login-as-different-user flow to prevent regression
+- [ ] **Single redesign** covering related issues:
+  - Fix race condition: GitHub repo modal appears behind review plan modal
+  - Replace 3-option project flow with single best interpretation + refinement
+  - Replace stacked modals with single-panel wizard (step 1 of N)
+  - Plan generation UX: two-pass (epics first, then tasks fill in) or skeleton indicators
+- [ ] Default to backlog view after project creation
 
 ---
 
-## Phase 1: Pipeline Rewrite — Branch-Based Code Generation *(Wave 64 — DONE)*
+## UX
 
-All 5 implementation tasks completed:
-- [x] Branch management in actionExecutor.ts — branchName/headOid on TaskActionPlan, feature branch at plan start *(Wave 64)*
-- [x] generateCode executor commits to branch — files committed after AI gen, headOid updated *(Wave 64)*
-- [x] writeDocs executor commits to branch — same pattern as generateCode *(Wave 64)*
-- [x] createPR executor uses existing branch — opens PR from feature branch, no file creation *(Wave 64)*
-- [x] Planner enforces create_pr + review_pr — code + prompt enforcement, skeptical reviewer prompt *(Wave 64)*
-- [x] Zod config validation for all executors (R13 partial) *(Wave 64)*
-- [x] monitor_ci + fix_ci added to ActionPlanItemSchema *(Wave 64)*
-- [x] fetchProjectFileTree accepts branch parameter for context *(Wave 64)*
-
-**Next:** Manual end-to-end test (new project → scaffold → task → auto-complete → PR on GitHub).
-
----
-
-## Phase 1 Follow-Ups
-
-### Critical (P0)
-- [x] **Catch commitFiles failures in generateCode/writeDocs** — try/catch returns structured failure, prevents headOid corruption *(Wave 65)*
-- [x] **Add concurrency guard for branch creation** — optimistic re-read of plan before creating branch *(Wave 65)*
-
-### High Priority (P1)
-- [ ] **Add integration test suite for branch flow** — branch creation, sequential commits, commit failure handling, review outcomes (~5 tests, mock GitHub API)
-
-### Wave 68 Follow-Ups (Sessions & Orchestration)
-- [ ] **Session progress: track token usage and cost** — session progress `tokensUsed` and `estimatedCostCents` are initialized to 0 but never updated by the orchestrator. Wire AI usage tracking from action plan execution into session progress.
-- [ ] **Session time limit enforcement** — `timeLimitMinutes` is in SessionConfig but not checked by the orchestrator. Add a time limit check alongside budget/scope checks.
-- [ ] **Session resume (start paused session)** — `startSession` allows re-starting paused sessions, but doesn't un-set `autoComplete` on tasks if they were removed from the session. Consider edge cases.
-- [ ] **replanFailedTask: extracting shared plan creation logic** — replanFailedTask duplicates the plan creation + ID remapping pattern from commitActionPlan. Consider extracting into a shared helper to reduce drift.
-- [ ] **Test coverage for sessions** — no unit tests for: session CRUD resolvers, session-aware orchestration, budget/scope limit checks, failure policy handling. Add tests.
-
-### Wave 67 Follow-Ups (Context Threading)
-- [ ] **Test coverage for context threading** — no unit tests for: previousStepContext building, upstream summary loading (raw SQL query in actionExecutor), failure context round-trip, completion summary generation. Add tests for each.
-- [ ] **Rate limiting for completionSummary generation** — each plan completion triggers an AI call for summary generation. Consider caching or skipping if budget is exhausted.
-
-### Wave 65 Follow-Ups
-- [ ] **fix_review: test coverage** — no unit tests for fixReview executor. Should test: approved review skip, AI fix generation with source code context, deferred issue → backlog task creation, duplicate task detection.
-
-### Medium Priority (P2)
-- [ ] **Branch cleanup strategy** — decide: auto-delete failed/cancelled plan branches, tag with prefix, or retention policy
-- [ ] **Extract insight generation + in_review transition to event listeners** (R10) — move from actionExecutor handler to async event-driven pattern
-- [ ] **Audit executor config Zod validation** — verify manual_step and monitor_ci have schemas (others are done)
-
-### Manual Testing
-- [x] End-to-end: new project → scaffold → task → auto-complete → branch created → PR opened → review posted → fix review → merge *(tested 2026-03-27)*
-- [ ] Verify concurrent plan execution doesn't corrupt branch state
-- [ ] Verify failed plan leaves branch in recoverable state
-
----
-
-## Post-Phase 1 Backlog
-
-### Remaining Refactors
-- **R5: Split useProjectData** — 100+ properties → focused sub-interfaces. P2.
-- **R7: Resolver auth guards** — `requireEntity<T>()` helper. P3. Do incrementally.
-- **R3: AI feature registry** — consolidate 40+ wrapper functions in aiService.ts. Do if touching file.
-
-### Pipeline Quality (from 2026-03-27 notes)
-- [ ] Decomposition quality: tasks like "Set up API framework" are too broad for a single code generation pass (8 files, 6 review issues, 8 deferred). The planner should produce smaller, focused tasks that each yield a tight, reviewable PR. Add guidance to the hierarchical plan prompt about maximum task scope.
-- [ ] Deferred tasks from fix_review need proper context — currently orphaned backlog items. Should: inherit parent epic, add dependency from source task, include PR/file references. AI should output structured metadata (suggested epic, dependency type) not just title/description.
-- [ ] Optimize knowledge retrieval — AI call on every action step to filter KB entries is wasteful (5 extra calls per plan). Cache per task, raise the shortcut threshold, or just return all entries for small KB.
-- [ ] Branch/commit naming: descriptive text first, short ID suffix last — `configure-database-schema-3b03af` not `task-3b03af34-...-configure-database-schema`. See `githubCommitService.ts`.
-- [ ] Auto-Complete button: hide when action plan already exists. Show contextual state (progress/retry/results) instead.
-- [ ] Fix false stall detection — "Resume" button appears during normal inter-step delays. Add ~30s grace period or track `lastActionCompletedAt` from SSE.
-
-### Bootstrap Flow Redesign
-- [ ] **Single redesign** covering several related issues:
-  - Fix: race condition where GitHub repo modal appears behind review plan modal
-  - Rework project options: replace 3-option flow with single best interpretation + refinement
-  - Replace stacked modals with single-panel wizard (step 1 of N) — describe → plan review → GitHub connect → scaffold → done
-  - Plan generation UX: two-pass generation (epics first, then tasks fill in) or skeleton indicators
-- [ ] Default to backlog view after project creation — board is empty with no sprints
-
-### General UX
-- [ ] Chat actions: input validation for applyChatAction (verify taskId belongs to project)
+- [ ] Chat actions: input validation for applyChatAction
 - [ ] Chat actions: activity log entries when tasks created/updated via chat
 - [ ] WhatNextPanel: refresh button after applying actions
 - [ ] ProjectChatPanel: wire `onSelectTask` prop from ProjectDetail
-- [ ] Long-running AI operations need better loading states (descriptive, not just spinner)
-- [ ] Sprints should be ordered; first sprint should auto-activate
-- [ ] Close sprint should offer "create new sprint" option
-- [ ] Sprint columns should be reorderable
-- [ ] Release notes should have manual entry option
-- [ ] Time entry deletion should be admin-only action
-- [ ] Mobile: horizontal scrolling messy on project page
-- [ ] Automation comments should not be attributed to a user (use system/bot)
-- [ ] Priority dropdown: color coding (red for critical, orange for high)
+- [ ] Long-running AI operations: better loading states
+- [ ] Sprints: ordered, first auto-activates
+- [ ] Close sprint: offer "create new sprint" option
+- [ ] Sprint columns: reorderable
+- [ ] Release notes: manual entry option
+- [ ] Time entry deletion: admin-only
+- [ ] Mobile: horizontal scrolling on project page
+- [ ] Automation comments: system/bot attribution
+- [ ] Priority dropdown: color coding
 - [ ] SSE cross-tab sync
 
-### Code Quality
-- [ ] Fix integration test DB isolation (10 files, 23 tests, FK constraint violations) — blocks `pnpm test` as merge gate
-- [x] Fix React act() warnings in ProjectSetupWizard tests *(Wave 65)*
-- [ ] merge-worker.sh: auto-detect lockfile changes and run pnpm install before validation
+---
 
-### Feature Requests
-- [ ] Stripe integration for billing (Plans tab has placeholder)
+## Code Quality & Testing
+
+- [ ] Integration test DB isolation (10 files, 23 tests, FK violations) — blocks `pnpm test` as merge gate
+- [ ] Integration test for branch flow (~5 tests, mock GitHub API)
+- [ ] Test coverage for sessions (CRUD, orchestration, budget/scope, failure policy)
+- [ ] Test coverage for context threading (previousStepContext, upstream summaries, failure context)
+- [ ] Test coverage for fix_review (approved skip, AI fixes with source, deferred tasks, duplicate detection)
+- [ ] Integration test for logout→login-as-different-user flow
+- [ ] merge-worker.sh: auto-detect lockfile changes
+
+---
+
+## Refactors
+
+- [ ] **Split useProjectData** — 100+ properties → focused sub-interfaces
+- [ ] **Resolver auth guards** — `requireEntity<T>()` helper, do incrementally
+- [ ] **AI feature registry** — consolidate 40+ wrapper functions in aiService.ts
+- [ ] **Extract insight generation to event listeners** — move from actionExecutor to async event-driven pattern
+- [ ] **replanFailedTask shared helper** — extract duplicated plan creation + ID remapping logic
+- [ ] **Branch cleanup strategy** — auto-delete failed/cancelled plan branches
+- [ ] **Audit executor config Zod validation** — verify manual_step and monitor_ci have schemas
+
+---
+
+## Future
+
+- [ ] Stripe integration for billing
 - [ ] Custom domain
 - [ ] Scheduled report delivery (depends on SMTP)
 - [ ] License gating test coverage
 
 ---
 
-## Completed Waves (Summary)
+## Manual Testing
+
+- [ ] Verify concurrent plan execution doesn't corrupt branch state
+- [ ] Verify failed plan leaves branch in recoverable state
+
+---
+
+## Completed Waves
 
 | Wave | Date | Focus |
 |------|------|-------|
@@ -186,32 +116,32 @@ All 5 implementation tasks completed:
 | 42 | 2026-03-21 | Security Phase 2 — Auth Hardening (all 8 High items) |
 | 43 | 2026-03-21 | Security Phase 3+4 — 9 Medium + 6 Low fixes |
 | 44 | 2026-03-21 | Security cleanup, integration tests, auth follow-ups, frontend polish |
-| 45 | 2026-03-21 | P1 features (SLA, multi-action automation, compound conditions), L-5 session limit, backend+frontend polish |
-| 46 | 2026-03-21 | Code quality, unit tests (3 suites), P2 (Monte Carlo forecasting, cron automation) |
-| 47 | 2026-03-21 | P2 (cycle time scatter, release burndown, auto-tracking, workload heatmap), polish batch |
-| 48 | 2026-03-21 | P2 (timesheet view, approval workflows), follow-up polish |
-| 49 | 2026-03-21 | P2 (initiatives, workflow permissions, field-level restrictions), polish |
-| 50 | 2026-03-21 | TQL parser, follow-up fixes (field permissions, initiative, approval, timesheet) |
-| 51 | 2026-03-21 | Feature polish, reliability, shared types, orchestrator metrics |
+| 45 | 2026-03-21 | P1 features (SLA, multi-action automation, compound conditions) |
+| 46 | 2026-03-21 | Code quality, unit tests, P2 (Monte Carlo, cron automation) |
+| 47 | 2026-03-21 | P2 (cycle time scatter, release burndown, auto-tracking, workload heatmap) |
+| 48 | 2026-03-21 | P2 (timesheet view, approval workflows) |
+| 49 | 2026-03-21 | P2 (initiatives, workflow permissions, field-level restrictions) |
+| 50 | 2026-03-21 | TQL parser, follow-up fixes |
+| 51 | 2026-03-21 | Feature polish, reliability, shared types |
 | 52 | 2026-03-22 | Final cleanup: SLA business hours, reliability, test stability |
-| 53 | 2026-03-22 | Bug fixes: PWA offline page, V1 feature cuts, archived tasks, @mention, saved views, automation |
-| 54 | 2026-03-22 | Must-fix UX: priority dropdown, AI permissions, dependency direction, epics GraphQL |
-| 55 | 2026-03-22 | Should-fix UX: centered modal, auto-track clarity, TQL values, automation editing, SSE, saved views, epics |
-| 56 | 2026-03-23 | Bug fixes: priority persistence, workflow restriction model, saved view filters, release burndown, silent auth, release layout, share toggle |
-| 57 | 2026-03-23 | Open core: license flag system (TASKTOAD_LICENSE), premium feature gating (8 features), frontend useLicenseFeatures hook |
-| 58 | 2026-03-24 | Project scaffolding: setup wizard, scaffold mutation, AI prompt fix, empty repo commit, framework templates |
-| 59 | 2026-03-24 | Per-org licensing: plan column on Org, license.ts rewrite, 33 resolver call sites, infrastructure per-event checks |
-| 60 | 2026-03-24 | Scaffolding + licensing follow-ups (default branch, template registry, KB auto-populate, wizard tests, orgPlan, Plans tab) |
-| 61 | 2026-03-25 | Pre-pipeline refactors: token manager (R1), event helpers (R4), unused exports (R14), custom project option |
-| 62 | 2026-03-25 | Deferred refactors: useEditableField (R2), tab extraction (R8), picker consolidation (R9), metrics (R6), queries split (R11), chart utilities (R12) |
-| 63 | 2026-03-25 | Quick hits: closed-source cleanup, modal dismiss fix, session security fix |
-| 64 | 2026-03-26 | Phase 1: branch-based pipeline — branch management, generateCode/writeDocs commit, createPR rewrite, planner enforcement, skeptical reviewer |
-| 65 | 2026-03-26 | Phase 1 follow-ups: commitFiles error handling, concurrency guard, OAuth routing, fix_review executor, quick hits (Modal tests, act() fix, open-source refs) |
-| 66 | 2026-03-26 | Phase 1.5: AI stack recommendations, scaffold config, existing repo onboarding, interview removal, CLAUDE.md in scaffold, KB seeding from stack choice |
-| 67 | 2026-03-26 | Phase 2: context threading — execution result forwarding, completion summaries, upstream context wiring, failure propagation, projectChat KB+deps |
-| 68 | 2026-03-26 | Phase 3: orchestration — Session model, GitHub→orchestrator bridge, re-planning on failure, session-aware orchestrator, session UI |
-| 69 | 2026-03-26 | Follow-up cleanup: in_review→done transition, session race condition, context wiring, dead mutations, lint fix, type casts, analyzeIntent |
-| 70 | 2026-03-27 | Actionable AI: projectChat with suggestedActions + Apply, whatNext query, What's Next? panel, dependency inference in planner |
-| — | 2026-03-27 | Pipeline hardening: SSE real-time fix, merge_pr executor, 401 auto-reauth, fix_review overhaul, task status+column transitions, stall recovery UI |
+| 53 | 2026-03-22 | Bug fixes: PWA, feature cuts, archived tasks, automation |
+| 54 | 2026-03-22 | Must-fix UX: priority, AI permissions, dependencies, epics |
+| 55 | 2026-03-22 | Should-fix UX: modal, auto-track, TQL, automation, SSE |
+| 56 | 2026-03-23 | Bug fixes: priority, workflow, saved views, release, auth |
+| 57 | 2026-03-23 | Open core: license flag system, premium gating |
+| 58 | 2026-03-24 | Project scaffolding: wizard, scaffold mutation, templates |
+| 59 | 2026-03-24 | Per-org licensing: plan column, license.ts rewrite |
+| 60 | 2026-03-24 | Scaffolding + licensing follow-ups |
+| 61 | 2026-03-25 | Pre-pipeline refactors: token manager, event helpers |
+| 62 | 2026-03-25 | Deferred refactors: hooks, tabs, pickers, metrics, charts |
+| 63 | 2026-03-25 | Quick hits: closed-source cleanup, modal dismiss, session security |
+| 64 | 2026-03-26 | Phase 1: branch-based pipeline |
+| 65 | 2026-03-26 | Phase 1 follow-ups: error handling, OAuth routing, fix_review |
+| 66 | 2026-03-26 | Phase 1.5: AI stack recommendations, scaffold config, onboarding |
+| 67 | 2026-03-26 | Phase 2: context threading |
+| 68 | 2026-03-26 | Phase 3: orchestration — sessions, re-planning |
+| 69 | 2026-03-26 | Follow-up cleanup |
+| 70 | 2026-03-27 | Actionable AI: projectChat actions, whatNext, dependency inference |
+| — | 2026-03-27 | Pipeline hardening: SSE fix, merge_pr, 401 retry, fix_review overhaul |
 
 Full wave details in `changelog.md`.
