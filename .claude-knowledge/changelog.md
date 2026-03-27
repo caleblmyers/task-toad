@@ -4,6 +4,32 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-26 (Wave 69 — follow-up cleanup)
+
+### Wave 69: Follow-Up Cleanup (3 workers, 3 tasks)
+
+**Worker 1 — task-001: Pipeline transition fix + context wiring:**
+- Fixed in_review → done transition: task now transitions to `done` when review is approved or fix_review completes. Orchestrator triggers downstream tasks automatically.
+- Wired `upstreamTaskContext`, `previousStepContext`, and `failureContext` to writeDocs.ts and fixReview.ts (previously only generateCode had them)
+- Fixed fixReview.ts: now passes `ctx.userGitHubToken` to commitFiles
+
+**Worker 2 — task-002: Session race condition + webhook userId:**
+- Session progress updates now use atomic SQL via `$executeRaw` with `jsonb_set` — no more read-modify-write race under concurrent plan completions
+- All three counters (tasksCompleted, tasksFailed, tasksSkipped) use atomic increments
+- Webhook handler resolves org admin userId instead of hardcoded `'system'` string
+
+**Worker 3 — task-003: Quick fixes bundle (6 items):**
+- Removed `(args as Record<string, unknown>).config` type cast in scaffoldProject resolver
+- Replaced type assertion in projectChat with proper Prisma select for completionSummary
+- Removed dead `generateOnboardingQuestions` and `saveOnboardingAnswers` from GraphQL schema + resolvers
+- Fixed ProjectDetail.tsx lint warning (extracted useEffect dependencies from `d`)
+- Added error display in SessionDialog (inline error message on create/start failure)
+- Wired analyzeIntent textarea: saves as KB entry before bootstrapProjectFromRepo
+
+**Process:** All 3 tasks merged on first review — zero rejections. Lint now shows 0 warnings.
+
+---
+
 ## 2026-03-26 (Wave 68 — Phase 3: orchestration)
 
 ### Wave 68: Phase 3 Orchestration — Sessions + GitHub Bridge + Re-planning (3 workers, 5 tasks)
@@ -243,44 +269,6 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-03-23 (Wave 56 — bug fixes from manual testing Round 2)
-
-### Wave 56: Bug Fixes from Production Testing (3 workers, 6 tasks)
-
-**Worker 1 — task-001: Priority Field Persistence:**
-- Added `priority` to three-point update pipeline: backend resolver (`task/mutations.ts` Prisma update data), frontend mutation builder (`buildUpdateTaskFieldsMutation` in `queries.ts`), and frontend hook (`useTaskOperations.ts` updates type). Priority changes now persist through refresh.
-
-**Worker 1 — task-002: Workflow Restriction Model:**
-- Changed workflow from allowlist to restriction/overlay model in `task/mutations.ts`. Previously: defining ANY transition blocked all unlisted ones. Now: all transitions allowed by default; workflow rules only ADD role restrictions to specific transitions.
-- Updated `WorkflowTab.tsx` UI labels to reflect restriction model ("Add Restriction" instead of "Add Transition").
-
-**Worker 2 — task-003: Saved View Filter Capture:**
-- Fixed `SavedViewPicker.tsx` — was hardcoding `filters: '{}'` instead of capturing actual filter state. Now captures statusFilter, priorityFilter, assigneeFilter, labelFilter, customFieldFilters, filterGroup as JSON.
-- Restore path in `useTaskFiltering.ts` already worked — just needed real data.
-
-**Worker 2 — task-004: Saved View Share Toggle Editing:**
-- Added share/unshare button on hover for existing saved views. Wired through `updateFilter` mutation (backend already supported `isShared`).
-- `UPDATE_FILTER_MUTATION` in `queries.ts` now includes `isShared` field.
-
-**Worker 3 — task-005: Release Burndown + Full-Page Layout:**
-- Release burndown resolver: handles null `releaseDate` (falls back to current date), added 365-day safety cap on date range, shows actual error text instead of generic "Unable to load burndown".
-- Release detail: removed `max-w-lg` constraint, now full-width. Added back button breadcrumb for navigation.
-
-**Worker 3 — task-006: Silent Auth Failures:**
-- Root cause: GraphQL returns HTTP 200 with `extensions.code: 'UNAUTHENTICATED'` — the `gql()` client only checked HTTP 401. Fixed: after parsing JSON response, checks for UNAUTHENTICATED error code, attempts token refresh, triggers `session-expired` custom event and modal if refresh fails.
-
-**Process:** All 6 tasks merged on first review — zero rejections. Task descriptions with exact line numbers and code snippets led to precise, minimal changes.
-
-### Post-Wave 56 Hotfixes (2026-03-23)
-
-Three follow-up fixes after re-testing Wave 56 on production:
-
-1. **Priority prop type** — `TaskDetailPanel.tsx` prop type for `onUpdateTask` was missing `priority`, causing the value to be dropped before reaching the hook. Added `priority?: string`.
-2. **Priority GraphQL typedef** — `updateTask` mutation in `typedefs/task.ts` was missing `priority: String` parameter. Schema silently ignored the field. Added it.
-3. **Org auto-access + saved view type** — Default permissions for org members upgraded from viewer-lite to editor-level (`permissions.ts`). FilterBar saved filter pills now pass `viewConfig` so loading a saved view respects the view type it was saved from.
-
----
-
 ## 2026-03-22 (should-fix UX + re-tests)
 
 ### Wave 55: Should-fix UX — modal centering, time entry clarity, TQL autocomplete, automation editing, SSE real-time, saved views, epics.
@@ -344,6 +332,7 @@ Three follow-up fixes after re-testing Wave 56 on production:
 
 ## Older Entries (one-line summaries)
 
+- **2026-03-23** — Wave 56: Bug fixes from production testing — priority persistence, workflow restriction model, saved view filters, release burndown, silent auth failures, + 3 hotfixes.
 - **2026-03-25** — Wave 63: Quick hits — closed-source cleanup (LICENSE, CONTRIBUTING, TASKTOAD_LICENSE, Docker), modal dismiss fix, session security fix.
 - **2026-03-25** — Wave 62: Deferred refactors — useEditableField (R2), tab extraction (R8), picker consolidation (R9), metrics calc (R6), queries split (R11), chart utilities (R12).
 - **2026-03-25** — Wave 61: Pre-pipeline refactors — token manager (R1), event helpers (R4), unused exports (R14), custom project option.

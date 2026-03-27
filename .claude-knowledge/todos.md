@@ -1,8 +1,8 @@
 # TaskToad — Remaining Work & Tracking
 
-68 swarm waves completed. 356 tests. **Strategic pivot to closed-source SaaS autopilot — building the three pillars (decomposition, context threading, orchestration).**
+69 swarm waves completed. 356 tests. 0 lint warnings. **Strategic pivot to closed-source SaaS autopilot — all three pillars implemented.**
 
-**Phase 3 core complete (Wave 68).** Sessions, GitHub→orchestrator bridge, re-planning on failure. All three pillars implemented. Next: manual e2e test, then follow-up polish or Phase 4. See `autopilot-pillars.md` for the full spec.
+**Follow-up cleanup complete (Wave 69).** Pipeline hardened: in_review→done transition, session race condition fixed, context wired to all executors, dead code removed. Ready for manual e2e test. See `autopilot-pillars.md` for the full spec.
 
 ---
 
@@ -60,27 +60,27 @@ All 5 implementation tasks completed:
 - [ ] **Session time limit enforcement** — `timeLimitMinutes` is in SessionConfig but not checked by the orchestrator. Add a time limit check alongside budget/scope checks.
 - [ ] **Session resume (start paused session)** — `startSession` allows re-starting paused sessions, but doesn't un-set `autoComplete` on tasks if they were removed from the session. Consider edge cases.
 - [ ] **replanFailedTask: extracting shared plan creation logic** — replanFailedTask duplicates the plan creation + ID remapping pattern from commitActionPlan. Consider extracting into a shared helper to reduce drift.
-- [ ] **Session progress race condition** — orchestratorListener reads/updates session progress non-atomically (read JSON → increment → write JSON). Under concurrent plan completions, counts could be lost. Consider using Prisma `$executeRaw` with JSON increment or advisory locks.
+- [x] **Session progress race condition** — fixed: atomic SQL jsonb_set increments in orchestratorListener *(Wave 69)*
 - [ ] **Test coverage for sessions** — no unit tests for: session CRUD resolvers, session-aware orchestration, budget/scope limit checks, failure policy handling. Add tests.
-- [ ] **SessionDialog error handling** — create/start failures are silently caught. Show a toast or inline error message to the user.
-- [ ] **Webhook event userId** — task-001 uses `'system'` as userId for webhook-triggered events. Verify the orchestrator and listeners handle this gracefully (they may try to load the user).
+- [x] **SessionDialog error handling** — fixed: inline error display in SessionDialog *(Wave 69)*
+- [x] **Webhook event userId** — fixed: resolves org admin userId instead of 'system' *(Wave 69)*
 
 ### Wave 67 Follow-Ups (Context Threading)
-- [ ] **Task status → done transition after review** — completionSummary is generated when the action plan completes (status → in_review), but orchestrator only triggers downstream tasks when status → done. Verify the in_review → done transition happens (manual or automated) so downstream tasks actually receive upstream context.
-- [ ] **writeDocs/fixReview: add upstreamTaskContext and failureContext** — task-001 added previousStepContext to writeDocs and fixReview, but upstreamTaskContext (task-003) and failureContext (task-004) were only wired into generateCode. Apply the same pattern to writeDocs.ts and fixReview.ts.
+- [x] **Task status → done transition after review** — fixed: auto-transitions to done when review approved or fix_review completes *(Wave 69)*
+- [x] **writeDocs/fixReview: add upstreamTaskContext and failureContext** — fixed: all three context fields wired to writeDocs and fixReview *(Wave 69)*
 - [ ] **Test coverage for context threading** — no unit tests for: previousStepContext building, upstream summary loading (raw SQL query in actionExecutor), failure context round-trip, completion summary generation. Add tests for each.
-- [ ] **projectChat: handle missing completionSummary gracefully** — task-005 uses type assertion `as typeof t & { completionSummary?: string | null }` — once task-002's migration is applied and prisma generate runs, replace with proper Prisma include field.
+- [x] **projectChat: handle missing completionSummary gracefully** — fixed: proper Prisma select with completionSummary field *(Wave 69)*
 - [ ] **Rate limiting for completionSummary generation** — each plan completion triggers an AI call for summary generation. Consider caching or skipping if budget is exhausted.
 
 ### Wave 66 Follow-Ups (Onboarding Redesign)
-- [ ] **Clean up redundant type cast in scaffoldProject resolver** — `(args as Record<string, unknown>).config` in KB seeding block should just use `args.config` directly (task-001 already typed it)
-- [ ] **Wire analyzeIntent to bootstrapProjectFromRepo** — the "What would you like to build?" textarea in the analyze step collects input but doesn't pass it to the mutation. Either pass it as context or remove the textarea.
-- [ ] **Remove dead backend mutations** — `generateOnboardingQuestions` and `saveOnboardingAnswers` are unused after OnboardingWizard removal (frontend deleted, backend stays for now)
+- [x] **Clean up redundant type cast in scaffoldProject resolver** — fixed: uses args.config directly *(Wave 69)*
+- [x] **Wire analyzeIntent to bootstrapProjectFromRepo** — fixed: saved as KB entry before bootstrap *(Wave 69)*
+- [x] **Remove dead backend mutations** — fixed: onboarding mutations removed from GraphQL schema and resolvers *(Wave 69)*
 
 ### Wave 65 Follow-Ups
-- [ ] **fix_review executor: pass userGitHubToken** — the new fixReview.ts commits to branch but doesn't pass `ctx.userGitHubToken` to `commitFiles` (task-002 added the field after task-003 was written). One-line fix.
+- [x] **fix_review executor: pass userGitHubToken** — fixed: added to commitFiles call *(Wave 69)*
 - [ ] **fix_review: test coverage** — no unit tests for fixReview executor. Should test: approved review skip, AI fix generation, deferred issue → backlog task creation, duplicate task detection.
-- [ ] **Pre-existing lint warning** — `ProjectDetail.tsx:106` has a missing `useEffect` dependency `'d'` that shows in every lint run. Low priority but noisy.
+- [x] **Pre-existing lint warning** — fixed: extracted deps from `d` before useEffect in ProjectDetail.tsx *(Wave 69)*
 
 ### Medium Priority (P2)
 - [ ] **Branch cleanup strategy** — decide: auto-delete failed/cancelled plan branches, tag with prefix, or retention policy
@@ -167,5 +167,6 @@ All 5 implementation tasks completed:
 | 66 | 2026-03-26 | Phase 1.5: AI stack recommendations, scaffold config, existing repo onboarding, interview removal, CLAUDE.md in scaffold, KB seeding from stack choice |
 | 67 | 2026-03-26 | Phase 2: context threading — execution result forwarding, completion summaries, upstream context wiring, failure propagation, projectChat KB+deps |
 | 68 | 2026-03-26 | Phase 3: orchestration — Session model, GitHub→orchestrator bridge, re-planning on failure, session-aware orchestrator, session UI |
+| 69 | 2026-03-26 | Follow-up cleanup: in_review→done transition, session race condition, context wiring, dead mutations, lint fix, type casts, analyzeIntent |
 
 Full wave details in `changelog.md`.
