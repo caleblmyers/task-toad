@@ -62,8 +62,8 @@ const lazyFallback = (
 );
 
 export default function ProjectDetail() {
-  const d = useProjectData();
-  const filtering = useTaskFiltering(d.rootTasks);
+  const projectData = useProjectData();
+  const filtering = useTaskFiltering(projectData.rootTasks);
   const { toasts, addToast, removeToast } = useToast();
   const { user } = useAuth();
   const { timeSummary, loadTimeSummary, logTime, deleteTimeEntry } = useTimeTracking();
@@ -84,15 +84,15 @@ export default function ProjectDetail() {
 
   // Show setup wizard for projects without a GitHub repo (once project data loads)
   useEffect(() => {
-    if (d.project && !d.project.githubRepositoryName && !setupCheckedRef.current) {
+    if (projectData.project && !projectData.project.githubRepositoryName && !setupCheckedRef.current) {
       setupCheckedRef.current = true;
       setShowSetup(true);
     }
-  }, [d.project]);
+  }, [projectData.project]);
 
   // Load time summary and action plan when task is selected
-  const selectedTaskId = d.selectedTask?.taskId;
-  const { loadActionPlan, setActionPlan } = d;
+  const selectedTaskId = projectData.selectedTask?.taskId;
+  const { loadActionPlan, setActionPlan } = projectData;
   useEffect(() => {
     if (selectedTaskId) {
       void loadTimeSummary(selectedTaskId);
@@ -105,8 +105,8 @@ export default function ProjectDetail() {
   // Re-fetch tasks when server-side filter changes
   const filterInput = filtering.filterInput;
   useEffect(() => {
-    if (d.projectId) {
-      void d.loadTasks(filterInput);
+    if (projectData.projectId) {
+      void projectData.loadTasks(filterInput);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterInput]);
@@ -131,13 +131,13 @@ export default function ProjectDetail() {
 
   useKeyboardShortcuts({
     tasks: filtering.filteredTasks,
-    selectedTask: d.selectedTask,
-    onSelectTask: d.selectTask,
-    onCloseTask: () => d.setSelectedTask(null),
-    onNewTask: () => d.setShowAddForm(true),
+    selectedTask: projectData.selectedTask,
+    onSelectTask: projectData.selectTask,
+    onCloseTask: () => projectData.setSelectedTask(null),
+    onNewTask: () => projectData.setShowAddForm(true),
     onFocusSearch: () => searchRef.current?.focus(),
     onShowHelp: () => setActiveModal((v) => v === 'shortcut-help' ? null : 'shortcut-help'),
-    enabled: !d.isGenerating,
+    enabled: !projectData.isGenerating,
   });
 
   // SSE: refresh action plan when action events arrive for the selected task + toast notifications
@@ -146,8 +146,8 @@ export default function ProjectDetail() {
     (event: string, data: unknown) => {
       if (event === 'task.action_started' || event === 'task.action_completed' || event === 'task.action_plan_completed') {
         const payload = data as { taskId?: string; taskTitle?: string };
-        if (payload?.taskId && d.selectedTask?.taskId === payload.taskId) {
-          void d.loadActionPlan(payload.taskId);
+        if (payload?.taskId && projectData.selectedTask?.taskId === payload.taskId) {
+          void projectData.loadActionPlan(payload.taskId);
         }
         if (event === 'task.action_plan_completed' && payload?.taskTitle) {
           addToast('success', `Auto-complete finished for "${payload.taskTitle}"`);
@@ -155,8 +155,8 @@ export default function ProjectDetail() {
       }
       if (event === 'task.action_plan_failed') {
         const payload = data as { taskId?: string; taskTitle?: string; errorMessage?: string };
-        if (payload?.taskId && d.selectedTask?.taskId === payload.taskId) {
-          void d.loadActionPlan(payload.taskId);
+        if (payload?.taskId && projectData.selectedTask?.taskId === payload.taskId) {
+          void projectData.loadActionPlan(payload.taskId);
         }
         addToast('error', `Auto-complete failed: ${(payload?.errorMessage || 'Unknown error').slice(0, 100)}`);
       }
@@ -167,7 +167,7 @@ export default function ProjectDetail() {
         }
       }
       if (event === 'task.created' || event === 'task.updated' || event === 'tasks.bulk_updated') {
-        void d.loadTasks(filterInput);
+        void projectData.loadTasks(filterInput);
       }
       if (event === 'approval.requested') {
         const payload = data as { taskTitle?: string; fromStatus?: string; toStatus?: string };
@@ -188,24 +188,24 @@ export default function ProjectDetail() {
   // Handle ?task=<taskId> deep-link from search results
   useEffect(() => {
     const taskId = searchParams.get('task');
-    if (taskId && d.rootTasks.length > 0) {
-      const task = d.rootTasks.find((t) => t.taskId === taskId);
+    if (taskId && projectData.rootTasks.length > 0) {
+      const task = projectData.rootTasks.find((t) => t.taskId === taskId);
       if (task) {
-        d.selectTask(task);
+        projectData.selectTask(task);
         setSearchParams((prev) => {
           prev.delete('task');
           return prev;
         }, { replace: true });
       }
     }
-  }, [searchParams, d.rootTasks]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [searchParams, projectData.rootTasks]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load GitHub repo link + installations
   useEffect(() => {
-    if (!d.projectId) return;
+    if (!projectData.projectId) return;
     gql<{ githubProjectRepo: GitHubRepoLink | null }>(
       GITHUB_PROJECT_REPO_QUERY,
-      { projectId: d.projectId }
+      { projectId: projectData.projectId }
     )
       .then((data) => setGitHubRepo(data.githubProjectRepo))
       .catch(() => {/* non-critical */});
@@ -214,53 +214,53 @@ export default function ProjectDetail() {
     )
       .then((data) => setGitHubInstallations(data.githubInstallations))
       .catch(() => {/* non-critical */});
-  }, [d.projectId]);
+  }, [projectData.projectId]);
 
   // Load project-level activities when switching to dashboard
   const loadProjectActivities = useCallback(async () => {
-    if (!d.projectId) return;
+    if (!projectData.projectId) return;
     try {
       const data = await gql<{ activities: Activity[] }>(
         PROJECT_ACTIVITIES_QUERY,
-        { projectId: d.projectId }
+        { projectId: projectData.projectId }
       );
       setProjectActivities(data.activities);
     } catch {
       // ignore
     }
-  }, [d.projectId]);
+  }, [projectData.projectId]);
 
   // Handle modal/panel open requests from toolbar
   const handleOpenModal = (modal: string) => {
     // Panels that replace main content
     if (modal === 'standup') {
       setActivePanel('standup');
-      d.setSummary(null);
+      projectData.setSummary(null);
       return;
     }
     if (modal === 'health') {
       setActivePanel('health');
-      d.setSummary(null);
+      projectData.setSummary(null);
       return;
     }
     if (modal === 'trends') {
       setActivePanel('trends');
-      d.setSummary(null);
+      projectData.setSummary(null);
       return;
     }
     if (modal === 'cycle-time') {
       setActivePanel('cycle-time');
-      d.setSummary(null);
+      projectData.setSummary(null);
       return;
     }
     if (modal === 'what-next') {
       setActivePanel('what-next');
-      d.setSummary(null);
+      projectData.setSummary(null);
       return;
     }
     if (modal === 'execution-dashboard') {
       setActivePanel('execution-dashboard');
-      d.setSummary(null);
+      projectData.setSummary(null);
       return;
     }
     // Sprint transition carries data
@@ -274,24 +274,24 @@ export default function ProjectDetail() {
 
   // Wrap handlers to show toasts on success
   const handleStatusChange = async (taskId: string, status: string) => {
-    await d.handleStatusChange(taskId, status);
+    await projectData.handleStatusChange(taskId, status);
     addToast('success', `Status updated to ${statusLabel(status)}`);
   };
   const handleAssignUser = async (taskId: string, assigneeId: string | null) => {
-    await d.handleAssignUser(taskId, assigneeId);
+    await projectData.handleAssignUser(taskId, assigneeId);
     addToast('success', assigneeId ? 'Task assigned' : 'Task unassigned');
   };
   const handleDueDateChange = async (taskId: string, dueDate: string | null) => {
-    await d.handleDueDateChange(taskId, dueDate);
+    await projectData.handleDueDateChange(taskId, dueDate);
     addToast('success', dueDate ? 'Due date set' : 'Due date cleared');
   };
   const handleAssignSprint = async (taskId: string, sprintId: string | null) => {
-    await d.handleAssignSprint(taskId, sprintId);
+    await projectData.handleAssignSprint(taskId, sprintId);
     addToast('success', sprintId ? 'Moved to sprint' : 'Moved to backlog');
   };
 
   const handleToggleTaskId = (taskId: string) => {
-    d.setSelectedTaskIds((prev) => {
+    projectData.setSelectedTaskIds((prev) => {
       const next = new Set(prev);
       if (next.has(taskId)) next.delete(taskId); else next.add(taskId);
       return next;
@@ -299,7 +299,7 @@ export default function ProjectDetail() {
   };
 
   const handleToggleAll = (taskIds: string[]) => {
-    d.setSelectedTaskIds((prev) => {
+    projectData.setSelectedTaskIds((prev) => {
       const allSelected = taskIds.every((id) => prev.has(id));
       const next = new Set(prev);
       if (allSelected) {
@@ -312,24 +312,24 @@ export default function ProjectDetail() {
   };
 
   const handleBulkUpdate = async (updates: { status?: string; assigneeId?: string | null; sprintId?: string | null; archived?: boolean }) => {
-    const ids = Array.from(d.selectedTaskIds);
-    await d.handleBulkUpdate(ids, updates);
+    const ids = Array.from(projectData.selectedTaskIds);
+    await projectData.handleBulkUpdate(ids, updates);
     addToast('success', `Updated ${ids.length} tasks`);
   };
 
   const handleCSVImport = async (tasks: Array<{ title: string; description?: string; status?: string; priority?: string }>) => {
-    await d.handleBulkCreateTasks(tasks);
+    await projectData.handleBulkCreateTasks(tasks);
     addToast('success', `Imported ${tasks.length} tasks`);
     setActiveModal(null);
   };
 
   const handleSaveAsTemplate = async () => {
-    if (!d.selectedTask || !d.projectId) return;
-    const t = d.selectedTask;
+    if (!projectData.selectedTask || !projectData.projectId) return;
+    const t = projectData.selectedTask;
     try {
       await gql<{ createTaskTemplate: { taskTemplateId: string } }>(
         SAVE_AS_TEMPLATE_MUTATION,
-        { projectId: d.projectId, name: `Template: ${t.title}`, description: t.description, instructions: t.instructions ?? null, acceptanceCriteria: t.acceptanceCriteria ?? null, priority: t.priority, taskType: t.taskType },
+        { projectId: projectData.projectId, name: `Template: ${t.title}`, description: t.description, instructions: t.instructions ?? null, acceptanceCriteria: t.acceptanceCriteria ?? null, priority: t.priority, taskType: t.taskType },
       );
       addToast('success', 'Saved as template');
     } catch (err) {
@@ -337,76 +337,76 @@ export default function ProjectDetail() {
     }
   };
 
-  if (!d.projectId) return null;
+  if (!projectData.projectId) return null;
 
   const detailPanelProps = {
-    editingTitle: d.editingTitle,
-    editTitleValue: d.editTitleValue,
-    titleEditRef: d.titleEditRef,
-    generatingInstructions: d.generatingInstructions,
-    sprints: d.sprints,
-    orgUsers: d.orgUsers,
-    statuses: d.projectStatuses,
-    allTasks: d.rootTasks,
-    comments: d.selectedTask ? (d.comments[d.selectedTask.taskId] ?? []) : [],
-    activities: d.selectedTask ? (d.taskActivities[d.selectedTask.taskId] ?? []) : [],
+    editingTitle: projectData.editingTitle,
+    editTitleValue: projectData.editTitleValue,
+    titleEditRef: projectData.titleEditRef,
+    generatingInstructions: projectData.generatingInstructions,
+    sprints: projectData.sprints,
+    orgUsers: projectData.orgUsers,
+    statuses: projectData.projectStatuses,
+    allTasks: projectData.rootTasks,
+    comments: projectData.selectedTask ? (projectData.comments[projectData.selectedTask.taskId] ?? []) : [],
+    activities: projectData.selectedTask ? (projectData.taskActivities[projectData.selectedTask.taskId] ?? []) : [],
     currentUserId: user?.userId ?? '',
     isAdmin: user?.role === 'org:admin',
-    can: d.can,
-    disabled: d.isGenerating,
-    onStartEditTitle: d.startEditTitle,
-    onTitleChange: d.setEditTitleValue,
-    onTitleSave: d.handleTitleSave,
+    can: projectData.can,
+    disabled: projectData.isGenerating,
+    onStartEditTitle: projectData.startEditTitle,
+    onTitleChange: projectData.setEditTitleValue,
+    onTitleSave: projectData.handleTitleSave,
     onTitleKeyDown: (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter') d.handleTitleSave();
-      if (e.key === 'Escape') d.setEditingTitle(false);
+      if (e.key === 'Enter') projectData.handleTitleSave();
+      if (e.key === 'Escape') projectData.setEditingTitle(false);
     },
     onStatusChange: handleStatusChange,
-    onSubtaskStatusChange: d.handleSubtaskStatusChange,
-    onGenerateInstructions: d.handleGenerateInstructions,
+    onSubtaskStatusChange: projectData.handleSubtaskStatusChange,
+    onGenerateInstructions: projectData.handleGenerateInstructions,
     onAssignSprint: handleAssignSprint,
     onAssignUser: handleAssignUser,
     onDueDateChange: handleDueDateChange,
-    onAddDependency: d.handleAddDependency,
-    onRemoveDependency: d.handleRemoveDependency,
+    onAddDependency: projectData.handleAddDependency,
+    onRemoveDependency: projectData.handleRemoveDependency,
     onCreateComment: async (content: string, parentId?: string) => {
-      if (d.selectedTask) await d.handleCreateComment(d.selectedTask.taskId, content, parentId);
+      if (projectData.selectedTask) await projectData.handleCreateComment(projectData.selectedTask.taskId, content, parentId);
     },
-    onUpdateComment: d.handleUpdateComment,
+    onUpdateComment: projectData.handleUpdateComment,
     onDeleteComment: async (commentId: string) => {
-      if (d.selectedTask) await d.handleDeleteComment(commentId, d.selectedTask.taskId);
+      if (projectData.selectedTask) await projectData.handleDeleteComment(commentId, projectData.selectedTask.taskId);
     },
-    onUpdateTask: d.handleUpdateTask,
-    labels: d.labels,
-    onAddTaskLabel: d.handleAddTaskLabel,
-    onRemoveTaskLabel: d.handleRemoveTaskLabel,
-    onCreateLabel: d.handleCreateLabel,
-    onAddWatcher: d.handleAddWatcher,
-    onRemoveWatcher: d.handleRemoveWatcher,
+    onUpdateTask: projectData.handleUpdateTask,
+    labels: projectData.labels,
+    onAddTaskLabel: projectData.handleAddTaskLabel,
+    onRemoveTaskLabel: projectData.handleRemoveTaskLabel,
+    onCreateLabel: projectData.handleCreateLabel,
+    onAddWatcher: projectData.handleAddWatcher,
+    onRemoveWatcher: projectData.handleRemoveWatcher,
     onArchiveTask: async (taskId: string, archived: boolean) => {
-      await d.handleArchiveTask(taskId, archived);
+      await projectData.handleArchiveTask(taskId, archived);
       addToast('success', archived ? 'Task archived' : 'Task unarchived');
     },
-    onAutoComplete: d.handlePreviewActionPlan,
-    autoCompleteLoading: d.actionPlanPreviewLoading,
-    actionPlan: d.actionPlan,
-    onCompleteManualAction: d.handleCompleteManualAction,
-    onSkipAction: d.handleSkipAction,
-    onRetryAction: d.handleRetryAction,
-    onCancelActionPlan: d.handleCancelActionPlan,
-    onExecuteActionPlan: async (planId: string) => { await d.handleExecuteActionPlan(planId); },
+    onAutoComplete: projectData.handlePreviewActionPlan,
+    autoCompleteLoading: projectData.actionPlanPreviewLoading,
+    actionPlan: projectData.actionPlan,
+    onCompleteManualAction: projectData.handleCompleteManualAction,
+    onSkipAction: projectData.handleSkipAction,
+    onRetryAction: projectData.handleRetryAction,
+    onCancelActionPlan: projectData.handleCancelActionPlan,
+    onExecuteActionPlan: async (planId: string) => { await projectData.handleExecuteActionPlan(planId); },
     timeSummary,
     onLogTime: logTime,
     onDeleteTimeEntry: deleteTimeEntry,
-    onSelectTask: d.selectTask,
+    onSelectTask: projectData.selectTask,
   };
 
   return (
-    <PermissionProvider can={d.can}>
+    <PermissionProvider can={projectData.can}>
     <div className="flex flex-col h-full -m-6">
       {/* Toolbar + status editor + filter bar */}
       <ProjectToolbar
-        d={d}
+        projectData={projectData}
         filtering={filtering}
         searchRef={searchRef}
         timelineView={timelineView}
@@ -415,17 +415,17 @@ export default function ProjectDetail() {
         addToast={addToast}
         onOpenModal={handleOpenModal}
         onLoadProjectActivities={loadProjectActivities}
-        tqlError={d.err && d.err.includes('TQL parse error') ? d.err : null}
+        tqlError={projectData.err && projectData.err.includes('TQL parse error') ? projectData.err : null}
       />
 
       {/* Inline add form */}
-      {d.showAddForm && !d.isGenerating && (
+      {projectData.showAddForm && !projectData.isGenerating && (
         <div className="px-6 py-3 bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 flex-shrink-0">
-          <form onSubmit={d.handleAddTask} className="flex items-center gap-2">
+          <form onSubmit={projectData.handleAddTask} className="flex items-center gap-2">
             <input
               type="text"
-              value={d.newTaskTitle}
-              onChange={(e) => d.setNewTaskTitle(e.target.value)}
+              value={projectData.newTaskTitle}
+              onChange={(e) => projectData.setNewTaskTitle(e.target.value)}
               placeholder="Task title"
               className="flex-1 max-w-sm px-2 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded focus:outline-none focus:ring-1 focus:ring-brand-green dark:bg-slate-700 dark:text-slate-200"
               required
@@ -434,16 +434,16 @@ export default function ProjectDetail() {
             <button type="submit" className="px-3 py-1.5 bg-brand-green text-white text-sm rounded hover:bg-brand-green-hover">
               Add
             </button>
-            {d.addErr && <p className="text-xs text-red-600">{d.addErr}</p>}
+            {projectData.addErr && <p className="text-xs text-red-600">{projectData.addErr}</p>}
           </form>
         </div>
       )}
 
       {/* Error banner */}
-      {d.err && (
+      {projectData.err && (
         <div className="px-6 py-2 bg-red-50 text-sm text-red-600 border-b border-red-100 flex-shrink-0 flex items-center justify-between">
-          <span>{d.err}</span>
-          <button type="button" onClick={() => d.setErr(null)} className="text-red-400 hover:text-red-600 ml-2">
+          <span>{projectData.err}</span>
+          <button type="button" onClick={() => projectData.setErr(null)} className="text-red-400 hover:text-red-600 ml-2">
             <IconClose className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -453,153 +453,153 @@ export default function ProjectDetail() {
       <div className="flex flex-1 min-h-0">
         {/* Left: board / backlog / dashboard / states */}
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-          {activePanel === 'standup' && d.projectId ? (
+          {activePanel === 'standup' && projectData.projectId ? (
             <Suspense fallback={lazyFallback}>
               <StandupReportPanel
-                projectId={d.projectId}
-                disabled={d.isGenerating}
+                projectId={projectData.projectId}
+                disabled={projectData.isGenerating}
                 onClose={() => setActivePanel(null)}
               />
             </Suspense>
-          ) : activePanel === 'health' && d.projectId ? (
+          ) : activePanel === 'health' && projectData.projectId ? (
             <Suspense fallback={lazyFallback}>
               <ProjectHealthPanel
-                projectId={d.projectId}
-                disabled={d.isGenerating}
+                projectId={projectData.projectId}
+                disabled={projectData.isGenerating}
                 onClose={() => setActivePanel(null)}
               />
             </Suspense>
-          ) : activePanel === 'trends' && d.projectId ? (
+          ) : activePanel === 'trends' && projectData.projectId ? (
             <Suspense fallback={lazyFallback}>
               <TrendAnalysisPanel
-                projectId={d.projectId}
-                disabled={d.isGenerating}
+                projectId={projectData.projectId}
+                disabled={projectData.isGenerating}
                 onClose={() => setActivePanel(null)}
               />
             </Suspense>
-          ) : activePanel === 'cycle-time' && d.projectId ? (
+          ) : activePanel === 'cycle-time' && projectData.projectId ? (
             <Suspense fallback={lazyFallback}>
               <CycleTimePanel
-                projectId={d.projectId}
-                sprints={d.sprints}
-                disabled={d.isGenerating}
+                projectId={projectData.projectId}
+                sprints={projectData.sprints}
+                disabled={projectData.isGenerating}
                 onClose={() => setActivePanel(null)}
               />
             </Suspense>
-          ) : activePanel === 'execution-dashboard' && d.projectId ? (
+          ) : activePanel === 'execution-dashboard' && projectData.projectId ? (
             <Suspense fallback={lazyFallback}>
               <ExecutionDashboard
-                projectId={d.projectId}
+                projectId={projectData.projectId}
                 onClose={() => setActivePanel(null)}
               />
             </Suspense>
-          ) : activePanel === 'what-next' && d.projectId ? (
+          ) : activePanel === 'what-next' && projectData.projectId ? (
             <Suspense fallback={lazyFallback}>
               <WhatNextPanel
-                projectId={d.projectId}
+                projectId={projectData.projectId}
                 onClose={() => setActivePanel(null)}
-                onApplied={() => void d.loadTasks(filterInput)}
+                onApplied={() => void projectData.loadTasks(filterInput)}
               />
             </Suspense>
-          ) : d.summary ? (
+          ) : projectData.summary ? (
             <div className="flex-1 flex items-center justify-center px-8">
               <div className="max-w-lg w-full">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Project Summary</p>
-                  <button type="button" onClick={() => d.setSummary(null)} className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600">
+                  <button type="button" onClick={() => projectData.setSummary(null)} className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600">
                     <IconClose className="w-3 h-3" /> Dismiss
                   </button>
                 </div>
-                <p className="text-slate-700 dark:text-slate-300 leading-relaxed">{d.summary}</p>
+                <p className="text-slate-700 dark:text-slate-300 leading-relaxed">{projectData.summary}</p>
               </div>
             </div>
           ) : timelineView ? (
             <Suspense fallback={lazyFallback}>
               <GanttChart
                 tasks={filtering.filteredTasks}
-                onSelectTask={d.selectTask}
+                onSelectTask={projectData.selectTask}
               />
             </Suspense>
-          ) : d.view === 'dashboard' ? (
+          ) : projectData.view === 'dashboard' ? (
             <ProjectDashboard
-              stats={d.dashboardStats}
+              stats={projectData.dashboardStats}
               activities={projectActivities}
-              loading={!d.dashboardStats}
-              projectId={d.projectId!}
-              sprints={d.sprints}
+              loading={!projectData.dashboardStats}
+              projectId={projectData.projectId!}
+              sprints={projectData.sprints}
             />
-          ) : d.view === 'epics' ? (
+          ) : projectData.view === 'epics' ? (
             <EpicsView
-              projectId={d.projectId!}
-              epics={d.epics}
-              selectedTask={d.selectedTask}
-              onSelectTask={d.selectTask}
+              projectId={projectData.projectId!}
+              epics={projectData.epics}
+              selectedTask={projectData.selectedTask}
+              onSelectTask={projectData.selectTask}
             />
-          ) : d.view === 'timesheet' ? (
+          ) : projectData.view === 'timesheet' ? (
             <Suspense fallback={lazyFallback}>
               <TimesheetView
-                projectId={d.projectId!}
-                orgUsers={d.orgUsers}
+                projectId={projectData.projectId!}
+                orgUsers={projectData.orgUsers}
               />
             </Suspense>
-          ) : d.view === 'releases' ? (
+          ) : projectData.view === 'releases' ? (
             <Suspense fallback={lazyFallback}>
               <ReleaseListPanel
-                releases={d.releases}
-                selectedRelease={d.selectedRelease}
-                projectTasks={d.tasks}
-                loading={d.releasesLoading}
-                onSelectRelease={d.setSelectedRelease}
-                onCreateRelease={() => d.setShowReleaseCreateModal(true)}
-                onUpdateRelease={d.updateRelease}
-                onDeleteRelease={d.deleteRelease}
-                onAddTask={d.addTaskToRelease}
-                onRemoveTask={d.removeTaskFromRelease}
-                onGenerateNotes={d.generateReleaseNotes}
+                releases={projectData.releases}
+                selectedRelease={projectData.selectedRelease}
+                projectTasks={projectData.tasks}
+                loading={projectData.releasesLoading}
+                onSelectRelease={projectData.setSelectedRelease}
+                onCreateRelease={() => projectData.setShowReleaseCreateModal(true)}
+                onUpdateRelease={projectData.updateRelease}
+                onDeleteRelease={projectData.deleteRelease}
+                onAddTask={projectData.addTaskToRelease}
+                onRemoveTask={projectData.removeTaskFromRelease}
+                onGenerateNotes={projectData.generateReleaseNotes}
               />
             </Suspense>
-          ) : d.loading ? (
-            d.view === 'board' ? <KanbanBoardSkeleton /> : <TaskListSkeleton count={6} />
-          ) : d.view === 'backlog' ? (
+          ) : projectData.loading ? (
+            projectData.view === 'board' ? <KanbanBoardSkeleton /> : <TaskListSkeleton count={6} />
+          ) : projectData.view === 'backlog' ? (
             <BacklogView
-              projectId={d.projectId!}
+              projectId={projectData.projectId!}
               tasks={filtering.filteredTasks}
-              sprints={d.sprints}
-              orgUsers={d.orgUsers}
-              selectedTask={d.selectedTask}
-              selectedTaskIds={d.selectedTaskIds}
-              onSelectTask={d.selectTask}
+              sprints={projectData.sprints}
+              orgUsers={projectData.orgUsers}
+              selectedTask={projectData.selectedTask}
+              selectedTaskIds={projectData.selectedTaskIds}
+              onSelectTask={projectData.selectTask}
               onToggleTaskId={handleToggleTaskId}
               onToggleAll={handleToggleAll}
-              onCreateSprint={() => d.setShowSprintModal(true)}
-              onEditSprint={(sprint) => d.setEditingSprint(sprint)}
-              onDeleteSprint={d.handleDeleteSprint}
-              onPlanSprints={() => d.setShowSprintPlanModal(true)}
-              onActivateSprint={d.handleActivateSprint}
-              onCloseSprint={(sprintId) => d.setCloseSprintId(sprintId)}
-              onAssignSprint={d.handleAssignSprint}
-              onReorderTask={d.handleReorderTask}
-              hasMore={d.hasMore}
-              onLoadMore={d.loadMoreTasks}
+              onCreateSprint={() => projectData.setShowSprintModal(true)}
+              onEditSprint={(sprint) => projectData.setEditingSprint(sprint)}
+              onDeleteSprint={projectData.handleDeleteSprint}
+              onPlanSprints={() => projectData.setShowSprintPlanModal(true)}
+              onActivateSprint={projectData.handleActivateSprint}
+              onCloseSprint={(sprintId) => projectData.setCloseSprintId(sprintId)}
+              onAssignSprint={projectData.handleAssignSprint}
+              onReorderTask={projectData.handleReorderTask}
+              hasMore={projectData.hasMore}
+              onLoadMore={projectData.loadMoreTasks}
               showArchived={filtering.showArchived}
               onToggleShowArchived={() => filtering.setShowArchived(!filtering.showArchived)}
-              epicMap={d.epicMap}
+              epicMap={projectData.epicMap}
             />
-          ) : d.view === 'calendar' ? (
+          ) : projectData.view === 'calendar' ? (
             <CalendarView
               tasks={filtering.filteredTasks}
-              selectedTask={d.selectedTask}
-              onSelectTask={d.selectTask}
+              selectedTask={projectData.selectedTask}
+              onSelectTask={projectData.selectTask}
             />
-          ) : d.view === 'table' ? (
+          ) : projectData.view === 'table' ? (
             <TableView
               tasks={filtering.filteredTasks}
-              sprints={d.sprints}
-              orgUsers={d.orgUsers}
-              selectedTask={d.selectedTask}
-              selectedTaskIds={d.selectedTaskIds}
-              statuses={d.projectStatuses}
-              onSelectTask={d.selectTask}
+              sprints={projectData.sprints}
+              orgUsers={projectData.orgUsers}
+              selectedTask={projectData.selectedTask}
+              selectedTaskIds={projectData.selectedTaskIds}
+              statuses={projectData.projectStatuses}
+              onSelectTask={projectData.selectTask}
               onToggleTaskId={handleToggleTaskId}
               onToggleAll={handleToggleAll}
               onStatusChange={handleStatusChange}
@@ -607,7 +607,7 @@ export default function ProjectDetail() {
               onDueDateChange={handleDueDateChange}
               onAssignSprint={handleAssignSprint}
             />
-          ) : d.activeSprint ? (
+          ) : projectData.activeSprint ? (
             <div className="flex-1 overflow-x-auto overflow-y-hidden px-6 py-4 flex flex-col">
               <div className="flex items-center gap-2 mb-3 flex-shrink-0">
                 <label htmlFor="groupby-select" className="text-xs text-slate-500 dark:text-slate-400">Group by</label>
@@ -631,16 +631,16 @@ export default function ProjectDetail() {
               </div>
               <div className="flex-1 min-h-0">
                 <KanbanBoard
-                  columns={parseColumns(d.activeSprint.columns)}
-                  tasks={filtering.filteredTasks.filter((t) => t.sprintId === d.activeSprint!.sprintId && !t.archived)}
-                  subtasks={d.subtasks}
-                  selectedTask={d.selectedTask}
-                  onSelectTask={d.selectTask}
-                  onColumnChange={d.handleSprintColumnChange}
-                  epicMap={d.epicMap}
+                  columns={parseColumns(projectData.activeSprint.columns)}
+                  tasks={filtering.filteredTasks.filter((t) => t.sprintId === projectData.activeSprint!.sprintId && !t.archived)}
+                  subtasks={projectData.subtasks}
+                  selectedTask={projectData.selectedTask}
+                  onSelectTask={projectData.selectTask}
+                  onColumnChange={projectData.handleSprintColumnChange}
+                  epicMap={projectData.epicMap}
                   groupBy={groupBy}
-                  orgUsers={d.orgUsers}
-                  wipLimits={d.activeSprint.wipLimits ? (() => { try { return JSON.parse(d.activeSprint.wipLimits!); } catch { return undefined; } })() : undefined}
+                  orgUsers={projectData.orgUsers}
+                  wipLimits={projectData.activeSprint.wipLimits ? (() => { try { return JSON.parse(projectData.activeSprint.wipLimits!); } catch { return undefined; } })() : undefined}
                 />
               </div>
             </div>
@@ -650,9 +650,9 @@ export default function ProjectDetail() {
                 <p className="text-slate-500 dark:text-slate-300 text-sm">No active sprint. Set a sprint as active to see the board.</p>
                 <button
                   type="button"
-                  onClick={() => d.setShowSprintModal(true)}
-                  disabled={!d.can('MANAGE_SPRINTS')}
-                  title={!d.can('MANAGE_SPRINTS') ? "You don't have permission to manage sprints" : undefined}
+                  onClick={() => projectData.setShowSprintModal(true)}
+                  disabled={!projectData.can('MANAGE_SPRINTS')}
+                  title={!projectData.can('MANAGE_SPRINTS') ? "You don't have permission to manage sprints" : undefined}
                   className="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-200 px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
                 >
                   + Create Sprint
@@ -663,7 +663,7 @@ export default function ProjectDetail() {
         </div>
 
         {/* Right: task detail panel — sidebar on md+, full-screen drawer on mobile */}
-        {d.selectedTask && (
+        {projectData.selectedTask && (
           <>
             {/* Desktop sidebar */}
             <div className="hidden md:flex w-[440px] flex-shrink-0 border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex-col overflow-hidden">
@@ -678,9 +678,9 @@ export default function ProjectDetail() {
               </div>
               <div className="flex-1 overflow-y-auto">
                 <TaskDetailPanel
-                  task={d.selectedTask}
-                  subtasks={d.subtasks[d.selectedTask.taskId] ?? []}
-                  onClose={() => d.setSelectedTask(null)}
+                  task={projectData.selectedTask}
+                  subtasks={projectData.subtasks[projectData.selectedTask.taskId] ?? []}
+                  onClose={() => projectData.setSelectedTask(null)}
                   {...detailPanelProps}
                 />
               </div>
@@ -691,7 +691,7 @@ export default function ProjectDetail() {
               {/* Backdrop */}
               <div
                 className="absolute inset-0 bg-black/50 transition-opacity"
-                onClick={() => d.setSelectedTask(null)}
+                onClick={() => projectData.setSelectedTask(null)}
               />
               {/* Drawer panel */}
               <div className="relative ml-auto w-full max-w-lg bg-white dark:bg-slate-900 flex flex-col overflow-hidden shadow-xl animate-slide-in-right">
@@ -705,7 +705,7 @@ export default function ProjectDetail() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => d.setSelectedTask(null)}
+                    onClick={() => projectData.setSelectedTask(null)}
                     className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1"
                     aria-label="Close"
                   >
@@ -714,9 +714,9 @@ export default function ProjectDetail() {
                 </div>
                 <div className="flex-1 overflow-y-auto">
                   <TaskDetailPanel
-                    task={d.selectedTask}
-                    subtasks={d.subtasks[d.selectedTask.taskId] ?? []}
-                    onClose={() => d.setSelectedTask(null)}
+                    task={projectData.selectedTask}
+                    subtasks={projectData.subtasks[projectData.selectedTask.taskId] ?? []}
+                    onClose={() => projectData.setSelectedTask(null)}
                     isDrawer
                     {...detailPanelProps}
                   />
@@ -729,90 +729,90 @@ export default function ProjectDetail() {
 
       {/* Bulk action bar */}
       <BulkActionBar
-        selectedCount={d.selectedTaskIds.size}
-        statuses={d.projectStatuses}
-        sprints={d.sprints}
-        orgUsers={d.orgUsers}
+        selectedCount={projectData.selectedTaskIds.size}
+        statuses={projectData.projectStatuses}
+        sprints={projectData.sprints}
+        orgUsers={projectData.orgUsers}
         onBulkUpdate={handleBulkUpdate}
-        onClearSelection={() => d.setSelectedTaskIds(new Set())}
+        onClearSelection={() => projectData.setSelectedTaskIds(new Set())}
       />
 
       {/* Sprint create modal */}
-      {d.showSprintModal && d.projectId && (
+      {projectData.showSprintModal && projectData.projectId && (
         <Suspense fallback={lazyFallback}>
           <SprintCreateModal
-            projectId={d.projectId}
-            onCreated={d.handleCreateSprint}
-            onClose={() => d.setShowSprintModal(false)}
+            projectId={projectData.projectId}
+            onCreated={projectData.handleCreateSprint}
+            onClose={() => projectData.setShowSprintModal(false)}
           />
         </Suspense>
       )}
 
       {/* Sprint edit modal */}
-      {d.editingSprint && d.projectId && (
+      {projectData.editingSprint && projectData.projectId && (
         <Suspense fallback={lazyFallback}>
           <SprintCreateModal
-            projectId={d.projectId}
-            initialSprint={d.editingSprint}
-            onCreated={d.handleCreateSprint}
-            onUpdated={d.handleSprintUpdated}
-            onClose={() => d.setEditingSprint(null)}
+            projectId={projectData.projectId}
+            initialSprint={projectData.editingSprint}
+            onCreated={projectData.handleCreateSprint}
+            onUpdated={projectData.handleSprintUpdated}
+            onClose={() => projectData.setEditingSprint(null)}
           />
         </Suspense>
       )}
 
       {/* Sprint plan modal */}
-      {d.showSprintPlanModal && d.projectId && (
+      {projectData.showSprintPlanModal && projectData.projectId && (
         <Suspense fallback={lazyFallback}>
           <SprintPlanModal
-            projectId={d.projectId}
-            tasks={d.tasks}
-            onCreated={d.handleSprintPlanCreated}
-            onTasksUpdated={d.loadTasks}
-            onClose={() => d.setShowSprintPlanModal(false)}
+            projectId={projectData.projectId}
+            tasks={projectData.tasks}
+            onCreated={projectData.handleSprintPlanCreated}
+            onTasksUpdated={projectData.loadTasks}
+            onClose={() => projectData.setShowSprintPlanModal(false)}
           />
         </Suspense>
       )}
 
       {/* Close sprint modal */}
-      {d.closeSprintId && (() => {
-        const closingSprint = d.sprints.find((s) => s.sprintId === d.closeSprintId);
+      {projectData.closeSprintId && (() => {
+        const closingSprint = projectData.sprints.find((s) => s.sprintId === projectData.closeSprintId);
         if (!closingSprint) return null;
         return (
           <Suspense fallback={lazyFallback}>
             <CloseSprintModal
               sprint={closingSprint}
-              sprintTasks={d.tasks.filter((t) => t.sprintId === d.closeSprintId)}
-              otherSprints={d.sprints.filter((s) => !s.closedAt && s.sprintId !== d.closeSprintId)}
-              onClosed={d.handleSprintClosed}
-              onActivateNext={d.handleActivateSprint}
-              onCreateSprint={() => d.setShowSprintModal(true)}
-              onClose={() => d.setCloseSprintId(null)}
+              sprintTasks={projectData.tasks.filter((t) => t.sprintId === projectData.closeSprintId)}
+              otherSprints={projectData.sprints.filter((s) => !s.closedAt && s.sprintId !== projectData.closeSprintId)}
+              onClosed={projectData.handleSprintClosed}
+              onActivateNext={projectData.handleActivateSprint}
+              onCreateSprint={() => projectData.setShowSprintModal(true)}
+              onClose={() => projectData.setCloseSprintId(null)}
             />
           </Suspense>
         );
       })()}
 
       {/* Task plan approval dialog */}
-      {d.previewTasks !== null && (
+      {projectData.previewTasks !== null && (
         <Suspense fallback={lazyFallback}>
           <TaskPlanApprovalDialog
-            tasks={d.previewTasks}
-            loading={d.previewLoading}
-            error={d.previewError}
-            onApprove={d.handleCommitPlan}
-            onRedo={(ctx) => d.openPreview(ctx)}
-            onAddMore={(ctx) => d.openPreview(ctx, d.previewTasks!.map((t) => t.title))}
-            onCancel={() => { d.setPreviewTasks(null); d.setPreviewError(null); }}
+            tasks={projectData.previewTasks}
+            loading={projectData.previewLoading}
+            error={projectData.previewError}
+            onApprove={projectData.handleCommitPlan}
+            onRedo={(ctx) => projectData.openPreview(ctx)}
+            onAddMore={(ctx) => projectData.openPreview(ctx, projectData.previewTasks!.map((t) => t.title))}
+            onCancel={() => { projectData.setPreviewTasks(null); projectData.setPreviewError(null); }}
           />
         </Suspense>
       )}
 
       {/* GitHub repo modal */}
-      {activeModal === 'github' && d.projectId && (
+      {activeModal === 'github' && projectData.projectId && (
         <Suspense fallback={lazyFallback}>
           <GitHubRepoModal
-            projectId={d.projectId}
+            projectId={projectData.projectId}
             installations={gitHubInstallations}
             currentRepo={gitHubRepo}
             onConnected={(repo) => { setGitHubRepo(repo); setActiveModal(null); }}
@@ -823,11 +823,11 @@ export default function ProjectDetail() {
       )}
 
       {/* Meeting notes dialog */}
-      {activeModal === 'meeting-notes' && d.projectId && (
+      {activeModal === 'meeting-notes' && projectData.projectId && (
         <Suspense fallback={lazyFallback}>
           <MeetingNotesDialog
-            projectId={d.projectId}
-            onTasksCreated={() => { d.loadTasks(); setActiveModal(null); }}
+            projectId={projectData.projectId}
+            onTasksCreated={() => { projectData.loadTasks(); setActiveModal(null); }}
             onClose={() => setActiveModal(null)}
           />
         </Suspense>
@@ -851,7 +851,7 @@ export default function ProjectDetail() {
             sprintName={showTransition.sprintName}
             onApply={async (carryOverIds, deprioritizeIds) => {
               for (const taskId of deprioritizeIds) {
-                await d.handleAssignSprint(taskId, null);
+                await projectData.handleAssignSprint(taskId, null);
               }
               addToast('success', `${carryOverIds.length} tasks carried over, ${deprioritizeIds.length} moved to backlog`);
             }}
@@ -865,7 +865,7 @@ export default function ProjectDetail() {
         <Suspense fallback={lazyFallback}>
           <BugReportModal
             onSubmit={async (bugReport) => {
-              await d.handleParseBugReport(bugReport);
+              await projectData.handleParseBugReport(bugReport);
               addToast('success', 'Bug report parsed and task created');
             }}
             onClose={() => setActiveModal(null)}
@@ -877,9 +877,9 @@ export default function ProjectDetail() {
       {activeModal === 'prd-breakdown' && (
         <Suspense fallback={lazyFallback}>
           <PRDBreakdownModal
-            onPreview={d.handlePreviewPRD}
+            onPreview={projectData.handlePreviewPRD}
             onCommit={async (epics) => {
-              await d.handleCommitPRD(epics);
+              await projectData.handleCommitPRD(epics);
               addToast('success', 'Tasks created from PRD');
             }}
             onClose={() => setActiveModal(null)}
@@ -888,42 +888,42 @@ export default function ProjectDetail() {
       )}
 
       {/* Hierarchical plan dialog */}
-      {activeModal === 'hierarchical-plan' && d.projectId && (
+      {activeModal === 'hierarchical-plan' && projectData.projectId && (
         <Suspense fallback={lazyFallback}>
           <HierarchicalPlanDialog
             isOpen
             onClose={() => setActiveModal(null)}
-            projectId={d.projectId}
+            projectId={projectData.projectId}
             onPlanCommitted={() => {
               addToast('success', 'Hierarchical plan committed');
               setActiveModal(null);
-              d.loadTasks();
+              projectData.loadTasks();
             }}
           />
         </Suspense>
       )}
 
       {/* Knowledge base panel */}
-      {activeModal === 'knowledge-base' && d.projectId && (
+      {activeModal === 'knowledge-base' && projectData.projectId && (
         <Suspense fallback={lazyFallback}>
           <KnowledgeBasePanel
             isOpen
             onClose={() => setActiveModal(null)}
-            projectId={d.projectId}
-            knowledgeBase={d.project?.knowledgeBase ?? null}
-            onRefreshFromRepo={d.handleRefreshRepoProfile}
-            hasGitHubRepo={!!(d.project?.githubRepositoryName)}
+            projectId={projectData.projectId}
+            knowledgeBase={projectData.project?.knowledgeBase ?? null}
+            onRefreshFromRepo={projectData.handleRefreshRepoProfile}
+            hasGitHubRepo={!!(projectData.project?.githubRepositoryName)}
             onRunInterview={undefined}
           />
         </Suspense>
       )}
 
       {/* Project setup wizard (shown after project creation) */}
-      {showSetup && d.projectId && (
+      {showSetup && projectData.projectId && (
         <Suspense fallback={lazyFallback}>
           <ProjectSetupWizard
             isOpen
-            projectId={d.projectId}
+            projectId={projectData.projectId}
             onComplete={() => setShowSetup(false)}
             onSkip={() => setShowSetup(false)}
           />
@@ -931,38 +931,38 @@ export default function ProjectDetail() {
       )}
 
       {/* Project settings modal */}
-      {activeModal === 'project-settings' && d.projectId && (
+      {activeModal === 'project-settings' && projectData.projectId && (
         <Suspense fallback={lazyFallback}>
           <ProjectSettingsModal
-            projectId={d.projectId}
-            orgUsers={d.orgUsers}
+            projectId={projectData.projectId}
+            orgUsers={projectData.orgUsers}
             onClose={() => setActiveModal(null)}
           />
         </Suspense>
       )}
 
       {/* Action plan dialog */}
-      {d.actionPlanPreview && d.selectedTask && (
+      {projectData.actionPlanPreview && projectData.selectedTask && (
         <Suspense fallback={lazyFallback}>
           <ActionPlanDialog
-            preview={d.actionPlanPreview}
+            preview={projectData.actionPlanPreview}
             onCommitAndExecute={async (actions) => {
-              const plan = await d.handleCommitActionPlan(d.selectedTask!.taskId, actions);
+              const plan = await projectData.handleCommitActionPlan(projectData.selectedTask!.taskId, actions);
               if (plan) {
-                await d.handleExecuteActionPlan(plan.id);
+                await projectData.handleExecuteActionPlan(plan.id);
               }
             }}
-            onClose={() => d.setActionPlanPreview(null)}
+            onClose={() => projectData.setActionPlanPreview(null)}
           />
         </Suspense>
       )}
 
       {/* Release create modal */}
-      {d.showReleaseCreateModal && (
+      {projectData.showReleaseCreateModal && (
         <Suspense fallback={lazyFallback}>
           <ReleaseModal
-            onSubmit={d.createRelease}
-            onClose={() => d.setShowReleaseCreateModal(false)}
+            onSubmit={projectData.createRelease}
+            onClose={() => projectData.setShowReleaseCreateModal(false)}
           />
         </Suspense>
       )}
@@ -974,7 +974,7 @@ export default function ProjectDetail() {
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       {/* Confirm dialog for nav-away during AI generation */}
-      <d.ConfirmDialogPortal />
+      <projectData.ConfirmDialogPortal />
     </div>
     </PermissionProvider>
   );

@@ -19,7 +19,7 @@ const activeClass = 'px-3 py-1 text-sm rounded-md bg-white dark:bg-slate-700 tex
 const inactiveClass = 'px-3 py-1 text-sm rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200';
 
 interface ProjectToolbarProps {
-  d: ProjectData;
+  projectData: ProjectData;
   filtering: TaskFiltering;
   searchRef: React.RefObject<HTMLInputElement | null>;
   timelineView: boolean;
@@ -32,7 +32,7 @@ interface ProjectToolbarProps {
 }
 
 export default function ProjectToolbar({
-  d,
+  projectData,
   filtering,
   searchRef,
   timelineView,
@@ -53,15 +53,15 @@ export default function ProjectToolbar({
 
   // Fetch saved filters on mount
   const fetchSavedFilters = useCallback(async () => {
-    if (!d.projectId) return;
+    if (!projectData.projectId) return;
     try {
       const data = await gql<{ savedFilters: SavedFilter[] }>(
         `query SavedFilters($projectId: ID!) { savedFilters(projectId: $projectId) { savedFilterId name filters viewType sortBy sortOrder groupBy visibleColumns isShared isDefault createdAt } }`,
-        { projectId: d.projectId },
+        { projectId: projectData.projectId },
       );
       setSavedFilters(data.savedFilters);
     } catch { /* non-critical */ }
-  }, [d.projectId]);
+  }, [projectData.projectId]);
 
   useEffect(() => { fetchSavedFilters(); }, [fetchSavedFilters]);
 
@@ -84,12 +84,12 @@ export default function ProjectToolbar({
     filtering.setOnViewConfigApplied((config) => {
       const viewMap: Record<string, 'backlog' | 'board' | 'table'> = { list: 'backlog', board: 'board', table: 'table' };
       if (config.viewType && viewMap[config.viewType]) {
-        d.switchView(viewMap[config.viewType]);
+        projectData.switchView(viewMap[config.viewType]);
         setTimelineView(false);
       }
     });
     return () => filtering.setOnViewConfigApplied(undefined);
-  }, [d, filtering, setTimelineView]);
+  }, [projectData, filtering, setTimelineView]);
 
   const handleLoadFilter = useCallback((filtersJson: string, viewConfig?: { viewType?: string | null; sortBy?: string | null; sortOrder?: string | null; groupBy?: string | null }) => {
     filtering.loadSavedFilter(filtersJson, viewConfig);
@@ -153,22 +153,22 @@ export default function ProjectToolbar({
   const handleProjectNameSave = async () => {
     if (!editProjectNameValue.trim()) return;
     setEditingProjectName(false);
-    await d.handleUpdateProject({ name: editProjectNameValue });
+    await projectData.handleUpdateProject({ name: editProjectNameValue });
     addToast('success', 'Project name updated');
   };
 
   const handleAddStatus = () => {
     const slug = newStatusValue.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-    if (!slug || d.projectStatuses.includes(slug)) return;
-    const updated = [...d.projectStatuses, slug];
-    d.handleUpdateProject({ statuses: JSON.stringify(updated) });
+    if (!slug || projectData.projectStatuses.includes(slug)) return;
+    const updated = [...projectData.projectStatuses, slug];
+    projectData.handleUpdateProject({ statuses: JSON.stringify(updated) });
     setNewStatusValue('');
   };
 
   const handleRemoveStatus = (status: string) => {
-    if (d.projectStatuses.length <= 1) return;
-    const updated = d.projectStatuses.filter((s) => s !== status);
-    d.handleUpdateProject({ statuses: JSON.stringify(updated) });
+    if (projectData.projectStatuses.length <= 1) return;
+    const updated = projectData.projectStatuses.filter((s) => s !== status);
+    projectData.handleUpdateProject({ statuses: JSON.stringify(updated) });
   };
 
   const downloadExport = async (path: string, filename: string) => {
@@ -185,30 +185,30 @@ export default function ProjectToolbar({
   };
 
   const loadTemplates = useCallback(async () => {
-    if (!d.projectId) return;
+    if (!projectData.projectId) return;
     try {
       const data = await gql<{ taskTemplates: typeof templateList }>(
         `query TaskTemplates($projectId: ID) { taskTemplates(projectId: $projectId) { taskTemplateId name description instructions acceptanceCriteria priority taskType } }`,
-        { projectId: d.projectId },
+        { projectId: projectData.projectId },
       );
       setTemplateList(data.taskTemplates);
     } catch { /* non-critical */ }
-  }, [d.projectId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [projectData.projectId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCreateFromTemplate = async () => {
-    if (!selectedTemplateId || !templateTitle.trim() || !d.projectId) return;
+    if (!selectedTemplateId || !templateTitle.trim() || !projectData.projectId) return;
     try {
       await gql<{ createTaskFromTemplate: { taskId: string } }>(
         `mutation CreateFromTemplate($templateId: ID!, $projectId: ID!, $title: String!) {
           createTaskFromTemplate(templateId: $templateId, projectId: $projectId, title: $title) { taskId }
         }`,
-        { templateId: selectedTemplateId, projectId: d.projectId, title: templateTitle.trim() },
+        { templateId: selectedTemplateId, projectId: projectData.projectId, title: templateTitle.trim() },
       );
       addToast('success', 'Task created from template');
       setShowTemplateMenu(false);
       setTemplateTitle('');
       setSelectedTemplateId(null);
-      d.loadTasks();
+      projectData.loadTasks();
     } catch (err) {
       addToast('error', err instanceof Error ? err.message : 'Failed to create task');
     }
@@ -216,40 +216,40 @@ export default function ProjectToolbar({
 
   const viewToggle = (
     <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
-      <button onClick={() => { d.switchView('backlog'); setTimelineView(false); }} className={d.view === 'backlog' && !timelineView ? activeClass : inactiveClass} disabled={d.isGenerating} title="Backlog">
+      <button onClick={() => { projectData.switchView('backlog'); setTimelineView(false); }} className={projectData.view === 'backlog' && !timelineView ? activeClass : inactiveClass} disabled={projectData.isGenerating} title="Backlog">
         <span className="flex items-center gap-1"><IconList className="w-3.5 h-3.5" /><span className="hidden sm:inline">Backlog</span></span>
       </button>
-      <button onClick={() => { d.switchView('board'); setTimelineView(false); }} className={d.view === 'board' && !timelineView ? activeClass : inactiveClass} disabled={d.isGenerating} title="Board">
+      <button onClick={() => { projectData.switchView('board'); setTimelineView(false); }} className={projectData.view === 'board' && !timelineView ? activeClass : inactiveClass} disabled={projectData.isGenerating} title="Board">
         <span className="flex items-center gap-1"><IconBoard className="w-3.5 h-3.5" /><span className="hidden sm:inline">Board</span></span>
       </button>
-      <button onClick={() => { d.switchView('table'); setTimelineView(false); }} className={d.view === 'table' && !timelineView ? activeClass : inactiveClass} disabled={d.isGenerating} title="Table">
+      <button onClick={() => { projectData.switchView('table'); setTimelineView(false); }} className={projectData.view === 'table' && !timelineView ? activeClass : inactiveClass} disabled={projectData.isGenerating} title="Table">
         <span className="flex items-center gap-1"><IconTable className="w-3.5 h-3.5" /><span className="hidden sm:inline">Table</span></span>
       </button>
-      <button onClick={() => { d.switchView('calendar'); setTimelineView(false); }} className={d.view === 'calendar' && !timelineView ? activeClass : inactiveClass} disabled={d.isGenerating} title="Calendar">
+      <button onClick={() => { projectData.switchView('calendar'); setTimelineView(false); }} className={projectData.view === 'calendar' && !timelineView ? activeClass : inactiveClass} disabled={projectData.isGenerating} title="Calendar">
         <span className="flex items-center gap-1"><IconCalendar className="w-3.5 h-3.5" /><span className="hidden sm:inline">Calendar</span></span>
       </button>
-      <button onClick={() => { d.switchView('calendar'); setTimelineView(true); }} className={timelineView ? activeClass : inactiveClass} disabled={d.isGenerating} title="Timeline">
+      <button onClick={() => { projectData.switchView('calendar'); setTimelineView(true); }} className={timelineView ? activeClass : inactiveClass} disabled={projectData.isGenerating} title="Timeline">
         <span className="flex items-center gap-1">
           <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="3" width="14" height="2" rx="0.5" /><rect x="4" y="7" width="10" height="2" rx="0.5" /><rect x="2" y="11" width="8" height="2" rx="0.5" /></svg>
           <span className="hidden sm:inline">Timeline</span>
         </span>
       </button>
-      <button onClick={() => { d.switchView('epics'); setTimelineView(false); }} className={d.view === 'epics' && !timelineView ? activeClass : inactiveClass} disabled={d.isGenerating} title="Epics">
+      <button onClick={() => { projectData.switchView('epics'); setTimelineView(false); }} className={projectData.view === 'epics' && !timelineView ? activeClass : inactiveClass} disabled={projectData.isGenerating} title="Epics">
         <span className="flex items-center gap-1">
           <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" />
           <span className="hidden sm:inline">Epics</span>
         </span>
       </button>
-      <button onClick={() => { d.switchView('releases'); setTimelineView(false); }} className={d.view === 'releases' && !timelineView ? activeClass : inactiveClass} disabled={d.isGenerating} title="Releases">
+      <button onClick={() => { projectData.switchView('releases'); setTimelineView(false); }} className={projectData.view === 'releases' && !timelineView ? activeClass : inactiveClass} disabled={projectData.isGenerating} title="Releases">
         <span className="flex items-center gap-1">
           <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 3h10v10H3z" /><path d="M3 7h10M7 3v10" /></svg>
           <span className="hidden sm:inline">Releases</span>
         </span>
       </button>
-      <button onClick={() => { d.switchView('timesheet'); setTimelineView(false); }} className={d.view === 'timesheet' && !timelineView ? activeClass : inactiveClass} disabled={d.isGenerating} title="Timesheet">
+      <button onClick={() => { projectData.switchView('timesheet'); setTimelineView(false); }} className={projectData.view === 'timesheet' && !timelineView ? activeClass : inactiveClass} disabled={projectData.isGenerating} title="Timesheet">
         <span className="flex items-center gap-1"><IconClock className="w-3.5 h-3.5" /><span className="hidden sm:inline">Timesheet</span></span>
       </button>
-      <button onClick={() => { d.switchView('dashboard'); setTimelineView(false); onLoadProjectActivities(); }} className={d.view === 'dashboard' && !timelineView ? activeClass : inactiveClass} disabled={d.isGenerating} title="Dashboard">
+      <button onClick={() => { projectData.switchView('dashboard'); setTimelineView(false); onLoadProjectActivities(); }} className={projectData.view === 'dashboard' && !timelineView ? activeClass : inactiveClass} disabled={projectData.isGenerating} title="Dashboard">
         <span className="flex items-center gap-1">📊<span className="hidden sm:inline">Dashboard</span></span>
       </button>
     </div>
@@ -260,7 +260,7 @@ export default function ProjectToolbar({
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <Link to="/app/projects" className={`text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 ${d.isGenerating ? 'pointer-events-none opacity-50' : ''}`}>
+          <Link to="/app/projects" className={`text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 ${projectData.isGenerating ? 'pointer-events-none opacity-50' : ''}`}>
             ← Projects
           </Link>
           <span className="text-slate-300">/</span>
@@ -278,12 +278,12 @@ export default function ProjectToolbar({
             <h1
               className="text-sm font-semibold text-slate-800 dark:text-slate-200 cursor-text hover:underline decoration-dashed truncate max-w-[120px] sm:max-w-none"
               onClick={() => {
-                setEditProjectNameValue(d.project?.name ?? '');
+                setEditProjectNameValue(projectData.project?.name ?? '');
                 setEditingProjectName(true);
               }}
               title="Click to edit project name"
             >
-              {d.project?.name ?? 'Tasks'}
+              {projectData.project?.name ?? 'Tasks'}
             </h1>
           )}
           <button
@@ -317,13 +317,13 @@ export default function ProjectToolbar({
             <IconFilter className="w-3.5 h-3.5" />
             {filtering.hasActiveFilters && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
           </button>
-          {d.projectId && (
+          {projectData.projectId && (
             <SavedViewPicker
-              projectId={d.projectId}
+              projectId={projectData.projectId}
               savedFilters={savedFilters}
               onSavedFiltersChange={setSavedFilters}
               onLoadFilter={handleLoadFilter}
-              currentViewType={d.view === 'backlog' ? 'list' : d.view === 'board' ? 'board' : d.view === 'table' ? 'table' : undefined}
+              currentViewType={projectData.view === 'backlog' ? 'list' : projectData.view === 'board' ? 'board' : projectData.view === 'table' ? 'table' : undefined}
               statusFilter={filtering.statusFilter}
               priorityFilter={filtering.priorityFilter}
               assigneeFilter={filtering.assigneeFilter}
@@ -335,8 +335,8 @@ export default function ProjectToolbar({
           )}
         </div>
         <div className="relative flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => d.setShowAddForm(!d.showAddForm)} disabled={d.isGenerating || !d.can('CREATE_TASKS')} title={!d.can('CREATE_TASKS') ? "You don't have permission to create tasks" : undefined}>
-            {d.showAddForm ? <><IconClose className="w-3.5 h-3.5" /> Cancel</> : <><IconPlus className="w-3.5 h-3.5" /> Add task</>}
+          <Button variant="ghost" size="sm" onClick={() => projectData.setShowAddForm(!projectData.showAddForm)} disabled={projectData.isGenerating || !projectData.can('CREATE_TASKS')} title={!projectData.can('CREATE_TASKS') ? "You don't have permission to create tasks" : undefined}>
+            {projectData.showAddForm ? <><IconClose className="w-3.5 h-3.5" /> Cancel</> : <><IconPlus className="w-3.5 h-3.5" /> Add task</>}
           </Button>
 
           {/* AI actions dropdown */}
@@ -349,26 +349,26 @@ export default function ProjectToolbar({
               </span>
             }
             items={[
-              { label: d.previewLoading ? 'Planning…' : 'Regenerate', icon: <IconRefresh className="w-3.5 h-3.5" />, onClick: () => d.openPreview(), disabled: d.isGenerating },
-              { label: d.summarizing ? 'Summarizing…' : 'Summarize', icon: <IconSummary className="w-3.5 h-3.5" />, onClick: () => { d.handleSummarize(); d.setShowAddForm(false); }, disabled: d.isGenerating },
-              { label: 'Standup', onClick: () => onOpenModal('standup'), disabled: d.isGenerating },
-              { label: 'Health', onClick: () => onOpenModal('health'), disabled: d.isGenerating },
-              { label: 'Trends', onClick: () => onOpenModal('trends'), disabled: d.isGenerating },
-              { label: 'Cycle Time', onClick: () => onOpenModal('cycle-time'), disabled: d.isGenerating },
-              ...(d.activeSprint ? [{ label: 'Transition', onClick: () => onOpenModal(`transition:${d.activeSprint!.sprintId}:${d.activeSprint!.name}`), disabled: d.isGenerating }] : []),
-              { label: 'Notes', onClick: () => onOpenModal('meeting-notes'), disabled: d.isGenerating },
-              { label: 'Bug Report', onClick: () => onOpenModal('bug-report'), disabled: d.isGenerating },
-              { label: 'PRD Breakdown', onClick: () => onOpenModal('prd-breakdown'), disabled: d.isGenerating },
-              { label: 'Hierarchical Plan', onClick: () => onOpenModal('hierarchical-plan'), disabled: d.isGenerating },
+              { label: projectData.previewLoading ? 'Planning…' : 'Regenerate', icon: <IconRefresh className="w-3.5 h-3.5" />, onClick: () => projectData.openPreview(), disabled: projectData.isGenerating },
+              { label: projectData.summarizing ? 'Summarizing…' : 'Summarize', icon: <IconSummary className="w-3.5 h-3.5" />, onClick: () => { projectData.handleSummarize(); projectData.setShowAddForm(false); }, disabled: projectData.isGenerating },
+              { label: 'Standup', onClick: () => onOpenModal('standup'), disabled: projectData.isGenerating },
+              { label: 'Health', onClick: () => onOpenModal('health'), disabled: projectData.isGenerating },
+              { label: 'Trends', onClick: () => onOpenModal('trends'), disabled: projectData.isGenerating },
+              { label: 'Cycle Time', onClick: () => onOpenModal('cycle-time'), disabled: projectData.isGenerating },
+              ...(projectData.activeSprint ? [{ label: 'Transition', onClick: () => onOpenModal(`transition:${projectData.activeSprint!.sprintId}:${projectData.activeSprint!.name}`), disabled: projectData.isGenerating }] : []),
+              { label: 'Notes', onClick: () => onOpenModal('meeting-notes'), disabled: projectData.isGenerating },
+              { label: 'Bug Report', onClick: () => onOpenModal('bug-report'), disabled: projectData.isGenerating },
+              { label: 'PRD Breakdown', onClick: () => onOpenModal('prd-breakdown'), disabled: projectData.isGenerating },
+              { label: 'Hierarchical Plan', onClick: () => onOpenModal('hierarchical-plan'), disabled: projectData.isGenerating },
               { label: 'Execution Dashboard', onClick: () => onOpenModal('execution-dashboard') },
-              { label: "What's Next?", onClick: () => onOpenModal('what-next'), disabled: d.isGenerating },
-              ...(gitHubRepo && d.rootTasks.length < 5 ? [{
+              { label: "What's Next?", onClick: () => onOpenModal('what-next'), disabled: projectData.isGenerating },
+              ...(gitHubRepo && projectData.rootTasks.length < 5 ? [{
                 label: bootstrapping ? 'Bootstrapping…' : 'Bootstrap from Repo',
                 onClick: async () => {
                   if (!await confirm({ title: 'Bootstrap from repo', message: 'Analyze linked repo and generate initial tasks?', confirmLabel: 'Bootstrap', variant: 'warning' as const })) return;
                   setBootstrapping(true);
                   try {
-                    await d.handleBootstrapFromRepo();
+                    await projectData.handleBootstrapFromRepo();
                     addToast('success', 'Tasks generated from repo');
                   } catch (err) {
                     addToast('error', err instanceof Error ? err.message : 'Bootstrap failed');
@@ -376,17 +376,17 @@ export default function ProjectToolbar({
                     setBootstrapping(false);
                   }
                 },
-                disabled: d.isGenerating || bootstrapping,
+                disabled: projectData.isGenerating || bootstrapping,
               }] : []),
               ...(gitHubRepo ? [{
                 label: autoStarting ? 'Starting…' : 'Auto-Start Project',
                 onClick: async () => {
-                  if (!d.projectId) return;
+                  if (!projectData.projectId) return;
                   setAutoStarting(true);
                   try {
                     await gql<{ autoStartProject: { projectId: string } }>(
                       AUTO_START_PROJECT_MUTATION,
-                      { projectId: d.projectId }
+                      { projectId: projectData.projectId }
                     );
                     addToast('success', 'Project auto-start triggered — tasks will begin executing');
                   } catch (err) {
@@ -395,7 +395,7 @@ export default function ProjectToolbar({
                     setAutoStarting(false);
                   }
                 },
-                disabled: d.isGenerating || autoStarting,
+                disabled: projectData.isGenerating || autoStarting,
               }] : []),
             ] satisfies DropdownMenuItem[]}
           />
@@ -408,9 +408,9 @@ export default function ProjectToolbar({
               </span>
             }
             items={[
-              { label: 'Template', onClick: () => { previousFocusRef.current = document.activeElement as HTMLElement; setShowTemplateMenu((v) => { if (!v) loadTemplates(); return !v; }); setShowExportMenu(false); }, disabled: d.isGenerating },
+              { label: 'Template', onClick: () => { previousFocusRef.current = document.activeElement as HTMLElement; setShowTemplateMenu((v) => { if (!v) loadTemplates(); return !v; }); setShowExportMenu(false); }, disabled: projectData.isGenerating },
               { label: 'Import/Export', onClick: () => { previousFocusRef.current = document.activeElement as HTMLElement; setShowExportMenu((v) => !v); setShowTemplateMenu(false); } },
-              { label: 'Project Settings', onClick: () => onOpenModal('project-settings'), disabled: !d.can('MANAGE_PROJECT_SETTINGS') },
+              { label: 'Project Settings', onClick: () => onOpenModal('project-settings'), disabled: !projectData.can('MANAGE_PROJECT_SETTINGS') },
               { label: 'Knowledge Base', onClick: () => onOpenModal('knowledge-base') },
               { label: 'Onboarding Interview', icon: <IconSparkle className="w-3.5 h-3.5" />, onClick: () => onOpenModal('onboarding') },
               { label: gitHubRepo ? `GitHub: ${gitHubRepo.repositoryOwner}/${gitHubRepo.repositoryName}` : 'Connect GitHub', icon: <IconGitHub className="w-3.5 h-3.5" />, onClick: () => onOpenModal('github') },
@@ -502,7 +502,7 @@ export default function ProjectToolbar({
                 role="menuitem"
                 tabIndex={activeExportIndex === 0 ? 0 : -1}
                 className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                onClick={() => { downloadExport(`project/${d.projectId}/csv`, `${d.project?.name ?? 'tasks'}.csv`); setShowExportMenu(false); }}
+                onClick={() => { downloadExport(`project/${projectData.projectId}/csv`, `${projectData.project?.name ?? 'tasks'}.csv`); setShowExportMenu(false); }}
               >
                 Export Tasks (CSV)
               </button>
@@ -511,7 +511,7 @@ export default function ProjectToolbar({
                 role="menuitem"
                 tabIndex={activeExportIndex === 1 ? 0 : -1}
                 className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                onClick={() => { downloadExport(`project/${d.projectId}/json`, `${d.project?.name ?? 'tasks'}.json`); setShowExportMenu(false); }}
+                onClick={() => { downloadExport(`project/${projectData.projectId}/json`, `${projectData.project?.name ?? 'tasks'}.json`); setShowExportMenu(false); }}
               >
                 Export Tasks (JSON)
               </button>
@@ -520,7 +520,7 @@ export default function ProjectToolbar({
                 role="menuitem"
                 tabIndex={activeExportIndex === 2 ? 0 : -1}
                 className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                onClick={() => { downloadExport(`project/${d.projectId}/activity/csv`, `${d.project?.name ?? 'activity'}-activity.csv`); setShowExportMenu(false); }}
+                onClick={() => { downloadExport(`project/${projectData.projectId}/activity/csv`, `${projectData.project?.name ?? 'activity'}-activity.csv`); setShowExportMenu(false); }}
               >
                 Export Activity (CSV)
               </button>
@@ -529,7 +529,7 @@ export default function ProjectToolbar({
                 role="menuitem"
                 tabIndex={activeExportIndex === 3 ? 0 : -1}
                 className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                onClick={() => { downloadExport(`project/${d.projectId}/activity/json`, `${d.project?.name ?? 'activity'}-activity.json`); setShowExportMenu(false); }}
+                onClick={() => { downloadExport(`project/${projectData.projectId}/activity/json`, `${projectData.project?.name ?? 'activity'}-activity.json`); setShowExportMenu(false); }}
               >
                 Export Activity (JSON)
               </button>
@@ -553,10 +553,10 @@ export default function ProjectToolbar({
         <div className="px-6 py-2 bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 flex-shrink-0 animate-fade-in">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Statuses:</span>
-            {d.projectStatuses.map((s) => (
+            {projectData.projectStatuses.map((s) => (
               <span key={s} className="inline-flex items-center gap-1 text-xs bg-white border border-slate-200 px-2 py-0.5 rounded">
                 {statusLabel(s)}
-                {d.projectStatuses.length > 1 && (
+                {projectData.projectStatuses.length > 1 && (
                   <button onClick={() => handleRemoveStatus(s)} className="text-slate-400 hover:text-red-500">✕</button>
                 )}
               </span>
@@ -581,9 +581,9 @@ export default function ProjectToolbar({
             statusFilter={filtering.statusFilter}
             priorityFilter={filtering.priorityFilter}
             assigneeFilter={filtering.assigneeFilter}
-            orgUsers={d.orgUsers}
-            statuses={d.projectStatuses}
-            labels={d.labels}
+            orgUsers={projectData.orgUsers}
+            statuses={projectData.projectStatuses}
+            labels={projectData.labels}
             labelFilter={filtering.labelFilter}
             onLabelChange={filtering.setLabelFilter}
             onStatusChange={filtering.setStatusFilter}
@@ -591,7 +591,7 @@ export default function ProjectToolbar({
             onAssigneeChange={filtering.setAssigneeFilter}
             onClear={filtering.clearFilters}
             hasActiveFilters={filtering.hasActiveFilters}
-            projectId={d.projectId}
+            projectId={projectData.projectId}
             savedFilters={savedFilters}
             onSavedFiltersChange={setSavedFilters}
             onLoadFilter={(filtersJson) => filtering.loadSavedFilter(filtersJson)}
