@@ -278,6 +278,7 @@ function SessionDialog({ projectId, onClose, onCreated }: {
   const [budgetCap, setBudgetCap] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [loadingTasks, setLoadingTasks] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -315,6 +316,7 @@ function SessionDialog({ projectId, onClose, onCreated }: {
   const handleCreate = async () => {
     if (selectedIds.size === 0) return;
     setSubmitting(true);
+    setError(null);
     try {
       const config = {
         autonomyLevel,
@@ -331,8 +333,8 @@ function SessionDialog({ projectId, onClose, onCreated }: {
       await gql<{ startSession: Session }>(START_SESSION_MUTATION, { sessionId: session.id });
       onCreated();
       onClose();
-    } catch {
-      // ignore — error will show in network
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start session');
     } finally {
       setSubmitting(false);
     }
@@ -438,7 +440,13 @@ function SessionDialog({ projectId, onClose, onCreated }: {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+        <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 space-y-3">
+          {error && (
+            <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
+          <div className="flex items-center justify-end gap-3">
           <button onClick={onClose} className="text-xs px-4 py-2 text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200">
             Cancel
           </button>
@@ -449,6 +457,7 @@ function SessionDialog({ projectId, onClose, onCreated }: {
           >
             {submitting ? 'Starting...' : `Start Session (${selectedIds.size} tasks)`}
           </button>
+          </div>
         </div>
       </div>
     </div>

@@ -29,7 +29,12 @@ export const analysisQueries = {
 
     const tasks = await context.prisma.task.findMany({
       where: { projectId: args.projectId, archived: false, taskType: { not: 'epic' }, ...ROOT_OR_EPIC_CHILD },
-      include: {
+      select: {
+        taskId: true,
+        title: true,
+        status: true,
+        priority: true,
+        completionSummary: true,
         assignee: { select: { email: true } },
         sprint: { select: { name: true } },
         dependenciesAsSource: {
@@ -81,12 +86,10 @@ export const analysisQueries = {
       projectName: project.name,
       projectDescription: project.description,
       tasks: tasks.map((t) => {
-        // completionSummary field added by migration — use optional chaining
-        const taskRecord = t as typeof t & { completionSummary?: string | null };
         let completionSummary: string | undefined;
-        if (taskRecord.completionSummary) {
+        if (t.completionSummary) {
           try {
-            const parsed = JSON.parse(taskRecord.completionSummary) as Record<string, unknown>;
+            const parsed = JSON.parse(t.completionSummary) as Record<string, unknown>;
             completionSummary = (parsed.whatWasBuilt as string) || undefined;
           } catch { /* ignore parse errors */ }
         }

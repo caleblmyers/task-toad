@@ -91,14 +91,15 @@ export default function ProjectDetail() {
 
   // Load time summary and action plan when task is selected
   const selectedTaskId = d.selectedTask?.taskId;
+  const { loadActionPlan, setActionPlan } = d;
   useEffect(() => {
     if (selectedTaskId) {
       void loadTimeSummary(selectedTaskId);
-      void d.loadActionPlan(selectedTaskId);
+      void loadActionPlan(selectedTaskId);
     } else {
-      d.setActionPlan(null);
+      setActionPlan(null);
     }
-  }, [selectedTaskId, loadTimeSummary, d.loadActionPlan, d.setActionPlan]);
+  }, [selectedTaskId, loadTimeSummary, loadActionPlan, setActionPlan]);
 
   // Re-fetch tasks when server-side filter changes
   const filterInput = filtering.filterInput;

@@ -12,6 +12,12 @@ import {
 } from '../api/queries';
 import type { GitHubInstallation, GitHubRepoLink, MeResponse } from '../types';
 
+const CREATE_KNOWLEDGE_ENTRY_MUTATION = `mutation CreateKnowledgeEntry($projectId: ID!, $title: String!, $content: String!, $source: String, $category: String) {
+  createKnowledgeEntry(projectId: $projectId, title: $title, content: $content, source: $source, category: $category) {
+    knowledgeEntryId
+  }
+}`;
+
 interface ProjectSetupWizardProps {
   isOpen: boolean;
   projectId: string;
@@ -195,6 +201,16 @@ export default function ProjectSetupWizard({
     setAnalyzing(true);
     setError(null);
     try {
+      // Save user intent as a knowledge entry before analysis
+      if (analyzeIntent.trim()) {
+        await gql<{ createKnowledgeEntry: unknown }>(CREATE_KNOWLEDGE_ENTRY_MUTATION, {
+          projectId,
+          title: 'Project intent',
+          content: analyzeIntent.trim(),
+          source: 'user',
+          category: 'context',
+        });
+      }
       await gql<{ bootstrapProjectFromRepo: unknown[] }>(BOOTSTRAP_REPO_MUTATION, { projectId });
       setAnalyzeComplete(true);
     } catch (err) {
@@ -202,7 +218,7 @@ export default function ProjectSetupWizard({
     } finally {
       setAnalyzing(false);
     }
-  }, [projectId]);
+  }, [projectId, analyzeIntent]);
 
   // Handle done step
   useEffect(() => {

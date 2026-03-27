@@ -10,7 +10,7 @@ import {
   breakdownPRD as aiBreakdownPRD,
   bootstrapFromRepo as aiBootstrapFromRepo,
   generateRepoProfile as aiGenerateRepoProfile,
-  generateOnboardingQuestions as aiGenerateOnboardingQuestions,
+
   generateHierarchicalPlan as aiGenerateHierarchicalPlan,
   generateManualTaskSpec as aiGenerateManualTaskSpec,
 } from '../../../ai/index.js';
@@ -946,56 +946,6 @@ export const generationMutations = {
     }
     const plc = await buildPromptLogContext(context);
     return aiSummarizeProject(apiKey, project.name, project.description ?? '', tasks, plc);
-  },
-
-  generateOnboardingQuestions: async (
-    _parent: unknown,
-    args: { projectId: string },
-    context: Context
-  ) => {
-    const { project } = await requireProject(context, args.projectId);
-    const apiKey = requireApiKey(context);
-    await enforceBudget(context);
-    const existingEntries = await context.prisma.knowledgeEntry.findMany({
-      where: { projectId: args.projectId },
-      select: { title: true },
-    });
-    const existingTopics = existingEntries.map((e: { title: string }) => e.title);
-    const plc = await buildPromptLogContext(context);
-    const result = await aiGenerateOnboardingQuestions(
-      apiKey,
-      project.name,
-      project.description ?? '',
-      existingTopics,
-      plc
-    );
-    return result.questions;
-  },
-
-  saveOnboardingAnswers: async (
-    _parent: unknown,
-    args: { projectId: string; answers: Array<{ question: string; answer: string; category: string }> },
-    context: Context
-  ) => {
-    const { user } = await requireProject(context, args.projectId);
-    if (args.answers.length === 0) {
-      throw new ValidationError('At least one answer is required');
-    }
-    const entries = await Promise.all(
-      args.answers.map((a) =>
-        context.prisma.knowledgeEntry.create({
-          data: {
-            projectId: args.projectId,
-            orgId: user.orgId,
-            title: a.question.slice(0, 80),
-            content: `Q: ${a.question}\nA: ${a.answer}`,
-            source: 'onboarding',
-            category: a.category,
-          },
-        })
-      )
-    );
-    return entries;
   },
 
   generateManualTaskSpec: async (
