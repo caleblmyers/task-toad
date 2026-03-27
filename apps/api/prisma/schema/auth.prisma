@@ -37,6 +37,7 @@ model User {
   refreshTokens     RefreshToken[]
   approvalRequests  Approval[]     @relation("ApprovalRequester")
   approvalDecisions Approval[]     @relation("ApprovalApprover")
+  sessions          Session[]
 
   @@index([orgId])
   @@map("users")

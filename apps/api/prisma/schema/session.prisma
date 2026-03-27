@@ -1,0 +1,23 @@
+model Session {
+  id          String    @id @default(uuid()) @map("session_id")
+  projectId   String    @map("project_id")
+  orgId       String    @map("org_id")
+  createdById String    @map("created_by_id")
+  status      String    @default("draft") // draft | running | paused | completed | failed | cancelled
+  config      String    @db.Text // JSON: { autonomyLevel, budgetCapCents, failurePolicy, maxRetries, scopeLimit, timeLimitMinutes }
+  taskIds     String    @db.Text // JSON array of task IDs included in this session
+  progress    String?   @db.Text // JSON: { tasksCompleted, tasksFailed, tasksSkipped, tokensUsed, estimatedCostCents }
+  startedAt   DateTime? @map("started_at")
+  pausedAt    DateTime? @map("paused_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  project   Project @relation(fields: [projectId], references: [projectId], onDelete: Cascade)
+  org       Org     @relation(fields: [orgId], references: [orgId], onDelete: Cascade)
+  createdBy User    @relation(fields: [createdById], references: [userId])
+
+  @@index([projectId])
+  @@index([orgId, status])
+  @@map("sessions")
+}

@@ -22,6 +22,7 @@ import { slaQueries, slaMutations, slaFieldResolvers } from './sla.js';
 import { approvalQueries, approvalMutations } from './approval.js';
 import { initiativeQueries, initiativeMutations, initiativeFieldResolvers } from './initiative.js';
 import { fieldPermissionQueries, fieldPermissionMutations } from './fieldpermission.js';
+import { sessionQueries, sessionMutations, sessionFieldResolvers } from './session.js';
 
 export const resolvers = {
   Query: {
@@ -49,6 +50,7 @@ export const resolvers = {
     ...approvalQueries,
     ...initiativeQueries,
     ...fieldPermissionQueries,
+    ...sessionQueries,
   },
   Mutation: {
     ...authMutations,
@@ -75,6 +77,7 @@ export const resolvers = {
     ...approvalMutations,
     ...initiativeMutations,
     ...fieldPermissionMutations,
+    ...sessionMutations,
   },
   // Field resolvers
   User: { ...authFieldResolvers.User },
@@ -101,4 +104,5 @@ export const resolvers = {
   TaskInsight: { ...taskInsightFieldResolvers.TaskInsight },
   SLATimer: { ...slaFieldResolvers.SLATimer },
   Initiative: { ...initiativeFieldResolvers.Initiative },
+  Session: { ...sessionFieldResolvers.Session },
 };

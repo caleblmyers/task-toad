@@ -184,6 +184,45 @@ export const aiTypeDefs = /* GraphQL */ `
     recommended: StackOption!
     alternatives: [StackOption!]!
   }
+
+  type SessionConfig {
+    autonomyLevel: String!
+    budgetCapCents: Int
+    failurePolicy: String!
+    maxRetries: Int
+    scopeLimit: Int
+    timeLimitMinutes: Int
+  }
+
+  type SessionProgress {
+    tasksCompleted: Int!
+    tasksFailed: Int!
+    tasksSkipped: Int!
+    tokensUsed: Int!
+    estimatedCostCents: Int!
+  }
+
+  type Session {
+    id: ID!
+    projectId: ID!
+    status: String!
+    config: SessionConfig!
+    taskIds: [ID!]!
+    progress: SessionProgress
+    startedAt: String
+    pausedAt: String
+    completedAt: String
+    createdAt: String!
+  }
+
+  input SessionConfigInput {
+    autonomyLevel: String!
+    budgetCapCents: Int
+    failurePolicy: String!
+    maxRetries: Int
+    scopeLimit: Int
+    timeLimitMinutes: Int
+  }
 `;
 
 export const aiQueryFields = /* GraphQL */ `
@@ -203,6 +242,10 @@ export const aiQueryFields = /* GraphQL */ `
   previewHierarchicalPlan(projectId: ID!, prompt: String!): HierarchicalPlanPreview!
   """Recommend a tech stack for a project based on its description."""
   recommendStack(projectId: ID!): StackRecommendation!
+  """List sessions for a project."""
+  sessions(projectId: ID!): [Session!]!
+  """Get a single session by ID."""
+  session(sessionId: ID!): Session
 `;
 
 export const aiMutationFields = /* GraphQL */ `
@@ -221,4 +264,12 @@ export const aiMutationFields = /* GraphQL */ `
   generateOnboardingQuestions(projectId: ID!): [OnboardingQuestion!]!
   """Save onboarding interview answers as knowledge entries."""
   saveOnboardingAnswers(projectId: ID!, answers: [OnboardingAnswerInput!]!): [KnowledgeEntry!]!
+  """Create a new execution session for a set of tasks."""
+  createSession(projectId: ID!, taskIds: [ID!]!, config: SessionConfigInput!): Session!
+  """Start a draft session — marks included tasks for auto-complete and triggers orchestration."""
+  startSession(sessionId: ID!): Session!
+  """Pause a running session."""
+  pauseSession(sessionId: ID!): Session!
+  """Cancel a session and stop any running action plans."""
+  cancelSession(sessionId: ID!): Session!
 `;

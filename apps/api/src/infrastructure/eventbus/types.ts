@@ -144,6 +144,10 @@ export interface DomainEventMap {
     taskTitle: string;
     unblockerTaskId: string;
   };
+  'session.started': BaseEventPayload & { sessionId: string };
+  'session.completed': BaseEventPayload & { sessionId: string };
+  'session.failed': BaseEventPayload & { sessionId: string; reason: string };
+  'session.paused': BaseEventPayload & { sessionId: string };
 }
 
 export type EventName = keyof DomainEventMap;

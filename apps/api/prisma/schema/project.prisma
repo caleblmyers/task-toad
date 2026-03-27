@@ -29,6 +29,7 @@ model Project {
   slaPolicies           SLAPolicy[]
   initiativeProjects    InitiativeProject[]
   fieldPermissions      FieldPermission[]
+  sessions              Session[]
 
   @@index([orgId])
   @@map("projects")

@@ -30,6 +30,7 @@ model Org {
   taskInsights     TaskInsight[]
   slaPolicies      SLAPolicy[]
   initiatives      Initiative[]
+  sessions         Session[]
 
   @@map("orgs")
 }

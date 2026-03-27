@@ -71,6 +71,72 @@ async function orchestrateProject(
 
   if (eligible.length === 0) return;
 
+  // Check for active session and apply session constraints
+  const activeSession = await prisma.session.findFirst({
+    where: { projectId, status: 'running' },
+  });
+
+  let filteredEligible = eligible;
+
+  if (activeSession) {
+    const sessionConfig = JSON.parse(activeSession.config) as {
+      budgetCapCents?: number;
+      scopeLimit?: number;
+    };
+    const sessionProgress = activeSession.progress
+      ? (JSON.parse(activeSession.progress) as {
+          tasksCompleted: number;
+          tasksFailed: number;
+          tasksSkipped: number;
+          tokensUsed: number;
+          estimatedCostCents: number;
+        })
+      : { tasksCompleted: 0, tasksFailed: 0, tasksSkipped: 0, tokensUsed: 0, estimatedCostCents: 0 };
+    const sessionTaskIds = JSON.parse(activeSession.taskIds) as string[];
+
+    // Only orchestrate tasks that belong to this session
+    filteredEligible = eligible.filter((t) => sessionTaskIds.includes(t.taskId));
+
+    // Check budget cap
+    if (
+      sessionConfig.budgetCapCents &&
+      sessionProgress.estimatedCostCents >= sessionConfig.budgetCapCents
+    ) {
+      await prisma.session.update({
+        where: { id: activeSession.id },
+        data: { status: 'paused', pausedAt: new Date() },
+      });
+      getEventBus().emit('session.paused', {
+        orgId,
+        userId,
+        projectId,
+        timestamp: new Date().toISOString(),
+        sessionId: activeSession.id,
+      });
+      log.info({ sessionId: activeSession.id }, 'Session paused — budget cap exceeded');
+      return;
+    }
+
+    // Check scope limit
+    if (sessionConfig.scopeLimit && sessionProgress.tasksCompleted >= sessionConfig.scopeLimit) {
+      await prisma.session.update({
+        where: { id: activeSession.id },
+        data: { status: 'completed', completedAt: new Date() },
+      });
+      getEventBus().emit('session.completed', {
+        orgId,
+        userId,
+        projectId,
+        timestamp: new Date().toISOString(),
+        sessionId: activeSession.id,
+      });
+      log.info({ sessionId: activeSession.id }, 'Session completed — scope limit reached');
+      return;
+    }
+
+    if (filteredEligible.length === 0) return;
+  }
+
   // Check concurrency limit
   const executing = await prisma.taskActionPlan.count({
     where: { task: { projectId }, status: 'executing' },
@@ -101,7 +167,7 @@ async function orchestrateProject(
   }
 
   const queue = getJobQueue();
-  const tasksToProcess = eligible.slice(0, slots);
+  const tasksToProcess = filteredEligible.slice(0, slots);
 
   for (const task of tasksToProcess) {
     try {
@@ -220,7 +286,55 @@ async function orchestrateProject(
 
 export function register(bus: EventBus, prisma: PrismaClient): void {
   bus.on('task.action_plan_completed', async (event) => {
-    const { projectId, orgId, userId } = event;
+    const { projectId, orgId, userId, taskId } = event;
+
+    // Update session progress if task belongs to an active session
+    try {
+      const session = await prisma.session.findFirst({
+        where: { status: 'running', projectId },
+      });
+      if (session) {
+        const taskIds = JSON.parse(session.taskIds) as string[];
+        if (taskIds.includes(taskId)) {
+          const progress = session.progress
+            ? (JSON.parse(session.progress) as {
+                tasksCompleted: number;
+                tasksFailed: number;
+                tasksSkipped: number;
+                tokensUsed: number;
+                estimatedCostCents: number;
+              })
+            : { tasksCompleted: 0, tasksFailed: 0, tasksSkipped: 0, tokensUsed: 0, estimatedCostCents: 0 };
+          progress.tasksCompleted++;
+          await prisma.session.update({
+            where: { id: session.id },
+            data: { progress: JSON.stringify(progress) },
+          });
+
+          // Check if all session tasks are done
+          const totalProcessed = progress.tasksCompleted + progress.tasksFailed + progress.tasksSkipped;
+          if (totalProcessed >= taskIds.length) {
+            const finalStatus = progress.tasksFailed > 0 ? 'failed' : 'completed';
+            await prisma.session.update({
+              where: { id: session.id },
+              data: { status: finalStatus, completedAt: new Date() },
+            });
+            bus.emit(finalStatus === 'failed' ? 'session.failed' : 'session.completed', {
+              orgId,
+              userId,
+              projectId,
+              timestamp: new Date().toISOString(),
+              sessionId: session.id,
+              ...(finalStatus === 'failed' ? { reason: 'Some tasks failed' } : {}),
+            } as Parameters<typeof bus.emit>[1]);
+            log.info({ sessionId: session.id, finalStatus }, 'Session finished — all tasks processed');
+          }
+        }
+      }
+    } catch (err) {
+      log.error({ err, taskId }, 'Failed to update session progress on plan completed');
+    }
+
     const lockId = lockIdForProject(projectId);
     const acquired = await tryAdvisoryLock(prisma, lockId);
     if (!acquired) return;
@@ -253,6 +367,76 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
 
   bus.on('task.action_plan_failed', async (event) => {
     const { taskId, orgId, userId, projectId } = event;
+
+    // Handle session failure policy
+    try {
+      const session = await prisma.session.findFirst({
+        where: { status: 'running', projectId },
+      });
+      if (session) {
+        const taskIds = JSON.parse(session.taskIds) as string[];
+        if (taskIds.includes(taskId)) {
+          const config = JSON.parse(session.config) as { failurePolicy: string; maxRetries?: number };
+          const progress = session.progress
+            ? (JSON.parse(session.progress) as {
+                tasksCompleted: number;
+                tasksFailed: number;
+                tasksSkipped: number;
+                tokensUsed: number;
+                estimatedCostCents: number;
+              })
+            : { tasksCompleted: 0, tasksFailed: 0, tasksSkipped: 0, tokensUsed: 0, estimatedCostCents: 0 };
+
+          if (config.failurePolicy === 'pause_immediately') {
+            progress.tasksFailed++;
+            await prisma.session.update({
+              where: { id: session.id },
+              data: { status: 'paused', pausedAt: new Date(), progress: JSON.stringify(progress) },
+            });
+            bus.emit('session.paused', {
+              orgId,
+              userId,
+              projectId,
+              timestamp: new Date().toISOString(),
+              sessionId: session.id,
+            });
+            log.info({ sessionId: session.id, taskId }, 'Session paused — task failed (pause_immediately policy)');
+          } else if (config.failurePolicy === 'skip_and_continue') {
+            progress.tasksSkipped++;
+            await prisma.session.update({
+              where: { id: session.id },
+              data: { progress: JSON.stringify(progress) },
+            });
+
+            // Check if all tasks processed
+            const totalProcessed = progress.tasksCompleted + progress.tasksFailed + progress.tasksSkipped;
+            if (totalProcessed >= taskIds.length) {
+              await prisma.session.update({
+                where: { id: session.id },
+                data: { status: 'completed', completedAt: new Date() },
+              });
+              bus.emit('session.completed', {
+                orgId,
+                userId,
+                projectId,
+                timestamp: new Date().toISOString(),
+                sessionId: session.id,
+              });
+            }
+            log.info({ sessionId: session.id, taskId }, 'Task skipped in session (skip_and_continue policy)');
+          } else {
+            // retry_then_pause — increment failure, the existing retry logic handles actual retries
+            progress.tasksFailed++;
+            await prisma.session.update({
+              where: { id: session.id },
+              data: { progress: JSON.stringify(progress) },
+            });
+          }
+        }
+      }
+    } catch (err) {
+      log.error({ err, taskId }, 'Failed to handle session failure policy');
+    }
 
     try {
       // Find tasks that are blocked by the failed task
@@ -289,6 +473,20 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
       );
     } catch (err) {
       log.error({ err, taskId }, 'Failed to process action_plan_failed for dependents');
+    }
+  });
+
+  bus.on('session.started', async (event) => {
+    const { projectId, orgId, userId } = event;
+    const lockId = lockIdForProject(projectId);
+    const acquired = await tryAdvisoryLock(prisma, lockId);
+    if (!acquired) return;
+    try {
+      await orchestrateProject(prisma, projectId, orgId, userId);
+    } catch (err) {
+      log.error({ err, projectId }, 'Orchestrator failed on session.started');
+    } finally {
+      await releaseAdvisoryLock(prisma, lockId);
     }
   });
 
