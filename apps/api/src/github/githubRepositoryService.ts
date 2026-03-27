@@ -35,19 +35,6 @@ const CREATE_REPOSITORY = `
   }
 `;
 
-const CREATE_REPOSITORY_NO_OWNER = `
-  mutation CreateRepository($name: String!, $visibility: RepositoryVisibility!) {
-    createRepository(input: { name: $name, visibility: $visibility }) {
-      repository {
-        id
-        name
-        owner { login }
-        defaultBranchRef { name }
-      }
-    }
-  }
-`;
-
 const GET_OWNER_ID = `
   query GetOwnerId($login: String!) {
     repositoryOwner(login: $login) {
@@ -194,15 +181,35 @@ export async function createRepoForProject(
   let repoNode: RepoNode;
   try {
     if (isUserAccount) {
-      // User accounts: must use user's OAuth token (installation tokens can't create repos on personal accounts)
+      // Personal accounts: installation tokens CANNOT create repos (GitHub limitation).
+      // Must use the user's OAuth token via REST API.
       if (!userOAuthToken) {
-        throw new Error('GitHub account not connected. Please connect your GitHub account in the project setup wizard to create repositories on your personal account.');
+        throw new Error('GitHub account connection expired. Please reconnect your GitHub account to create repositories.');
       }
-      const data = await githubRequest<CreateRepoResponse>(userOAuthToken, CREATE_REPOSITORY_NO_OWNER, {
-        name: repoName,
-        visibility: 'PRIVATE',
+      const restResult = await fetch('https://api.github.com/user/repos', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${userOAuthToken}`,
+          Accept: 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+        body: JSON.stringify({ name: repoName, private: true, auto_init: true }),
       });
-      repoNode = data.createRepository.repository;
+      if (restResult.status === 401) {
+        throw new Error('GitHub account connection expired. Please reconnect your GitHub account in the project settings.');
+      }
+      if (!restResult.ok) {
+        const body = await restResult.text();
+        throw new Error(`Failed to create repository: ${restResult.status} ${body}`);
+      }
+      const restRepo = (await restResult.json()) as { node_id: string; name: string; owner: { login: string }; default_branch: string };
+      repoNode = {
+        id: restRepo.node_id,
+        name: restRepo.name,
+        owner: { login: restRepo.owner.login },
+        defaultBranchRef: { name: restRepo.default_branch },
+      };
     } else {
       // Org accounts: use installation token with ownerId
       const token = await getInstallationToken(installationId);

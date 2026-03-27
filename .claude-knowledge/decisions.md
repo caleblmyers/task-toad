@@ -62,6 +62,20 @@ Non-obvious choices and their rationale. Only decisions where the "why" isn't ap
 
 ---
 
+## GitHub Integration
+
+**Two GitHub Apps (dev/prod):** `tasktoad-dev` (App ID 3112394) for local development, `tasktoad` (App ID 3080871) for production. Separate apps avoid dev operations touching prod repos.
+
+**Installation tokens for everything except repo creation on personal accounts:** GitHub App installation tokens handle commits, branches, PRs, reviews, merges. But `POST /user/repos` and GraphQL `createRepository` both return 403 "Resource not accessible by integration" with installation tokens on personal accounts. This is a GitHub platform limitation — creating repos on personal accounts requires a user OAuth token regardless of app permissions.
+
+**User OAuth token for personal account repo creation:** Obtained via `/api/auth/github` OAuth flow, stored encrypted in `user.githubTokenEncrypted`. Only used for creating repos on personal accounts. Can go stale if revoked on GitHub's side — user must re-authenticate.
+
+**Auto-reauthentication on 401 for installation tokens:** `githubRequest()` accepts optional `installationId` — on 401, clears cached token and retries with a fresh one. `githubRestRequest()` does the same for REST calls. All GitHub service files pass `installationId` through. OAuth tokens cannot auto-refresh — user must re-authenticate manually.
+
+**SSE compression exclusion:** The `compression()` middleware in Express buffers `res.write()` calls, which breaks SSE real-time delivery. The SSE endpoint (`/events`, `/api/events`) is excluded from compression via a filter function. All SSE writes call `res.flush()` after writing.
+
+---
+
 ## AI
 
 **Claude Sonnet 4 as default model:** Upgraded from Haiku 4.5 in Wave 60. Sonnet produces more reliable structured output and better code. Per-feature model override available via `model` field in `FEATURE_CONFIG`.
@@ -74,7 +88,7 @@ Non-obvious choices and their rationale. Only decisions where the "why" isn't ap
 
 **AI features must be actionable, not just informational:** Every AI suggestion should return structured data that maps to a mutation (create task, update task, add dependency). Avoid patterns where AI output is only displayable as text. This enables one-click "Apply" buttons and future auto-apply. The interaction model is always: AI suggests with preview → user approves → action applied.
 
-**Sequential action plan pipeline:** generate_code → create_pr → review_pr. Each step depends on the previous. Approval gates let users review before proceeding. Branch-based execution (feature branches per task) being implemented to allow context threading between steps.
+**Sequential action plan pipeline:** `generate_code → create_pr → review_pr → fix_review → merge_pr`. Each step depends on the previous. All steps run without approval gates (requiresApproval: false). Branch-based execution with feature branches per task. fix_review fetches actual PR source code to generate accurate fixes. Task status transitions automatically: `todo → in_progress → in_review → done` (with `sprintColumn` synced to keep board view correct).
 
 **Single execution primitive, multiple triggers:** `executeTask(taskId)` is the one function that runs the pipeline for a task. It is triggered by: (1) user clicking Auto-Complete in the UI, (2) a session loop picking the next task, (3) a status-change automation rule. No separate execution logic per trigger — sessions and automations are orchestrators that decide *which* task to run and call the same pipeline. Keep this entry point clean and callable from multiple contexts, not coupled to a specific UI flow.
 

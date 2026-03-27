@@ -99,6 +99,13 @@ Browser → Vite dev server (localhost:5173)
 | AI subsystem | `apps/api/src/ai/` (aiService, promptBuilder, aiTypes, etc.) |
 | KB retrieval (AI-based entry selection) | `apps/api/src/ai/knowledgeRetrieval.ts` |
 | Action plan executors | `apps/api/src/actions/executors/` (generateCode, createPR, reviewPR, fixReview, mergePR, writeDocs, manualStep, monitorCI, fixCI) |
+| GitHub App auth (JWT + token cache) | `apps/api/src/github/githubAppAuth.ts` |
+| GitHub GraphQL/REST client (401 retry) | `apps/api/src/github/githubAppClient.ts` |
+| GitHub commit/branch service | `apps/api/src/github/githubCommitService.ts` |
+| GitHub PR service (create, review, merge, diff) | `apps/api/src/github/githubPullRequestService.ts` |
+| GitHub repo service (create, connect) | `apps/api/src/github/githubRepositoryService.ts` |
+| GitHub user OAuth flow | `apps/api/src/routes/githubOAuth.ts` |
+| GitHub webhook handler | `apps/api/src/github/githubWebhookHandler.ts` |
 | Action plan registry | `apps/api/src/actions/registry.ts` + `index.ts` |
 | Job executor (action pipeline) | `apps/api/src/infrastructure/jobs/actionExecutor.ts` |
 | Event bus (typed domain events) | `apps/api/src/infrastructure/eventbus/` |
