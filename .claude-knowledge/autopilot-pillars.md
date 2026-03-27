@@ -46,11 +46,13 @@ The autopilot pipeline is the product. PM features are the dashboard. This docum
 - Action plan pipeline passes `knowledgeContext` to executors
 
 ### What Needs to Be Built/Improved
-- [ ] **Branch-based code generation** (documented in todos.md as "Action Pipeline Rewrite") — each step commits to a feature branch so subsequent steps see previous work on GitHub. This is the most critical context threading gap.
-- [ ] **Execution result forwarding** — when `generate_code` produces files, the next `generate_code` step should receive a summary of what was generated (not just the repo state, but explicit "here's what the previous step did and why").
-- [ ] **Cross-task context summaries** — when a task completes, generate a structured summary (what was built, key decisions, API contracts, gotchas) that downstream tasks can consume. Currently insights are free-text; they should be structured.
+- [x] **Branch-based code generation** — each step commits to a feature branch. DONE (Wave 64).
+- [x] **Execution result forwarding** — previousStepContext passes summaries between steps within a plan. DONE (Wave 67).
+- [x] **Cross-task context summaries** — completionSummary generated after plan completion, consumed by downstream tasks. DONE (Wave 67).
+- [x] **Failure context propagation** — failureContext passed to retried actions. DONE (Wave 67).
+- [ ] **Repo file contents in code generation context** — generateCode currently gets a file tree (paths only). It must fetch and include actual file contents (schema, types, routes) so code generated for Task N is consistent with what Tasks 1–(N-1) committed. This is the #1 coherence gap found in the 2026-03-27 pipeline analysis.
+- [ ] **Schema-first constraint** — when a Prisma schema (or equivalent) exists, tell the AI explicitly: use these exact models, do not invent new ones.
 - [ ] **Dependency-aware execution ordering** — the orchestrator should execute tasks in topological order based on the dependency graph, not just sequentially within a plan.
-- [ ] **Failure context propagation** — when a task fails, the error context should inform the retry/re-plan, not just be logged.
 
 ### Key Files
 - `apps/api/src/infrastructure/jobs/actionExecutor.ts` — action execution + insight propagation

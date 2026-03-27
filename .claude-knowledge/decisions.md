@@ -98,10 +98,10 @@ Non-obvious choices and their rationale. Only decisions where the "why" isn't ap
 
 ---
 
-## Code Generation Coherence (Planned/Partial)
+## Code Generation Coherence
 
-- Architecture Plan generation before code gen (provides project context)
-- GitHub repo as code context for generation
-- Model selector (Haiku for plans, Sonnet for code)
-- Dependency-aware batch generation
-- Reconciliation pass for cross-file consistency
+**File tree is not enough — must read actual file contents (2026-03-27 finding).** The `generateCode` executor fetches the repo file tree (paths only) for context. In a 4-task sprint test, this caused each task to generate conflicting code — three different data models, broken imports across files, dead code. The AI needs to see actual file contents (schema, types, routes) to produce code consistent with what previous tasks committed. This is the highest-leverage improvement remaining.
+
+**Schema-first generation:** When a Prisma schema or equivalent exists, the AI must be constrained to use exactly those models. Without this, each task invents its own model names.
+
+**Sprint close reconciliation:** After all tasks in a sprint merge, a consistency check should verify the codebase builds and imports resolve. This fits naturally in the `closeSprint` flow — detect issues, auto-generate a reconciliation PR if needed.

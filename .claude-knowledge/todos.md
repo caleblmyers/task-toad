@@ -2,7 +2,44 @@
 
 70 swarm waves completed + pipeline hardening session. 356 tests. 0 lint warnings. **Autopilot for software projects — all three pillars + AI assistant implemented.**
 
-**Pipeline hardening (post-Wave 70).** SSE real-time fix, merge_pr executor, 401 auto-reauth, fix_review overhaul, task status transitions with board sync, stall recovery UI. See changelog for details.
+**Pipeline hardening (post-Wave 70).** SSE real-time fix, merge_pr executor, 401 auto-reauth, fix_review overhaul, task status transitions with board sync, stall recovery UI.
+
+**First real pipeline test (2026-03-27).** US Lakes Information Portal — 4 tasks completed end-to-end. Pipeline mechanics work. Cross-task coherence is the critical gap. See `pipeline-analysis-2026-03-27.md`.
+
+---
+
+## Code Generation Coherence (Priority — from pipeline analysis 2026-03-27)
+
+Pipeline mechanics work end-to-end. The critical gap is cross-task coherence — each task generates code in isolation, producing conflicts when composed. See `pipeline-analysis-2026-03-27.md` for full analysis.
+
+### R1: Fetch repo file contents in generateCode (highest impact)
+- [ ] In `generateCode` executor, before calling the AI, fetch key files from the GitHub repo via `getPullRequestFiles` or a new `fetchRepoFiles` utility
+- [ ] Determine which files to fetch: Prisma schema, package.json, tsconfig.json, existing route files, type definition files. Use the file tree + heuristics (e.g., files modified in recent PRs, files matching the task's domain)
+- [ ] Include file contents in the AI prompt as a "Current Codebase" section
+- [ ] Cap total context to avoid token limits — prioritize schema/types/config, truncate large files
+
+### R2: Schema-first constraint in code generation prompt
+- [ ] In `buildGenerateCodePrompt`, detect if a Prisma schema (or equivalent like `schema.prisma`, `models.py`, `schema.sql`) exists in the file tree
+- [ ] If found, fetch its contents and add an explicit instruction: "These are the data models. Use exactly these model names, field names, and relations. Do not invent new models or rename existing ones."
+- [ ] Same pattern for TypeScript type definition files — if `types/` or `interfaces/` exist, include them
+
+### R3: Richer cross-task context
+- [ ] In `actionExecutor.ts`, when building `upstreamTaskContext`, include file paths changed (from completionSummary) and key type/schema definitions, not just prose summaries
+- [ ] Consider fetching the PR diff from the most recent upstream task's merged PR as context
+
+### R4: Post-merge build verification
+- [ ] Add optional `verify_build` action type that runs after `merge_pr`
+- [ ] Executor clones the repo (or uses GitHub Actions), runs `npm install && npm run build` (or detected build command from package.json/CLAUDE.md)
+- [ ] On failure: create a fix task with the build error output as instructions
+- [ ] On success: record in action result for confidence tracking
+- [ ] Consider making this opt-in per project (some repos won't have CI configured)
+
+### R5: Sprint close reconciliation
+- [ ] In `closeSprint` resolver, after closing the sprint, optionally trigger a reconciliation check
+- [ ] Fetch the repo's current state, attempt a build, run any available tests
+- [ ] If inconsistencies found (broken imports, type mismatches, build failures): auto-generate a reconciliation task with specific errors
+- [ ] The reconciliation task goes through the normal action plan pipeline (generate_code to fix issues → create_pr → review → merge)
+- [ ] UI: show reconciliation status in the close sprint dialog/result
 
 ---
 
