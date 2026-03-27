@@ -13,6 +13,7 @@ import { logInstallation, logWebhookReceived, logApiError } from './githubLogger
 import { linkCommitsToTasks } from './githubTaskLinker.js';
 import { invalidateCache } from './githubCache.js';
 import { prisma } from '../graphql/context.js';
+import { getEventBus } from '../infrastructure/eventbus/index.js';
 
 function getWebhookSecret(): string {
   const secret = process.env.GITHUB_WEBHOOK_SECRET;
@@ -151,6 +152,22 @@ async function handleInstallationRepositoriesEvent(payload: GitHubWebhookEvent):
   }
 }
 
+function emitTaskUpdatedEvent(
+  task: { taskId: string; title: string; status: string; projectId: string; orgId: string; taskType: string },
+  previousStatus: string,
+  newStatus: string,
+): void {
+  const bus = getEventBus();
+  bus.emit('task.updated', {
+    orgId: task.orgId,
+    userId: 'system',
+    projectId: task.projectId,
+    timestamp: new Date().toISOString(),
+    task: { taskId: task.taskId, title: task.title, status: newStatus, projectId: task.projectId, orgId: task.orgId, taskType: task.taskType },
+    changes: { status: { old: previousStatus, new: newStatus } },
+  });
+}
+
 async function handleIssuesEvent(payload: GitHubWebhookEvent): Promise<void> {
   if (!payload.issue) return;
   const issueNodeId = payload.issue.node_id;
@@ -162,12 +179,18 @@ async function handleIssuesEvent(payload: GitHubWebhookEvent): Promise<void> {
   if (!task) return;
 
   switch (payload.action) {
-    case 'closed':
+    case 'closed': {
+      const previousStatus = task.status;
       await prisma.task.update({ where: { taskId: task.taskId }, data: { status: 'done' } });
+      emitTaskUpdatedEvent(task, previousStatus, 'done');
       break;
-    case 'reopened':
+    }
+    case 'reopened': {
+      const previousStatus = task.status;
       await prisma.task.update({ where: { taskId: task.taskId }, data: { status: 'todo' } });
+      emitTaskUpdatedEvent(task, previousStatus, 'todo');
       break;
+    }
     default:
       break;
   }
@@ -186,7 +209,12 @@ async function handlePullRequestEvent(payload: GitHubWebhookEvent): Promise<void
       const newState = payload.pull_request.merged ? 'MERGED' : 'CLOSED';
       await prisma.gitHubPullRequestLink.update({ where: { id: link.id }, data: { state: newState } });
       if (payload.pull_request.merged) {
-        await prisma.task.update({ where: { taskId: link.taskId }, data: { status: 'done' } });
+        const task = await prisma.task.findUnique({ where: { taskId: link.taskId } });
+        if (task) {
+          const previousStatus = task.status;
+          await prisma.task.update({ where: { taskId: task.taskId }, data: { status: 'done' } });
+          emitTaskUpdatedEvent(task, previousStatus, 'done');
+        }
       }
       break;
     }
@@ -206,10 +234,15 @@ async function handlePullRequestReviewEvent(payload: GitHubWebhookEvent): Promis
   const link = await prisma.gitHubPullRequestLink.findFirst({ where: { prNodeId } });
   if (!link) return;
 
+  const task = await prisma.task.findUnique({ where: { taskId: link.taskId } });
+  if (!task) return;
+
+  const previousStatus = task.status;
   await prisma.task.update({
-    where: { taskId: link.taskId },
+    where: { taskId: task.taskId },
     data: { status: 'done', sprintColumn: 'Done' },
   });
+  emitTaskUpdatedEvent(task, previousStatus, 'done');
 }
 
 async function handlePushEvent(payload: GitHubWebhookEvent): Promise<void> {

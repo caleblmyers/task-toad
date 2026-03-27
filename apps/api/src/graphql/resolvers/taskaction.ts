@@ -420,6 +420,124 @@ export const taskActionMutations = {
     return updated;
   },
 
+  replanFailedTask: async (_parent: unknown, args: { planId: string }, context: Context) => {
+    const user = requireOrg(context);
+    const apiKey = requireApiKey(context);
+    await enforceBudget(context);
+
+    const plan = await context.prisma.taskActionPlan.findUnique({
+      where: { id: args.planId },
+      include: {
+        task: { include: { project: true } },
+        actions: { orderBy: { position: 'asc' } },
+      },
+    });
+
+    if (!plan || plan.orgId !== user.orgId) throw new NotFoundError('Action plan not found');
+    if (plan.status !== 'failed') throw new ValidationError('Plan must be in failed state to replan');
+
+    // Build failure context from failed actions
+    const failedActions = plan.actions.filter((a) => a.status === 'failed');
+    const failureContext = failedActions
+      .map((a) => `Action "${a.label}" (${a.actionType}) failed: ${a.errorMessage || 'Unknown error'}`)
+      .join('\n');
+
+    const task = plan.task;
+    const project = task.project;
+    const repo = await getProjectRepo(task.projectId);
+
+    // Retrieve relevant KB context
+    let knowledgeBase: string | null = null;
+    try {
+      const taskContext = `${task.title}. ${task.instructions || task.description || ''}`.slice(0, 500);
+      knowledgeBase = await retrieveRelevantKnowledge(context.prisma, task.projectId, taskContext, apiKey);
+    } catch (err) {
+      log.warn({ err, taskId: task.taskId }, 'KB retrieval failed for replan, falling back to legacy');
+    }
+    if (!knowledgeBase && project.knowledgeBase) {
+      knowledgeBase = project.knowledgeBase;
+    }
+
+    // Prepend failure context to knowledge base
+    const failureKnowledge = `PREVIOUS PLAN FAILED:\n${failureContext}\n\nGenerate a new plan that avoids these failures. Try a different approach.`;
+    const combinedKnowledge = knowledgeBase
+      ? `${failureKnowledge}\n\n${knowledgeBase}`
+      : failureKnowledge;
+
+    const plc = await buildPromptLogContext(context);
+    const result = await aiPlanTaskActions(
+      apiKey,
+      {
+        taskTitle: task.title,
+        taskDescription: task.description ?? '',
+        taskInstructions: task.instructions || '',
+        acceptanceCriteria: task.acceptanceCriteria,
+        suggestedTools: task.suggestedTools,
+        projectName: project.name,
+        projectDescription: project.description,
+        knowledgeBase: combinedKnowledge,
+        hasGitHubRepo: !!repo,
+        availableActionTypes: availableTypes(),
+      },
+      plc,
+    );
+
+    // Cancel the old plan
+    await context.prisma.taskActionPlan.update({
+      where: { id: args.planId },
+      data: { status: 'cancelled' },
+    });
+
+    // Create new plan (same pattern as commitActionPlan)
+    const newPlan = await context.prisma.taskActionPlan.create({
+      data: {
+        taskId: task.taskId,
+        orgId: user.orgId,
+        status: 'approved',
+        createdById: user.userId,
+        actions: {
+          create: result.actions.map((a, i) => ({
+            actionType: a.actionType,
+            label: a.label,
+            config: JSON.stringify(a.config),
+            position: i,
+            requiresApproval: a.requiresApproval,
+          })),
+        },
+      },
+      include: { actions: { orderBy: { position: 'asc' } } },
+    });
+
+    // Remap AI placeholder IDs to real database UUIDs
+    const idMap = new Map<string, string>();
+    newPlan.actions.forEach((a, i) => idMap.set(`action_${i}`, a.id));
+
+    const configKeys = ['sourceActionId', 'sourcePRActionId', 'sourceMonitorActionId', 'sourceReviewActionId'];
+    for (const action of newPlan.actions) {
+      let config: Record<string, unknown>;
+      try { config = JSON.parse(action.config || '{}'); } catch { continue; }
+      let changed = false;
+      for (const key of configKeys) {
+        const ref = config[key] as string | undefined;
+        if (ref && idMap.has(ref)) {
+          config[key] = idMap.get(ref);
+          changed = true;
+        }
+      }
+      if (changed) {
+        await context.prisma.taskAction.update({
+          where: { id: action.id },
+          data: { config: JSON.stringify(config) },
+        });
+      }
+    }
+
+    return context.prisma.taskActionPlan.findUnique({
+      where: { id: newPlan.id },
+      include: { actions: { orderBy: { position: 'asc' } } },
+    });
+  },
+
   cancelActionPlan: async (_parent: unknown, args: { planId: string }, context: Context) => {
     const user = requireOrg(context);
     const plan = await context.prisma.taskActionPlan.findUnique({

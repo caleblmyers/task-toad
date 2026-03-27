@@ -79,4 +79,5 @@ export const taskActionMutationFields = /* GraphQL */ `
   skipAction(actionId: ID!): TaskAction!
   retryAction(actionId: ID!): TaskAction!
   cancelActionPlan(planId: ID!): TaskActionPlan!
+  replanFailedTask(planId: ID!): TaskActionPlan!
 `;
