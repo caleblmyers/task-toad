@@ -335,8 +335,33 @@ export async function callAIStructured<T>(
         ? (toolBlock.input as Record<string, unknown>).items
         : toolBlock.input;
 
+      // Coerce stringified fields — sometimes the model returns JSON strings instead of objects/arrays.
+      let coercedInput = rawInput;
+      if (coercedInput && typeof coercedInput === 'object') {
+        const obj = coercedInput as Record<string, unknown>;
+        for (const [key, val] of Object.entries(obj)) {
+          if (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{'))) {
+            try {
+              const parsed = JSON.parse(val);
+              // If the parsed result is an object with multiple keys that match sibling fields,
+              // the AI likely wrapped the entire response in one stringified field — unwrap it.
+              if (typeof parsed === 'object' && !Array.isArray(parsed)) {
+                const parsedKeys = Object.keys(parsed as Record<string, unknown>);
+                const objKeys = Object.keys(obj);
+                const isWrapped = objKeys.length <= 2 && parsedKeys.length > objKeys.length;
+                if (isWrapped) {
+                  coercedInput = parsed;
+                  break;
+                }
+              }
+              obj[key] = parsed;
+            } catch { /* leave as-is */ }
+          }
+        }
+      }
+
       // Validate against Zod schema
-      const result = schema.safeParse(rawInput);
+      const result = schema.safeParse(coercedInput);
       if (!result.success) {
         log.error({ issues: result.error.issues.slice(0, 3) }, 'Structured output validation failed');
         throw new GraphQLError('AI response did not match expected format');

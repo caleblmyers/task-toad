@@ -48,6 +48,8 @@ Structure rules:
    - Only add dependencies that are genuinely necessary — don't over-constrain the plan.
 6. Subtasks have: title, description, estimatedHours, priority, acceptanceCriteria.
 7. Each node should have "acceptanceCriteria" — a brief description of what "done" looks like.
+8. Task instructions must describe WHAT to build, not which specific vendor or service to use. Never prescribe specific deployment platforms (Vercel, Railway, Heroku, AWS), specific CI providers, or specific third-party services. Instead describe the capability needed (e.g., "add deployment config files and health check endpoint" not "configure Vercel deployment"). The user chooses their own infrastructure.
+9. Do NOT create tasks for deployment, hosting setup, CI/CD pipeline configuration, or infrastructure provisioning. Focus on application code, features, and configuration files that live in the repo.
 
 Return JSON:
 {
