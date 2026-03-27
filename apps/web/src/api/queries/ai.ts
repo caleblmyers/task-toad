@@ -207,6 +207,42 @@ export const EXTRACT_TASKS_FROM_NOTES_QUERY = `query ExtractTasks($projectId: ID
   }
 }`;
 
+// ── Sessions ──
+
+export const SESSIONS_QUERY = `query Sessions($projectId: ID!) {
+  sessions(projectId: $projectId) {
+    id status
+    config { autonomyLevel budgetCapCents failurePolicy maxRetries scopeLimit }
+    taskIds
+    progress { tasksCompleted tasksFailed tasksSkipped tokensUsed estimatedCostCents }
+    startedAt pausedAt completedAt createdAt
+  }
+}`;
+
+export const CREATE_SESSION_MUTATION = `mutation CreateSession($projectId: ID!, $taskIds: [ID!]!, $config: SessionConfigInput!) {
+  createSession(projectId: $projectId, taskIds: $taskIds, config: $config) {
+    id status taskIds
+  }
+}`;
+
+export const START_SESSION_MUTATION = `mutation StartSession($sessionId: ID!) {
+  startSession(sessionId: $sessionId) {
+    id status startedAt
+  }
+}`;
+
+export const PAUSE_SESSION_MUTATION = `mutation PauseSession($sessionId: ID!) {
+  pauseSession(sessionId: $sessionId) {
+    id status
+  }
+}`;
+
+export const CANCEL_SESSION_MUTATION = `mutation CancelSession($sessionId: ID!) {
+  cancelSession(sessionId: $sessionId) {
+    id status
+  }
+}`;
+
 // ── Analytics ──
 
 export const ANALYZE_PROJECT_HEALTH_QUERY = `query AnalyzeHealth($projectId: ID!) {
