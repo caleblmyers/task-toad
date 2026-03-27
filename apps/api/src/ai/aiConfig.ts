@@ -55,6 +55,7 @@ export const FEATURE_CONFIG: Record<AIFeature, FeatureConfig> = {
   scaffoldProject:          { maxTokens: 32768, cacheTTLMs: 0,          retryOnValidationFailure: true, useStructuredOutput: true },
   recommendStack:           { maxTokens: 2048, cacheTTLMs: 0,          retryOnValidationFailure: true },
   generateCompletionSummary: { maxTokens: 1024, cacheTTLMs: 0,         retryOnValidationFailure: true },
+  whatNext:                   { maxTokens: 2048, cacheTTLMs: 0,         retryOnValidationFailure: true },
 };
 
 // ---------------------------------------------------------------------------

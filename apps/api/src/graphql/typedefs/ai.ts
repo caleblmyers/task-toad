@@ -123,6 +123,18 @@ export const aiTypeDefs = /* GraphQL */ `
     taskId: ID
   }
 
+  type WhatNextSuggestion {
+    title: String!
+    reason: String!
+    priority: String!
+    action: ChatAction!
+  }
+
+  type WhatNextResponse {
+    summary: String!
+    suggestions: [WhatNextSuggestion!]!
+  }
+
   type DriftOutdatedTask {
     taskId: ID!
     title: String!
@@ -248,6 +260,8 @@ export const aiQueryFields = /* GraphQL */ `
   previewHierarchicalPlan(projectId: ID!, prompt: String!): HierarchicalPlanPreview!
   """Recommend a tech stack for a project based on its description."""
   recommendStack(projectId: ID!): StackRecommendation!
+  """Analyze project state and suggest the highest-priority next work."""
+  whatNext(projectId: ID!): WhatNextResponse!
   """List sessions for a project."""
   sessions(projectId: ID!): [Session!]!
   """Get a single session by ID."""

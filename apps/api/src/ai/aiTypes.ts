@@ -395,7 +395,8 @@ export type AIFeature =
   | 'generateManualTaskSpec'
   | 'scaffoldProject'
   | 'recommendStack'
-  | 'generateCompletionSummary';
+  | 'generateCompletionSummary'
+  | 'whatNext';
 
 export const ChatActionSchema = z.object({
   type: z.enum(['create_task', 'update_task', 'add_dependency', 'update_status']),
@@ -415,6 +416,18 @@ export const ProjectChatResponseSchema = z.object({
 
 export type ChatAction = z.infer<typeof ChatActionSchema>;
 export type ProjectChatResponse = z.infer<typeof ProjectChatResponseSchema>;
+
+export const WhatNextResponseSchema = z.object({
+  summary: z.string(),
+  suggestions: z.array(z.object({
+    title: z.string(),
+    reason: z.string(),
+    priority: z.enum(['critical', 'high', 'medium', 'low']),
+    action: ChatActionSchema,
+  })),
+});
+
+export type WhatNextResponse = z.infer<typeof WhatNextResponseSchema>;
 
 export const DriftAnalysisSchema = z.object({
   summary: z.string(),

@@ -5,6 +5,7 @@ import {
   analyzeSprintTransition as aiAnalyzeSprintTransition,
   analyzeProjectHealth as aiAnalyzeProjectHealth,
   extractTasksFromNotes as aiExtractTasksFromNotes,
+  whatNext as aiWhatNext,
 } from '../../../ai/index.js';
 import { NotFoundError, ValidationError } from '../../errors.js';
 import { requireOrg, requireApiKey } from '../auth.js';
@@ -392,6 +393,96 @@ export const analysisQueries = {
 
     const plc = await buildPromptLogContext(context);
     return aiExtractTasksFromNotes(apiKey, args.notes, project.name, teamMembers, plc);
+  },
+
+  whatNext: async (
+    _parent: unknown,
+    args: { projectId: string },
+    context: Context
+  ) => {
+    const { project } = await requireProject(context, args.projectId);
+    const apiKey = requireApiKey(context);
+    await enforceBudget(context);
+
+    const tasks = await context.prisma.task.findMany({
+      where: { projectId: args.projectId, archived: false, taskType: { not: 'epic' }, ...ROOT_OR_EPIC_CHILD },
+      select: {
+        taskId: true,
+        title: true,
+        status: true,
+        priority: true,
+        completionSummary: true,
+        dependenciesAsTarget: {
+          select: {
+            linkType: true,
+            sourceTask: { select: { title: true, status: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    const activities = await context.prisma.activity.findMany({
+      where: { projectId: args.projectId },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    const activityTaskIds = [...new Set(activities.map((a: { taskId: string | null }) => a.taskId).filter(Boolean))] as string[];
+    const activityTasks = activityTaskIds.length > 0
+      ? await context.prisma.task.findMany({ where: { taskId: { in: activityTaskIds } }, select: { taskId: true, title: true } })
+      : [];
+    const taskTitleMap = new Map(activityTasks.map((t: { taskId: string; title: string }) => [t.taskId, t.title]));
+
+    let knowledgeBase: string | null = null;
+    try {
+      knowledgeBase = await retrieveRelevantKnowledge(context.prisma, args.projectId, 'what should I work on next', apiKey);
+    } catch {
+      knowledgeBase = project.knowledgeBase;
+    }
+
+    const plc = await buildPromptLogContext(context);
+    const result = await aiWhatNext(apiKey, {
+      projectName: project.name,
+      projectDescription: project.description,
+      tasks: tasks.map((t) => {
+        let completionSummary: string | undefined;
+        if (t.completionSummary) {
+          try {
+            const parsed = JSON.parse(t.completionSummary) as Record<string, unknown>;
+            completionSummary = (parsed.whatWasBuilt as string) || undefined;
+          } catch { /* ignore parse errors */ }
+        }
+        return {
+          taskId: t.taskId,
+          title: t.title,
+          status: t.status,
+          priority: t.priority,
+          blockedBy: t.dependenciesAsTarget
+            .filter((d) => d.linkType === 'blocks')
+            .map((d) => d.sourceTask.title),
+          completionSummary,
+        };
+      }),
+      recentActivity: activities.map((a: { action: string; taskId: string | null; createdAt: Date }) => ({
+        action: a.action,
+        taskTitle: a.taskId ? taskTitleMap.get(a.taskId) ?? undefined : undefined,
+        createdAt: a.createdAt.toISOString(),
+      })),
+      knowledgeBase,
+    }, plc);
+
+    return {
+      ...result,
+      suggestions: result.suggestions.map((s) => ({
+        ...s,
+        action: {
+          ...s.action,
+          data: JSON.stringify(s.action.data),
+        },
+      })),
+    };
   },
 };
 

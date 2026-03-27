@@ -31,6 +31,7 @@ export {
   generateOnboardingQuestions,
   generateHierarchicalPlan,
   generateManualTaskSpec,
+  whatNext,
 } from './aiService.js';
 
 export { logUsageToDB, checkBudget, type BudgetStatus } from './aiUsageTracker.js';
