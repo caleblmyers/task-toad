@@ -694,16 +694,17 @@ export const sprintMutations = {
             if (failedChecks.length > 0) {
               const failingCheckNames = failedChecks.map((c) => c.name);
 
-              // Auto-create a reconciliation task
+              // Auto-create a reconciliation task, assigning to next sprint if one exists
               const reconTask = await context.prisma.task.create({
                 data: {
                   title: `Fix build failures after Sprint "${sprint.name}" close`,
-                  description: `CI checks are failing on the default branch (${branch}) after closing sprint "${sprint.name}".\n\nFailing checks:\n${failingCheckNames.map((n) => `- ${n}`).join('\n')}`,
+                  description: `Triggered by closing Sprint "${sprint.name}".\n\nCI checks are failing on the default branch (${branch}) after closing sprint "${sprint.name}".\n\nFailing checks:\n${failingCheckNames.map((n) => `- ${n}`).join('\n')}`,
                   status: 'todo',
                   priority: 'high',
                   autoComplete: true,
                   projectId: sprint.projectId,
                   orgId: user.orgId,
+                  ...(nextSprint ? { sprintId: nextSprint.sprintId, sprintColumn: 'To Do' } : {}),
                 },
               });
 

@@ -126,7 +126,36 @@ export const sessionMutations = {
       throw new ValidationError('Another session is already running for this project');
     }
 
-    const taskIds = JSON.parse(session.taskIds) as string[];
+    let taskIds = JSON.parse(session.taskIds) as string[];
+
+    // When resuming a paused session, clean up archived/deleted tasks
+    if (session.status === 'paused' && taskIds.length > 0) {
+      const existingTasks = await context.prisma.task.findMany({
+        where: { taskId: { in: taskIds }, projectId: session.projectId, archived: false },
+        select: { taskId: true },
+      });
+      const validIds = new Set(existingTasks.map((t) => t.taskId));
+      const removedIds = taskIds.filter((id) => !validIds.has(id));
+
+      if (removedIds.length > 0) {
+        taskIds = taskIds.filter((id) => validIds.has(id));
+        await context.prisma.session.update({
+          where: { id: args.sessionId },
+          data: { taskIds: JSON.stringify(taskIds) },
+        });
+
+        // Clear autoComplete on tasks no longer in the session
+        await context.prisma.task.updateMany({
+          where: { projectId: session.projectId, autoComplete: true, taskId: { notIn: taskIds } },
+          data: { autoComplete: false },
+        });
+
+        log.warn(
+          { sessionId: session.id, removedIds, remainingCount: taskIds.length },
+          'Removed archived/deleted tasks from resumed session',
+        );
+      }
+    }
 
     // Mark included tasks as autoComplete
     await context.prisma.task.updateMany({
