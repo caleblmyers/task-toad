@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react';
 import type { TaskActionPlan, TaskActionType } from '../types';
 
 const STATUS_ICONS: Record<string, string> = {
@@ -220,6 +221,31 @@ export default function ActionProgressPanel({ plan, onCompleteManual, onSkip, on
   const waitingForApproval = plan.status === 'executing' && !hasRunningAction && nextPending?.requiresApproval;
   // Stalled: plan says executing but no action is running and next action doesn't need approval
   const isStalled = plan.status === 'executing' && !hasRunningAction && nextPending && !nextPending.requiresApproval;
+
+  // Grace period for stall detection — only show Resume after 30s of continuous stall
+  const [stallElapsed, setStallElapsed] = useState(false);
+  const stallTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const actionStatusKey = plan.actions.map((a) => a.status).join(',');
+
+  useEffect(() => {
+    if (stallTimerRef.current) {
+      clearTimeout(stallTimerRef.current);
+      stallTimerRef.current = null;
+    }
+    setStallElapsed(false);
+
+    if (isStalled) {
+      stallTimerRef.current = setTimeout(() => setStallElapsed(true), 30_000);
+    }
+
+    return () => {
+      if (stallTimerRef.current) clearTimeout(stallTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStalled, actionStatusKey, plan.status]);
+
+  const showStallUI = isStalled && stallElapsed;
+
   // Failed plan with pending actions — can be retried
   const canRetryPlan = plan.status === 'failed' && plan.actions.some((a) => a.status === 'pending' || a.status === 'failed');
 
@@ -274,7 +300,7 @@ export default function ActionProgressPanel({ plan, onCompleteManual, onSkip, on
         </div>
       )}
 
-      {isStalled && onExecute && (
+      {isStalled && showStallUI && onExecute && (
         <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between">
           <p className="text-sm text-red-800">
             Plan stalled — no action is running.

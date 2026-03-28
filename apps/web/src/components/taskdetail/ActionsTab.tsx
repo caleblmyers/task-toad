@@ -48,8 +48,10 @@ export default function ActionsTab({
 
       <TaskAIReviewSection review={reviewResult ?? null} loading={reviewLoading ?? false} />
 
-      {/* Auto-Complete for leaf tasks */}
+      {/* Auto-Complete for leaf tasks — hidden when a plan exists in an active/terminal state */}
       {subtasks.length === 0 && task.taskType !== 'epic' && task.taskType !== 'story' && task.instructions && onAutoComplete && (
+        !actionPlan || actionPlan.status === 'failed'
+      ) && (
         <div className="mb-4 flex flex-wrap gap-2">
           <button
             type="button"

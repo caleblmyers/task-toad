@@ -22,6 +22,7 @@ const FixReviewResponseSchema = z.object({
     title: z.string(),
     description: z.string(),
     severity: z.enum(['warning', 'error']),
+    suggestedEpicTitle: z.string().optional(),
   })),
   summary: z.string(),
 });
@@ -196,6 +197,27 @@ Address the review holistically. Fix everything you can do well in one commit. D
 
     // Create backlog tasks for deferred issues
     let tasksCreated = 0;
+
+    // Look up source task's parent (epic) so deferred tasks inherit the same epic
+    let sourceParentTaskId: string | null = null;
+    try {
+      const sourceTask = await ctx.prisma.task.findUnique({
+        where: { taskId: task.taskId },
+        select: { parentTaskId: true },
+      });
+      sourceParentTaskId = sourceTask?.parentTaskId ?? null;
+    } catch {
+      // non-blocking
+    }
+
+    // Check for PR number from previous create_pr result
+    let deferredPrNumber: number | undefined;
+    for (const [, prevResult] of ctx.previousResults) {
+      const prev = prevResult as { number?: number; prNumber?: number };
+      if (prev.number) { deferredPrNumber = prev.number; break; }
+      if (prev.prNumber) { deferredPrNumber = prev.prNumber; break; }
+    }
+
     for (const issue of parsed.deferredIssues) {
       const existing = await ctx.prisma.task.findFirst({
         where: {
@@ -205,17 +227,40 @@ Address the review holistically. Fix everything you can do well in one commit. D
         },
       });
       if (!existing) {
-        await ctx.prisma.task.create({
+        let description = `From AI code review of "${task.title}":\n\n${issue.description}`;
+        if (deferredPrNumber) {
+          description += `\n\nRelated PR: #${deferredPrNumber}`;
+        }
+        if (issue.suggestedEpicTitle && !sourceParentTaskId) {
+          description += `\n\nSuggested epic: ${issue.suggestedEpicTitle}`;
+        }
+
+        const newTask = await ctx.prisma.task.create({
           data: {
             title: issue.title,
-            description: `From AI code review of "${task.title}":\n\n${issue.description}`,
+            description,
             status: 'todo',
             projectId: task.projectId,
             orgId: ctx.orgId,
             taskType: 'task',
             priority: issue.severity === 'error' ? 'high' : 'medium',
+            parentTaskId: sourceParentTaskId,
           },
         });
+
+        // Create informs dependency from source task to deferred task
+        try {
+          await ctx.prisma.taskDependency.create({
+            data: {
+              sourceTaskId: task.taskId,
+              targetTaskId: newTask.taskId,
+              linkType: 'informs',
+            },
+          });
+        } catch {
+          // non-blocking — dependency may already exist
+        }
+
         tasksCreated++;
       }
     }

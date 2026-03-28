@@ -26,7 +26,7 @@ export async function retrieveRelevantKnowledge(
   if (entries.length === 0) return '';
 
   // If few entries, return all directly
-  if (entries.length <= 3) {
+  if (entries.length <= 10) {
     return entries
       .map(e => `## ${e.title} [${e.category}]\n${e.content}`)
       .join('\n\n');

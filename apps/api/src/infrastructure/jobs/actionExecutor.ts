@@ -14,6 +14,10 @@ import type { GitHubRepoLink } from '../../github/githubTypes.js';
 
 const log = createChildLogger('action-executor');
 
+// ── KB retrieval cache per plan ──
+// Avoids repeated AI calls for each action step in the same plan.
+const kbCache = new Map<string, string | null>();
+
 const STATUS_TO_COLUMN: Record<string, string> = {
   todo: 'To Do',
   in_progress: 'In Progress',
@@ -207,13 +211,16 @@ export function createHandler(prisma: PrismaClient) {
       }
     }
 
-    // Retrieve relevant KB context for the task
+    // Retrieve relevant KB context for the task (cached per plan to avoid repeated AI calls)
     let knowledgeContext: string | null = null;
-    if (apiKey) {
+    if (kbCache.has(planId)) {
+      knowledgeContext = kbCache.get(planId) ?? null;
+    } else if (apiKey) {
       try {
         const taskContext = `${task.title}. ${task.instructions || task.description || ''}`.slice(0, 500);
         const kbResult = await retrieveRelevantKnowledge(prisma, task.projectId, taskContext, apiKey);
         knowledgeContext = kbResult || null;
+        kbCache.set(planId, knowledgeContext);
       } catch (err) {
         log.warn({ err, taskId: task.taskId }, 'KB retrieval failed, falling back to legacy knowledgeBase');
       }
@@ -410,6 +417,7 @@ export function createHandler(prisma: PrismaClient) {
 
       if (!result.success) {
         activeControllers.delete(planId);
+        kbCache.delete(planId);
         await prisma.taskActionPlan.update({
           where: { id: planId },
           data: { status: 'failed' },
@@ -500,6 +508,7 @@ export function createHandler(prisma: PrismaClient) {
         }
       } else {
         // All done
+        kbCache.delete(planId);
         await prisma.taskActionPlan.update({
           where: { id: planId },
           data: { status: 'completed' },
@@ -615,8 +624,9 @@ export function createHandler(prisma: PrismaClient) {
       // Clean up AbortController for this plan
       activeControllers.delete(planId);
     } catch (err) {
-      // Clean up AbortController
+      // Clean up AbortController and KB cache
       activeControllers.delete(planId);
+      kbCache.delete(planId);
 
       const errorCode = err instanceof GraphQLError ? (err.extensions?.code as string) : undefined;
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';

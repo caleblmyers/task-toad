@@ -145,7 +145,7 @@ function slugify(title: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
-    .slice(0, 30);
+    .slice(0, 50);
 }
 
 /**
@@ -162,8 +162,9 @@ export async function createBranch(
   tokenOverride?: string
 ): Promise<{ branchName: string; baseOid: string }> {
   const token = tokenOverride ?? await getInstallationToken(repo.installationId);
+  const shortId = taskId.slice(0, 8);
   const slug = taskTitle ? slugify(taskTitle) : 'ai';
-  const baseBranchName = `task-${taskId}-${slug}`;
+  const baseBranchName = `${slug}-${shortId}`;
   const qualifiedRef = `refs/heads/${repo.defaultBranch}`;
 
   const baseOid = await getBranchOid(token, repo.repositoryOwner, repo.repositoryName, qualifiedRef, repo.installationId);
