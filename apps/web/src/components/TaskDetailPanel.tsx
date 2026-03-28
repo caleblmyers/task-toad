@@ -69,6 +69,7 @@ export interface TaskDetailPanelProps {
   isDrawer?: boolean;
   onAutoComplete?: (task: Task) => void;
   autoCompleteLoading?: boolean;
+  loadingMessage?: string | null;
   actionPlan?: TaskActionPlan | null;
   onCompleteManualAction?: (actionId: string) => Promise<void>;
   onSkipAction?: (actionId: string) => Promise<void>;
@@ -94,7 +95,7 @@ function PanelContent({
   onAddWatcher, onRemoveWatcher,
   onCreateSubtask,
   onReviewPR, reviewResult, reviewLoading,
-  onAutoComplete, autoCompleteLoading,
+  onAutoComplete, autoCompleteLoading, loadingMessage,
   actionPlan, onCompleteManualAction, onSkipAction, onRetryAction, onCancelActionPlan, onExecuteActionPlan,
   timeSummary, onLogTime, onDeleteTimeEntry,
   onSelectTask,
@@ -239,6 +240,7 @@ function PanelContent({
             reviewLoading={reviewLoading}
             onAutoComplete={onAutoComplete}
             autoCompleteLoading={autoCompleteLoading}
+            loadingMessage={loadingMessage}
             actionPlan={actionPlan}
             onCompleteManualAction={onCompleteManualAction}
             onSkipAction={onSkipAction}

@@ -311,7 +311,7 @@ export default function CloseSprintModal({
               </div>
             ) : (
               <div className="mt-4 space-y-3">
-                <p className="text-sm text-slate-500">No more sprints planned. What would you like to do next?</p>
+                <p className="text-sm text-slate-500">No upcoming sprint. Create one?</p>
                 <Button onClick={() => { onCreateSprint(); onClose(); }} className="w-full rounded-lg">
                   + Create Next Sprint
                 </Button>

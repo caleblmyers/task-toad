@@ -9,6 +9,7 @@ import Button from './shared/Button';
 interface SprintCreateModalProps {
   projectId: string;
   initialSprint?: Sprint;
+  previousSprint?: { name: string; endDate?: string | null; startDate?: string | null };
   onCreated: (sprint: Sprint) => void;
   onUpdated?: (sprint: Sprint) => void;
   onClose: () => void;
@@ -16,12 +17,35 @@ interface SprintCreateModalProps {
 
 const DEFAULT_COLUMNS = ['To Do', 'In Progress', 'In Review', 'Done'];
 
-export default function SprintCreateModal({ projectId, initialSprint, onCreated, onUpdated, onClose }: SprintCreateModalProps) {
+function computeDefaults(prev?: { name: string; endDate?: string | null; startDate?: string | null }) {
+  if (!prev) return { name: '', startDate: '', endDate: '' };
+  // Auto-increment name: "Sprint 1" → "Sprint 2", "Sprint 10" → "Sprint 11"
+  const nameMatch = prev.name.match(/^(.+?)(\d+)$/);
+  const nextName = nameMatch ? `${nameMatch[1]}${parseInt(nameMatch[2], 10) + 1}` : `${prev.name} 2`;
+  // Start date = day after previous end date
+  let nextStart = '';
+  let nextEnd = '';
+  if (prev.endDate) {
+    const end = new Date(prev.endDate);
+    end.setDate(end.getDate() + 1);
+    nextStart = end.toISOString().slice(0, 10);
+    // Same duration if both dates existed
+    if (prev.startDate) {
+      const duration = new Date(prev.endDate).getTime() - new Date(prev.startDate).getTime();
+      const newEnd = new Date(end.getTime() + duration);
+      nextEnd = newEnd.toISOString().slice(0, 10);
+    }
+  }
+  return { name: nextName, startDate: nextStart, endDate: nextEnd };
+}
+
+export default function SprintCreateModal({ projectId, initialSprint, previousSprint, onCreated, onUpdated, onClose }: SprintCreateModalProps) {
   const isEdit = !!initialSprint;
-  const [name, setName] = useState(initialSprint?.name ?? '');
+  const defaults = !isEdit ? computeDefaults(previousSprint) : undefined;
+  const [name, setName] = useState(initialSprint?.name ?? defaults?.name ?? '');
   const [goal, setGoal] = useState(initialSprint?.goal ?? '');
-  const [startDate, setStartDate] = useState(initialSprint?.startDate ?? '');
-  const [endDate, setEndDate] = useState(initialSprint?.endDate ?? '');
+  const [startDate, setStartDate] = useState(initialSprint?.startDate ?? defaults?.startDate ?? '');
+  const [endDate, setEndDate] = useState(initialSprint?.endDate ?? defaults?.endDate ?? '');
   const initialColumns = initialSprint ? parseColumns(initialSprint.columns) : DEFAULT_COLUMNS;
   const [columns, setColumns] = useState<string[]>(initialColumns);
   const [newCol, setNewCol] = useState('');

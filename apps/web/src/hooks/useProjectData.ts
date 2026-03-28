@@ -134,6 +134,7 @@ export interface ProjectData {
   // Action plan
   actionPlanPreview: ActionPlanPreview | null;
   actionPlanPreviewLoading: boolean;
+  loadingMessage: string | null;
   actionPlan: TaskActionPlan | null;
   handlePreviewActionPlan: (task: Task) => Promise<void>;
   handleCommitActionPlan: (taskId: string, actions: Array<{ actionType: string; label: string; config: string; requiresApproval: boolean }>) => Promise<TaskActionPlan | null>;
@@ -355,7 +356,7 @@ export function useProjectData(): ProjectData {
     setShowReleaseCreateModal: releaseMgmt.setShowCreateModal,
 
     // Action plan
-    actionPlanPreview: ai.actionPlanPreview, actionPlanPreviewLoading: ai.actionPlanPreviewLoading,
+    actionPlanPreview: ai.actionPlanPreview, actionPlanPreviewLoading: ai.actionPlanPreviewLoading, loadingMessage: ai.loadingMessage,
     actionPlan: ai.actionPlan,
     handlePreviewActionPlan: ai.handlePreviewActionPlan,
     handleCommitActionPlan: ai.handleCommitActionPlan,

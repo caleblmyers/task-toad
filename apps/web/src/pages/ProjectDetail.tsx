@@ -389,6 +389,7 @@ export default function ProjectDetail() {
     },
     onAutoComplete: projectData.handlePreviewActionPlan,
     autoCompleteLoading: projectData.actionPlanPreviewLoading,
+    loadingMessage: projectData.loadingMessage,
     actionPlan: projectData.actionPlan,
     onCompleteManualAction: projectData.handleCompleteManualAction,
     onSkipAction: projectData.handleSkipAction,

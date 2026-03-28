@@ -507,6 +507,9 @@ export const sprintMutations = {
     if (args.wipLimits) validateWipLimits(args.wipLimits);
     await requirePermission(context, args.projectId, Permission.MANAGE_SPRINTS);
     const { user } = await requireProject(context, args.projectId);
+    const existingCount = await context.prisma.sprint.count({
+      where: { projectId: args.projectId },
+    });
     const sprint = await context.prisma.sprint.create({
       data: {
         name: args.name,
@@ -517,6 +520,7 @@ export const sprintMutations = {
         startDate: args.startDate ?? null,
         endDate: args.endDate ?? null,
         wipLimits: args.wipLimits ?? null,
+        isActive: existingCount === 0,
       },
     });
     emitSprintEvent('sprint.created', { orgId: user.orgId, userId: user.userId }, {

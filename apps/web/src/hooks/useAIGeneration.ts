@@ -125,6 +125,7 @@ export function useAIGeneration({
     const controller = new AbortController();
     abortRef.current = controller;
     setGeneratingInstructions(task.taskId);
+    setLoadingMessage('Generating implementation instructions...');
     try {
       const data = await gql<{ generateTaskInstructions: Task }>(
         GENERATE_INSTRUCTIONS_MUTATION, { taskId: task.taskId }, controller.signal,
@@ -138,6 +139,7 @@ export function useAIGeneration({
       setErr(error instanceof Error ? error.message : 'Failed to generate instructions');
     } finally {
       setGeneratingInstructions(null);
+      setLoadingMessage(null);
       if (abortRef.current === controller) abortRef.current = null;
     }
   }, [setTasks, setSelectedTask, setErr, loadSubtasks]);
@@ -172,6 +174,8 @@ export function useAIGeneration({
 
   // ── Action Plan ──
 
+  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
+
   const [actionPlanPreview, setActionPlanPreview] = useState<ActionPlanPreview | null>(null);
   const [actionPlanPreviewLoading, setActionPlanPreviewLoading] = useState(false);
   const [actionPlan, setActionPlan] = useState<TaskActionPlan | null>(null);
@@ -181,6 +185,7 @@ export function useAIGeneration({
     abortRef.current = controller;
     setActionPlanPreviewLoading(true);
     setActionPlanPreview(null);
+    setLoadingMessage('Analyzing task and creating action plan...');
     try {
       const data = await gql<{ previewActionPlan: ActionPlanPreview }>(
         PREVIEW_ACTION_PLAN_MUTATION, { taskId: task.taskId }, controller.signal,
@@ -191,11 +196,13 @@ export function useAIGeneration({
       setErr(error instanceof Error ? error.message : 'Failed to generate action plan');
     } finally {
       setActionPlanPreviewLoading(false);
+      setLoadingMessage(null);
       if (abortRef.current === controller) abortRef.current = null;
     }
   }, [setErr]);
 
   const handleCommitActionPlan = useCallback(async (taskId: string, actions: Array<{ actionType: string; label: string; config: string; requiresApproval: boolean }>) => {
+    setLoadingMessage('Saving action plan...');
     try {
       const data = await gql<{ commitActionPlan: TaskActionPlan }>(
         COMMIT_ACTION_PLAN_MUTATION, { taskId, actions },
@@ -206,10 +213,13 @@ export function useAIGeneration({
     } catch (error) {
       setErr(error instanceof Error ? error.message : 'Failed to commit action plan');
       return null;
+    } finally {
+      setLoadingMessage(null);
     }
   }, [setErr]);
 
   const handleExecuteActionPlan = useCallback(async (planId: string) => {
+    setLoadingMessage('Starting execution...');
     try {
       const data = await gql<{ executeActionPlan: TaskActionPlan }>(
         EXECUTE_ACTION_PLAN_MUTATION, { planId },
@@ -237,6 +247,8 @@ export function useAIGeneration({
     } catch (error) {
       setErr(error instanceof Error ? error.message : 'Failed to execute action plan');
       return null;
+    } finally {
+      setLoadingMessage(null);
     }
   }, [setErr]);
 
@@ -308,7 +320,7 @@ export function useAIGeneration({
   return {
     previewTasks, previewLoading, previewError, committing,
     summary, summarizing, generatingInstructions,
-    isGenerating,
+    isGenerating, loadingMessage,
     abortRef,
     openPreview, handleCommitPlan, handleSummarize,
     handleGenerateInstructions,

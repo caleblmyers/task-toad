@@ -12,6 +12,7 @@ export interface ActionsTabProps {
   reviewLoading?: boolean;
   onAutoComplete?: (task: Task) => void;
   autoCompleteLoading?: boolean;
+  loadingMessage?: string | null;
   actionPlan?: TaskActionPlan | null;
   onCompleteManualAction?: (actionId: string) => Promise<void>;
   onSkipAction?: (actionId: string) => Promise<void>;
@@ -24,7 +25,7 @@ export interface ActionsTabProps {
 export default function ActionsTab({
   task, subtasks, disabled, can: canDo,
   onReviewPR, reviewResult, reviewLoading,
-  onAutoComplete, autoCompleteLoading,
+  onAutoComplete, autoCompleteLoading, loadingMessage,
   actionPlan, onCompleteManualAction, onSkipAction, onRetryAction, onCancelActionPlan, onExecuteActionPlan,
   onArchiveTask,
 }: ActionsTabProps) {
@@ -59,8 +60,11 @@ export default function ActionsTab({
             disabled={disabled || autoCompleteLoading}
             className="px-3 py-1.5 text-sm border border-indigo-300 dark:border-indigo-600 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/30 disabled:opacity-50"
           >
-            {autoCompleteLoading ? 'Planning…' : '⚡ Auto-Complete'}
+            {autoCompleteLoading ? (loadingMessage ?? 'Planning…') : '⚡ Auto-Complete'}
           </button>
+          {autoCompleteLoading && loadingMessage && (
+            <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-1">{loadingMessage}</p>
+          )}
         </div>
       )}
 
