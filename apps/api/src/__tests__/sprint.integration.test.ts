@@ -63,7 +63,8 @@ describe('createSprint', () => {
     expect(sprint.name).toBe('Sprint 1');
     expect(sprint.projectId).toBe(projectId);
     expect(sprint.orgId).toBe(orgId);
-    expect(sprint.isActive).toBe(false);
+    // First sprint in a project auto-activates (Wave 73)
+    expect(sprint.isActive).toBe(true);
   });
 });
 

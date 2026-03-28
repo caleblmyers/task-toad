@@ -24,12 +24,12 @@
 ### Sessions & Orchestration
 - [x] **Evolve "AI Plan Sprint" into session planning** — selects 3-5 coherent tasks with dependency awareness, rationale, and `maxTasks` parameter. Frontend updated with session labeling. *(Wave 72)*
 - [x] **Session progress: track token usage and cost** — aggregates from AIPromptLog, atomic jsonb_set update. *(Wave 72)*
-- [ ] **Session time limit enforcement** — check `timeLimitMinutes` alongside budget/scope checks.
-- [ ] **Session resume edge cases** — `startSession` allows re-starting paused sessions but doesn't un-set `autoComplete` on tasks removed from the session. Consider edge cases around task membership changes.
+- [x] **Session time limit enforcement** — check `timeLimitMinutes` alongside budget/scope checks. *(Wave 73)*
+- [x] **Session resume edge cases** — cleans up archived/deleted tasks, clears autoComplete on removed tasks. *(Wave 73)*
 - [x] **Rate limiting for completionSummary generation** — budget check added before summary AI call, skips with warning when exhausted. *(Wave 72)*
-- [ ] **verify_build retry/polling for in-progress checks** — currently returns "pending" if checks are still running; could poll with backoff or retry after a delay.
-- [ ] **Session planning: commitSprintPlan compatibility** — `commitSprintPlan` resolver wasn't updated to match session-style planning; verify it works correctly with single-session plans.
-- [ ] **Reconciliation task: link back to sprint** — auto-created reconciliation tasks aren't linked to the sprint that triggered them; could add a `triggeredBySprintId` or use a label.
+- [x] **verify_build retry/polling for in-progress checks** — polls every 30s, max 20 attempts, uses 'polling' status pattern. *(Wave 73)*
+- [x] **Session planning: commitSprintPlan compatibility** — assigns tasks to existing active sprint for single-session plans. *(Wave 73)*
+- [x] **Reconciliation task: link back to sprint** — assigned to next sprint with description referencing source sprint. *(Wave 73)*
 
 ---
 
@@ -45,13 +45,14 @@
 
 ## UX
 
-- [ ] Chat actions: input validation for applyChatAction
-- [ ] Chat actions: activity log entries when tasks created/updated via chat
-- [ ] WhatNextPanel: refresh button after applying actions
-- [ ] ProjectChatPanel: wire `onSelectTask` prop from ProjectDetail
-- [ ] Long-running AI operations: better loading states
-- [ ] Sprints: ordered, first auto-activates
-- [ ] Close sprint: offer "create new sprint" option
+- [x] Chat actions: input validation for applyChatAction *(Wave 73)*
+- [x] Chat actions: activity log entries when tasks created/updated via chat *(Wave 73)*
+- [x] WhatNextPanel: refresh button after applying actions *(Wave 73)*
+- [x] ProjectChatPanel: wire `onSelectTask` prop from ProjectDetail, clickable task references *(Wave 73)*
+- [x] Long-running AI operations: descriptive loading messages per stage *(Wave 73)*
+- [x] Sprints: first auto-activates on creation *(Wave 73)*
+- [x] Close sprint: offer "create new sprint" option *(Wave 73)*
+- [ ] Sprint creation: pass `previousSprint` prop from close sprint flow for auto-populated defaults
 - [ ] Sprint columns: reorderable
 - [ ] Release notes: manual entry option
 - [ ] Time entry deletion: admin-only
@@ -148,6 +149,6 @@
 | — | 2026-03-27 | Pipeline hardening: SSE fix, merge_pr, 401 retry, fix_review overhaul |
 | 71 | 2026-03-28 | Code gen coherence: repo context, schema-first, decomposition, stall detection, branch naming, KB caching, bootstrap fixes |
 | 72 | 2026-03-28 | Pipeline reliability: verify_build action, sprint close reconciliation, session planning, session progress tracking |
-| 71 | 2026-03-28 | Code gen coherence: repo context in generateCode, schema-first constraint, decomposition quality, stall detection, branch naming, KB caching, deferred task context, bootstrap fixes |
+| 73 | 2026-03-28 | Follow-ups + UX: verify_build polling, session time/resume, chat validation/logging, sprint auto-activate, AI loading states |
 
 Full wave details in `changelog.md`.

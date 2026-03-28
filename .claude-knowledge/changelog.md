@@ -4,6 +4,43 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-28 (Wave 73 — Follow-ups + UX Polish)
+
+### Wave 73: Pipeline Follow-ups + UX Polish (3 workers, 5 tasks)
+
+**Worker 1 — task-001: Pipeline follow-ups:**
+- verify_build polling: uses 'polling' status pattern (like monitorCI), 30s intervals, 20 attempt max
+- Session time limit enforcement: checks elapsed time alongside budget cap in orchestrator
+- commitSprintPlan compatibility: assigns tasks to existing active sprint for single-session plans
+
+**Worker 1 — task-002: Reconciliation + session resume:**
+- Reconciliation tasks assigned to next sprint with source sprint reference in description
+- Session resume cleans up archived tasks from taskIds, clears autoComplete on removed tasks
+
+**Worker 2 — task-003: Chat + panel UX:**
+- applyChatAction validates taskId belongs to project, validates required fields per action type
+- Activity log entries for all chat actions
+- WhatNextPanel refresh button + auto-refresh after applying
+- ProjectChatPanel onSelectTask wired from ProjectDetail, task references clickable in messages
+
+**Worker 3 — task-004: Sprint UX:**
+- First sprint auto-activates on creation
+- Close sprint offers "Create Next Sprint" when no next sprint exists
+- Sprint creation pre-populates from previous sprint (name increment, dates)
+
+**Worker 3 — task-005: AI loading states:**
+- useAIGeneration exposes loadingMessage state with per-stage descriptions
+- ActionsTab shows descriptive message instead of generic "Planning..."
+
+**Process notes:**
+- File list accuracy was the main issue again (task-003 and task-005 both needed extra files not listed). Worker-1 delivered clean code on first attempt thanks to specific line references in task descriptions.
+- Sprint integration test needed updating for auto-activate behavior (quick post-wave fix)
+
+### Open follow-ups
+- Sprint creation previousSprint prop (pre-populate from close sprint flow)
+
+---
+
 ## 2026-03-28 (Wave 72 — Pipeline Reliability + Session Planning)
 
 ### Wave 72: Pipeline Reliability + Session Planning (3 workers, 4 tasks)
