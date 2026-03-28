@@ -7,6 +7,14 @@ import { requireAuth, requireOrg, requireProjectAccess, requireApiKey } from './
 import { parseInput, CreateProjectInput, requireProject } from '../../utils/resolverHelpers.js';
 import { emitProjectEvent, emitTaskEvent } from '../../infrastructure/eventbus/emitters.js';
 import { calculateHealthScore, calculateCycleTime } from '../../utils/metricsCalc.js';
+import { buildProjectOptionsPrompt } from '../../ai/promptBuilders/projectOptions.js';
+import { callAI } from '../../ai/aiClient.js';
+import { parseJSON } from '../../ai/responseParser.js';
+import { ProjectOptionSchema } from '../../ai/aiTypes.js';
+import { checkAIRateLimit } from '../../utils/aiRateLimiter.js';
+import { checkBudget } from '../../ai/aiUsageTracker.js';
+import { z } from 'zod';
+import { GraphQLError } from 'graphql';
 
 // ── Project queries ──
 
@@ -624,6 +632,37 @@ export const projectMutations = {
       summary: result.summary,
       commitUrl,
     };
+  },
+
+  generateProjectOptions: async (_parent: unknown, args: { prompt: string }, context: Context) => {
+    const apiKey = requireApiKey(context);
+    const user = requireOrg(context);
+    const budget = await checkBudget(context.prisma, user.orgId);
+    if (!budget.allowed) {
+      throw new GraphQLError('AI budget exceeded', { extensions: { code: 'AI_BUDGET_EXCEEDED' } });
+    }
+    await checkAIRateLimit(context.prisma, user.orgId);
+
+    const prompt = buildProjectOptionsPrompt(args.prompt);
+    const result = await callAI({
+      apiKey,
+      systemPrompt: prompt.systemPrompt,
+      userPrompt: prompt.userPrompt,
+      maxTokens: 512,
+      feature: 'generateProjectOptions',
+      prefill: '[',
+      promptLogContext: {
+        prisma: context.prisma,
+        orgId: user.orgId,
+        userId: user.userId,
+        promptLoggingEnabled: true,
+      },
+    });
+    const options = parseJSON(result.raw, z.array(ProjectOptionSchema));
+    if (options.length === 0) {
+      throw new GraphQLError('Failed to parse AI response');
+    }
+    return options.slice(0, 3);
   },
 };
 

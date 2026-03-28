@@ -1,6 +1,5 @@
 import type { Context } from '../../context.js';
 import {
-  generateProjectOptions as aiGenerateProjectOptions,
   generateTaskPlan as aiGenerateTaskPlan,
   expandTask as aiExpandTask,
   generateTaskInstructions as aiGenerateTaskInstructions,
@@ -57,12 +56,7 @@ export const generationMutations = {
     return true;
   },
 
-  generateProjectOptions: async (_parent: unknown, args: { prompt: string }, context: Context) => {
-    const apiKey = requireApiKey(context);
-    await enforceBudget(context);
-    const plc = await buildPromptLogContext(context);
-    return aiGenerateProjectOptions(apiKey, args.prompt, plc);
-  },
+  // generateProjectOptions moved to resolvers/project.ts (uses single-recommendation prompt)
 
   createProjectFromOption: async (
     _parent: unknown,

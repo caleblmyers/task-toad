@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { gql } from '../api/client';
 import {
   PREVIEW_HIERARCHICAL_PLAN_QUERY,
@@ -125,6 +125,34 @@ export default function HierarchicalPlanDialog({
 
   const loading = generating || committing;
 
+  // Time-based progress messages during generation
+  const PROGRESS_MESSAGES = [
+    'Analyzing project scope...',
+    'Generating epics...',
+    'Planning tasks and subtasks...',
+    'Finalizing dependency graph...',
+  ];
+  const [progressIndex, setProgressIndex] = useState(0);
+  const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (generating) {
+      setProgressIndex(0);
+      progressTimerRef.current = setInterval(() => {
+        setProgressIndex((i) => Math.min(i + 1, PROGRESS_MESSAGES.length - 1));
+      }, 3000);
+    } else {
+      if (progressTimerRef.current) {
+        clearInterval(progressTimerRef.current);
+        progressTimerRef.current = null;
+      }
+    }
+    return () => {
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generating]);
+
   // Count totals for summary
   const totalEpics = plan?.epics.length ?? 0;
   const totalTasks = plan?.epics.reduce((s, e) => s + (e.tasks?.length ?? 0), 0) ?? 0;
@@ -159,7 +187,7 @@ export default function HierarchicalPlanDialog({
       </div>
 
       <div className="flex-1 overflow-y-auto p-5 space-y-4">
-        {state === 'prompt' && (
+        {state === 'prompt' && !generating && (
           <>
             <p className="text-sm text-slate-500 dark:text-slate-400">
               Describe your project or feature. The AI will generate a
@@ -175,6 +203,36 @@ export default function HierarchicalPlanDialog({
               autoFocus
             />
           </>
+        )}
+
+        {generating && (
+          <div className="space-y-4">
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-300 text-center">
+              {PROGRESS_MESSAGES[progressIndex]}
+            </p>
+            {/* Skeleton epic cards */}
+            {[0, 1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="rounded-lg border border-slate-200 dark:border-slate-700 p-4 space-y-3"
+                style={{ opacity: 1 - i * 0.15 }}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="animate-pulse rounded bg-slate-200 dark:bg-slate-700 h-5 w-40" />
+                  <div className="animate-pulse rounded-full bg-slate-200 dark:bg-slate-700 h-5 w-14" />
+                </div>
+                <div className="animate-pulse rounded bg-slate-200 dark:bg-slate-700 h-3 w-3/4" />
+                <div className="pl-4 space-y-2">
+                  {Array.from({ length: 2 + (i % 2) }).map((_, j) => (
+                    <div key={j} className="flex items-center gap-2">
+                      <div className="animate-pulse rounded bg-slate-100 dark:bg-slate-600 h-3 w-3" />
+                      <div className="animate-pulse rounded bg-slate-100 dark:bg-slate-600 h-3" style={{ width: `${45 + ((i + j) * 13) % 30}%` }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
 
         {state === 'editing' && plan && (
