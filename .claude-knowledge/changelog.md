@@ -4,6 +4,51 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-28 (Wave 71 — Code Generation Coherence + Pipeline Quality)
+
+### Wave 71: Code Gen Coherence + Pipeline Quality (3 workers, 6 tasks)
+
+**Worker 1 — task-001: Wire repo context into generateCode + schema-first constraint:**
+- `generateCode` executor now calls `resolveCodeGenContext()` to fetch relevant repo files by keyword scoring within a 16k token budget
+- Passes `repoContext` (file contents) to the AI prompt — the parameter existed but was never populated
+- Schema-first constraint: detects Prisma schema or equivalent in repo context, adds explicit "use exactly these models" instruction
+- Type definition constraint: detects `types/`, `interfaces/`, `*.types.ts` files and adds "use these types" instruction
+
+**Worker 1 — task-002: Richer cross-task context + decomposition quality:**
+- `upstreamTaskContext` now includes `filesChanged` as bullet lists and `apiContracts` unconditionally (was conditional)
+- Hierarchical plan prompt: new rule 10 — each task should produce 3-8 files max, with example of how to split broad tasks
+
+**Worker 2 — task-003: Stall detection, auto-complete button, branch naming:**
+- Stall detection: 30-second grace period before showing "Resume" button — eliminates false positives during normal inter-step delays
+- Auto-Complete button: hidden when action plan exists in executing/completed/approved/cancelled state
+- Branch naming: `{slug}-{shortId}` format (e.g., `configure-database-schema-3b03af34`) instead of `task-{UUID}-{slug}`
+
+**Worker 2 — task-004: Deferred task context + KB retrieval optimization:**
+- Deferred tasks from fix_review now inherit parent epic, get `informs` dependency from source task, include PR number in description
+- `FixReviewResponseSchema` extended with optional `suggestedEpicTitle` field
+- KB retrieval cached per planId — 1 AI call per plan instead of 5 (one per action step)
+- KB shortcut threshold raised from 3 to 10 entries
+
+**Worker 3 — task-005: Bootstrap modal stacking + default backlog view:**
+- Fixed race condition: GitHub repo modal guarded by `isDialogActive` flag during plan review
+- New projects with no sprints default to backlog view on initial load
+
+**Worker 3 — task-006: Plan generation progress indicators (partial):**
+- HierarchicalPlanDialog: skeleton cards + time-based progress messages during plan generation
+- Part 1 (single project interpretation) incomplete — prompt builder created but not wired into resolver/frontend. File list was incorrect in task description. See follow-ups.
+
+**Process notes:**
+- task-002 and task-004 both modified `actionExecutor.ts` in non-overlapping sections — merged conflict-free thanks to clear line-range guidance
+- task-006 was sent back twice: incorrect file list for Part 1, then duplicate resolver issue. Single-option feature needs its own task with correct file paths.
+- 3 pre-existing test failures in `insightGeneration.test.ts` (on main before wave) — not caused by wave changes
+
+### Open follow-ups
+- Single project interpretation (task-006 Part 1): prompt builder exists in `projectOptions.ts` but not wired into `aiService.ts`, `aiTypes.ts`, resolver, or `NewProject.tsx` frontend. Needs its own task with correct file list.
+- Fix 3 pre-existing test failures in `insightGeneration.test.ts`
+- Verify repo context is populated in real pipeline run (task-001 noted manual verification needed)
+
+---
+
 ## 2026-03-27 (Pipeline Hardening — post-Wave 70)
 
 ### SSE Real-Time Fix

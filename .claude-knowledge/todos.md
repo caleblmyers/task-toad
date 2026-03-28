@@ -7,19 +7,10 @@
 ## Autopilot Pipeline (Priority)
 
 ### Code Generation Coherence
-- [ ] **R1: Fetch repo file contents in generateCode** (highest impact)
-  - In `generateCode` executor, fetch key files from GitHub repo via a new `fetchRepoFiles` utility
-  - Which files: Prisma schema, package.json, tsconfig.json, existing route files, type definitions. Use file tree + heuristics (files modified in recent PRs, files matching task domain)
-  - Include in AI prompt as a "Current Codebase" section
-  - Cap total context to avoid token limits — prioritize schema/types/config, truncate large files
-- [ ] **R2: Schema-first constraint**
-  - In `buildGenerateCodePrompt`, detect if schema file (`schema.prisma`, `models.py`, `schema.sql`) exists in file tree
-  - Fetch contents, add explicit instruction: "Use exactly these model names, field names, and relations. Do not invent new models."
-  - Same pattern for TypeScript type definition files (`types/`, `interfaces/`)
-- [ ] **R3: Richer cross-task context**
-  - In `actionExecutor.ts`, include file paths changed and key type/schema definitions in `upstreamTaskContext`, not just prose summaries
-  - Consider fetching PR diff from most recent upstream task's merged PR
-- [ ] **Decomposition quality** — tasks like "Set up API framework" are too broad (8 files, 6 review issues, 8 deferred). Add guidance to hierarchical plan prompt about maximum task scope per code generation pass.
+- [x] **R1: Fetch repo file contents in generateCode** — wired `resolveCodeGenContext()` into executor, passes `repoContext` to AI *(Wave 71)*
+- [x] **R2: Schema-first constraint** — detects Prisma schema and type definitions, adds "use exactly these models" instruction *(Wave 71)*
+- [x] **R3: Richer cross-task context** — `upstreamTaskContext` includes `filesChanged` bullet lists and `apiContracts` unconditionally *(Wave 71)*
+- [x] **Decomposition quality** — rule 10 in hierarchical plan prompt: 3-8 files max per task *(Wave 71)*
 
 ### Pipeline Steps
 - [ ] **R4: Post-merge build verification**
@@ -34,11 +25,11 @@
   - If issues found (broken imports, type mismatches, build failures): auto-generate a reconciliation task with specific errors
   - Reconciliation task goes through the normal action plan pipeline (generate_code → create_pr → review → merge)
   - UI: show reconciliation status in close sprint dialog/result
-- [ ] **Deferred task context** — fix_review creates orphaned backlog items. Should: inherit parent epic, add dependency from source task, include PR/file references. AI should output structured metadata (epic, dependency type).
-- [ ] **Optimize knowledge retrieval** — AI call on every action step is wasteful (5 per plan). Cache per task at plan start, or return all entries for small KBs.
-- [ ] **Fix false stall detection** — "Resume" button appears during normal inter-step delays. Add ~30s grace period or track `lastActionCompletedAt` from SSE.
-- [ ] **Auto-Complete button** — hide when action plan already exists. Show contextual state (progress/retry/results) instead.
-- [ ] **Branch/commit naming** — descriptive text first, short ID suffix last. `configure-database-schema-3b03af` not `task-UUID-slug`. See `githubCommitService.ts`.
+- [x] **Deferred task context** — inherits parent epic, `informs` dependency, PR number in description *(Wave 71)*
+- [x] **Optimize knowledge retrieval** — cached per planId, threshold raised to 10 entries *(Wave 71)*
+- [x] **Fix false stall detection** — 30s grace period before showing Resume button *(Wave 71)*
+- [x] **Auto-Complete button** — hidden when action plan exists *(Wave 71)*
+- [x] **Branch/commit naming** — `{slug}-{shortId}` format *(Wave 71)*
 
 ### Sessions & Orchestration
 - [ ] **Evolve "AI Plan Sprint" into session planning** — generate coherent execution batches (3-5 related tasks, dependency-ordered) instead of distributing whole backlog into time-boxed sprints. Natural entry point for Session concept.
@@ -51,12 +42,11 @@
 
 ## Bootstrap Flow Redesign
 
-- [ ] **Single redesign** covering related issues:
-  - Fix race condition: GitHub repo modal appears behind review plan modal
-  - Replace 3-option project flow with single best interpretation + refinement
-  - Replace stacked modals with single-panel wizard (step 1 of N)
-  - Plan generation UX: two-pass (epics first, then tasks fill in) or skeleton indicators
-- [ ] Default to backlog view after project creation
+- [x] Fix race condition: GitHub repo modal guarded by `isDialogActive` flag *(Wave 71)*
+- [x] Plan generation UX: skeleton cards + progress messages in HierarchicalPlanDialog *(Wave 71)*
+- [x] Default to backlog view after project creation *(Wave 71)*
+- [ ] **Wire single project interpretation** — prompt builder exists in `projectOptions.ts` (Wave 71) but not wired into `aiService.ts`, `aiTypes.ts`, resolver (`resolvers/ai/generation.ts`), or `NewProject.tsx` frontend. Needs full-stack wiring.
+- [ ] Replace stacked modals with single-panel wizard (step 1 of N) — lower priority, current flow works with modal guard fix
 
 ---
 
@@ -81,6 +71,7 @@
 
 ## Code Quality & Testing
 
+- [ ] Fix 3 pre-existing test failures in `insightGeneration.test.ts` — failing on main before Wave 71, likely due to actionExecutor changes in pipeline hardening session
 - [ ] Integration test DB isolation (10 files, 23 tests, FK violations) — blocks `pnpm test` as merge gate
 - [ ] Integration test for branch flow (~5 tests, mock GitHub API)
 - [ ] Test coverage for sessions (CRUD, orchestration, budget/scope, failure policy)
@@ -162,5 +153,6 @@
 | 69 | 2026-03-26 | Follow-up cleanup |
 | 70 | 2026-03-27 | Actionable AI: projectChat actions, whatNext, dependency inference |
 | — | 2026-03-27 | Pipeline hardening: SSE fix, merge_pr, 401 retry, fix_review overhaul |
+| 71 | 2026-03-28 | Code gen coherence: repo context in generateCode, schema-first constraint, decomposition quality, stall detection, branch naming, KB caching, deferred task context, bootstrap fixes |
 
 Full wave details in `changelog.md`.
