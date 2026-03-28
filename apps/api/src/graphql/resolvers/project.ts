@@ -7,7 +7,7 @@ import { requireAuth, requireOrg, requireProjectAccess, requireApiKey } from './
 import { parseInput, CreateProjectInput, requireProject } from '../../utils/resolverHelpers.js';
 import { emitProjectEvent, emitTaskEvent } from '../../infrastructure/eventbus/emitters.js';
 import { calculateHealthScore, calculateCycleTime } from '../../utils/metricsCalc.js';
-import { buildProjectOptionsPrompt } from '../../ai/promptBuilders/projectOptions.js';
+import { buildProjectOptionsPrompt } from '../../ai/promptBuilders/generation.js';
 import { callAI } from '../../ai/aiClient.js';
 import { parseJSON } from '../../ai/responseParser.js';
 import { ProjectOptionSchema } from '../../ai/aiTypes.js';

@@ -26,9 +26,9 @@ describe('buildProjectOptionsPrompt', () => {
     expect(result).toHaveProperty('userPrompt');
   });
 
-  it('mentions exactly 3 distinct project interpretations', () => {
+  it('generates single recommended project plan', () => {
     const result = buildProjectOptionsPrompt('Build a todo app');
-    expect(result.userPrompt).toContain('exactly 3 distinct project interpretations');
+    expect(result.userPrompt).toContain('ONE recommended project plan');
   });
 
   it('wraps user prompt in user_input tags', () => {
