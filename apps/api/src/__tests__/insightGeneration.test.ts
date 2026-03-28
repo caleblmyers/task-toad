@@ -16,8 +16,10 @@ vi.mock('../ai/aiClient.js', () => ({
 }));
 
 const mockGenerateTaskInsights = vi.fn();
+const mockGenerateCompletionSummary = vi.fn().mockResolvedValue({ whatWasBuilt: 'test', filesChanged: [], keyDecisions: [] });
 vi.mock('../ai/aiService.js', () => ({
   generateTaskInsights: (...args: unknown[]) => mockGenerateTaskInsights(...args),
+  generateCompletionSummary: (...args: unknown[]) => mockGenerateCompletionSummary(...args),
 }));
 
 const mockEmit = vi.fn();
@@ -52,10 +54,11 @@ import { createHandler } from '../infrastructure/jobs/actionExecutor.js';
 
 interface MockPrisma {
   taskAction: { findUnique: ReturnType<typeof vi.fn>; findMany: ReturnType<typeof vi.fn>; findFirst: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
-  taskActionPlan: { update: ReturnType<typeof vi.fn> };
+  taskActionPlan: { findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
   org: { findUnique: ReturnType<typeof vi.fn> };
-  task: { findMany: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
+  task: { findUnique: ReturnType<typeof vi.fn>; findMany: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
   taskInsight: { create: ReturnType<typeof vi.fn> };
+  $queryRaw: ReturnType<typeof vi.fn>;
 }
 
 function createMockPrisma(overrides: Record<string, unknown> = {}): MockPrisma {
@@ -93,18 +96,21 @@ function createMockPrisma(overrides: Record<string, unknown> = {}): MockPrisma {
       update: vi.fn().mockResolvedValue({}),
     },
     taskActionPlan: {
+      findUnique: vi.fn().mockResolvedValue(null),
       update: vi.fn().mockResolvedValue({}),
     },
     org: {
       findUnique: vi.fn().mockResolvedValue({ anthropicApiKeyEncrypted: 'encrypted-key' }),
     },
     task: {
+      findUnique: vi.fn().mockResolvedValue({ status: 'in_progress' }),
       findMany: vi.fn().mockResolvedValue([
         { taskId: 'sibling-1', title: 'Sibling task A' },
         { taskId: 'sibling-2', title: 'Sibling task B' },
       ]),
-      update: vi.fn().mockResolvedValue({}),
+      update: vi.fn().mockResolvedValue({ taskId: 'task-1', title: 'Implement feature X', status: 'done', projectId: 'proj-1', orgId: 'org-1', taskType: 'task' }),
     },
+    $queryRaw: vi.fn().mockResolvedValue([]),
     taskInsight: {
       create: vi.fn().mockResolvedValue({}),
     },
