@@ -64,6 +64,7 @@ interface KanbanBoardProps {
   onSelectTask: (task: Task) => void;
   onColumnChange: (taskId: string, columnName: string) => void;
   onReorderTask?: (taskId: string, position: number) => Promise<void>;
+  onReorderColumns?: (newColumns: string[]) => void;
   epicMap?: Map<string, string>;
   groupBy?: GroupBy;
   orgUsers?: OrgUser[];
@@ -102,11 +103,15 @@ function getGroupLabel(key: string, groupBy: NonNullable<GroupBy>, orgUsers?: Or
   return key;
 }
 
-export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, onSelectTask, onColumnChange, onReorderTask, epicMap, groupBy, orgUsers, wipLimits }: KanbanBoardProps) {
+export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, onSelectTask, onColumnChange, onReorderTask, onReorderColumns, epicMap, groupBy, orgUsers, wipLimits }: KanbanBoardProps) {
   const draggedId = useRef<string | null>(null);
   const [movingTaskId, setMovingTaskId] = useState<string | null>(null);
   const [moveAnnouncement, setMoveAnnouncement] = useState('');
   const [columnOrder, setColumnOrder] = useState<Map<string, string[]>>(new Map());
+
+  // Column drag-and-drop state
+  const draggedColRef = useRef<string | null>(null);
+  const [dragOverCol, setDragOverCol] = useState<string | null>(null);
 
   // Memoize column grouping — O(n) map instead of O(n*columns) inline filter per render
   const tasksByColumn = useMemo(() => {
@@ -389,7 +394,48 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
               draggedId.current = null;
             }}
           >
-            <div className="flex items-center justify-between px-3 py-2.5">
+            <div
+              className={`flex items-center justify-between px-3 py-2.5 ${onReorderColumns ? 'cursor-grab active:cursor-grabbing' : ''} ${dragOverCol === col ? 'ring-2 ring-blue-400 ring-inset rounded-t-xl' : ''}`}
+              draggable={!!onReorderColumns}
+              onDragStart={(e) => {
+                if (!onReorderColumns) return;
+                draggedColRef.current = col;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', col);
+                // Don't propagate to task card drag handlers
+                e.stopPropagation();
+              }}
+              onDragOver={(e) => {
+                if (!draggedColRef.current || draggedColRef.current === col) return;
+                e.preventDefault();
+                e.stopPropagation();
+                setDragOverCol(col);
+              }}
+              onDragLeave={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                  setDragOverCol((prev) => prev === col ? null : prev);
+                }
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const fromCol = draggedColRef.current;
+                draggedColRef.current = null;
+                setDragOverCol(null);
+                if (!fromCol || fromCol === col || !onReorderColumns) return;
+                const fromIdx = columns.indexOf(fromCol);
+                const toIdx = columns.indexOf(col);
+                if (fromIdx < 0 || toIdx < 0) return;
+                const newCols = [...columns];
+                newCols.splice(fromIdx, 1);
+                newCols.splice(toIdx, 0, fromCol);
+                onReorderColumns(newCols);
+              }}
+              onDragEnd={() => {
+                draggedColRef.current = null;
+                setDragOverCol(null);
+              }}
+            >
               <div className="flex items-center gap-1.5">
                 <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{col}</span>
                 {wipExceeded && (
