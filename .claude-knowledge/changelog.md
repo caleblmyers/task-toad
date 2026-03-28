@@ -4,6 +4,44 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-28 (Wave 72 — Pipeline Reliability + Session Planning)
+
+### Wave 72: Pipeline Reliability + Session Planning (3 workers, 4 tasks)
+
+**Worker 1 — task-001: R4 Post-merge build verification:**
+- New `verify_build` action type and executor — checks CI status on default branch after merge via GitHub check-runs API
+- Gracefully skips when no CI configured
+- Registered in action types, Zod schema, and planning prompt as optional post-merge step
+
+**Worker 1 — task-004: Session progress tracking + completion summary rate limiting:**
+- Session progress now tracks `tokensUsed` and `estimatedCostCents` from AIPromptLog, using atomic jsonb_set
+- Completion summary generation skipped when AI budget exhausted
+
+**Worker 2 — task-002: R5 Sprint close reconciliation:**
+- `closeSprint` checks CI on default branch when GitHub repo connected
+- Auto-creates high-priority reconciliation task with `autoComplete: true` on failure
+- New `ReconciliationResult` GraphQL type, frontend shows status in close modal
+
+**Worker 3 — task-003: Session planning:**
+- Sprint planning prompt rewritten for session-style planning: selects 3-5 coherent tasks with dependency awareness
+- `maxTasks` parameter (default 5) caps scope
+- `rationale` field in SprintPlanSchema explains task selection
+- Frontend relabeled to "Plan Session" with rationale display
+
+**Process notes:**
+- File lists wrong again (both task-002 and task-003 had incorrect file names). Workers found correct files but this caused friction. Need to verify file names exist before writing task descriptions.
+
+### Open follow-ups
+- `verify_build` retry/polling for in-progress checks (currently returns "pending")
+- `commitSprintPlan` resolver compatibility with session-style single plans
+- Reconciliation task should link back to triggering sprint
+
+### Pre-wave fixes
+- Single project interpretation: replaced 3-option prompt with single best recommendation in `generation.ts`, removed dead `projectOptions.ts`
+- Fixed 3 pre-existing `insightGeneration.test.ts` failures (missing mock methods)
+
+---
+
 ## 2026-03-28 (Wave 71 — Code Generation Coherence + Pipeline Quality)
 
 ### Wave 71: Code Gen Coherence + Pipeline Quality (3 workers, 6 tasks)

@@ -13,18 +13,8 @@
 - [x] **Decomposition quality** — rule 10 in hierarchical plan prompt: 3-8 files max per task *(Wave 71)*
 
 ### Pipeline Steps
-- [ ] **R4: Post-merge build verification**
-  - Add optional `verify_build` action type that runs after `merge_pr`
-  - Detect build command from package.json scripts or CLAUDE.md, run `npm install && npm run build` (or equivalent)
-  - On failure: create a fix task with build error output as instructions
-  - On success: record in action result for confidence tracking
-  - Opt-in per project (some repos won't have CI configured)
-- [ ] **R5: Sprint close reconciliation**
-  - In `closeSprint` resolver, optionally trigger a reconciliation check
-  - Fetch repo's current state, attempt build, run available tests
-  - If issues found (broken imports, type mismatches, build failures): auto-generate a reconciliation task with specific errors
-  - Reconciliation task goes through the normal action plan pipeline (generate_code → create_pr → review → merge)
-  - UI: show reconciliation status in close sprint dialog/result
+- [x] **R4: Post-merge build verification** — `verify_build` executor checks CI status on default branch after merge, skips gracefully when no CI configured. Registered in action types, Zod schema, and planning prompt as optional post-merge step. *(Wave 72)*
+- [x] **R5: Sprint close reconciliation** — `closeSprint` checks CI on default branch, auto-creates high-priority reconciliation task with `autoComplete: true` on failure, shows status in close modal. *(Wave 72)*
 - [x] **Deferred task context** — inherits parent epic, `informs` dependency, PR number in description *(Wave 71)*
 - [x] **Optimize knowledge retrieval** — cached per planId, threshold raised to 10 entries *(Wave 71)*
 - [x] **Fix false stall detection** — 30s grace period before showing Resume button *(Wave 71)*
@@ -32,11 +22,14 @@
 - [x] **Branch/commit naming** — `{slug}-{shortId}` format *(Wave 71)*
 
 ### Sessions & Orchestration
-- [ ] **Evolve "AI Plan Sprint" into session planning** — generate coherent execution batches (3-5 related tasks, dependency-ordered) instead of distributing whole backlog into time-boxed sprints. Natural entry point for Session concept.
-- [ ] **Session progress: track token usage and cost** — wire AI usage tracking into session progress.
+- [x] **Evolve "AI Plan Sprint" into session planning** — selects 3-5 coherent tasks with dependency awareness, rationale, and `maxTasks` parameter. Frontend updated with session labeling. *(Wave 72)*
+- [x] **Session progress: track token usage and cost** — aggregates from AIPromptLog, atomic jsonb_set update. *(Wave 72)*
 - [ ] **Session time limit enforcement** — check `timeLimitMinutes` alongside budget/scope checks.
 - [ ] **Session resume edge cases** — `startSession` allows re-starting paused sessions but doesn't un-set `autoComplete` on tasks removed from the session. Consider edge cases around task membership changes.
-- [ ] **Rate limiting for completionSummary generation** — consider caching or skipping if budget exhausted.
+- [x] **Rate limiting for completionSummary generation** — budget check added before summary AI call, skips with warning when exhausted. *(Wave 72)*
+- [ ] **verify_build retry/polling for in-progress checks** — currently returns "pending" if checks are still running; could poll with backoff or retry after a delay.
+- [ ] **Session planning: commitSprintPlan compatibility** — `commitSprintPlan` resolver wasn't updated to match session-style planning; verify it works correctly with single-session plans.
+- [ ] **Reconciliation task: link back to sprint** — auto-created reconciliation tasks aren't linked to the sprint that triggered them; could add a `triggeredBySprintId` or use a label.
 
 ---
 
@@ -45,7 +38,7 @@
 - [x] Fix race condition: GitHub repo modal guarded by `isDialogActive` flag *(Wave 71)*
 - [x] Plan generation UX: skeleton cards + progress messages in HierarchicalPlanDialog *(Wave 71)*
 - [x] Default to backlog view after project creation *(Wave 71)*
-- [ ] **Wire single project interpretation** — prompt builder exists in `projectOptions.ts` (Wave 71) but not wired into `aiService.ts`, `aiTypes.ts`, resolver (`resolvers/ai/generation.ts`), or `NewProject.tsx` frontend. Needs full-stack wiring.
+- [x] **Single project interpretation** — prompt updated in `generation.ts`, dead `projectOptions.ts` removed *(post-Wave 71 fix)*
 - [ ] Replace stacked modals with single-panel wizard (step 1 of N) — lower priority, current flow works with modal guard fix
 
 ---
@@ -153,6 +146,8 @@
 | 69 | 2026-03-26 | Follow-up cleanup |
 | 70 | 2026-03-27 | Actionable AI: projectChat actions, whatNext, dependency inference |
 | — | 2026-03-27 | Pipeline hardening: SSE fix, merge_pr, 401 retry, fix_review overhaul |
+| 71 | 2026-03-28 | Code gen coherence: repo context, schema-first, decomposition, stall detection, branch naming, KB caching, bootstrap fixes |
+| 72 | 2026-03-28 | Pipeline reliability: verify_build action, sprint close reconciliation, session planning, session progress tracking |
 | 71 | 2026-03-28 | Code gen coherence: repo context in generateCode, schema-first constraint, decomposition quality, stall detection, branch naming, KB caching, deferred task context, bootstrap fixes |
 
 Full wave details in `changelog.md`.

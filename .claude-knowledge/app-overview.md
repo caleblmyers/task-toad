@@ -98,7 +98,7 @@ Browser → Vite dev server (localhost:5173)
 | GraphQL resolvers (domain-split) | `apps/api/src/graphql/resolvers/*.ts` |
 | AI subsystem | `apps/api/src/ai/` (aiService, promptBuilder, aiTypes, etc.) |
 | KB retrieval (AI-based entry selection) | `apps/api/src/ai/knowledgeRetrieval.ts` |
-| Action plan executors | `apps/api/src/actions/executors/` (generateCode, createPR, reviewPR, fixReview, mergePR, writeDocs, manualStep, monitorCI, fixCI) |
+| Action plan executors | `apps/api/src/actions/executors/` (generateCode, createPR, reviewPR, fixReview, mergePR, verifyBuild, writeDocs, manualStep, monitorCI, fixCI) |
 | GitHub App auth (JWT + token cache) | `apps/api/src/github/githubAppAuth.ts` |
 | GitHub GraphQL/REST client (401 retry) | `apps/api/src/github/githubAppClient.ts` |
 | GitHub commit/branch service | `apps/api/src/github/githubCommitService.ts` |
