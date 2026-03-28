@@ -9,7 +9,7 @@ import { getEventBus } from '../eventbus/index.js';
 import { getJobQueue } from '../jobqueue/index.js';
 import { retrieveRelevantKnowledge } from '../../ai/knowledgeRetrieval.js';
 import { generateTaskInsights, generateCompletionSummary } from '../../ai/aiService.js';
-import { createBranch } from '../../github/githubCommitService.js';
+import { createBranch, deleteBranch } from '../../github/githubCommitService.js';
 import type { GitHubRepoLink } from '../../github/githubTypes.js';
 
 const log = createChildLogger('action-executor');
@@ -514,11 +514,23 @@ export function createHandler(prisma: PrismaClient) {
           data: { status: 'completed' },
         });
 
-        // Transition task status based on plan results
-        const completedActions = await prisma.taskAction.findMany({
+        // Clean up feature branch after successful merge
+        const allCompletedActions = await prisma.taskAction.findMany({
           where: { planId, status: 'completed' },
           select: { actionType: true, result: true },
         });
+        const didMerge = allCompletedActions.some((a) => a.actionType === 'merge_pr');
+        if (didMerge && repo && plan.branchName) {
+          try {
+            await deleteBranch(repo, plan.branchName, userGitHubToken);
+            log.info({ planId, branchName: plan.branchName }, 'Deleted feature branch after merge');
+          } catch (branchErr) {
+            log.warn({ err: branchErr, planId, branchName: plan.branchName }, 'Failed to delete feature branch (non-blocking)');
+          }
+        }
+
+        // Transition task status based on plan results
+        const completedActions = allCompletedActions;
 
         // Determine target status from completed actions
         let targetStatus: string | null = null;

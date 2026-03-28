@@ -27,6 +27,24 @@ const CREATE_REF = `
   }
 `;
 
+const DELETE_REF = `
+  mutation DeleteRef($refId: ID!) {
+    deleteRef(input: { refId: $refId }) {
+      clientMutationId
+    }
+  }
+`;
+
+const GET_REF_ID = `
+  query GetRefId($owner: String!, $name: String!, $ref: String!) {
+    repository(owner: $owner, name: $name) {
+      ref(qualifiedName: $ref) {
+        id
+      }
+    }
+  }
+`;
+
 const CREATE_COMMIT_ON_BRANCH = `
   mutation CreateCommitOnBranch(
     $branchId: CommittableBranch!,
@@ -55,6 +73,12 @@ interface GetBranchOidResponse {
 
 interface CreateRefResponse {
   createRef: { ref: { name: string } };
+}
+
+interface GetRefIdResponse {
+  repository: {
+    ref: { id: string } | null;
+  };
 }
 
 interface CreateCommitResponse {
@@ -320,4 +344,33 @@ export async function commitFilesToEmptyRepo(
     });
     throw error;
   }
+}
+
+/**
+ * Delete a branch from a GitHub repository.
+ * Best-effort — logs a warning on failure but does not throw.
+ */
+export async function deleteBranch(
+  repo: GitHubRepoLink,
+  branchName: string,
+  tokenOverride?: string
+): Promise<void> {
+  const token = tokenOverride ?? await getInstallationToken(repo.installationId);
+  const qualifiedRef = `refs/heads/${branchName}`;
+
+  // First, get the ref's node ID (required for deleteRef mutation)
+  const refData = await githubRequest<GetRefIdResponse>(token, GET_REF_ID, {
+    owner: repo.repositoryOwner,
+    name: repo.repositoryName,
+    ref: qualifiedRef,
+  }, repo.installationId);
+
+  if (!refData.repository.ref) {
+    // Branch doesn't exist — nothing to delete
+    return;
+  }
+
+  await githubRequest<{ deleteRef: { clientMutationId: string | null } }>(token, DELETE_REF, {
+    refId: refData.repository.ref.id,
+  }, repo.installationId);
 }

@@ -10,6 +10,7 @@ import { getJobQueue } from '../../infrastructure/jobqueue/index.js';
 import { retrieveRelevantKnowledge } from '../../ai/knowledgeRetrieval.js';
 import { abortPlan } from '../../infrastructure/jobs/actionExecutor.js';
 import { createChildLogger } from '../../utils/logger.js';
+import { createPlanWithActions } from '../../utils/planHelpers.js';
 
 const log = createChildLogger('taskaction-resolver');
 
@@ -191,51 +192,15 @@ export const taskActionMutations = {
       data: { status: 'cancelled' },
     });
 
-    // Create the plan with actions
-    const plan = await context.prisma.taskActionPlan.create({
-      data: {
-        taskId: args.taskId,
-        orgId: user.orgId,
-        status: 'approved',
-        createdById: user.userId,
-        actions: {
-          create: args.actions.map((a, i) => ({
-            actionType: a.actionType,
-            label: a.label,
-            config: a.config,
-            position: i,
-            requiresApproval: a.requiresApproval,
-          })),
-        },
-      },
-      include: { actions: { orderBy: { position: 'asc' } } },
-    });
+    // Create the plan with actions (handles ID remapping)
+    const { plan } = await createPlanWithActions(
+      context.prisma,
+      args.taskId,
+      user.orgId,
+      user.userId,
+      args.actions,
+    );
 
-    // Remap AI placeholder IDs (action_0, action_1, ...) to real database UUIDs in action configs
-    const idMap = new Map<string, string>();
-    plan.actions.forEach((a, i) => idMap.set(`action_${i}`, a.id));
-
-    const configKeys = ['sourceActionId', 'sourcePRActionId', 'sourceMonitorActionId', 'sourceReviewActionId'];
-    for (const action of plan.actions) {
-      let config: Record<string, unknown>;
-      try { config = JSON.parse(action.config || '{}'); } catch { continue; }
-      let changed = false;
-      for (const key of configKeys) {
-        const ref = config[key] as string | undefined;
-        if (ref && idMap.has(ref)) {
-          config[key] = idMap.get(ref);
-          changed = true;
-        }
-      }
-      if (changed) {
-        await context.prisma.taskAction.update({
-          where: { id: action.id },
-          data: { config: JSON.stringify(config) },
-        });
-      }
-    }
-
-    // Re-fetch with updated configs
     return context.prisma.taskActionPlan.findUnique({
       where: { id: plan.id },
       include: { actions: { orderBy: { position: 'asc' } } },
@@ -488,49 +453,19 @@ export const taskActionMutations = {
       data: { status: 'cancelled' },
     });
 
-    // Create new plan (same pattern as commitActionPlan)
-    const newPlan = await context.prisma.taskActionPlan.create({
-      data: {
-        taskId: task.taskId,
-        orgId: user.orgId,
-        status: 'approved',
-        createdById: user.userId,
-        actions: {
-          create: result.actions.map((a, i) => ({
-            actionType: a.actionType,
-            label: a.label,
-            config: JSON.stringify(a.config),
-            position: i,
-            requiresApproval: a.requiresApproval,
-          })),
-        },
-      },
-      include: { actions: { orderBy: { position: 'asc' } } },
-    });
-
-    // Remap AI placeholder IDs to real database UUIDs
-    const idMap = new Map<string, string>();
-    newPlan.actions.forEach((a, i) => idMap.set(`action_${i}`, a.id));
-
-    const configKeys = ['sourceActionId', 'sourcePRActionId', 'sourceMonitorActionId', 'sourceReviewActionId'];
-    for (const action of newPlan.actions) {
-      let config: Record<string, unknown>;
-      try { config = JSON.parse(action.config || '{}'); } catch { continue; }
-      let changed = false;
-      for (const key of configKeys) {
-        const ref = config[key] as string | undefined;
-        if (ref && idMap.has(ref)) {
-          config[key] = idMap.get(ref);
-          changed = true;
-        }
-      }
-      if (changed) {
-        await context.prisma.taskAction.update({
-          where: { id: action.id },
-          data: { config: JSON.stringify(config) },
-        });
-      }
-    }
+    // Create new plan with actions (handles ID remapping)
+    const { plan: newPlan } = await createPlanWithActions(
+      context.prisma,
+      task.taskId,
+      user.orgId,
+      user.userId,
+      result.actions.map((a) => ({
+        actionType: a.actionType,
+        label: a.label,
+        config: JSON.stringify(a.config),
+        requiresApproval: a.requiresApproval,
+      })),
+    );
 
     return context.prisma.taskActionPlan.findUnique({
       where: { id: newPlan.id },

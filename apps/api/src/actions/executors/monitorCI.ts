@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { ActionExecutor, ActionContext, ActionResult } from '../types.js';
 import { getInstallationToken } from '../../github/githubAppAuth.js';
 import { createChildLogger } from '../../utils/logger.js';
@@ -5,9 +6,10 @@ import { getJobQueue } from '../../infrastructure/jobqueue/index.js';
 
 const log = createChildLogger('monitor-ci');
 
-interface MonitorCIConfig {
-  sourcePRActionId: string;
-}
+const MonitorCIConfigSchema = z.object({
+  sourcePRActionId: z.string(),
+}).passthrough();
+
 
 /** Delay between poll attempts. */
 const POLL_DELAY_MS = 30_000;
@@ -103,7 +105,7 @@ export const monitorCIExecutor: ActionExecutor = {
 
   async execute(ctx: ActionContext): Promise<ActionResult> {
     const { task, prisma, previousResults, signal } = ctx;
-    const config: MonitorCIConfig = JSON.parse(ctx.action.config || '{}');
+    const config = MonitorCIConfigSchema.parse(JSON.parse(ctx.action.config || '{}'));
 
     // Get PR info from a previous create_pr action result
     const prResult = previousResults.get(config.sourcePRActionId) as
