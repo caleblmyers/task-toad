@@ -833,6 +833,24 @@ export const sprintMutations = {
     const { user } = await requireProject(context, args.projectId);
     const defaultColumns = '["To Do","In Progress","In Review","Done"]';
     const firstColumn = 'To Do';
+
+    // Session-style single plan: assign tasks to existing active sprint if one exists
+    if (args.sprints.length === 1) {
+      const activeSprint = await context.prisma.sprint.findFirst({
+        where: { projectId: args.projectId, isActive: true, closedAt: null },
+      });
+      if (activeSprint) {
+        const sprintInput = args.sprints[0];
+        if (sprintInput.taskIds.length > 0) {
+          await context.prisma.task.updateMany({
+            where: { taskId: { in: sprintInput.taskIds }, orgId: user.orgId },
+            data: { sprintId: activeSprint.sprintId, sprintColumn: firstColumn },
+          });
+        }
+        return [activeSprint];
+      }
+    }
+
     const created = await Promise.all(
       args.sprints.map(async (sprintInput) => {
         const sprint = await context.prisma.sprint.create({

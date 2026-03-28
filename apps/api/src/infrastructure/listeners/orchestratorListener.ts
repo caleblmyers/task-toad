@@ -118,6 +118,7 @@ async function orchestrateProject(
     const sessionConfig = JSON.parse(activeSession.config) as {
       budgetCapCents?: number;
       scopeLimit?: number;
+      timeLimitMinutes?: number;
     };
     const sessionProgress = activeSession.progress
       ? (JSON.parse(activeSession.progress) as {
@@ -151,6 +152,27 @@ async function orchestrateProject(
       });
       log.info({ sessionId: activeSession.id }, 'Session paused — budget cap exceeded');
       return;
+    }
+
+    // Check time limit
+    if (sessionConfig.timeLimitMinutes && activeSession.startedAt) {
+      const elapsedMs = Date.now() - new Date(activeSession.startedAt).getTime();
+      const elapsedMinutes = elapsedMs / 60_000;
+      if (elapsedMinutes >= sessionConfig.timeLimitMinutes) {
+        await prisma.session.update({
+          where: { id: activeSession.id },
+          data: { status: 'paused', pausedAt: new Date() },
+        });
+        getEventBus().emit('session.paused', {
+          orgId,
+          userId,
+          projectId,
+          timestamp: new Date().toISOString(),
+          sessionId: activeSession.id,
+        });
+        log.info({ sessionId: activeSession.id, elapsedMinutes, limitMinutes: sessionConfig.timeLimitMinutes }, 'Session paused — time limit reached');
+        return;
+      }
     }
 
     // Check scope limit
