@@ -25,9 +25,16 @@ export const sprintTypeDefs = /* GraphQL */ `
     targetSprintId: ID
   }
 
+  type ReconciliationResult {
+    status: String!
+    failingChecks: [String!]
+    reconciliationTaskId: String
+  }
+
   type CloseSprintResult {
-    sprint:     Sprint!
-    nextSprint: Sprint
+    sprint:          Sprint!
+    nextSprint:      Sprint
+    reconciliation:  ReconciliationResult
   }
 
   input SprintPlanInput {

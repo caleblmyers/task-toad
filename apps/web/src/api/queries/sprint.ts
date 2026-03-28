@@ -71,6 +71,11 @@ export const CLOSE_SPRINT_MUTATION = `mutation CloseSprint($sprintId: ID!, $inco
     nextSprint {
       sprintId projectId name isActive columns startDate endDate createdAt closedAt
     }
+    reconciliation {
+      status
+      failingChecks
+      reconciliationTaskId
+    }
   }
 }`;
 

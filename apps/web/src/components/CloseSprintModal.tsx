@@ -272,6 +272,26 @@ export default function CloseSprintModal({
             <p className="text-3xl">✓</p>
             <p className="text-base font-semibold text-slate-800">Sprint closed successfully</p>
 
+            {/* Reconciliation status */}
+            {result.reconciliation?.status === 'failed' && (
+              <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-left">
+                <p className="text-sm font-medium text-amber-800">Build checks are failing after this sprint</p>
+                {result.reconciliation.failingChecks && result.reconciliation.failingChecks.length > 0 && (
+                  <ul className="mt-1.5 space-y-0.5">
+                    {result.reconciliation.failingChecks.map((check) => (
+                      <li key={check} className="text-xs text-amber-700">• {check}</li>
+                    ))}
+                  </ul>
+                )}
+                <p className="text-xs text-amber-600 mt-2">A fix task has been created and will auto-complete.</p>
+              </div>
+            )}
+            {result.reconciliation?.status === 'passed' && (
+              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                <p className="text-sm font-medium text-green-700">All CI checks passing on the default branch</p>
+              </div>
+            )}
+
             {result.nextSprint ? (
               <div className="mt-4 space-y-3">
                 <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">

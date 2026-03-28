@@ -10,6 +10,7 @@ import { requirePermission, Permission } from '../../auth/permissions.js';
 import { StringArraySchema } from '../../utils/zodSchemas.js';
 import { createChildLogger } from '../../utils/logger.js';
 import { emitSprintEvent } from '../../infrastructure/eventbus/emitters.js';
+import { getInstallationToken } from '../../github/githubAppAuth.js';
 import { runMonteCarloForecast } from '../../utils/monteCarloForecast.js';
 import { calculateVelocity, percentile } from '../../utils/metricsCalc.js';
 
@@ -639,7 +640,87 @@ export const sprintMutations = {
       projectId: sprint.projectId,
       sprint: { sprintId: closedSprint.sprintId, name: closedSprint.name, projectId: closedSprint.projectId, orgId: closedSprint.orgId },
     });
-    return { sprint: closedSprint, nextSprint: nextSprint ?? null };
+
+    // Reconciliation: check CI status on default branch
+    let reconciliation: { status: 'passed' | 'failed' | 'skipped'; failingChecks?: string[]; reconciliationTaskId?: string } = { status: 'skipped' };
+
+    try {
+      const project = await context.prisma.project.findUnique({
+        where: { projectId: sprint.projectId },
+        select: {
+          projectId: true,
+          githubRepositoryOwner: true,
+          githubRepositoryName: true,
+          githubInstallationId: true,
+          githubDefaultBranch: true,
+        },
+      });
+
+      if (project?.githubInstallationId && project.githubRepositoryOwner && project.githubRepositoryName) {
+        const token = await getInstallationToken(project.githubInstallationId);
+        const branch = project.githubDefaultBranch ?? 'main';
+        const owner = encodeURIComponent(project.githubRepositoryOwner);
+        const repo = encodeURIComponent(project.githubRepositoryName);
+
+        const response = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/commits/${encodeURIComponent(branch)}/check-runs`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: 'application/vnd.github+json',
+              'X-GitHub-Api-Version': '2022-11-28',
+            },
+          },
+        );
+
+        if (response.ok) {
+          const data = (await response.json()) as {
+            total_count: number;
+            check_runs: Array<{ name: string; status: string; conclusion: string | null }>;
+          };
+
+          if (data.total_count === 0) {
+            reconciliation = { status: 'skipped' };
+          } else {
+            const completedChecks = data.check_runs.filter((c) => c.status === 'completed');
+            const failedChecks = completedChecks.filter(
+              (c) => c.conclusion !== 'success' && c.conclusion !== 'skipped',
+            );
+
+            if (failedChecks.length > 0) {
+              const failingCheckNames = failedChecks.map((c) => c.name);
+
+              // Auto-create a reconciliation task
+              const reconTask = await context.prisma.task.create({
+                data: {
+                  title: `Fix build failures after Sprint "${sprint.name}" close`,
+                  description: `CI checks are failing on the default branch (${branch}) after closing sprint "${sprint.name}".\n\nFailing checks:\n${failingCheckNames.map((n) => `- ${n}`).join('\n')}`,
+                  status: 'todo',
+                  priority: 'high',
+                  autoComplete: true,
+                  projectId: sprint.projectId,
+                  orgId: user.orgId,
+                },
+              });
+
+              reconciliation = {
+                status: 'failed',
+                failingChecks: failingCheckNames,
+                reconciliationTaskId: reconTask.taskId,
+              };
+            } else {
+              reconciliation = { status: 'passed' };
+            }
+          }
+        } else {
+          log.warn({ status: response.status, projectId: sprint.projectId }, 'Failed to fetch CI check-runs for reconciliation');
+        }
+      }
+    } catch (err) {
+      log.warn({ err, projectId: sprint.projectId }, 'Reconciliation check failed, skipping');
+    }
+
+    return { sprint: closedSprint, nextSprint: nextSprint ?? null, reconciliation };
   },
 
   previewSprintPlan: async (

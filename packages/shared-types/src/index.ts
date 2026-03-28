@@ -276,9 +276,16 @@ export interface TaskConnection {
   total: number;
 }
 
+export interface ReconciliationResult {
+  status: 'passed' | 'failed' | 'skipped';
+  failingChecks?: string[];
+  reconciliationTaskId?: string;
+}
+
 export interface CloseSprintResult {
   sprint: Sprint;
   nextSprint: Sprint | null;
+  reconciliation?: ReconciliationResult;
 }
 
 export interface SprintPlanItem {
