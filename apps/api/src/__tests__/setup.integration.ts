@@ -40,8 +40,12 @@ export async function setupTestDatabase(): Promise<void> {
  * may still be in-flight from the previous test.
  */
 export async function cleanDatabase(): Promise<void> {
+  // Let in-flight async operations (event listeners, activity logging, etc.) settle
+  await new Promise((r) => setTimeout(r, 200));
+
   // Actual PostgreSQL table names from @@map() directives in Prisma schema
   // Must include ALL tables — missing ones cause unique constraint / FK errors
+  // Order: child tables (with FKs) before parent tables
   const tableNames = [
     // Action plans & actions (depend on tasks)
     'task_actions',
@@ -52,7 +56,7 @@ export async function cleanDatabase(): Promise<void> {
     // AI logs
     'ai_prompt_logs',
     'ai_usage_logs',
-    // Task relations (depend on tasks)
+    // Task relations (depend on tasks + labels)
     'custom_field_values',
     'custom_fields',
     'task_labels',
@@ -66,7 +70,7 @@ export async function cleanDatabase(): Promise<void> {
     'github_pull_request_links',
     'github_commit_links',
     'github_installations',
-    // Notifications
+    // Notifications (depend on users)
     'notifications',
     'notification_preferences',
     // Webhooks
@@ -113,17 +117,23 @@ export async function cleanDatabase(): Promise<void> {
     'orgs',
   ];
 
-  // Use a single TRUNCATE CASCADE for all tables.
-  // Retry up to 3 times to handle fire-and-forget async operations
-  // (activity logging, notification creation, SLA timer updates, etc.)
-  // that may still be writing from the previous test.
+  // Disable FK checks during truncation, then re-enable after.
+  // This prevents FK constraint violations from fire-and-forget async writes.
   const quoted = tableNames.map((t) => `"${t}"`).join(', ');
   const maxRetries = 3;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
+      await prisma.$executeRawUnsafe(`SET session_replication_role = 'replica'`);
       await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${quoted} CASCADE`);
+      await prisma.$executeRawUnsafe(`SET session_replication_role = 'origin'`);
       return;
     } catch (err) {
+      // Ensure replication role is reset even on failure
+      try {
+        await prisma.$executeRawUnsafe(`SET session_replication_role = 'origin'`);
+      } catch {
+        // ignore reset failure
+      }
       if (attempt === maxRetries) throw err;
       // Brief delay to let in-flight async operations complete
       await new Promise((r) => setTimeout(r, 100));
