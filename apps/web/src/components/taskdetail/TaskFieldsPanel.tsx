@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Task, Sprint, OrgUser, Label } from '../../types';
 import type { TaskTimeSummary } from '@tasktoad/shared-types';
-import { statusLabel } from '../../utils/taskHelpers';
+import { statusLabel, PRIORITY_COLORS } from '../../utils/taskHelpers';
 import TaskCustomFieldsSection from './TaskCustomFieldsSection';
 import TimeEntryList from './TimeEntryList';
 import MultiPicker from '../shared/MultiPicker';
@@ -211,22 +211,25 @@ export default function TaskFieldsPanel({
       {/* Priority */}
       <div className="mb-4">
         <label htmlFor="task-priority-select" className="text-xs font-medium text-slate-500 uppercase tracking-wide">Priority</label>
-        <select
-          id="task-priority-select"
-          value={task.priority}
-          onChange={(e) => {
-            if (onUpdateTask) {
-              onUpdateTask(task.taskId, { priority: e.target.value });
-            }
-          }}
-          className="block mt-1 border border-slate-300 rounded px-2 py-1 text-sm"
-          disabled={disabled}
-        >
-          <option value="low">Low</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-          <option value="critical">Critical</option>
-        </select>
+        <div className="flex items-center gap-2 mt-1">
+          <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${PRIORITY_COLORS[task.priority]?.dot ?? 'bg-slate-400'}`} />
+          <select
+            id="task-priority-select"
+            value={task.priority}
+            onChange={(e) => {
+              if (onUpdateTask) {
+                onUpdateTask(task.taskId, { priority: e.target.value });
+              }
+            }}
+            className={`border border-slate-300 rounded px-2 py-1 text-sm ${PRIORITY_COLORS[task.priority]?.text ?? ''}`}
+            disabled={disabled}
+          >
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
       </div>
 
       {/* Estimate */}

@@ -4,6 +4,7 @@ import type { Task, Sprint, OrgUser } from '../types';
 import SprintReportPanel from './SprintReportPanel';
 import SprintSection, { TaskRow } from './SprintSection';
 import { useCan } from '../hooks/PermissionContext';
+import { PRIORITY_COLORS } from '../utils/taskHelpers';
 
 const ROW_HEIGHT = 52;
 const MAX_LIST_HEIGHT = 600;
@@ -100,22 +101,27 @@ function BacklogSection({
           <>
             {renderDropIndicator(0)}
             {sectionTasks.map((task, i) => (
-              <div key={task.taskId}>
-                <TaskRow
-                  task={task}
-                  orgUsers={orgUsers}
-                  allTasks={allTasks}
-                  selectedTask={selectedTask}
-                  onSelectTask={onSelectTask}
-                  onDragStart={onDragStart}
-                  isChecked={selectedTaskIds.has(task.taskId)}
-                  showCheckboxes={showCheckboxes}
-                  onToggleTaskId={onToggleTaskId}
-                  sprints={sprints}
-                  onAssignSprint={onAssignSprint}
-                  epicMap={epicMap}
-                />
-                {renderDropIndicator(i + 1)}
+              <div key={task.taskId} className="flex items-center gap-0">
+                {task.priority && PRIORITY_COLORS[task.priority] && (
+                  <span className={`w-1 self-stretch rounded-l flex-shrink-0 ${PRIORITY_COLORS[task.priority].dot}`} title={task.priority} />
+                )}
+                <div className="flex-1 min-w-0">
+                  <TaskRow
+                    task={task}
+                    orgUsers={orgUsers}
+                    allTasks={allTasks}
+                    selectedTask={selectedTask}
+                    onSelectTask={onSelectTask}
+                    onDragStart={onDragStart}
+                    isChecked={selectedTaskIds.has(task.taskId)}
+                    showCheckboxes={showCheckboxes}
+                    onToggleTaskId={onToggleTaskId}
+                    sprints={sprints}
+                    onAssignSprint={onAssignSprint}
+                    epicMap={epicMap}
+                  />
+                  {renderDropIndicator(i + 1)}
+                </div>
               </div>
             ))}
           </>

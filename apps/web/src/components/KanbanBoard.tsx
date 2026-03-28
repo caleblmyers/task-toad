@@ -1,5 +1,6 @@
 import { useRef, useMemo, useState, useCallback } from 'react';
 import type { Task } from '../types';
+import { PRIORITY_COLORS } from '../utils/taskHelpers';
 import DependencyBadge from './shared/DependencyBadge';
 import Badge from './shared/Badge';
 import Card from './shared/Card';
@@ -313,6 +314,14 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
                   {l.name}
                 </span>
               ))}
+            </div>
+          )}
+          {task.priority && PRIORITY_COLORS[task.priority] && (
+            <div className="flex items-center gap-1 mt-1.5">
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${PRIORITY_COLORS[task.priority].dot}`} />
+              <span className={`text-[10px] font-medium ${PRIORITY_COLORS[task.priority].text}`}>
+                {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+              </span>
             </div>
           )}
           <DependencyBadge task={task} allTasks={tasks} onTaskClick={(id) => {

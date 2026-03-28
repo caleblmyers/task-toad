@@ -94,7 +94,7 @@ async function doExecuteAutomations(prisma: PrismaClient, event: AutomationEvent
         : [actionParse.data];
 
       for (const action of actions) {
-        await executeAction(prisma, event, action);
+        await executeAction(prisma, event, action, rule.name);
       }
       log.info({ ruleId: rule.id, ruleName: rule.name, actionCount: actions.length }, 'Automation rule fired');
       automationRuleExecutionTotal.inc({ status: 'success' });
@@ -109,6 +109,7 @@ async function executeAction(
   prisma: PrismaClient,
   event: AutomationEvent,
   action: AutomationAction,
+  ruleName?: string,
 ): Promise<void> {
   const { taskId, orgId, projectId } = event;
 
@@ -216,11 +217,12 @@ async function executeAction(
       if (!taskId || !action.content) return;
       const commentUserId = event.userId;
       if (!commentUserId) return;
+      const prefix = `> *Automation${ruleName ? `: ${ruleName}` : ''}*\n\n`;
       await prisma.comment.create({
         data: {
           taskId,
           userId: commentUserId,
-          content: action.content,
+          content: prefix + action.content,
         },
       });
       break;

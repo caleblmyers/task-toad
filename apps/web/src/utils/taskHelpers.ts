@@ -65,6 +65,13 @@ export function parseSuggestedTools(
   }
 }
 
+export const PRIORITY_COLORS: Record<string, { dot: string; text: string; bg: string }> = {
+  critical: { dot: 'bg-red-500', text: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/20' },
+  high: { dot: 'bg-orange-500', text: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-900/20' },
+  medium: { dot: 'bg-amber-400', text: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20' },
+  low: { dot: 'bg-slate-400', text: 'text-slate-500 dark:text-slate-400', bg: 'bg-slate-50 dark:bg-slate-800' },
+};
+
 export function sortTasks(taskList: Task[]): Task[] {
   return taskList.slice().sort((a, b) => {
     if (a.position != null && b.position != null) return a.position - b.position;
