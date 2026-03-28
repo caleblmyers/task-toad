@@ -60,6 +60,7 @@ export default function ProjectSetupWizard({
   onSkip,
 }: ProjectSetupWizardProps) {
   const [step, setStep] = useState<WizardStep>('github');
+  const [pendingStep, setPendingStep] = useState<WizardStep | null>(null);
   const [installations, setInstallations] = useState<GitHubInstallation[] | null>(null);
   const [loadingInstallations, setLoadingInstallations] = useState(true);
   const [creatingRepo, setCreatingRepo] = useState(false);
@@ -81,6 +82,22 @@ export default function ProjectSetupWizard({
   const [analyzeIntent, setAnalyzeIntent] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeComplete, setAnalyzeComplete] = useState(false);
+
+  // Transition to a queued step once child modals close
+  const safeSetStep = useCallback((nextStep: WizardStep) => {
+    if (showRepoModal || scaffolding) {
+      setPendingStep(nextStep);
+    } else {
+      setStep(nextStep);
+    }
+  }, [showRepoModal, scaffolding]);
+
+  useEffect(() => {
+    if (!showRepoModal && !scaffolding && pendingStep) {
+      setStep(pendingStep);
+      setPendingStep(null);
+    }
+  }, [showRepoModal, scaffolding, pendingStep]);
 
   // Fetch GitHub installations and user's GitHub connection on mount
   useEffect(() => {
@@ -133,13 +150,13 @@ export default function ProjectSetupWizard({
         installationId: installation.installationId,
         ownerLogin: installation.accountLogin,
       });
-      setStep('recommend');
+      safeSetStep('recommend');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create repository');
     } finally {
       setCreatingRepo(false);
     }
-  }, [installations, selectedInstallation, projectId]);
+  }, [installations, selectedInstallation, projectId, safeSetStep]);
 
   const selectedInst = installations?.find((i) => i.installationId === selectedInstallation);
   const isUserAccount = selectedInst?.accountType === 'User';
@@ -155,19 +172,20 @@ export default function ProjectSetupWizard({
 
   const handleRepoConnected = useCallback(() => {
     setShowRepoModal(false);
-    setStep('analyze');
+    // pendingStep will be applied by the effect when showRepoModal becomes false
+    setPendingStep('analyze');
   }, []);
 
   const handleSelectConfig = useCallback((config: StackConfig) => {
     setSelectedConfig(config);
-    setStep('scaffolding');
-  }, []);
+    safeSetStep('scaffolding');
+  }, [safeSetStep]);
 
   const handleCustomScaffold = useCallback(() => {
     if (!customDescription.trim()) return;
     setSelectedConfig(null);
-    setStep('scaffolding');
-  }, [customDescription]);
+    safeSetStep('scaffolding');
+  }, [customDescription, safeSetStep]);
 
   const handleScaffold = useCallback(async () => {
     setScaffolding(true);

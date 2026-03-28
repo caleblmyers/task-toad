@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { gql } from '../api/client';
 import { useAuth } from '../auth/context';
@@ -216,6 +216,20 @@ export function useProjectData(): ProjectData {
     return results[1]; // loadTasks result
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
+
+  // Default to backlog view when project has no sprints (initial load only)
+  const sprintCheckDone = useRef(false);
+  useEffect(() => {
+    if (sprintCheckDone.current) return;
+    if (sprintMgmt.sprints.length === 0 && projectState.project) {
+      sprintCheckDone.current = true;
+      if (projectState.view !== 'backlog') {
+        projectState.switchView('backlog');
+      }
+    } else if (sprintMgmt.sprints.length > 0) {
+      sprintCheckDone.current = true;
+    }
+  }, [sprintMgmt.sprints, projectState.project, projectState.view, projectState.switchView]);
 
   const { ConfirmDialogPortal } = useProjectEffects({
     projectId,
