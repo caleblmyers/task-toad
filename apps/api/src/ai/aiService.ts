@@ -250,13 +250,14 @@ export async function summarizeProject(
 export async function planSprints(
   apiKey: string,
   projectName: string,
-  tasks: { title: string; estimatedHours: number | null; priority: string }[],
+  tasks: { title: string; estimatedHours: number | null; priority: string; blockedByIndices?: number[] }[],
   sprintLengthWeeks: number,
   teamSize: number,
   promptLogContext?: PromptLogContext,
   teamCapacity?: MemberCapacityInput[],
+  maxTasks?: number,
 ): Promise<SprintPlan[]> {
-  const p = buildPlanSprintsPrompt(projectName, tasks, sprintLengthWeeks, teamSize, teamCapacity);
+  const p = buildPlanSprintsPrompt(projectName, tasks, sprintLengthWeeks, teamSize, teamCapacity, maxTasks);
   const plans = await callAndParse(apiKey, 'planSprints', p, z.array(SprintPlanSchema), promptLogContext);
   if (plans.length === 0) {
     throw new GraphQLError('Failed to parse AI sprint plan');

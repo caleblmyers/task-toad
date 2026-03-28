@@ -725,17 +725,53 @@ export const sprintMutations = {
 
   previewSprintPlan: async (
     _parent: unknown,
-    args: { projectId: string; sprintLengthWeeks: number; teamSize: number },
+    args: { projectId: string; sprintLengthWeeks: number; teamSize: number; maxTasks?: number | null },
     context: Context
   ) => {
     const { user, project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
+    const maxTasks = args.maxTasks ?? 5;
+
+    // Only fetch unblocked, non-archived, todo-status backlog tasks
     const backlogTasks = await context.prisma.task.findMany({
-      where: { projectId: args.projectId, sprintId: null, taskType: { not: 'epic' }, OR: [{ parentTaskId: null }, { parentTask: { taskType: 'epic' } }] },
+      where: {
+        projectId: args.projectId,
+        sprintId: null,
+        status: 'todo',
+        archived: { not: true },
+        taskType: { not: 'epic' },
+        OR: [{ parentTaskId: null }, { parentTask: { taskType: 'epic' } }],
+      },
       orderBy: { createdAt: 'asc' },
     });
     if (backlogTasks.length === 0) {
-      throw new ValidationError('No backlog tasks to plan. All tasks are already assigned to sprints.');
+      throw new ValidationError('No eligible backlog tasks to plan. Tasks must be unassigned, todo status, and not archived.');
+    }
+
+    // Build dependency index: for each task, find which backlog tasks block it
+    const taskIds = backlogTasks.map((t: typeof backlogTasks[number]) => t.taskId);
+    const taskIdToIndex = new Map(taskIds.map((id, i) => [id, i]));
+
+    const dependencies = await context.prisma.taskDependency.findMany({
+      where: {
+        OR: [
+          { sourceTaskId: { in: taskIds }, linkType: 'blocks' },
+          { targetTaskId: { in: taskIds }, linkType: 'blocks' },
+        ],
+      },
+    });
+
+    // blockedByMap: taskId -> list of backlog indices that block it
+    const blockedByMap = new Map<string, number[]>();
+    for (const dep of dependencies) {
+      // sourceTaskId blocks targetTaskId
+      const blockerIdx = taskIdToIndex.get(dep.sourceTaskId);
+      const blockedIdx = taskIdToIndex.get(dep.targetTaskId);
+      if (blockerIdx !== undefined && blockedIdx !== undefined) {
+        const existing = blockedByMap.get(dep.targetTaskId) ?? [];
+        existing.push(blockerIdx);
+        blockedByMap.set(dep.targetTaskId, existing);
+      }
     }
 
     // Fetch team capacity data for per-member distribution
@@ -751,7 +787,6 @@ export const sprintMutations = {
       });
       const capacityMap = new Map(capacities.map((c: typeof capacities[number]) => [c.userId, c.hoursPerWeek]));
 
-      // Only include capacity if at least one member has a record
       if (capacities.length > 0) {
         teamCapacity = members.map((m: typeof members[number]) => {
           const hoursPerWeek = capacityMap.get(m.userId) ?? 40;
@@ -772,11 +807,13 @@ export const sprintMutations = {
         title: t.title,
         estimatedHours: t.estimatedHours,
         priority: t.priority,
+        blockedByIndices: blockedByMap.get(t.taskId),
       })),
       args.sprintLengthWeeks,
       args.teamSize,
       undefined,
       teamCapacity,
+      maxTasks,
     );
     return plans.map((p) => ({
       name: p.name,
@@ -784,6 +821,7 @@ export const sprintMutations = {
         .filter((i) => i >= 0 && i < backlogTasks.length)
         .map((i) => backlogTasks[i].taskId),
       totalHours: p.totalHours,
+      rationale: p.rationale,
     }));
   },
 

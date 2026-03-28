@@ -17,6 +17,7 @@ export const sprintTypeDefs = /* GraphQL */ `
     name:       String!
     taskIds:    [ID!]!
     totalHours: Float!
+    rationale:  String
   }
 
   input IncompleteTaskAction {
@@ -126,6 +127,6 @@ export const sprintMutationFields = /* GraphQL */ `
   deleteSprint(sprintId: ID!): Boolean!
   closeSprint(sprintId: ID!, incompleteTaskActions: [IncompleteTaskAction!]!): CloseSprintResult!
 
-  previewSprintPlan(projectId: ID!, sprintLengthWeeks: Int!, teamSize: Int!): [SprintPlanItem!]!
+  previewSprintPlan(projectId: ID!, sprintLengthWeeks: Int!, teamSize: Int!, maxTasks: Int): [SprintPlanItem!]!
   commitSprintPlan(projectId: ID!, sprints: [SprintPlanInput!]!): [Sprint!]!
 `;

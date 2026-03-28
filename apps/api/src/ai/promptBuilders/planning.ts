@@ -20,19 +20,25 @@ export interface MemberCapacityInput {
 
 export function buildPlanSprintsPrompt(
   projectName: string,
-  tasks: { title: string; estimatedHours: number | null; priority: string }[],
+  tasks: { title: string; estimatedHours: number | null; priority: string; blockedByIndices?: number[] }[],
   sprintLengthWeeks: number,
   teamSize: number,
   teamCapacity?: MemberCapacityInput[],
+  maxTasks?: number,
 ): Prompt {
   const capacityPerSprint = teamCapacity
     ? Math.round(teamCapacity.reduce((sum, m) => sum + m.availableHours, 0) * 0.7)
     : Math.round(sprintLengthWeeks * teamSize * 40 * 0.7);
 
+  const limit = maxTasks ?? 5;
+
   const taskLines = tasks
     .map((t, i) => {
       const hours = t.estimatedHours ?? 2;
-      return `[${i}] "${t.title}" (${hours}h, priority: ${t.priority})`;
+      const deps = t.blockedByIndices && t.blockedByIndices.length > 0
+        ? ` [blocked by: ${t.blockedByIndices.join(', ')}]`
+        : '';
+      return `[${i}] "${t.title}" (${hours}h, priority: ${t.priority})${deps}`;
     })
     .join('\n');
 
@@ -42,25 +48,29 @@ export function buildPlanSprintsPrompt(
 
   return {
     systemPrompt: SYSTEM_JSON,
-    userPrompt: `You are planning development sprints for a project.
+    userPrompt: `You are planning the next focused work session for a project. Select a coherent batch of tasks — NOT the entire backlog.
 
 Project: ${userInput('name', projectName)}
-Sprint length: ${sprintLengthWeeks} week(s)
+Session length: ${sprintLengthWeeks} week(s)
 Team size: ${teamSize} developer(s)
-Capacity per sprint: ~${capacityPerSprint} hours (assumes 70% efficiency)
+Capacity: ~${capacityPerSprint} hours (assumes 70% efficiency)
 ${teamLines}
-Backlog tasks to assign (index, title, estimate, priority):
+Available backlog tasks (index, title, estimate, priority, dependencies):
 ${taskLines}
 
 Rules:
-1. Keep total estimated hours per sprint at or under the capacity limit.
-2. Higher priority tasks (critical > high > medium > low) should appear in earlier sprints.
-3. Group related tasks together when sensible.
-4. Tasks without an estimate should be treated as 2 hours.
-5. Every task must appear in exactly one sprint. Do not omit any tasks.${teamCapacity ? '\n6. Distribute tasks considering individual member availability shown above.' : ''}
+1. Select ${limit} or fewer tasks that form a coherent unit of work. Do NOT assign the entire backlog.
+2. Keep total estimated hours at or under the capacity limit.
+3. Higher priority tasks (critical > high > medium > low) should be selected first.
+4. Respect dependency ordering — if task B is blocked by task A, include A before B (or exclude B).
+5. Group tasks that share domain context (e.g., all auth tasks together, all API tasks together).
+6. Prefer tasks that unblock other work in the backlog.
+7. Tasks without an estimate should be treated as 2 hours.${teamCapacity ? '\n8. Distribute tasks considering individual member availability shown above.' : ''}
 
-Return a JSON array of sprint plans. Name each sprint descriptively based on the work it contains (e.g. "Sprint 1 – Core Auth", "Sprint 2 – Dashboard UI"):
-[{ "name": string, "taskIndices": number[], "totalHours": number }]`,
+Return a JSON array with a SINGLE session plan:
+[{ "name": string, "taskIndices": number[], "totalHours": number, "rationale": string }]
+"name" — descriptive name based on the work (e.g. "Session – Auth & Permissions").
+"rationale" — 2-3 sentences explaining why these tasks were selected together, what they unblock, and why this is the right scope.`,
   };
 }
 

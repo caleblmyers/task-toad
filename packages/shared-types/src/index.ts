@@ -292,6 +292,7 @@ export interface SprintPlanItem {
   name: string;
   taskIds: string[];
   totalHours: number;
+  rationale?: string;
 }
 
 export interface SavedFilter {

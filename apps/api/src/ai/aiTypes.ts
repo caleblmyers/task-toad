@@ -41,6 +41,7 @@ export const SprintPlanSchema = z.object({
   name: z.string(),
   taskIndices: z.array(z.number()),
   totalHours: z.number(),
+  rationale: z.string().optional().default(''),
 });
 
 export const TaskInstructionsSchema = z.object({

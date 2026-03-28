@@ -79,9 +79,9 @@ export const CLOSE_SPRINT_MUTATION = `mutation CloseSprint($sprintId: ID!, $inco
   }
 }`;
 
-export const PREVIEW_SPRINT_PLAN_MUTATION = `mutation PreviewSprintPlan($projectId: ID!, $sprintLengthWeeks: Int!, $teamSize: Int!) {
-  previewSprintPlan(projectId: $projectId, sprintLengthWeeks: $sprintLengthWeeks, teamSize: $teamSize) {
-    name taskIds totalHours
+export const PREVIEW_SPRINT_PLAN_MUTATION = `mutation PreviewSprintPlan($projectId: ID!, $sprintLengthWeeks: Int!, $teamSize: Int!, $maxTasks: Int) {
+  previewSprintPlan(projectId: $projectId, sprintLengthWeeks: $sprintLengthWeeks, teamSize: $teamSize, maxTasks: $maxTasks) {
+    name taskIds totalHours rationale
   }
 }`;
 

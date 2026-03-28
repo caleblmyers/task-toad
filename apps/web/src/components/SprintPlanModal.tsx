@@ -39,6 +39,7 @@ export default function SprintPlanModal({
 }: SprintPlanModalProps) {
   const [sprintLengthWeeks, setSprintLengthWeeks] = useState(2);
   const [teamSize, setTeamSize] = useState(2);
+  const [maxTasks, setMaxTasks] = useState(5);
   const [plan, setPlan] = useState<SprintPlanItem[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [committing, setCommitting] = useState(false);
@@ -86,7 +87,7 @@ export default function SprintPlanModal({
     try {
       const data = await gql<{ previewSprintPlan: SprintPlanItem[] }>(
         PREVIEW_SPRINT_PLAN_MUTATION,
-        { projectId, sprintLengthWeeks, teamSize }
+        { projectId, sprintLengthWeeks, teamSize, maxTasks }
       );
       setPlan(data.previewSprintPlan);
     } catch (error) {
@@ -118,13 +119,13 @@ export default function SprintPlanModal({
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title="AI Sprint Planning" size="md">
+    <Modal isOpen={true} onClose={onClose} title="AI Plan Session" size="md">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-600 flex-shrink-0">
         <div>
-          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">AI Sprint Planning</h2>
+          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Plan Next Session</h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            {backlogTasks.length} unassigned task{backlogTasks.length !== 1 ? 's' : ''} in backlog
+            {backlogTasks.length} eligible task{backlogTasks.length !== 1 ? 's' : ''} in backlog
           </p>
         </div>
         <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-lg" aria-label="Close">✕</button>
@@ -163,10 +164,24 @@ export default function SprintPlanModal({
               <span className="text-sm text-slate-500 dark:text-slate-400">devs</span>
             </div>
           </div>
+          <div>
+            <label htmlFor="sprint-plan-max-tasks" className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Max Tasks</label>
+            <div className="flex items-center gap-2">
+              <input
+                id="sprint-plan-max-tasks"
+                type="number"
+                min={1}
+                max={20}
+                value={maxTasks}
+                onChange={(e) => { setMaxTasks(Number(e.target.value)); setPlan(null); }}
+                className="w-16 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green"
+              />
+            </div>
+          </div>
           <div className="flex-1 text-right">
-            <p className="text-xs text-slate-400 dark:text-slate-500 mb-1.5">~{capacity}h capacity/sprint</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mb-1.5">~{capacity}h capacity</p>
             <Button size="sm" onClick={handleGenerate} disabled={loading || backlogTasks.length === 0}>
-              {loading ? '◌ Planning…' : plan ? '↺ Regenerate' : '✦ Generate Plan'}
+              {loading ? '◌ Planning…' : plan ? '↺ Regenerate' : '✦ Plan Session'}
             </Button>
           </div>
         </div>
@@ -216,12 +231,17 @@ export default function SprintPlanModal({
                     />
                   </div>
                 </div>
-                <ul className="px-4 py-2 space-y-1">
-                  {sprint.taskIds.map((taskId) => {
+                {sprint.rationale && (
+                <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-600">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 italic">{sprint.rationale}</p>
+                </div>
+              )}
+                <ol className="px-4 py-2 space-y-1 list-none">
+                  {sprint.taskIds.map((taskId, taskIdx) => {
                     const task = taskMap[taskId];
                     return (
                       <li key={taskId} className="flex items-center gap-2 text-sm py-0.5">
-                        <span className="text-slate-500 dark:text-slate-400 flex-shrink-0">–</span>
+                        <span className="text-slate-400 dark:text-slate-500 flex-shrink-0 w-5 text-right text-xs font-mono">{taskIdx + 1}.</span>
                         <span className="text-slate-700 dark:text-slate-300 flex-1">{task?.title ?? taskId}</span>
                         {task?.estimatedHours != null && (
                           <span className="text-xs text-slate-400 flex-shrink-0">
@@ -231,7 +251,7 @@ export default function SprintPlanModal({
                       </li>
                     );
                   })}
-                </ul>
+                </ol>
               </div>
             );
           })}
@@ -244,7 +264,7 @@ export default function SprintPlanModal({
             <p className="text-orange-500 text-sm">No backlog tasks to plan. Add tasks to the backlog first.</p>
           ) : (
             <p className="text-slate-400 dark:text-slate-500 text-sm">
-              Set your sprint length and team size, then click Generate Plan.
+              Configure session parameters, then click Plan Session.
             </p>
           )}
         </div>
