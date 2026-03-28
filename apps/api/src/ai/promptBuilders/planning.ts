@@ -323,6 +323,7 @@ Action type guide:
 - fix_review: Process review feedback — auto-fix small issues (typos, missing error handling, simple bugs) by committing to the branch. Creates backlog tasks for larger issues (architectural, new features). Config: { "sourceReviewActionId": "<id of review_pr action>" }. ALWAYS include after review_pr.
 - merge_pr: Merge the pull request on GitHub (squash merge by default). Config: { "sourcePRActionId": "<id of create_pr action>", "mergeMethod"?: "SQUASH" | "MERGE" | "REBASE" }. ALWAYS include as the final step after fix_review when a GitHub repo is connected.
 - write_docs: Generate documentation AND commit it to the feature branch. Config: { "docType": "readme" | "api-docs" | "changelog" }
+- verify_build: Check if the merged code builds and CI passes on the default branch. Config: { "sourcePRActionId": "<id of create_pr action>" }. Optional — include after merge_pr when the project has CI configured.
 - manual_step: A step the user must complete manually. Config: { "description": string, "checklist"?: string[] }
 
 Rules:
@@ -333,7 +334,7 @@ Rules:
 5. Keep the plan focused — typically 2–6 actions. Don't over-plan.
 6. create_pr must always reference a prior generate_code action via sourceActionId (use a placeholder ID like "action_0" referring to the action at index 0).
 7. If the project has a GitHub repository (hasGitHubRepo is true), the plan MUST include: generate_code → create_pr → review_pr → fix_review → merge_pr. All five steps are REQUIRED, not optional. review_pr, fix_review, and merge_pr should have requiresApproval: false.
-8. If the plan includes create_pr and review_pr, optionally add monitor_ci after fix_review (before merge_pr) to verify CI passes, followed by fix_ci as a fallback.
+8. If the plan includes create_pr and review_pr, optionally add monitor_ci after fix_review (before merge_pr) to verify CI passes, followed by fix_ci as a fallback. Optionally add verify_build after merge_pr as a final step to confirm the default branch builds successfully after merge.
 9. Task instructions should describe WHAT to build, not which specific library or vendor to use. Keep instructions implementation-agnostic.
 
 Return JSON:

@@ -312,7 +312,7 @@ export type TaskInsightItem = z.infer<typeof TaskInsightItemSchema>;
 export type TaskInsightsResponse = z.infer<typeof TaskInsightsResponseSchema>;
 
 export const ActionPlanItemSchema = z.object({
-  actionType: z.enum(['generate_code', 'create_pr', 'review_pr', 'write_docs', 'manual_step', 'monitor_ci', 'fix_ci', 'fix_review', 'merge_pr']),
+  actionType: z.enum(['generate_code', 'create_pr', 'review_pr', 'write_docs', 'manual_step', 'monitor_ci', 'fix_ci', 'fix_review', 'merge_pr', 'verify_build']),
   label: z.string(),
   config: z.record(z.string(), z.unknown()),
   requiresApproval: z.boolean(),

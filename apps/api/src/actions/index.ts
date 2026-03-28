@@ -8,6 +8,7 @@ import { monitorCIExecutor } from './executors/monitorCI.js';
 import { fixCIExecutor } from './executors/fixCI.js';
 import { fixReviewExecutor } from './executors/fixReview.js';
 import { mergePRExecutor } from './executors/mergePR.js';
+import { verifyBuildExecutor } from './executors/verifyBuild.js';
 
 export function registerExecutors(): void {
   register(generateCodeExecutor);
@@ -19,6 +20,7 @@ export function registerExecutors(): void {
   register(fixCIExecutor);
   register(fixReviewExecutor);
   register(mergePRExecutor);
+  register(verifyBuildExecutor);
 }
 
 export { get as getExecutor, availableTypes } from './registry.js';
