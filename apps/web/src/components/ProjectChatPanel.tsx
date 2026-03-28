@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useProjectChat } from '../hooks/useProjectChat';
-import type { ChatAction } from '../hooks/useProjectChat';
+import type { ChatAction, ChatMessage } from '../hooks/useProjectChat';
 import { IconClose } from './shared/Icons';
 import Modal from './shared/Modal';
 
@@ -9,6 +9,46 @@ interface ProjectChatPanelProps {
   onClose: () => void;
   onSelectTask?: (taskId: string) => void;
   addToast?: (type: 'success' | 'error' | 'info', message: string) => void;
+}
+
+function renderContentWithTaskLinks(
+  msg: ChatMessage,
+  onSelectTask?: (taskId: string) => void,
+) {
+  if (!onSelectTask || !msg.references || msg.references.length === 0) {
+    return <p className="whitespace-pre-wrap">{msg.content}</p>;
+  }
+
+  const taskRefs = msg.references.filter((r) => r.type === 'task' && r.title);
+  if (taskRefs.length === 0) {
+    return <p className="whitespace-pre-wrap">{msg.content}</p>;
+  }
+
+  // Build a regex matching any task title in the content
+  const escaped = taskRefs.map((r) => r.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const pattern = new RegExp(`(${escaped.join('|')})`, 'g');
+  const titleToId = new Map(taskRefs.map((r) => [r.title, r.id]));
+
+  const parts = msg.content.split(pattern);
+  return (
+    <p className="whitespace-pre-wrap">
+      {parts.map((part, i) => {
+        const taskId = titleToId.get(part);
+        if (taskId) {
+          return (
+            <button
+              key={i}
+              onClick={() => onSelectTask(taskId)}
+              className="text-violet-600 hover:text-violet-800 underline cursor-pointer font-medium"
+            >
+              {part}
+            </button>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </p>
+  );
 }
 
 export default function ProjectChatPanel({ projectId, onClose, onSelectTask, addToast }: ProjectChatPanelProps) {
@@ -77,7 +117,7 @@ export default function ProjectChatPanel({ projectId, onClose, onSelectTask, add
                   ? 'bg-brand-green text-white'
                   : 'bg-slate-100 text-slate-700'
               }`}>
-                <p className="whitespace-pre-wrap">{msg.content}</p>
+                {renderContentWithTaskLinks(msg, onSelectTask)}
                 {msg.references && msg.references.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
                     {msg.references.map((ref, j) => (

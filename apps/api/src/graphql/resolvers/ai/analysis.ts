@@ -502,11 +502,41 @@ export const analysisMutations = {
       return { success: false, message: 'Invalid action data: must be valid JSON' };
     }
 
+    // Helper to validate a task belongs to this project
+    const validateTaskInProject = async (taskId: string, label: string) => {
+      const task = await context.prisma.task.findFirst({
+        where: { taskId, projectId: args.projectId },
+        select: { taskId: true },
+      });
+      if (!task) {
+        throw new ValidationError(`${label}: task ${taskId} not found in this project`);
+      }
+    };
+
+    // Helper to log activity after a successful chat action
+    const logActivity = async (actionType: string, taskId: string | null, details: Record<string, unknown>) => {
+      await context.prisma.activity.create({
+        data: {
+          projectId: args.projectId,
+          orgId: user.orgId,
+          userId: user.userId,
+          taskId,
+          action: 'chat_action',
+          field: actionType,
+          newValue: JSON.stringify(details),
+        },
+      });
+    };
+
     switch (args.action.type) {
       case 'create_task': {
+        const title = data.title as string;
+        if (!title || !title.trim()) {
+          throw new ValidationError('create_task: title is required and must be non-empty');
+        }
         const task = await context.prisma.task.create({
           data: {
-            title: data.title as string,
+            title,
             description: (data.description as string) || null,
             status: (data.status as string) || 'todo',
             priority: (data.priority as string) || 'medium',
@@ -517,39 +547,51 @@ export const analysisMutations = {
           },
         });
         log.info({ taskId: task.taskId, projectId: project.projectId }, 'Chat action: created task');
+        await logActivity('create_task', task.taskId, { title: task.title });
         return { success: true, message: `Created task: ${task.title}`, taskId: task.taskId };
       }
       case 'update_task': {
+        const taskId = data.taskId as string;
+        await validateTaskInProject(taskId, 'update_task');
         const updates: Record<string, unknown> = {};
         if (data.title) updates.title = data.title;
         if (data.description) updates.description = data.description;
         if (data.status) updates.status = data.status;
         if (data.priority) updates.priority = data.priority;
         await context.prisma.task.update({
-          where: { taskId: data.taskId as string },
+          where: { taskId },
           data: updates,
         });
-        log.info({ taskId: data.taskId, projectId: project.projectId }, 'Chat action: updated task');
-        return { success: true, message: 'Updated task', taskId: data.taskId as string };
+        log.info({ taskId, projectId: project.projectId }, 'Chat action: updated task');
+        await logActivity('update_task', taskId, updates);
+        return { success: true, message: 'Updated task', taskId };
       }
       case 'add_dependency': {
+        const sourceTaskId = data.sourceTaskId as string;
+        const targetTaskId = data.targetTaskId as string;
+        await validateTaskInProject(sourceTaskId, 'add_dependency (source)');
+        await validateTaskInProject(targetTaskId, 'add_dependency (target)');
         await context.prisma.taskDependency.create({
           data: {
-            sourceTaskId: data.sourceTaskId as string,
-            targetTaskId: data.targetTaskId as string,
+            sourceTaskId,
+            targetTaskId,
             linkType: (data.linkType as string) || 'blocks',
           },
         });
-        log.info({ sourceTaskId: data.sourceTaskId, targetTaskId: data.targetTaskId, projectId: project.projectId }, 'Chat action: added dependency');
-        return { success: true, message: 'Added dependency', taskId: data.sourceTaskId as string };
+        log.info({ sourceTaskId, targetTaskId, projectId: project.projectId }, 'Chat action: added dependency');
+        await logActivity('add_dependency', sourceTaskId, { sourceTaskId, targetTaskId });
+        return { success: true, message: 'Added dependency', taskId: sourceTaskId };
       }
       case 'update_status': {
+        const taskId = data.taskId as string;
+        await validateTaskInProject(taskId, 'update_status');
         await context.prisma.task.update({
-          where: { taskId: data.taskId as string },
+          where: { taskId },
           data: { status: data.status as string },
         });
-        log.info({ taskId: data.taskId, status: data.status, projectId: project.projectId }, 'Chat action: updated status');
-        return { success: true, message: `Updated status to ${data.status}`, taskId: data.taskId as string };
+        log.info({ taskId, status: data.status, projectId: project.projectId }, 'Chat action: updated status');
+        await logActivity('update_status', taskId, { status: data.status });
+        return { success: true, message: `Updated status to ${data.status}`, taskId };
       }
       default:
         return { success: false, message: `Unknown action type: ${args.action.type}` };

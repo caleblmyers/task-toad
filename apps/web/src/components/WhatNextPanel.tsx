@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { gql } from '../api/client';
 import useAsyncData from '../hooks/useAsyncData';
-import { IconClose } from './shared/Icons';
+import { IconClose, IconRefresh } from './shared/Icons';
 import Badge from './shared/Badge';
 
 interface ChatAction {
@@ -78,6 +78,7 @@ export default function WhatNextPanel({ projectId, onClose, onApplied }: Props) 
       if (result.applyChatAction.success) {
         setAppliedIds((prev) => new Set([...prev, index]));
         onApplied();
+        retry();
       }
     } catch {
       // Error handled by UI state
@@ -91,13 +92,24 @@ export default function WhatNextPanel({ projectId, onClose, onApplied }: Props) 
       <div className="max-w-lg w-full">
         <div className="flex items-center justify-between mb-4">
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">What&apos;s Next?</p>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600"
-          >
-            <IconClose className="w-3 h-3" /> Dismiss
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={retry}
+              disabled={loading}
+              className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 disabled:opacity-50"
+              title="Refresh suggestions"
+            >
+              <IconRefresh className="w-3 h-3" />
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600"
+            >
+              <IconClose className="w-3 h-3" /> Dismiss
+            </button>
+          </div>
         </div>
 
         {loading && (

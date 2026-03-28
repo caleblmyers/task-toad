@@ -47,6 +47,7 @@ const ReleaseListPanel = lazyWithRetry(() => import('../components/ReleaseListPa
 const ReleaseModal = lazyWithRetry(() => import('../components/ReleaseModal'));
 const ExecutionDashboard = lazyWithRetry(() => import('../components/ExecutionDashboard'));
 const WhatNextPanel = lazyWithRetry(() => import('../components/WhatNextPanel'));
+const ProjectChatPanel = lazyWithRetry(() => import('../components/ProjectChatPanel'));
 const TimesheetView = lazyWithRetry(() => import('../components/TimesheetView'));
 import { TaskListSkeleton, KanbanBoardSkeleton } from '../components/Skeleton';
 import ToastContainer from '../components/shared/ToastContainer';
@@ -126,6 +127,7 @@ export default function ProjectDetail() {
   const [gitHubRepo, setGitHubRepo] = useState<GitHubRepoLink | null>(null);
   const [gitHubInstallations, setGitHubInstallations] = useState<GitHubInstallation[]>([]);
   const [showTransition, setShowTransition] = useState<{ sprintId: string; sprintName: string } | null>(null);
+  const [showChat, setShowChat] = useState(false);
 
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -261,6 +263,10 @@ export default function ProjectDetail() {
     if (modal === 'execution-dashboard') {
       setActivePanel('execution-dashboard');
       projectData.setSummary(null);
+      return;
+    }
+    if (modal === 'chat') {
+      setShowChat(true);
       return;
     }
     // Sprint transition carries data
@@ -954,6 +960,24 @@ export default function ProjectDetail() {
               }
             }}
             onClose={() => projectData.setActionPlanPreview(null)}
+          />
+        </Suspense>
+      )}
+
+      {/* Project chat panel */}
+      {showChat && projectData.projectId && (
+        <Suspense fallback={lazyFallback}>
+          <ProjectChatPanel
+            projectId={projectData.projectId}
+            onClose={() => setShowChat(false)}
+            onSelectTask={(taskId: string) => {
+              const task = projectData.rootTasks.find((t) => t.taskId === taskId);
+              if (task) {
+                projectData.selectTask(task);
+                setShowChat(false);
+              }
+            }}
+            addToast={addToast}
           />
         </Suspense>
       )}
