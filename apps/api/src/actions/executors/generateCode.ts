@@ -3,6 +3,7 @@ import type { ActionExecutor, ActionContext, ActionResult } from '../types.js';
 import { generateCode as aiGenerateCode } from '../../ai/aiService.js';
 import { fetchProjectFileTree } from '../../github/githubFileService.js';
 import { commitFiles } from '../../github/githubCommitService.js';
+import { resolveCodeGenContext } from '../../github/repoContextService.js';
 
 const GenerateCodeConfigSchema = z.object({
   styleGuide: z.string().optional(),
@@ -25,8 +26,16 @@ export const generateCodeExecutor: ActionExecutor = {
 
     // Fetch project file tree for context (use feature branch if available)
     let projectFiles: Array<{ path: string; language: string; size: number }> | undefined;
+    let repoContext: Array<{ path: string; language: string; content: string; relevanceReason: string }> | undefined;
     if (ctx.repo) {
       projectFiles = await fetchProjectFileTree(ctx.repo, ctx.plan.branchName ?? undefined).catch(() => undefined);
+
+      // Resolve relevant file contents from the repo for richer AI context
+      repoContext = await resolveCodeGenContext(
+        ctx.repo,
+        { title: task.title, description: task.description, instructions: task.instructions },
+        16000,
+      ).then((r) => r.relevantFiles).catch(() => undefined);
     }
 
     const config = GenerateCodeConfigSchema.parse(JSON.parse(ctx.action.config || '{}'));
@@ -57,6 +66,8 @@ export const generateCodeExecutor: ActionExecutor = {
       projectFiles,
       config.styleGuide ?? null,
       fullContext || null,
+      undefined, // promptLogContext
+      repoContext,
     );
 
     // Check for cancellation after AI response

@@ -132,9 +132,33 @@ export function buildGenerateCodePrompt(data: {
     ? `\nProject Knowledge Base (use for context):\n${userInput('knowledge_base', truncate(data.knowledgeBase, MAX_KB_CHARS))}`
     : '';
 
-  const repoContextLine = data.repoContext && data.repoContext.length > 0
-    ? `\nReference code from the repository (study for patterns, imports, conventions — do NOT regenerate):\n${data.repoContext.map((f) => `--- ${f.path} ---\n${f.content}\n---`).join('\n')}`
+  // Separate schema files and type definition files from general repo context
+  const schemaPatterns = [/prisma\/.*schema.*\.prisma$/, /schema\.prisma$/, /models\.py$/, /schema\.sql$/];
+  const typePatterns = [/\/types\//, /\/interfaces\//, /\.types\.ts$/, /\.d\.ts$/];
+
+  const schemaFiles = (data.repoContext ?? []).filter((f) =>
+    schemaPatterns.some((p) => p.test(f.path))
+  );
+  const typeFiles = (data.repoContext ?? []).filter((f) =>
+    typePatterns.some((p) => p.test(f.path)) && !schemaFiles.includes(f)
+  );
+  const otherRepoFiles = (data.repoContext ?? []).filter(
+    (f) => !schemaFiles.includes(f) && !typeFiles.includes(f)
+  );
+
+  const schemaConstraintLine = schemaFiles.length > 0
+    ? `\nIMPORTANT: The following schema defines the data models for this project. Use EXACTLY these model names, field names, and relations. Do NOT invent new models or rename existing ones.\n${schemaFiles.map((f) => `--- ${f.path} ---\n${f.content}\n---`).join('\n')}`
     : '';
+
+  const typeConstraintLine = typeFiles.length > 0
+    ? `\nThe following type definitions are already established. Use these types and extend them as needed rather than creating conflicting definitions.\n${typeFiles.map((f) => `--- ${f.path} ---\n${f.content}\n---`).join('\n')}`
+    : '';
+
+  const repoContextLine = otherRepoFiles.length > 0
+    ? `\nReference code from the repository (study for patterns, imports, conventions — do NOT regenerate):\n${otherRepoFiles.map((f) => `--- ${f.path} ---\n${f.content}\n---`).join('\n')}`
+    : '';
+
+  const hasRepoContext = schemaFiles.length > 0 || typeFiles.length > 0 || otherRepoFiles.length > 0;
 
   return {
     systemPrompt: SYSTEM_JSON,
@@ -144,8 +168,8 @@ Task: ${userInput('title', data.taskTitle)}
 Description: ${userInput('description', truncate(data.taskDescription, 400))}
 Instructions: ${userInput('instructions', truncate(data.taskInstructions, 800))}
 Project: ${userInput('project', data.projectName)}
-${data.projectDescription ? `Project description: ${userInput('projectDescription', truncate(data.projectDescription, 400))}\n` : ''}${filesLine}${styleGuideLine}${kbLine}${repoContextLine}
-${repoContextLine ? '\nMatch the coding style, import patterns, and naming conventions shown in the reference code and knowledge base. Reuse existing utilities rather than reimplementing them. Use correct relative import paths.' : ''}
+${data.projectDescription ? `Project description: ${userInput('projectDescription', truncate(data.projectDescription, 400))}\n` : ''}${filesLine}${styleGuideLine}${kbLine}${schemaConstraintLine}${typeConstraintLine}${repoContextLine}
+${hasRepoContext ? '\nMatch the coding style, import patterns, and naming conventions shown in the reference code and knowledge base. Reuse existing utilities rather than reimplementing them. Use correct relative import paths.' : ''}
 Return JSON:
 {
   "files": [{ "path": string, "content": string, "language": string, "description": string }],

@@ -50,6 +50,7 @@ Structure rules:
 7. Each node should have "acceptanceCriteria" — a brief description of what "done" looks like.
 8. Task instructions must describe WHAT to build, not which specific vendor or service to use. Never prescribe specific deployment platforms (Vercel, Railway, Heroku, AWS), specific CI providers, or specific third-party services. Instead describe the capability needed (e.g., "add deployment config files and health check endpoint" not "configure Vercel deployment"). The user chooses their own infrastructure.
 9. Do NOT create tasks for deployment, hosting setup, CI/CD pipeline configuration, or infrastructure provisioning. Focus on application code, features, and configuration files that live in the repo.
+10. Each task should be scoped so that code generation produces 3–8 files maximum. If a task would require generating more than 8 files, break it into smaller tasks. For example, "Set up API framework" should be split into "Create data models", "Add CRUD API routes", "Add auth middleware" as separate tasks. Each task should produce one focused, reviewable PR.
 
 Return JSON:
 {

@@ -242,11 +242,18 @@ export function createHandler(prisma: PrismaClient) {
 
       const completedUpstream = upstreamRows.map((row) => {
         const summary = JSON.parse(row.completion_summary!) as Record<string, unknown>;
+        const filesChanged = (summary.filesChanged as string[]) || [];
+        const filesSection = filesChanged.length > 0
+          ? `Files changed:\n${filesChanged.map((f) => `  - ${f}`).join('\n')}\n`
+          : '';
+        const apiContracts = summary.apiContracts
+          ? `API contracts:\n${JSON.stringify(summary.apiContracts, null, 2)}\n`
+          : '';
         return (
           `## Upstream: ${row.title}\n` +
           `What was built: ${(summary.whatWasBuilt as string) || 'N/A'}\n` +
-          `Files: ${((summary.filesChanged as string[]) || []).join(', ')}\n` +
-          (summary.apiContracts ? `API contracts: ${JSON.stringify(summary.apiContracts)}\n` : '') +
+          filesSection +
+          apiContracts +
           (summary.keyDecisions ? `Key decisions: ${((summary.keyDecisions as string[]) || []).join('; ')}\n` : '') +
           (summary.dependencyInfo ? `Note: ${summary.dependencyInfo as string}\n` : '')
         );
