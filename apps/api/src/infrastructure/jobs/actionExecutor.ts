@@ -575,9 +575,12 @@ export function createHandler(prisma: PrismaClient) {
           }
         }
 
-        // Generate cross-task completion summary
+        // Generate cross-task completion summary (skip if budget exhausted)
         if (apiKey) {
-          try {
+          const summaryBudget = await checkBudget(prisma, orgId);
+          if (!summaryBudget.allowed) {
+            log.warn({ planId, orgId }, 'Skipping completion summary — AI budget exhausted');
+          } else try {
             const summaryActions = await prisma.taskAction.findMany({
               where: { planId, status: 'completed' },
               orderBy: { position: 'asc' },

@@ -335,6 +335,33 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
           // Atomic increment to avoid lost-update race under concurrent completions
           await atomicIncrementProgress(prisma, session.id, 'tasksCompleted');
 
+          // Aggregate token/cost usage from AIPromptLog for this task's action plan
+          try {
+            const usageAgg = await prisma.aIPromptLog.aggregate({
+              where: { taskId },
+              _sum: { inputTokens: true, outputTokens: true, costUSD: true },
+            });
+            const tokensUsed = (usageAgg._sum?.inputTokens ?? 0) + (usageAgg._sum?.outputTokens ?? 0);
+            const costCents = Math.round(Number(usageAgg._sum?.costUSD ?? 0) * 100);
+            if (tokensUsed > 0 || costCents > 0) {
+              const defaultJson = '{"tasksCompleted":0,"tasksFailed":0,"tasksSkipped":0,"tokensUsed":0,"estimatedCostCents":0}';
+              await prisma.$executeRaw`
+                UPDATE sessions SET progress = jsonb_set(
+                  jsonb_set(
+                    COALESCE(progress::jsonb, ${defaultJson}::jsonb),
+                    '{tokensUsed}',
+                    (COALESCE((progress::jsonb->>'tokensUsed')::int, 0) + ${tokensUsed})::text::jsonb
+                  ),
+                  '{estimatedCostCents}',
+                  (COALESCE((progress::jsonb->>'estimatedCostCents')::numeric, 0) + ${costCents})::text::jsonb
+                )
+                WHERE session_id = ${session.id}
+              `;
+            }
+          } catch (usageErr) {
+            log.warn({ err: usageErr, taskId, sessionId: session.id }, 'Failed to aggregate token/cost usage for session (non-blocking)');
+          }
+
           // Re-read fresh progress after atomic update
           const progress = await readSessionProgress(prisma, session.id);
 
