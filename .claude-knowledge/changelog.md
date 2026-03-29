@@ -4,6 +4,43 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-28 (Wave 74 — Code Quality + UX + Refactors)
+
+### Wave 74: Code Quality + UX + Refactors (3 workers, 5 tasks)
+
+**Worker 1 — task-001: Test DB isolation + branch flow tests:**
+- `cleanDatabase()` uses `session_replication_role = 'replica'` to disable FK checks during truncation + 200ms settle delay
+- 6 new branch flow unit tests: branch creation, sequential commits, headOid tracking, commit failure safety, conflict handling, resolveCodeGenContext scoring
+
+**Worker 2 — task-002: Priority colors + automation bot attribution:**
+- `PRIORITY_COLORS` map in `taskHelpers.ts` — colored dots/text for critical (red), high (orange), medium (amber), low (slate)
+- Applied in TaskFieldsPanel, KanbanBoard task cards, BacklogView rows
+- Automation comments prefixed with bot indicator and rule name
+
+**Worker 2 — task-003: Sprint column reordering:**
+- Column headers on kanban board are draggable via HTML5 drag-and-drop
+- Visual feedback during drag (border highlight)
+- `onReorderColumns` callback for persistence
+
+**Worker 3 — task-004: Branch cleanup + executor Zod audit:**
+- `deleteBranch()` function in `githubCommitService.ts`
+- Auto-deletes feature branches after successful merge_pr (best-effort, non-blocking)
+- `ManualStepConfigSchema` and `MonitorCIConfigSchema` added to respective executors
+
+**Worker 3 — task-005: replanFailedTask helper extraction:**
+- `createPlanWithActions()` in `apps/api/src/utils/planHelpers.ts`
+- Both `commitActionPlan` and `replanFailedTask` now use shared helper
+- ID remapping logic centralized
+
+**306 tests** (6 new). All pass.
+
+### Open follow-ups
+- Column reorder: wire `onReorderColumns` callback in ProjectDetail to call `updateSprint` mutation
+- Priority color: add colored option backgrounds to priority `<select>` dropdown
+- Branch cleanup: also delete branches on plan cancellation
+
+---
+
 ## 2026-03-28 (Wave 73 — Follow-ups + UX Polish)
 
 ### Wave 73: Pipeline Follow-ups + UX Polish (3 workers, 5 tasks)
