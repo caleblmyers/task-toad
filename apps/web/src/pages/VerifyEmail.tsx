@@ -18,7 +18,7 @@ export default function VerifyEmail() {
   // Already verified — go to app
   useEffect(() => {
     if (user?.emailVerifiedAt) {
-      navigate('/app', { replace: true });
+      navigate('/home', { replace: true });
     }
   }, [user, navigate]);
 
@@ -33,7 +33,7 @@ export default function VerifyEmail() {
       .then(async () => {
         await refreshMe();
         setStatus('done');
-        navigate('/app', { replace: true });
+        navigate('/home', { replace: true });
       })
       .catch((e) => {
         setErr(e instanceof Error ? e.message : 'Verification failed');

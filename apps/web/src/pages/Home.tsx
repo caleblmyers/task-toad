@@ -21,7 +21,7 @@ export default function Home() {
         }`,
         { prompt }
       );
-      navigate('/app/projects/new', {
+      navigate('/projects/new', {
         state: { prompt, options: data.generateProjectOptions },
       });
     } catch (error) {
@@ -54,7 +54,7 @@ export default function Home() {
             err.includes('API key') ? (
               <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
                 No Anthropic API key configured. Go to{' '}
-                <Link to="/app/settings" className="underline font-medium">Settings</Link>{' '}
+                <Link to="/settings" className="underline font-medium">Settings</Link>{' '}
                 to add one.
               </p>
             ) : (

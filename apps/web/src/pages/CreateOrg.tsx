@@ -23,7 +23,7 @@ export default function CreateOrg() {
         { name, apiKey: apiKey.trim() || null }
       );
       await refreshMe();
-      navigate('/app', { replace: true });
+      navigate('/home', { replace: true });
     } catch (error) {
       setErr(error instanceof Error ? error.message : 'Failed to create organization');
     } finally {

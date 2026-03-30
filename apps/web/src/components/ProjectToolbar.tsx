@@ -260,7 +260,7 @@ export default function ProjectToolbar({
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <Link to="/app/projects" className={`text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 ${projectData.isGenerating ? 'pointer-events-none opacity-50' : ''}`}>
+          <Link to="/projects" className={`text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 ${projectData.isGenerating ? 'pointer-events-none opacity-50' : ''}`}>
             ← Projects
           </Link>
           <span className="text-slate-300">/</span>

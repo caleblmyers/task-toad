@@ -4,6 +4,10 @@ import { createChildLogger } from './logger.js';
 const log = createChildLogger('email');
 const APP_URL = process.env.APP_URL ?? 'http://localhost:5173';
 
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 export async function sendEmail(to: string, subject: string, text: string, html?: string): Promise<void> {
   const smtpHost = process.env.SMTP_HOST;
 
@@ -147,9 +151,10 @@ export function buildResetPasswordHtml(token: string): string {
 
 export function buildInviteHtml(orgName: string, token: string): string {
   const url = `${APP_URL}/invite/accept?token=${token}`;
-  return buildEmailBase(`You're Invited to ${orgName}`, `
+  const safeOrgName = escapeHtml(orgName);
+  return buildEmailBase(`You're Invited to ${safeOrgName}`, `
     <p style="margin:0 0 16px;color:#334155;font-size:14px;line-height:1.6;">
-      You've been invited to join <strong>${orgName}</strong> on TaskToad. Click the button below to accept the invitation and start collaborating.
+      You've been invited to join <strong>${safeOrgName}</strong> on TaskToad. Click the button below to accept the invitation and start collaborating.
     </p>
     ${ctaButton(url, 'Accept Invitation')}
     <p style="margin:0 0 8px;color:#94a3b8;font-size:13px;">

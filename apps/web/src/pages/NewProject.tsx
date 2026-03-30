@@ -45,7 +45,7 @@ export default function NewProject() {
   const [creating, setCreating] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  if (!state) return <Navigate to="/app" replace />;
+  if (!state) return <Navigate to="/home" replace />;
 
   // The primary recommendation (first option), and alternatives (rest)
   const recommendation = options[0] ?? null;
@@ -108,7 +108,7 @@ export default function NewProject() {
         );
       }
       sessionStorage.removeItem(SESSION_KEY);
-      navigate(`/app/projects/${projectId}`, {
+      navigate(`/projects/${projectId}`, {
         state: { autoPreview: true, showSetup: true },
       });
     } catch (error) {
@@ -123,7 +123,7 @@ export default function NewProject() {
         <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-200">Your project</h1>
         <button
           type="button"
-          onClick={() => navigate('/app')}
+          onClick={() => navigate('/home')}
           className="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
         >
           &larr; Re-describe
@@ -289,7 +289,7 @@ export default function NewProject() {
       {!selected && !recommendation && !customMode && (
         <div className="text-center py-8 text-slate-400 dark:text-slate-500">
           <p>No recommendation available. Try describing your project differently.</p>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/app')} className="mt-2">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/home')} className="mt-2">
             Go back
           </Button>
         </div>

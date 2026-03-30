@@ -38,7 +38,7 @@ export default function AcceptInvite() {
       );
       // Cookie is set automatically by the server response
       await refreshMe();
-      navigate('/app', { replace: true });
+      navigate('/home', { replace: true });
     } catch (error) {
       setErr(error instanceof Error ? error.message : 'Failed to accept invite');
     } finally {

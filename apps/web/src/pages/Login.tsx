@@ -18,7 +18,7 @@ export default function Login() {
     setLoading(true);
     try {
       await login(email, password);
-      navigate('/app', { replace: true });
+      navigate('/home', { replace: true });
     } catch {
       // error set in context
     } finally {

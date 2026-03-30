@@ -100,7 +100,7 @@ export default function OrgSettings() {
 
   useEffect(() => {
     if (user?.role !== 'org:admin') {
-      navigate('/app', { replace: true });
+      navigate('/home', { replace: true });
       return;
     }
     gql<{ org: Org }>(ORG_QUERY)

@@ -62,7 +62,7 @@ export default function Projects() {
             </label>
           )}
           <Link
-            to="/app"
+            to="/home"
             className="px-4 py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover"
           >
             New project
@@ -79,13 +79,13 @@ export default function Projects() {
       {loading ? (
         <p className="text-slate-600">Loading…</p>
       ) : projects.length === 0 ? (
-        <p className="text-slate-600">No projects yet. <Link to="/app" className="underline">Start one.</Link></p>
+        <p className="text-slate-600">No projects yet. <Link to="/home" className="underline">Start one.</Link></p>
       ) : (
         <ul className="space-y-2">
           {projects.map((p) => (
             <li key={p.projectId} className="flex items-center gap-2">
               <Link
-                to={`/app/projects/${p.projectId}`}
+                to={`/projects/${p.projectId}`}
                 className={`flex-1 block p-4 bg-white rounded-lg shadow hover:bg-slate-50 ${p.archived ? 'opacity-60' : ''}`}
               >
                 <p className={`font-medium text-slate-800 ${p.archived ? 'italic' : ''}`}>

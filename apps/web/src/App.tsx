@@ -9,6 +9,7 @@ import CreateOrg from './pages/CreateOrg';
 import AppLayout from './pages/AppLayout';
 import { SSEProvider } from './hooks/useEventSource';
 import Home from './pages/Home';
+import LandingPage from './pages/LandingPage';
 import VerifyEmail from './pages/VerifyEmail';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
@@ -76,7 +77,6 @@ export default function App() {
             }
           />
           <Route
-            path="/app"
             element={
               <Protected>
                 <SSEProvider>
@@ -85,27 +85,35 @@ export default function App() {
               </Protected>
             }
           >
-            <Route index element={<Home />} />
-            <Route path="portfolio" element={<LazyRoute Component={Portfolio} />} />
-            <Route path="projects" element={<LazyRoute Component={Projects} />} />
-            <Route path="projects/new" element={<LazyRoute Component={NewProject} />} />
-            <Route path="projects/:projectId" element={<LazyRoute Component={ProjectDetail} />} />
-            <Route path="search" element={<LazyRoute Component={Search} />} />
-            <Route path="profile" element={<LazyRoute Component={ProfilePage} />} />
-            <Route path="settings" element={<LazyRoute Component={OrgSettings} />} />
+            <Route path="/home" element={<Home />} />
+            <Route path="/portfolio" element={<LazyRoute Component={Portfolio} />} />
+            <Route path="/projects" element={<LazyRoute Component={Projects} />} />
+            <Route path="/projects/new" element={<LazyRoute Component={NewProject} />} />
+            <Route path="/projects/:projectId" element={<LazyRoute Component={ProjectDetail} />} />
+            <Route path="/search" element={<LazyRoute Component={Search} />} />
+            <Route path="/profile" element={<LazyRoute Component={ProfilePage} />} />
+            <Route path="/settings" element={<LazyRoute Component={OrgSettings} />} />
           </Route>
-          <Route path="/" element={<Navigate to="/app" replace />} />
-          <Route path="*" element={<Navigate to="/app" replace />} />
+          <Route path="/" element={<LandingOrHome />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
     </ErrorBoundary>
   );
 }
 
+function LandingOrHome() {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="p-8">Loading...</div>;
+  if (user?.orgId) return <Navigate to="/home" replace />;
+  if (user) return <Navigate to="/create-org" replace />;
+  return <LandingPage />;
+}
+
 function ProtectedOrCreateOrg({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="p-8">Loading...</div>;
   if (!user) return <Navigate to="/login" replace />;
-  if (user.orgId) return <Navigate to="/app" replace />;
+  if (user.orgId) return <Navigate to="/home" replace />;
   return <>{children}</>;
 }

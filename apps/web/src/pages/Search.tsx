@@ -126,7 +126,7 @@ export default function Search() {
                 {results!.projects.map((p) => (
                   <button
                     key={p.projectId}
-                    onClick={() => navigate(`/app/projects/${p.projectId}`)}
+                    onClick={() => navigate(`/projects/${p.projectId}`)}
                     className="bg-white border border-slate-200 rounded-lg p-4 text-left hover:border-slate-300 hover:shadow-sm transition-all"
                   >
                     <p className="text-sm font-medium text-slate-800">{p.name}</p>
@@ -147,7 +147,7 @@ export default function Search() {
                 {results!.tasks.map((hit) => (
                   <button
                     key={hit.task.taskId}
-                    onClick={() => navigate(`/app/projects/${hit.task.projectId}?task=${hit.task.taskId}`)}
+                    onClick={() => navigate(`/projects/${hit.task.projectId}?task=${hit.task.taskId}`)}
                     className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex items-center gap-3"
                   >
                     <div className="flex-1 min-w-0">

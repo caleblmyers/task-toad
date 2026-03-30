@@ -210,7 +210,7 @@ export default function Portfolio() {
       {/* Projects grid */}
       {projects.length === 0 ? (
         <p className="text-slate-500">
-          No projects yet. <Link to="/app" className="underline">Create one.</Link>
+          No projects yet. <Link to="/home" className="underline">Create one.</Link>
         </p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -219,7 +219,7 @@ export default function Portfolio() {
             return (
               <Link
                 key={p.projectId}
-                to={`/app/projects/${p.projectId}`}
+                to={`/projects/${p.projectId}`}
                 className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-shadow"
               >
                 {/* Header */}

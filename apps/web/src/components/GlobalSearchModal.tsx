@@ -59,12 +59,12 @@ export default function GlobalSearchModal({ onClose }: GlobalSearchModalProps) {
   };
 
   const handleProjectClick = (projectId: string) => {
-    navigate(`/app/projects/${projectId}`);
+    navigate(`/projects/${projectId}`);
     onClose();
   };
 
   const handleTaskClick = (projectId: string, taskId: string) => {
-    navigate(`/app/projects/${projectId}?task=${taskId}`);
+    navigate(`/projects/${projectId}?task=${taskId}`);
     onClose();
   };
 

@@ -30,17 +30,17 @@ const searchIcon = (
 );
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/app', end: true, label: 'New Project', icon: (
+  { to: '/home', end: true, label: 'New Project', icon: (
     <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
       <path d="M8 3v10M3 8h10" strokeLinecap="round" />
     </svg>
   ) },
-  { to: '/app/projects', label: 'Projects', icon: (
+  { to: '/projects', label: 'Projects', icon: (
     <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
       <path d="M3 4h10M3 8h10M3 12h10" strokeLinecap="round" />
     </svg>
   ) },
-  { to: '/app/portfolio', label: 'Portfolio', icon: (
+  { to: '/portfolio', label: 'Portfolio', icon: (
     <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
       <rect x="1.5" y="3" width="5" height="4" rx="0.5" />
       <rect x="9.5" y="3" width="5" height="4" rx="0.5" />
@@ -48,14 +48,14 @@ const NAV_ITEMS: NavItem[] = [
       <rect x="9.5" y="9" width="5" height="4" rx="0.5" />
     </svg>
   ) },
-  { to: '/app/search', label: 'Search', icon: searchIcon },
-  { to: '/app/profile', label: 'Profile', icon: (
+  { to: '/search', label: 'Search', icon: searchIcon },
+  { to: '/profile', label: 'Profile', icon: (
     <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
       <circle cx="8" cy="5.5" r="3" />
       <path d="M2.5 14.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5" strokeLinecap="round" />
     </svg>
   ) },
-  { to: '/app/settings', label: 'Settings', adminOnly: true, icon: (
+  { to: '/settings', label: 'Settings', adminOnly: true, icon: (
     <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
       <circle cx="8" cy="8" r="2" />
       <path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" strokeLinecap="round" />
@@ -206,7 +206,7 @@ export default function AppLayout() {
     return (
       <>
         <div className="p-4 border-b border-slate-700 flex items-center justify-between">
-          <Link to="/app" className={`flex items-center gap-2 font-semibold text-lg ${!isExpanded ? 'justify-center w-full' : ''}`}>
+          <Link to="/home" className={`flex items-center gap-2 font-semibold text-lg ${!isExpanded ? 'justify-center w-full' : ''}`}>
             <img src="/logo.png" alt="" className="w-7 h-7 flex-shrink-0" aria-hidden="true" />
             {isExpanded && 'TaskToad'}
           </Link>
@@ -392,7 +392,7 @@ export default function AppLayout() {
           >
             <MenuIcon />
           </button>
-          <Link to="/app" className="flex items-center gap-2 font-semibold text-lg">
+          <Link to="/home" className="flex items-center gap-2 font-semibold text-lg">
             <img src="/logo.png" alt="" className="w-6 h-6" aria-hidden="true" />
             TaskToad
           </Link>
