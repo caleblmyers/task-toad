@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { gql } from '../api/client';
-import { SPRINTS_QUERY, ACTIVATE_SPRINT_MUTATION, DELETE_SPRINT_MUTATION } from '../api/queries';
+import { SPRINTS_QUERY, ACTIVATE_SPRINT_MUTATION, UPDATE_SPRINT_MUTATION, DELETE_SPRINT_MUTATION } from '../api/queries';
 import type { Sprint, CloseSprintResult, Task } from '../types';
 
 interface UseSprintManagementOptions {
@@ -60,6 +60,20 @@ export function useSprintManagement({ projectId, onTasksChanged, setErr }: UseSp
     setEditingSprint(null);
   }, []);
 
+  const handleReorderColumns = useCallback(async (newColumns: string[]) => {
+    if (!activeSprint) return;
+    const columnsJson = JSON.stringify(newColumns);
+    // Optimistically update local state
+    setSprints((prev) => prev.map((s) => s.sprintId === activeSprint.sprintId ? { ...s, columns: columnsJson } : s));
+    try {
+      await gql<{ updateSprint: Sprint }>(UPDATE_SPRINT_MUTATION, { sprintId: activeSprint.sprintId, columns: columnsJson });
+    } catch (error) {
+      // Revert on failure by reloading
+      loadSprints();
+      setErr(error instanceof Error ? error.message : 'Failed to reorder columns');
+    }
+  }, [activeSprint, loadSprints, setErr]);
+
   const handleDeleteSprint = useCallback(async (sprintId: string) => {
     try {
       await gql<{ deleteSprint: boolean }>(DELETE_SPRINT_MUTATION, { sprintId });
@@ -83,6 +97,7 @@ export function useSprintManagement({ projectId, onTasksChanged, setErr }: UseSp
     handleSprintPlanCreated,
     handleSprintClosed,
     handleSprintUpdated,
+    handleReorderColumns,
     handleDeleteSprint,
     setShowSprintModal,
     setEditingSprint,

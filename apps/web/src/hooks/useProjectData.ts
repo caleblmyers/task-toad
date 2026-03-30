@@ -64,6 +64,7 @@ export interface ProjectData {
   handleDueDateChange: (taskId: string, dueDate: string | null) => Promise<void>;
   handleReorderTask: (taskId: string, beforeTaskId: string | null, afterTaskId: string | null, targetSprintId: string | null) => Promise<void>;
   handleKanbanReorderTask: (taskId: string, position: number) => Promise<void>;
+  handleReorderColumns: (newColumns: string[]) => Promise<void>;
   handleActivateSprint: (sprintId: string) => Promise<void>;
   handleCreateSprint: (sprint: Sprint) => void;
   handleSprintPlanCreated: (newSprints: Sprint[]) => void;
@@ -305,6 +306,7 @@ export function useProjectData(): ProjectData {
     handleAssignSprint: taskCrud.handleAssignSprint, handleAssignUser: taskCrud.handleAssignUser,
     handleDueDateChange: taskCrud.handleDueDateChange, handleReorderTask: taskCrud.handleReorderTask,
     handleKanbanReorderTask,
+    handleReorderColumns: sprintMgmt.handleReorderColumns,
     handleActivateSprint: sprintMgmt.handleActivateSprint,
     handleCreateSprint: sprintMgmt.handleCreateSprint,
     handleSprintPlanCreated: sprintMgmt.handleSprintPlanCreated,

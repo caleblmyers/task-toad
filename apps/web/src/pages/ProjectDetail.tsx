@@ -644,6 +644,7 @@ export default function ProjectDetail() {
                   selectedTask={projectData.selectedTask}
                   onSelectTask={projectData.selectTask}
                   onColumnChange={projectData.handleSprintColumnChange}
+                  onReorderColumns={projectData.handleReorderColumns}
                   epicMap={projectData.epicMap}
                   groupBy={groupBy}
                   orgUsers={projectData.orgUsers}
