@@ -107,6 +107,8 @@ export async function cleanDatabase(): Promise<void> {
     'user_capacities',
     // Field permissions
     'field_permissions',
+    // Sessions (depend on projects, orgs, users)
+    'sessions',
     // Core entities
     'tasks',
     'sprints',
