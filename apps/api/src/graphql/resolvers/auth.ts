@@ -124,7 +124,7 @@ export const authMutations = {
     if (process.env.SMTP_HOST && !user.emailVerifiedAt) {
       const hasVerificationFlow = user.verificationToken || user.verificationTokenExpiry;
       if (hasVerificationFlow) {
-        throw new AuthenticationError('Please verify your email before logging in. Check your inbox for a verification link.');
+        throw new ValidationError('Please verify your email before logging in. Check your inbox for a verification link.');
       }
     }
     const tokens = await generateTokenPair(user);

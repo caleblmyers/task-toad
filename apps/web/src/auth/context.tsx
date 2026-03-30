@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { gql } from '../api/client';
 import { ME_QUERY, LOGIN_MUTATION, SIGNUP_MUTATION, LOGOUT_MUTATION } from '../api/queries';
 import type { MeResponse } from '../types';
@@ -21,10 +21,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const userRef = useRef<MeResponse | null>(null);
 
   // Listen for session-expired events from the API client
+  // Only show the modal if the user was previously logged in (a real session expired),
+  // not on failed login attempts that also return UNAUTHENTICATED
   useEffect(() => {
-    const handler = () => setSessionExpired(true);
+    const handler = () => {
+      if (userRef.current) setSessionExpired(true);
+    };
     window.addEventListener('session-expired', handler);
     return () => window.removeEventListener('session-expired', handler);
   }, []);
@@ -39,17 +44,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const setUserAndRef = useCallback((me: MeResponse | null) => {
+    setUser(me);
+    userRef.current = me;
+  }, []);
+
   const refreshMe = useCallback(async () => {
     const me = await fetchMe();
-    setUser(me);
-  }, [fetchMe]);
+    setUserAndRef(me);
+  }, [fetchMe, setUserAndRef]);
 
   useEffect(() => {
     fetchMe().then((me) => {
-      setUser(me);
+      setUserAndRef(me);
       setLoading(false);
     });
-  }, [fetchMe]);
+  }, [fetchMe, setUserAndRef]);
 
   const login = useCallback(
     async (email: string, password: string) => {
@@ -61,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
         // Cookie is set automatically by the server response
         const me = await fetchMe();
-        setUser(me);
+        setUserAndRef(me);
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Login failed';
         setError(msg);
@@ -91,8 +101,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Cookies are cleared by the server response
     }
-    setUser(null);
-  }, []);
+    setUserAndRef(null);
+  }, [setUserAndRef]);
 
   return (
     <AuthContext.Provider value={{ user, loading, error, login, signup, logout, refreshMe }}>
