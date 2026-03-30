@@ -4,6 +4,31 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-30 (Wave 75 — UX Polish + Pipeline Reliability)
+
+### Pre-wave work
+- **Auth bug fix:** Session-expired modal no longer appears on login page for unverified users. Changed email verification error from `AuthenticationError` to `ValidationError`, and modal only shows when a previously authenticated session expires.
+- **Domain + SMTP:** Registered `tasktoad.app` on Cloudflare, pointed DNS to Railway. Set up Resend for transactional email (verification, password reset, invites).
+- **Landing page:** Added public landing page at `/` for unauthenticated users. Flattened routes — removed `/app` prefix (`/app/projects` → `/projects`).
+- **Meta tags:** Updated OG/Twitter meta to "Autopilot for Software Projects" messaging.
+- **Email security:** HTML-escaped org name in invite emails to prevent injection.
+- **Session tests:** 24 integration tests covering CRUD, lifecycle, resume edge cases, auth isolation, config validation.
+- **Context threading tests:** 18 integration tests covering previousStepContext, upstreamTaskContext, failureContext with edge cases.
+
+### Wave 75: UX Polish + Pipeline Reliability (3 workers, 5 tasks)
+- **Column reorder wiring** (task-001): Connected `onReorderColumns` callback from KanbanBoard to `updateSprint` mutation via `useProjectData`. Column order now persists.
+- **Sprint close→create flow** (task-002): Closing a sprint and choosing "Create Next" now opens SprintCreateModal with auto-populated defaults (incremented name, computed dates) from the just-closed sprint.
+- **Branch cleanup on cancel** (task-003): Cancelling an action plan or session now deletes associated GitHub branches. Uses non-blocking try-catch so cleanup failures don't prevent cancellation.
+- **SSE cross-tab sync** (task-004): Implemented BroadcastChannel-based leader election so only one tab maintains an active SSE connection. Other tabs receive events via relay. Handles leader tab closing with automatic promotion.
+- **Priority select colors** (task-005): Replaced native `<select>` with custom PriorityDropdown component showing colored backgrounds per priority level. Click-outside-to-close, dark mode support.
+
+### Open follow-ups
+- PriorityDropdown: add keyboard accessibility (arrow keys, Escape)
+- SSE cross-tab: consider dev-mode leader tab indicator
+- Branch cleanup on session timeout (timeLimitMinutes expiry) — currently only explicit cancellation
+
+---
+
 ## 2026-03-28 (Wave 74 — Code Quality + UX + Refactors)
 
 ### Wave 74: Code Quality + UX + Refactors (3 workers, 5 tasks)

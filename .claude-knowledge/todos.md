@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work
 
-70 swarm waves + pipeline hardening. First end-to-end pipeline test completed 2026-03-27. Pipeline mechanics work; cross-task coherence is the critical gap. See `pipeline-analysis-2026-03-27.md`.
+75 swarm waves + pipeline hardening. First end-to-end pipeline test completed 2026-03-27. Pipeline mechanics work; cross-task coherence is the critical gap. See `pipeline-analysis-2026-03-27.md`.
 
 ---
 
@@ -52,17 +52,20 @@
 - [x] Long-running AI operations: descriptive loading messages per stage *(Wave 73)*
 - [x] Sprints: first auto-activates on creation *(Wave 73)*
 - [x] Close sprint: offer "create new sprint" option *(Wave 73)*
-- [ ] Sprint creation: pass `previousSprint` prop from close sprint flow for auto-populated defaults
+- [x] Sprint creation: pass `previousSprint` prop from close sprint flow for auto-populated defaults *(Wave 75)*
 - [x] Sprint columns: reorderable *(Wave 74)*
 - [ ] Release notes: manual entry option
 - [ ] Time entry deletion: admin-only
 - [ ] Mobile: horizontal scrolling on project page
 - [x] Automation comments: system/bot attribution *(Wave 74)*
 - [x] Priority dropdown: color coding *(Wave 74)*
-- [ ] SSE cross-tab sync
-- [ ] Column reorder: wire `onReorderColumns` callback in ProjectDetail to call `updateSprint` mutation
-- [ ] Priority color: add colored option backgrounds to the priority `<select>` dropdown (currently only dot + text color)
-- [ ] Branch cleanup: also delete branches on plan cancellation (currently only on successful merge)
+- [x] SSE cross-tab sync *(Wave 75)*
+- [x] Column reorder: wire `onReorderColumns` callback in ProjectDetail to call `updateSprint` mutation *(Wave 75)*
+- [x] Priority color: add colored option backgrounds to the priority `<select>` dropdown (currently only dot + text color) *(Wave 75)*
+- [x] Branch cleanup: also delete branches on plan cancellation (currently only on successful merge) *(Wave 75)*
+- [ ] SSE leader election: add keyboard accessibility to PriorityDropdown (arrow keys, Escape to close)
+- [ ] SSE cross-tab: consider adding a leader tab indicator in dev mode for debugging
+- [ ] Branch cleanup on session timeout — currently only handles explicit cancellation, not `timeLimitMinutes` expiry
 
 ---
 
@@ -71,8 +74,8 @@
 - [x] Fix 3 pre-existing test failures in `insightGeneration.test.ts` — missing mock methods *(pre-Wave 72 fix)*
 - [x] Integration test DB isolation (session_replication_role, settle delay) *(Wave 74)*
 - [x] Integration test for branch flow (6 tests, mock GitHub API) *(Wave 74)*
-- [ ] Test coverage for sessions (CRUD, orchestration, budget/scope, failure policy)
-- [ ] Test coverage for context threading (previousStepContext, upstream summaries, failure context)
+- [x] Test coverage for sessions (CRUD, orchestration, budget/scope, failure policy) — 24 integration tests *(pre-Wave 75)*
+- [x] Test coverage for context threading (previousStepContext, upstream summaries, failure context) — 18 integration tests *(pre-Wave 75)*
 - [ ] Test coverage for fix_review (approved skip, AI fixes with source, deferred tasks, duplicate detection)
 - [ ] Integration test for logout→login-as-different-user flow
 - [ ] merge-worker.sh: auto-detect lockfile changes
@@ -94,7 +97,7 @@
 ## Future
 
 - [ ] Stripe integration for billing
-- [ ] Custom domain
+- [x] Custom domain — `tasktoad.app` registered on Cloudflare, DNS pointed to Railway *(2026-03-30)*
 - [ ] Scheduled report delivery (depends on SMTP)
 - [ ] License gating test coverage
 
@@ -154,5 +157,6 @@
 | 72 | 2026-03-28 | Pipeline reliability: verify_build action, sprint close reconciliation, session planning, session progress tracking |
 | 73 | 2026-03-28 | Follow-ups + UX: verify_build polling, session time/resume, chat validation/logging, sprint auto-activate, AI loading states |
 | 74 | 2026-03-28 | Quality + UX + refactors: test DB isolation, branch flow tests, priority colors, automation bot, column reorder, branch cleanup, Zod audit, planHelpers extraction |
+| 75 | 2026-03-30 | Column reorder wiring, sprint close→create flow, branch cleanup on cancel, SSE cross-tab sync, priority select colors |
 
 Full wave details in `changelog.md`.
