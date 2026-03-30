@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Task, Sprint, OrgUser, Label } from '../../types';
 import type { TaskTimeSummary } from '@tasktoad/shared-types';
 import { statusLabel, PRIORITY_COLORS } from '../../utils/taskHelpers';
@@ -43,6 +43,67 @@ function formatDuration(minutes: number): string {
   if (h === 0) return `${m}m`;
   if (m === 0) return `${h}h`;
   return `${h}h ${m}m`;
+}
+
+const PRIORITY_OPTIONS = [
+  { value: 'critical', label: 'Critical' },
+  { value: 'high', label: 'High' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'low', label: 'Low' },
+] as const;
+
+function PriorityDropdown({ value, disabled, onChange }: { value: string; disabled?: boolean; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const colors = PRIORITY_COLORS[value];
+
+  useEffect(() => {
+    if (!open) return;
+    function handleMouseDown(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleMouseDown);
+    return () => document.removeEventListener('mousedown', handleMouseDown);
+  }, [open]);
+
+  return (
+    <div className="mb-4" ref={containerRef}>
+      <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Priority</span>
+      <div className="relative mt-1">
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => setOpen((o) => !o)}
+          className={`flex items-center gap-2 w-full border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-sm text-left ${colors?.bg ?? ''} ${colors?.text ?? ''} disabled:opacity-50`}
+        >
+          <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colors?.dot ?? 'bg-slate-400'}`} />
+          {PRIORITY_OPTIONS.find((o) => o.value === value)?.label ?? value}
+          <svg className="ml-auto w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+        </button>
+        {open && (
+          <div className="absolute z-50 mt-1 w-full rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg">
+            {PRIORITY_OPTIONS.map((opt) => {
+              const optColors = PRIORITY_COLORS[opt.value];
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => { onChange(opt.value); setOpen(false); }}
+                  className={`flex items-center gap-2 w-full px-2 py-1.5 text-sm text-left hover:brightness-95 dark:hover:brightness-110 ${optColors?.bg ?? ''} ${optColors?.text ?? ''} first:rounded-t-md last:rounded-b-md`}
+                >
+                  <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${optColors?.dot ?? 'bg-slate-400'}`} />
+                  {opt.label}
+                  {opt.value === value && <svg className="ml-auto w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function TaskFieldsPanel({
@@ -209,28 +270,15 @@ export default function TaskFieldsPanel({
       </div>
 
       {/* Priority */}
-      <div className="mb-4">
-        <label htmlFor="task-priority-select" className="text-xs font-medium text-slate-500 uppercase tracking-wide">Priority</label>
-        <div className="flex items-center gap-2 mt-1">
-          <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${PRIORITY_COLORS[task.priority]?.dot ?? 'bg-slate-400'}`} />
-          <select
-            id="task-priority-select"
-            value={task.priority}
-            onChange={(e) => {
-              if (onUpdateTask) {
-                onUpdateTask(task.taskId, { priority: e.target.value });
-              }
-            }}
-            className={`border border-slate-300 rounded px-2 py-1 text-sm ${PRIORITY_COLORS[task.priority]?.text ?? ''}`}
-            disabled={disabled}
-          >
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-            <option value="critical">Critical</option>
-          </select>
-        </div>
-      </div>
+      <PriorityDropdown
+        value={task.priority}
+        disabled={disabled}
+        onChange={(value) => {
+          if (onUpdateTask) {
+            onUpdateTask(task.taskId, { priority: value });
+          }
+        }}
+      />
 
       {/* Estimate */}
       {task.estimatedHours != null && (
