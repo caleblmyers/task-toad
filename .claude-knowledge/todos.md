@@ -1,81 +1,38 @@
 # TaskToad — Remaining Work
 
-75 swarm waves + pipeline hardening. First end-to-end pipeline test completed 2026-03-27. Pipeline mechanics work; cross-task coherence is the critical gap. See `pipeline-analysis-2026-03-27.md`.
+75 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Pipeline mechanics work; launching as closed-source SaaS.
 
 ---
 
-## Autopilot Pipeline (Priority)
+## Launch Blockers
 
-### Code Generation Coherence
-- [x] **R1: Fetch repo file contents in generateCode** — wired `resolveCodeGenContext()` into executor, passes `repoContext` to AI *(Wave 71)*
-- [x] **R2: Schema-first constraint** — detects Prisma schema and type definitions, adds "use exactly these models" instruction *(Wave 71)*
-- [x] **R3: Richer cross-task context** — `upstreamTaskContext` includes `filesChanged` bullet lists and `apiContracts` unconditionally *(Wave 71)*
-- [x] **Decomposition quality** — rule 10 in hierarchical plan prompt: 3-8 files max per task *(Wave 71)*
-
-### Pipeline Steps
-- [x] **R4: Post-merge build verification** — `verify_build` executor checks CI status on default branch after merge, skips gracefully when no CI configured. Registered in action types, Zod schema, and planning prompt as optional post-merge step. *(Wave 72)*
-- [x] **R5: Sprint close reconciliation** — `closeSprint` checks CI on default branch, auto-creates high-priority reconciliation task with `autoComplete: true` on failure, shows status in close modal. *(Wave 72)*
-- [x] **Deferred task context** — inherits parent epic, `informs` dependency, PR number in description *(Wave 71)*
-- [x] **Optimize knowledge retrieval** — cached per planId, threshold raised to 10 entries *(Wave 71)*
-- [x] **Fix false stall detection** — 30s grace period before showing Resume button *(Wave 71)*
-- [x] **Auto-Complete button** — hidden when action plan exists *(Wave 71)*
-- [x] **Branch/commit naming** — `{slug}-{shortId}` format *(Wave 71)*
-
-### Sessions & Orchestration
-- [x] **Evolve "AI Plan Sprint" into session planning** — selects 3-5 coherent tasks with dependency awareness, rationale, and `maxTasks` parameter. Frontend updated with session labeling. *(Wave 72)*
-- [x] **Session progress: track token usage and cost** — aggregates from AIPromptLog, atomic jsonb_set update. *(Wave 72)*
-- [x] **Session time limit enforcement** — check `timeLimitMinutes` alongside budget/scope checks. *(Wave 73)*
-- [x] **Session resume edge cases** — cleans up archived/deleted tasks, clears autoComplete on removed tasks. *(Wave 73)*
-- [x] **Rate limiting for completionSummary generation** — budget check added before summary AI call, skips with warning when exhausted. *(Wave 72)*
-- [x] **verify_build retry/polling for in-progress checks** — polls every 30s, max 20 attempts, uses 'polling' status pattern. *(Wave 73)*
-- [x] **Session planning: commitSprintPlan compatibility** — assigns tasks to existing active sprint for single-session plans. *(Wave 73)*
-- [x] **Reconciliation task: link back to sprint** — assigned to next sprint with description referencing source sprint. *(Wave 73)*
-
----
-
-## Bootstrap Flow Redesign
-
-- [x] Fix race condition: GitHub repo modal guarded by `isDialogActive` flag *(Wave 71)*
-- [x] Plan generation UX: skeleton cards + progress messages in HierarchicalPlanDialog *(Wave 71)*
-- [x] Default to backlog view after project creation *(Wave 71)*
-- [x] **Single project interpretation** — prompt updated in `generation.ts`, dead `projectOptions.ts` removed *(post-Wave 71 fix)*
-- [ ] Replace stacked modals with single-panel wizard (step 1 of N) — lower priority, current flow works with modal guard fix
+- [ ] **Landing page polish** — current version is functional but needs professional design work
+- [ ] **Test signup flow on prod** — verify Resend emails arrive, full signup→verify→login works
+- [x] Custom domain — `tasktoad.app` registered on Cloudflare, DNS pointed to Railway *(2026-03-30)*
+- [x] SMTP setup — Resend configured for transactional email *(2026-03-30)*
+- [ ] Stripe integration for billing
 
 ---
 
 ## UX
 
-- [x] Chat actions: input validation for applyChatAction *(Wave 73)*
-- [x] Chat actions: activity log entries when tasks created/updated via chat *(Wave 73)*
-- [x] WhatNextPanel: refresh button after applying actions *(Wave 73)*
-- [x] ProjectChatPanel: wire `onSelectTask` prop from ProjectDetail, clickable task references *(Wave 73)*
-- [x] Long-running AI operations: descriptive loading messages per stage *(Wave 73)*
-- [x] Sprints: first auto-activates on creation *(Wave 73)*
-- [x] Close sprint: offer "create new sprint" option *(Wave 73)*
-- [x] Sprint creation: pass `previousSprint` prop from close sprint flow for auto-populated defaults *(Wave 75)*
-- [x] Sprint columns: reorderable *(Wave 74)*
+- [ ] PriorityDropdown: keyboard accessibility (arrow keys, Escape to close)
 - [ ] Release notes: manual entry option
 - [ ] Time entry deletion: admin-only
 - [ ] Mobile: horizontal scrolling on project page
-- [x] Automation comments: system/bot attribution *(Wave 74)*
-- [x] Priority dropdown: color coding *(Wave 74)*
-- [x] SSE cross-tab sync *(Wave 75)*
-- [x] Column reorder: wire `onReorderColumns` callback in ProjectDetail to call `updateSprint` mutation *(Wave 75)*
-- [x] Priority color: add colored option backgrounds to the priority `<select>` dropdown (currently only dot + text color) *(Wave 75)*
-- [x] Branch cleanup: also delete branches on plan cancellation (currently only on successful merge) *(Wave 75)*
-- [ ] SSE leader election: add keyboard accessibility to PriorityDropdown (arrow keys, Escape to close)
-- [ ] SSE cross-tab: consider adding a leader tab indicator in dev mode for debugging
+- [ ] Replace stacked modals with single-panel wizard (step 1 of N) — lower priority
+
+---
+
+## Pipeline
+
 - [ ] Branch cleanup on session timeout — currently only handles explicit cancellation, not `timeLimitMinutes` expiry
+- [ ] SSE cross-tab: consider adding a leader tab indicator in dev mode for debugging
 
 ---
 
 ## Code Quality & Testing
 
-- [x] Fix 3 pre-existing test failures in `insightGeneration.test.ts` — missing mock methods *(pre-Wave 72 fix)*
-- [x] Integration test DB isolation (session_replication_role, settle delay) *(Wave 74)*
-- [x] Integration test for branch flow (6 tests, mock GitHub API) *(Wave 74)*
-- [x] Test coverage for sessions (CRUD, orchestration, budget/scope, failure policy) — 24 integration tests *(pre-Wave 75)*
-- [x] Test coverage for context threading (previousStepContext, upstream summaries, failure context) — 18 integration tests *(pre-Wave 75)*
 - [ ] Test coverage for fix_review (approved skip, AI fixes with source, deferred tasks, duplicate detection)
 - [ ] Integration test for logout→login-as-different-user flow
 - [ ] merge-worker.sh: auto-detect lockfile changes
@@ -88,17 +45,12 @@
 - [ ] **Resolver auth guards** — `requireEntity<T>()` helper, do incrementally
 - [ ] **AI feature registry** — consolidate 40+ wrapper functions in aiService.ts
 - [ ] **Extract insight generation to event listeners** — move from actionExecutor to async event-driven pattern
-- [x] **replanFailedTask shared helper** — `createPlanWithActions` in `planHelpers.ts` *(Wave 74)*
-- [x] **Branch cleanup strategy** — auto-delete after successful merge_pr *(Wave 74)*
-- [x] **Audit executor config Zod validation** — manual_step and monitor_ci now have schemas *(Wave 74)*
 
 ---
 
 ## Future
 
-- [ ] Stripe integration for billing
-- [x] Custom domain — `tasktoad.app` registered on Cloudflare, DNS pointed to Railway *(2026-03-30)*
-- [ ] Scheduled report delivery (depends on SMTP)
+- [ ] Scheduled report delivery (depends on SMTP — now configured)
 - [ ] License gating test coverage
 
 ---
