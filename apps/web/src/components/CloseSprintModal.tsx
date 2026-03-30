@@ -12,7 +12,7 @@ interface CloseSprintModalProps {
   otherSprints: Sprint[];
   onClosed: (result: CloseSprintResult) => void;
   onActivateNext: (sprintId: string) => void;
-  onCreateSprint: () => void;
+  onCreateSprint: (sprintData: { name: string; startDate?: string | null; endDate?: string | null }) => void;
   onClose: () => void;
 }
 
@@ -312,7 +312,7 @@ export default function CloseSprintModal({
             ) : (
               <div className="mt-4 space-y-3">
                 <p className="text-sm text-slate-500">No upcoming sprint. Create one?</p>
-                <Button onClick={() => { onCreateSprint(); onClose(); }} className="w-full rounded-lg">
+                <Button onClick={() => { onCreateSprint({ name: sprint.name, startDate: sprint.startDate, endDate: sprint.endDate }); onClose(); }} className="w-full rounded-lg">
                   + Create Next Sprint
                 </Button>
                 <button

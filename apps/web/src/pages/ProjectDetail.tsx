@@ -122,6 +122,7 @@ export default function ProjectDetail() {
     if (saved === 'assignee' || saved === 'priority' || saved === 'epic') return saved;
     return null;
   });
+  const [previousSprint, setPreviousSprint] = useState<{ name: string; startDate?: string | null; endDate?: string | null } | null>(null);
   const [timelineView, setTimelineView] = useState(false);
   const [projectActivities, setProjectActivities] = useState<Activity[]>([]);
   const [gitHubRepo, setGitHubRepo] = useState<GitHubRepoLink | null>(null);
@@ -750,8 +751,9 @@ export default function ProjectDetail() {
         <Suspense fallback={lazyFallback}>
           <SprintCreateModal
             projectId={projectData.projectId}
+            previousSprint={previousSprint ?? undefined}
             onCreated={projectData.handleCreateSprint}
-            onClose={() => projectData.setShowSprintModal(false)}
+            onClose={() => { projectData.setShowSprintModal(false); setPreviousSprint(null); }}
           />
         </Suspense>
       )}
@@ -794,7 +796,7 @@ export default function ProjectDetail() {
               otherSprints={projectData.sprints.filter((s) => !s.closedAt && s.sprintId !== projectData.closeSprintId)}
               onClosed={projectData.handleSprintClosed}
               onActivateNext={projectData.handleActivateSprint}
-              onCreateSprint={() => projectData.setShowSprintModal(true)}
+              onCreateSprint={(sprintData) => { setPreviousSprint(sprintData); projectData.setShowSprintModal(true); }}
               onClose={() => projectData.setCloseSprintId(null)}
             />
           </Suspense>
