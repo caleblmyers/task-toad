@@ -11,6 +11,8 @@ import { retrieveRelevantKnowledge } from '../../ai/knowledgeRetrieval.js';
 import { abortPlan } from '../../infrastructure/jobs/actionExecutor.js';
 import { createChildLogger } from '../../utils/logger.js';
 import { createPlanWithActions } from '../../utils/planHelpers.js';
+import { deleteBranch } from '../../github/githubCommitService.js';
+import type { GitHubRepoLink } from '../../github/githubTypes.js';
 
 const log = createChildLogger('taskaction-resolver');
 
@@ -492,6 +494,40 @@ export const taskActionMutations = {
       where: { planId: args.planId, status: { in: ['pending', 'executing'] } },
       data: { status: 'skipped' },
     });
+
+    // Clean up the GitHub branch if one was created
+    if (plan.branchName) {
+      try {
+        const task = await context.prisma.task.findUnique({
+          where: { taskId: plan.taskId },
+          select: {
+            project: {
+              select: {
+                githubRepositoryId: true,
+                githubRepositoryName: true,
+                githubRepositoryOwner: true,
+                githubInstallationId: true,
+                githubDefaultBranch: true,
+              },
+            },
+          },
+        });
+        const p = task?.project;
+        if (p?.githubRepositoryId && p.githubInstallationId) {
+          const repo: GitHubRepoLink = {
+            repositoryId: p.githubRepositoryId,
+            repositoryName: p.githubRepositoryName ?? '',
+            repositoryOwner: p.githubRepositoryOwner ?? '',
+            installationId: p.githubInstallationId,
+            defaultBranch: p.githubDefaultBranch ?? 'main',
+          };
+          await deleteBranch(repo, plan.branchName);
+          log.info({ planId: args.planId, branchName: plan.branchName }, 'Deleted branch on plan cancellation');
+        }
+      } catch (err) {
+        log.warn({ err, planId: args.planId, branchName: plan.branchName }, 'Failed to delete branch on plan cancellation (non-blocking)');
+      }
+    }
 
     return context.prisma.taskActionPlan.update({
       where: { id: args.planId },
