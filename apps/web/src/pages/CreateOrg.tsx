@@ -50,6 +50,7 @@ export default function CreateOrg() {
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             hint="Optional — you can add this later in Settings."
+            autoComplete="off"
           />
           {err && <p className="text-sm text-red-600" aria-live="polite">{err}</p>}
           <Button type="submit" loading={loading} className="w-full">

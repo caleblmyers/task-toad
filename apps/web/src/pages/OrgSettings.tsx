@@ -220,6 +220,7 @@ export default function OrgSettings() {
                     onChange={(e) => apiKeyForm.setValue('apiKey', e.target.value)}
                     error={apiKeyForm.error ?? undefined}
                     className="font-mono"
+                    autoComplete="off"
                   />
                   <Input
                     label="Confirm your password"
@@ -227,6 +228,7 @@ export default function OrgSettings() {
                     placeholder="Enter your password"
                     value={apiKeyForm.values.confirmPassword}
                     onChange={(e) => apiKeyForm.setValue('confirmPassword', e.target.value)}
+                    autoComplete="off"
                   />
                   {apiKeyForm.success && <p className="text-sm text-green-600">API key saved.</p>}
                   <button

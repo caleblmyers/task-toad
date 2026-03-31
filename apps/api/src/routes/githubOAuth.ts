@@ -116,21 +116,13 @@ router.get(['/api/auth/github/callback', '/auth/github/callback'], async (req, r
 
     log.info({ userId, githubLogin: githubUser.login }, 'GitHub account connected');
 
-    // Return HTML that notifies the opener and closes the popup.
-    // Use '*' for targetOrigin since in dev the popup lands on :3001 but opener is on :5173.
-    // The state token already authenticates the request, so this is safe.
-    res.send(`<!DOCTYPE html>
-<html><head><title>GitHub Connected</title></head>
-<body>
-<script>
-  if (window.opener) {
-    window.opener.postMessage({ type: 'github-oauth-success', login: '${githubUser.login}' }, '*');
-    window.close();
-  } else {
-    document.body.innerText = 'GitHub account connected! You can close this window.';
-  }
-</script>
-</body></html>`);
+    // Redirect to a frontend page that handles the popup close.
+    // We can't rely on window.opener here — browsers strip it after cross-origin
+    // navigation through github.com. Instead, redirect to a frontend route that
+    // uses postMessage + window.close(), or falls back to localStorage event.
+    const frontendOrigin = process.env.CORS_ORIGINS?.split(',')[0] ?? '';
+    const redirectUrl = `${frontendOrigin}/github-callback?login=${encodeURIComponent(githubUser.login)}`;
+    res.redirect(redirectUrl);
   } catch (err) {
     log.error({ error: err instanceof Error ? err.message : err }, 'GitHub OAuth callback error');
     res.status(500).send('Failed to connect GitHub account. Please try again.');

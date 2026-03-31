@@ -117,15 +117,27 @@ export default function ProjectSetupWizard({
       .catch(() => setInstallations([]))
       .finally(() => setLoadingInstallations(false));
 
-    // Listen for GitHub OAuth popup completion
+    // Listen for GitHub OAuth popup completion (postMessage or localStorage fallback)
     const handleMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       if (event.data?.type === 'github-oauth-success') {
         setGithubLogin(event.data.login);
       }
     };
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== 'github-oauth-result' || !event.newValue) return;
+      try {
+        const { login } = JSON.parse(event.newValue);
+        if (login) setGithubLogin(login);
+      } catch { /* ignore */ }
+      localStorage.removeItem('github-oauth-result');
+    };
     window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      window.removeEventListener('storage', handleStorage);
+    };
   }, [isOpen]);
 
   // Pre-fetch recommendation as soon as we have a projectId (background fetch during github step)

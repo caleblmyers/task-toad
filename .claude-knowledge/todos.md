@@ -15,9 +15,22 @@
 
 ---
 
+## Bug Fixes
+
+- [ ] **Auto-Complete button text changes** — after clicking to generate a plan, button label changes to the status description text instead of staying as "Auto Complete" or showing a loading state
+- [ ] **Commits attributed to user not bot** — code committed via TaskToad action plans shows as the connected user, not the TaskToad bot. Investigate whether installation token is being used correctly for `createCommitOnBranch`
+- [ ] **Kanban column overflow not scrollable** — task lists in board view columns don't scroll when tasks overflow the viewport
+- [ ] **GitHub OAuth popup redirect** — popup navigates through github.com and loses `window.opener`, redirect to frontend callback page instead *(fix in progress)*
+
+---
+
 ## UX
 
 - [x] PriorityDropdown: keyboard accessibility (arrow keys, Escape to close, ARIA attributes) *(Wave 76)*
+- [ ] **AI review comments collapsed by default** — PR review comments in ActionProgressPanel should be collapsed, not expanded
+- [ ] **Close sprint/session from board view** — currently requires navigating to backlog; add close option to board view header
+- [ ] **Hierarchical plan streaming progress** — plan generation (epics + tasks) should stream partial results (epics first, then tasks per epic) instead of showing only a spinner. User has no context on progress, failure, or status during long waits
+- [ ] **Long user-facing flows need progress indicators** — scaffold generation, plan generation, and other synchronous AI flows need step-by-step progress feedback, not just a spinner. Action plan timelines are fine (background), but user-directed flows that block the UI are bad UX
 - [ ] Release notes: manual entry option
 - [ ] Time entry deletion: admin-only
 - [ ] Mobile: horizontal scrolling on project page
@@ -31,7 +44,48 @@
 - [x] **merge_pr executor: auto-update branch before merge** — `updatePullRequestBranch()` + auto-retry *(Wave 76)*
 - [x] **merge_pr executor: detect already-merged PR** — `getPullRequestState()` check before merge *(Wave 76)*
 - [x] **merge_pr executor: handle merge conflicts** — structured `errorReason` field *(Wave 76)*
+- [ ] **Concurrent action plan prevention** — prevent starting a new action plan while one is running on the same project (backend guard). Parallel execution is a future premium feature
+- [ ] **fix_review vague results** — AI responses too varied, can break parsing. Three-pronged fix: (1) stricter prompt constraints with few-shot examples of expected output format, (2) response normalization layer that coerces common AI variations into expected schema, (3) retry with error feedback appended to prompt for self-correction
+- [ ] **Verify offloaded task quality** — deferred tasks created by fix_review should match the detail level of originals, have no duplicates, and not conflict with project goals. Audit and improve the deferred task creation prompt
 - [ ] SSE cross-tab: consider adding a leader tab indicator in dev mode for debugging
+
+---
+
+## Pillar 1: Decomposition Engine
+
+- [ ] **Dependency inference during planning** — planner generates tasks but doesn't infer dependencies. Should output a dependency graph, not just a flat list
+- [ ] **Decision points in task plans** — distinguish implementation tasks from decision tasks. Tech/service choices should be generic with options, not opinionated picks (e.g., "Set up auth" with Auth0/JWT/Clerk options, not "Set up Auth0")
+- [ ] **Planning quality feedback loop** — when tasks fail during execution, feed that back to improve future decomposition
+- [ ] **Scope estimation** — each decomposed task should have estimated complexity/effort for orchestrator sequencing decisions
+- [ ] **Iterative refinement** — re-plan a subset of tasks when requirements change without regenerating the entire plan
+
+---
+
+## Pillar 2: Context Threading
+
+- [ ] **Dependency-aware execution ordering** — orchestrator should execute tasks in topological order based on dependency graph, not just sequentially within a plan
+
+---
+
+## Pillar 3: Orchestration
+
+- [ ] **Session auto start/stop** — simple start/stop toggle that kicks off autonomous loop: pick next task → generate plan → execute → proceed to next. With configurable retries. Premium feature candidate
+- [ ] **Parallel execution streams** — independent tasks (no dependency) should execute in parallel. Requires DAG-based scheduler instead of sequential executor. Premium feature
+- [ ] **Re-planning on failure** — when an action fails and can't be retried, generate a new plan for remaining work instead of stopping
+- [ ] **Health monitoring** — detect stuck tasks, stale branches, conflicting changes. Alert user when intervention needed
+- [ ] **Merge orchestration** — after PR approved + CI passes, auto-merge and trigger downstream tasks
+- [ ] **Progress dashboard improvements** — project-level pipeline status ("3 of 12 tasks executing, 2 PRs open, 1 blocked on CI"), not just per-task action plans
+- [ ] **Bidirectional GitHub sync** — GitHub events (commits, PR merges, issue closes, CI status) should update TaskToad task state. Currently one-directional. Webhook handler only creates link records, doesn't update task statuses
+- [ ] **Agent abstraction** — decouple from direct Claude API calls. Support pluggable agents (Claude Code, Codex, local LLMs) behind common interface. Phase 4
+
+---
+
+## Onboarding & Scaffolding
+
+- [ ] **Existing repo onboarding flow** — connect repo → provide intent → AI analyzes codebase → generates project description + KB entries + task backlog → user reviews
+- [ ] **AI-friendly repo scaffolding** — scaffold should also generate `CLAUDE.md` and `.claude-knowledge/` context files so repos are immediately usable with Claude Code/Codex
+- [ ] **Remove onboarding interview** — replace multi-question technical interview with organic KB seeding (project description, scaffold output, decision points, task summaries, repo analysis). Optional single free-text field on creation instead
+- [ ] **Global org/user knowledge base** — context that spans all projects, not just per-project KB
 
 ---
 
@@ -58,6 +112,7 @@
 
 - [ ] Scheduled report delivery (depends on SMTP — now configured)
 - [ ] License gating test coverage
+- [ ] Multi-project decomposition — break down goals spanning multiple repos/projects
 
 ---
 

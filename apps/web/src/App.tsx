@@ -14,6 +14,7 @@ import VerifyEmail from './pages/VerifyEmail';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import AcceptInvite from './pages/AcceptInvite';
+import GitHubCallback from './pages/GitHubCallback';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 
 // Lazy-load heavy route components for code-splitting
@@ -68,6 +69,7 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/invite/accept" element={<AcceptInvite />} />
+          <Route path="/github-callback" element={<GitHubCallback />} />
           <Route
             path="/create-org"
             element={
