@@ -167,6 +167,82 @@ export async function postPullRequestReview(
   }
 }
 
+const GET_PULL_REQUEST_STATE = `
+  query GetPullRequestState($nodeId: ID!) {
+    node(id: $nodeId) {
+      ... on PullRequest {
+        state
+        number
+        url
+      }
+    }
+  }
+`;
+
+interface GetPullRequestStateResponse {
+  node: {
+    state: 'OPEN' | 'CLOSED' | 'MERGED';
+    number: number;
+    url: string;
+  } | null;
+}
+
+/**
+ * Query the current state of a pull request via GitHub GraphQL.
+ */
+export async function getPullRequestState(
+  installationId: string,
+  pullRequestId: string,
+): Promise<{ state: 'OPEN' | 'CLOSED' | 'MERGED'; number: number; url: string }> {
+  const token = await getInstallationToken(installationId);
+
+  const data = await githubRequest<GetPullRequestStateResponse>(
+    token,
+    GET_PULL_REQUEST_STATE,
+    { nodeId: pullRequestId },
+    installationId,
+  );
+
+  if (!data.node) {
+    throw new Error(`Pull request not found: ${pullRequestId}`);
+  }
+
+  return { state: data.node.state, number: data.node.number, url: data.node.url };
+}
+
+/**
+ * Update a pull request branch (sync with base branch) via GitHub REST API.
+ */
+export async function updatePullRequestBranch(
+  installationId: string,
+  owner: string,
+  repo: string,
+  prNumber: number,
+): Promise<{ updated: boolean }> {
+  const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/update-branch`;
+  const response = await githubRestRequest(installationId, url, {
+    method: 'PUT',
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    logApiError('updatePullRequestBranch', new Error(`HTTP ${response.status}: ${body}`), {
+      repo: `${owner}/${repo}`,
+      prNumber,
+    });
+    return { updated: false };
+  }
+
+  return { updated: true };
+}
+
+export type MergeErrorReason = 'already_merged' | 'out_of_date' | 'conflict' | 'unknown';
+
 const MERGE_PULL_REQUEST = `
   mutation MergePullRequest($pullRequestId: ID!, $mergeMethod: PullRequestMergeMethod) {
     mergePullRequest(input: {
@@ -198,12 +274,13 @@ interface MergePullRequestResponse {
 
 /**
  * Merge a pull request on GitHub via GraphQL.
+ * Returns errorReason on failure for structured error handling.
  */
 export async function mergePullRequest(
   installationId: string,
   pullRequestId: string,
   mergeMethod: 'SQUASH' | 'MERGE' | 'REBASE' = 'SQUASH',
-): Promise<{ merged: boolean; url: string; number: number }> {
+): Promise<{ merged: boolean; url: string; number: number; errorReason?: MergeErrorReason }> {
   const token = await getInstallationToken(installationId);
 
   try {
@@ -216,7 +293,16 @@ export async function mergePullRequest(
     return { merged: pr.merged, url: pr.url, number: pr.number };
   } catch (error) {
     logApiError('mergePullRequest', error, { pullRequestId, mergeMethod });
-    throw error;
+    const msg = error instanceof Error ? error.message.toLowerCase() : '';
+    let errorReason: MergeErrorReason = 'unknown';
+    if (msg.includes('already been merged') || msg.includes('pull request is in an unmergeable state')) {
+      errorReason = 'already_merged';
+    } else if (msg.includes('not up to date') || msg.includes('out-of-date') || msg.includes('head ref must be a ref')) {
+      errorReason = 'out_of_date';
+    } else if (msg.includes('merge conflict') || msg.includes('not mergeable')) {
+      errorReason = 'conflict';
+    }
+    return { merged: false, url: '', number: 0, errorReason };
   }
 }
 
