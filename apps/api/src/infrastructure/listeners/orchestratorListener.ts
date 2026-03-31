@@ -10,6 +10,9 @@ import { decryptApiKey } from '../../utils/encryption.js';
 import { availableTypes } from '../../actions/index.js';
 import { getEventBus } from '../eventbus/index.js';
 import { orchestratorTasksEnqueued, orchestratorFailures, orchestratorConcurrencyLimitHits } from '../../utils/metrics.js';
+import { abortPlan } from '../jobs/actionExecutor.js';
+import { deleteBranch } from '../../github/githubCommitService.js';
+import type { GitHubRepoLink } from '../../github/githubTypes.js';
 
 const log = createChildLogger('orchestrator-listener');
 
@@ -65,6 +68,77 @@ function hashCode(str: string): number {
 
 function lockIdForProject(projectId: string): number {
   return LOCK_IDS.PROJECT_ORCHESTRATOR + (hashCode(projectId) % 10000);
+}
+
+/**
+ * Cancel running action plans for a set of tasks, abort in-flight actions,
+ * and delete their GitHub branches. Used by both the cancelSession resolver
+ * and the orchestrator listener (budget cap / timeout pauses).
+ */
+export async function cancelSessionPlans(
+  prisma: PrismaClient,
+  taskIds: string[],
+): Promise<void> {
+  // Load plans with branches before cancelling
+  const plansWithBranches = await prisma.taskActionPlan.findMany({
+    where: {
+      taskId: { in: taskIds },
+      status: { in: ['approved', 'executing'] },
+      branchName: { not: null },
+    },
+    select: {
+      id: true,
+      branchName: true,
+      task: {
+        select: {
+          project: {
+            select: {
+              githubRepositoryId: true,
+              githubRepositoryName: true,
+              githubRepositoryOwner: true,
+              githubInstallationId: true,
+              githubDefaultBranch: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  // Cancel plans in DB
+  await prisma.taskActionPlan.updateMany({
+    where: {
+      taskId: { in: taskIds },
+      status: { in: ['approved', 'executing'] },
+    },
+    data: { status: 'cancelled' },
+  });
+
+  // Abort any in-flight actions
+  for (const plan of plansWithBranches) {
+    abortPlan(plan.id);
+  }
+
+  // Clean up GitHub branches (non-blocking)
+  for (const plan of plansWithBranches) {
+    if (!plan.branchName) continue;
+    try {
+      const p = plan.task.project;
+      if (p.githubRepositoryId && p.githubInstallationId) {
+        const repo: GitHubRepoLink = {
+          repositoryId: p.githubRepositoryId,
+          repositoryName: p.githubRepositoryName ?? '',
+          repositoryOwner: p.githubRepositoryOwner ?? '',
+          installationId: p.githubInstallationId,
+          defaultBranch: p.githubDefaultBranch ?? 'main',
+        };
+        await deleteBranch(repo, plan.branchName);
+        log.info({ planId: plan.id, branchName: plan.branchName }, 'Deleted branch on session cancellation');
+      }
+    } catch (err) {
+      log.warn({ err, planId: plan.id, branchName: plan.branchName }, 'Failed to delete branch on session cancellation (non-blocking)');
+    }
+  }
 }
 
 /**
@@ -150,6 +224,7 @@ async function orchestrateProject(
         timestamp: new Date().toISOString(),
         sessionId: activeSession.id,
       });
+      await cancelSessionPlans(prisma, sessionTaskIds);
       log.info({ sessionId: activeSession.id }, 'Session paused — budget cap exceeded');
       return;
     }
@@ -170,6 +245,7 @@ async function orchestrateProject(
           timestamp: new Date().toISOString(),
           sessionId: activeSession.id,
         });
+        await cancelSessionPlans(prisma, sessionTaskIds);
         log.info({ sessionId: activeSession.id, elapsedMinutes, limitMinutes: sessionConfig.timeLimitMinutes }, 'Session paused — time limit reached');
         return;
       }

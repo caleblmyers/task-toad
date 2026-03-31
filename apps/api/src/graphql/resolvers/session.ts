@@ -3,8 +3,7 @@ import { NotFoundError, ValidationError } from '../errors.js';
 import { requireOrg, requireProjectAccess } from './auth.js';
 import { getEventBus } from '../../infrastructure/eventbus/index.js';
 import { createChildLogger } from '../../utils/logger.js';
-import { deleteBranch } from '../../github/githubCommitService.js';
-import type { GitHubRepoLink } from '../../github/githubTypes.js';
+import { cancelSessionPlans } from '../../infrastructure/listeners/orchestratorListener.js';
 
 const log = createChildLogger('session-resolver');
 
@@ -238,61 +237,8 @@ export const sessionMutations = {
 
     const taskIds = JSON.parse(session.taskIds) as string[];
 
-    // Load plans with branches before cancelling them
-    const plansWithBranches = await context.prisma.taskActionPlan.findMany({
-      where: {
-        taskId: { in: taskIds },
-        status: { in: ['pending', 'running'] },
-        branchName: { not: null },
-      },
-      select: {
-        id: true,
-        branchName: true,
-        task: {
-          select: {
-            project: {
-              select: {
-                githubRepositoryId: true,
-                githubRepositoryName: true,
-                githubRepositoryOwner: true,
-                githubInstallationId: true,
-                githubDefaultBranch: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    // Cancel any running action plans for session tasks
-    await context.prisma.taskActionPlan.updateMany({
-      where: {
-        taskId: { in: taskIds },
-        status: { in: ['pending', 'running'] },
-      },
-      data: { status: 'cancelled' },
-    });
-
-    // Clean up GitHub branches from cancelled plans
-    for (const plan of plansWithBranches) {
-      if (!plan.branchName) continue;
-      try {
-        const p = plan.task.project;
-        if (p.githubRepositoryId && p.githubInstallationId) {
-          const repo: GitHubRepoLink = {
-            repositoryId: p.githubRepositoryId,
-            repositoryName: p.githubRepositoryName ?? '',
-            repositoryOwner: p.githubRepositoryOwner ?? '',
-            installationId: p.githubInstallationId,
-            defaultBranch: p.githubDefaultBranch ?? 'main',
-          };
-          await deleteBranch(repo, plan.branchName);
-          log.info({ planId: plan.id, branchName: plan.branchName }, 'Deleted branch on session cancellation');
-        }
-      } catch (err) {
-        log.warn({ err, planId: plan.id, branchName: plan.branchName }, 'Failed to delete branch on session cancellation (non-blocking)');
-      }
-    }
+    // Cancel running plans, abort in-flight actions, and clean up branches
+    await cancelSessionPlans(context.prisma, taskIds);
 
     const updated = await context.prisma.session.update({
       where: { id: args.sessionId },

@@ -334,7 +334,7 @@ describe('Session lifecycle', () => {
         taskId: taskIds[0],
         orgId: org.orgId,
         createdById: user.userId,
-        status: 'running',
+        status: 'executing',
       },
     });
 
