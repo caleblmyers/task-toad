@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/context';
+import { gql } from '../api/client';
 import Button from '../components/shared/Button';
 import Input from '../components/shared/Input';
 
@@ -8,14 +9,19 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSent, setResendSent] = useState(false);
   const { login, error } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const successMessage = (location.state as { message?: string } | null)?.message;
 
+  const needsVerification = error?.toLowerCase().includes('verify your email');
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setResendSent(false);
     try {
       await login(email, password);
       navigate('/home', { replace: true });
@@ -25,6 +31,24 @@ export default function Login() {
       setLoading(false);
     }
   }
+
+  const handleResendVerification = async () => {
+    if (!email || resendLoading) return;
+    setResendLoading(true);
+    try {
+      await gql<{ requestVerificationEmail: boolean }>(
+        `mutation RequestVerificationEmail($email: String!) {
+          requestVerificationEmail(email: $email)
+        }`,
+        { email },
+      );
+      setResendSent(true);
+    } catch {
+      // Silently fail — don't leak info
+    } finally {
+      setResendLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900">
@@ -51,7 +75,26 @@ export default function Login() {
             required
             autoComplete="current-password"
           />
-          {error && <p className="text-sm text-red-600" aria-live="polite">{error}</p>}
+          {error && (
+            <div>
+              <p className="text-sm text-red-600" aria-live="polite">{error}</p>
+              {needsVerification && !resendSent && (
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  disabled={resendLoading || !email}
+                  className="mt-1 text-sm text-slate-800 dark:text-slate-200 underline hover:no-underline disabled:opacity-50"
+                >
+                  {resendLoading ? 'Sending...' : 'Resend verification email'}
+                </button>
+              )}
+              {needsVerification && resendSent && (
+                <p className="mt-1 text-sm text-green-700 dark:text-green-400">
+                  If an account exists with that email, a verification link has been sent.
+                </p>
+              )}
+            </div>
+          )}
           <Button type="submit" loading={loading} className="w-full">
             Sign in
           </Button>

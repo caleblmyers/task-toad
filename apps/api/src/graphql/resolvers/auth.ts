@@ -139,6 +139,32 @@ export const authMutations = {
     return { token: tokens.accessToken };
   },
 
+  requestVerificationEmail: async (_parent: unknown, args: { email: string }, context: Context) => {
+    const email = args.email.trim().toLowerCase();
+    const user = await context.prisma.user.findUnique({ where: { email } });
+    // Don't leak user existence — always return true
+    if (!user || user.emailVerifiedAt) return true;
+    // Rate limit: skip if a token was generated less than 2 minutes ago
+    if (user.verificationTokenExpiry) {
+      const tokenAge = Date.now() - (user.verificationTokenExpiry.getTime() - 24 * 60 * 60 * 1000);
+      if (tokenAge < 2 * 60 * 1000) return true;
+    }
+    const rawToken = generateToken();
+    const verificationToken = hashToken(rawToken);
+    const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    await context.prisma.user.update({
+      where: { userId: user.userId },
+      data: { verificationToken, verificationTokenExpiry },
+    });
+    await sendEmail(
+      user.email,
+      'Verify your TaskToad account',
+      verifyEmailText(rawToken),
+      buildVerifyEmailHtml(rawToken)
+    );
+    return true;
+  },
+
   sendVerificationEmail: async (_parent: unknown, _args: unknown, context: Context) => {
     const user = requireAuth(context);
     const dbUser = await context.prisma.user.findUnique({ where: { userId: user.userId } });

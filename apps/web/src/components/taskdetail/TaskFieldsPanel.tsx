@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Task, Sprint, OrgUser, Label } from '../../types';
 import type { TaskTimeSummary } from '@tasktoad/shared-types';
 import { statusLabel, PRIORITY_COLORS } from '../../utils/taskHelpers';
@@ -54,7 +54,10 @@ const PRIORITY_OPTIONS = [
 
 function PriorityDropdown({ value, disabled, onChange }: { value: string; disabled?: boolean; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const colors = PRIORITY_COLORS[value];
 
   useEffect(() => {
@@ -68,14 +71,66 @@ function PriorityDropdown({ value, disabled, onChange }: { value: string; disabl
     return () => document.removeEventListener('mousedown', handleMouseDown);
   }, [open]);
 
+  // Focus the selected option when dropdown opens
+  useEffect(() => {
+    if (open) {
+      requestAnimationFrame(() => {
+        const items = listRef.current?.querySelectorAll<HTMLElement>('[role="option"]');
+        const idx = PRIORITY_OPTIONS.findIndex((o) => o.value === value);
+        items?.[idx >= 0 ? idx : 0]?.focus();
+      });
+    }
+  }, [open, value]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!open) return;
+
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      setOpen(false);
+      triggerRef.current?.focus();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const next = (focusedIndex + 1) % PRIORITY_OPTIONS.length;
+      setFocusedIndex(next);
+      const items = listRef.current?.querySelectorAll<HTMLElement>('[role="option"]');
+      items?.[next]?.focus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prev = (focusedIndex - 1 + PRIORITY_OPTIONS.length) % PRIORITY_OPTIONS.length;
+      setFocusedIndex(prev);
+      const items = listRef.current?.querySelectorAll<HTMLElement>('[role="option"]');
+      items?.[prev]?.focus();
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      const opt = PRIORITY_OPTIONS[focusedIndex];
+      if (opt) {
+        onChange(opt.value);
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    }
+  }, [open, focusedIndex, onChange]);
+
   return (
-    <div className="mb-4" ref={containerRef}>
+    <div className="mb-4" ref={containerRef} onKeyDown={handleKeyDown}>
       <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Priority</span>
       <div className="relative mt-1">
         <button
+          ref={triggerRef}
           type="button"
           disabled={disabled}
-          onClick={() => setOpen((o) => !o)}
+          onClick={() => {
+            setOpen((o) => {
+              if (!o) {
+                const idx = PRIORITY_OPTIONS.findIndex((opt) => opt.value === value);
+                setFocusedIndex(idx >= 0 ? idx : 0);
+              }
+              return !o;
+            });
+          }}
+          aria-haspopup="listbox"
+          aria-expanded={open}
           className={`flex items-center gap-2 w-full border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-sm text-left ${colors?.bg ?? ''} ${colors?.text ?? ''} disabled:opacity-50`}
         >
           <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colors?.dot ?? 'bg-slate-400'}`} />
@@ -83,15 +138,18 @@ function PriorityDropdown({ value, disabled, onChange }: { value: string; disabl
           <svg className="ml-auto w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
         </button>
         {open && (
-          <div className="absolute z-50 mt-1 w-full rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg">
-            {PRIORITY_OPTIONS.map((opt) => {
+          <div ref={listRef} role="listbox" aria-label="Priority" className="absolute z-50 mt-1 w-full rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg">
+            {PRIORITY_OPTIONS.map((opt, idx) => {
               const optColors = PRIORITY_COLORS[opt.value];
               return (
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() => { onChange(opt.value); setOpen(false); }}
-                  className={`flex items-center gap-2 w-full px-2 py-1.5 text-sm text-left hover:brightness-95 dark:hover:brightness-110 ${optColors?.bg ?? ''} ${optColors?.text ?? ''} first:rounded-t-md last:rounded-b-md`}
+                  role="option"
+                  aria-selected={opt.value === value}
+                  tabIndex={idx === focusedIndex ? 0 : -1}
+                  onClick={() => { onChange(opt.value); setOpen(false); triggerRef.current?.focus(); }}
+                  className={`flex items-center gap-2 w-full px-2 py-1.5 text-sm text-left hover:brightness-95 dark:hover:brightness-110 ${optColors?.bg ?? ''} ${optColors?.text ?? ''} first:rounded-t-md last:rounded-b-md ${idx === focusedIndex ? 'ring-2 ring-inset ring-brand-green' : ''}`}
                 >
                   <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${optColors?.dot ?? 'bg-slate-400'}`} />
                   {opt.label}

@@ -49,6 +49,8 @@ export const authMutationFields = /* GraphQL */ `
   logout: Boolean!
 
   sendVerificationEmail: Boolean!
+  """Request a verification email (unauthenticated). Always returns true to prevent email enumeration."""
+  requestVerificationEmail(email: String!): Boolean!
   verifyEmail(token: String!): VerifyEmailResult!
 
   requestPasswordReset(email: String!): Boolean!
