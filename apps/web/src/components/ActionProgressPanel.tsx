@@ -91,7 +91,7 @@ function ReviewResultDisplay({ result }: { result: string }) {
       </div>
       <p className="text-xs text-slate-600">{review.summary}</p>
       {review.comments.length > 0 && (
-        <details className="mt-1" open>
+        <details className="mt-1">
           <summary className="text-xs text-slate-500 cursor-pointer">
             {review.comments.length} comment{review.comments.length !== 1 ? 's' : ''}
           </summary>
