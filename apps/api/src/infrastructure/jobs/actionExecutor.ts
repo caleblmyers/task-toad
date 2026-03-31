@@ -98,25 +98,6 @@ export function createHandler(prisma: PrismaClient) {
           }
         : null;
 
-    // Load user's GitHub OAuth token for personal account installations
-    let userGitHubToken: string | undefined;
-    if (repo) {
-      const installation = await prisma.gitHubInstallation.findUnique({
-        where: { installationId: repo.installationId },
-        select: { accountType: true },
-      });
-      if (installation?.accountType === 'User') {
-        const userRecord = await prisma.user.findUnique({
-          where: { userId },
-          select: { githubTokenEncrypted: true },
-        });
-        if (userRecord?.githubTokenEncrypted) {
-          const { decryptIfEncrypted } = await import('../../utils/encryption.js');
-          userGitHubToken = decryptIfEncrypted(userRecord.githubTokenEncrypted);
-        }
-      }
-    }
-
     // Create feature branch on first action of a plan when repo is connected
     if (repo && !plan.branchName) {
       // Re-read plan to guard against concurrent execution
@@ -129,7 +110,7 @@ export function createHandler(prisma: PrismaClient) {
         plan.branchName = freshPlan.branchName;
         plan.headOid = freshPlan.headOid;
       } else {
-        const { branchName, baseOid } = await createBranch(repo, task.taskId, task.title, userGitHubToken);
+        const { branchName, baseOid } = await createBranch(repo, task.taskId, task.title);
         await prisma.taskActionPlan.update({
           where: { id: plan.id },
           data: { branchName, headOid: baseOid },
@@ -306,7 +287,6 @@ export function createHandler(prisma: PrismaClient) {
       orgId,
       userId,
       prisma,
-      userGitHubToken,
       previousResults,
       previousStepContext: previousSummaries.length > 0 ? previousSummaries.join('\n') : undefined,
       upstreamTaskContext,
@@ -522,7 +502,7 @@ export function createHandler(prisma: PrismaClient) {
         const didMerge = allCompletedActions.some((a) => a.actionType === 'merge_pr');
         if (didMerge && repo && plan.branchName) {
           try {
-            await deleteBranch(repo, plan.branchName, userGitHubToken);
+            await deleteBranch(repo, plan.branchName);
             log.info({ planId, branchName: plan.branchName }, 'Deleted feature branch after merge');
           } catch (branchErr) {
             log.warn({ err: branchErr, planId, branchName: plan.branchName }, 'Failed to delete feature branch (non-blocking)');

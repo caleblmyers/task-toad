@@ -181,7 +181,6 @@ Address the review holistically. Fix everything you can do well in one commit. D
             additions: parsed.fixes.map((f) => ({ path: f.path, content: f.content })),
           },
           ctx.plan.headOid,
-          ctx.userGitHubToken,
         );
         headOid = commitResult.oid;
 

@@ -87,7 +87,6 @@ export const generateCodeExecutor: ActionExecutor = {
             additions: result.files.map((f: { path: string; content: string }) => ({ path: f.path, content: f.content })),
           },
           ctx.plan.headOid,
-          ctx.userGitHubToken,
         );
         headOid = commitResult.oid;
       } catch (commitErr) {
