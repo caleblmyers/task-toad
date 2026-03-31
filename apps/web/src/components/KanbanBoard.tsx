@@ -458,7 +458,7 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
               </span>
             </div>
 
-            <div className="flex-1 px-2 pb-2 space-y-2 min-h-[4rem]" role="listbox" aria-label={`${col} column`}>
+            <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-2 min-h-[4rem]" role="listbox" aria-label={`${col} column`}>
               {swimlaneData ? (
                 // Swimlane mode: group tasks by the groupBy key
                 swimlaneData.sortedKeys.map((groupKey) => {
