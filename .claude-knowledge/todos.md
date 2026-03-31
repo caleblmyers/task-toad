@@ -8,6 +8,7 @@
 
 - [ ] **Landing page polish** — current version is functional but needs professional design work
 - [ ] **Test signup flow on prod** — verify Resend emails arrive, full signup→verify→login works
+- [ ] **Resend verification email from login page** — unverified users have no way to request a new verification email without being logged in
 - [x] Custom domain — `tasktoad.app` registered on Cloudflare, DNS pointed to Railway *(2026-03-30)*
 - [x] SMTP setup — Resend configured for transactional email *(2026-03-30)*
 - [ ] Stripe integration for billing
@@ -27,6 +28,9 @@
 ## Pipeline
 
 - [ ] Branch cleanup on session timeout — currently only handles explicit cancellation, not `timeLimitMinutes` expiry
+- [ ] **merge_pr executor: auto-update branch before merge** — call GitHub's "update branch" API when merge fails with "Head branch is out of date", then retry the merge
+- [ ] **merge_pr executor: detect already-merged PR** — check PR state before merging, treat `MERGED` as success instead of failing with "not mergeable"
+- [ ] **merge_pr executor: handle merge conflicts** — if update branch fails due to conflicts, provide actionable error instead of generic failure
 - [ ] SSE cross-tab: consider adding a leader tab indicator in dev mode for debugging
 
 ---
