@@ -230,7 +230,6 @@ describe('fixReviewExecutor', () => {
           additions: [{ path: 'src/index.ts', content: 'fixed content' }],
         },
         'abc123',
-        undefined, // userGitHubToken
       );
     });
   });

@@ -4,6 +4,40 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-31 (Wave 77 — Bug Fixes + UX)
+
+### Pre-wave fixes
+- **GitHub OAuth popup:** Redirected callback to frontend `/github-callback` page instead of postMessage from API origin (fixes `window.opener` stripped by cross-origin navigation). Added localStorage fallback.
+- **tasktoad.dev links:** Updated to `tasktoad.app` in PR body, review footer, and PR template (3 files).
+- **Browser save-password:** Added `autoComplete="off"` to API key and password confirmation inputs in OrgSettings and CreateOrg.
+- **Todos overhaul:** Added all user notes + pillar gaps as categorized todos.
+
+### Wave 77: Bug Fixes + UX (3 workers, 4 tasks)
+
+**Worker 1 — task-001: Auto-Complete button text + review comments collapsed:**
+- Fixed button showing full `loadingMessage` text during loading — now shows 'Planning...' consistently
+- Review comments in ActionProgressPanel changed from `<details open>` to `<details>` (collapsed by default, consistent with suggestions)
+
+**Worker 2 — task-002: Commit attribution fix:**
+- Removed user OAuth token override from `actionExecutor.ts` — commits now use installation token exclusively
+- Removed `userGitHubToken` from action context and all executor references (`generateCode`, `fixReview`, `writeDocs`, `fixCI`)
+- Commits will now be attributed to TaskToad[bot] instead of the connected user
+
+**Worker 2 — task-003: Kanban column overflow:**
+- Added `overflow-y-auto` to column content wrapper in KanbanBoard
+- Columns now scroll internally when tasks overflow available height
+- Column headers remain fixed above scrolling content
+
+**Worker 3 — task-004: Close sprint from board view:**
+- Added 'Close Sprint' option to ProjectToolbar sprint dropdown
+- Uses same `setCloseSprintId` → `CloseSprintModal` flow as backlog view
+- Only appears when there's an active sprint
+
+### Open follow-ups
+- Swimlane-specific overflow — individual swimlane sections may need their own max-height + scroll
+
+---
+
 ## 2026-03-31 (Wave 76 — Pipeline Hardening + Auth UX + Tests)
 
 ### Wave 76: Pipeline Hardening + Auth UX + Tests (3 workers, 5 tasks)
@@ -113,40 +147,7 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-03-28 (Wave 73 — Follow-ups + UX Polish)
-
-### Wave 73: Pipeline Follow-ups + UX Polish (3 workers, 5 tasks)
-
-**Worker 1 — task-001: Pipeline follow-ups:**
-- verify_build polling: uses 'polling' status pattern (like monitorCI), 30s intervals, 20 attempt max
-- Session time limit enforcement: checks elapsed time alongside budget cap in orchestrator
-- commitSprintPlan compatibility: assigns tasks to existing active sprint for single-session plans
-
-**Worker 1 — task-002: Reconciliation + session resume:**
-- Reconciliation tasks assigned to next sprint with source sprint reference in description
-- Session resume cleans up archived tasks from taskIds, clears autoComplete on removed tasks
-
-**Worker 2 — task-003: Chat + panel UX:**
-- applyChatAction validates taskId belongs to project, validates required fields per action type
-- Activity log entries for all chat actions
-- WhatNextPanel refresh button + auto-refresh after applying
-- ProjectChatPanel onSelectTask wired from ProjectDetail, task references clickable in messages
-
-**Worker 3 — task-004: Sprint UX:**
-- First sprint auto-activates on creation
-- Close sprint offers "Create Next Sprint" when no next sprint exists
-- Sprint creation pre-populates from previous sprint (name increment, dates)
-
-**Worker 3 — task-005: AI loading states:**
-- useAIGeneration exposes loadingMessage state with per-stage descriptions
-- ActionsTab shows descriptive message instead of generic "Planning..."
-
-**Process notes:**
-- File list accuracy was the main issue again (task-003 and task-005 both needed extra files not listed). Worker-1 delivered clean code on first attempt thanks to specific line references in task descriptions.
-- Sprint integration test needed updating for auto-activate behavior (quick post-wave fix)
-
-### Open follow-ups
-- Sprint creation previousSprint prop (pre-populate from close sprint flow)
+## 2026-03-28 (Wave 73) — verify_build polling, session time/resume, chat validation/logging, sprint auto-activate, AI loading states
 
 ---
 

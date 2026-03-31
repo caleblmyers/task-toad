@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work
 
-76 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Pipeline mechanics work; launching as closed-source SaaS.
+77 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Pipeline mechanics work; launching as closed-source SaaS.
 
 ---
 
@@ -17,18 +17,19 @@
 
 ## Bug Fixes
 
-- [ ] **Auto-Complete button text changes** — after clicking to generate a plan, button label changes to the status description text instead of staying as "Auto Complete" or showing a loading state
-- [ ] **Commits attributed to user not bot** — code committed via TaskToad action plans shows as the connected user, not the TaskToad bot. Investigate whether installation token is being used correctly for `createCommitOnBranch`
-- [ ] **Kanban column overflow not scrollable** — task lists in board view columns don't scroll when tasks overflow the viewport
-- [ ] **GitHub OAuth popup redirect** — popup navigates through github.com and loses `window.opener`, redirect to frontend callback page instead *(fix in progress)*
+- [x] **Auto-Complete button text changes** — button now always shows 'Planning…' during loading *(Wave 77)*
+- [x] **Commits attributed to user not bot** — removed user OAuth token override, installation token used for all commits *(Wave 77)*
+- [x] **Kanban column overflow not scrollable** — added overflow-y-auto to column content wrapper *(Wave 77)*
+- [x] **GitHub OAuth popup redirect** — popup navigates through github.com and loses `window.opener`, redirect to frontend callback page instead *(pre-Wave 77)*
 
 ---
 
 ## UX
 
 - [x] PriorityDropdown: keyboard accessibility (arrow keys, Escape to close, ARIA attributes) *(Wave 76)*
-- [ ] **AI review comments collapsed by default** — PR review comments in ActionProgressPanel should be collapsed, not expanded
-- [ ] **Close sprint/session from board view** — currently requires navigating to backlog; add close option to board view header
+- [x] **AI review comments collapsed by default** — comments collapsed, consistent with suggestions section *(Wave 77)*
+- [x] **Close sprint/session from board view** — added 'Close Sprint' to board toolbar sprint dropdown *(Wave 77)*
+- [ ] **Swimlane-specific overflow** — individual swimlane sections within a kanban column may need their own max-height + scroll if a single swimlane has many tasks, rather than relying solely on the column-level scroll
 - [ ] **Hierarchical plan streaming progress** — plan generation (epics + tasks) should stream partial results (epics first, then tasks per epic) instead of showing only a spinner. User has no context on progress, failure, or status during long waits
 - [ ] **Long user-facing flows need progress indicators** — scaffold generation, plan generation, and other synchronous AI flows need step-by-step progress feedback, not just a spinner. Action plan timelines are fine (background), but user-directed flows that block the UI are bad UX
 - [ ] Release notes: manual entry option
@@ -172,5 +173,6 @@
 | 74 | 2026-03-28 | Quality + UX + refactors: test DB isolation, branch flow tests, priority colors, automation bot, column reorder, branch cleanup, Zod audit, planHelpers extraction |
 | 75 | 2026-03-30 | Column reorder wiring, sprint close→create flow, branch cleanup on cancel, SSE cross-tab sync, priority select colors |
 | 76 | 2026-03-31 | merge_pr hardening, resend verification email, PriorityDropdown a11y, session timeout cleanup, fix_review tests |
+| 77 | 2026-03-31 | Auto-Complete button fix, commit attribution, kanban scroll, review collapsed, close sprint from board |
 
 Full wave details in `changelog.md`.
