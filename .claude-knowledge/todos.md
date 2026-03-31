@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work
 
-75 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Pipeline mechanics work; launching as closed-source SaaS.
+76 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Pipeline mechanics work; launching as closed-source SaaS.
 
 ---
 
@@ -8,7 +8,7 @@
 
 - [ ] **Landing page polish** — current version is functional but needs professional design work
 - [ ] **Test signup flow on prod** — verify Resend emails arrive, full signup→verify→login works
-- [ ] **Resend verification email from login page** — unverified users have no way to request a new verification email without being logged in
+- [x] **Resend verification email from login page** — unauthenticated `requestVerificationEmail` mutation + login page resend button *(Wave 76)*
 - [x] Custom domain — `tasktoad.app` registered on Cloudflare, DNS pointed to Railway *(2026-03-30)*
 - [x] SMTP setup — Resend configured for transactional email *(2026-03-30)*
 - [ ] Stripe integration for billing
@@ -17,7 +17,7 @@
 
 ## UX
 
-- [ ] PriorityDropdown: keyboard accessibility (arrow keys, Escape to close)
+- [x] PriorityDropdown: keyboard accessibility (arrow keys, Escape to close, ARIA attributes) *(Wave 76)*
 - [ ] Release notes: manual entry option
 - [ ] Time entry deletion: admin-only
 - [ ] Mobile: horizontal scrolling on project page
@@ -27,19 +27,21 @@
 
 ## Pipeline
 
-- [ ] Branch cleanup on session timeout — currently only handles explicit cancellation, not `timeLimitMinutes` expiry
-- [ ] **merge_pr executor: auto-update branch before merge** — call GitHub's "update branch" API when merge fails with "Head branch is out of date", then retry the merge
-- [ ] **merge_pr executor: detect already-merged PR** — check PR state before merging, treat `MERGED` as success instead of failing with "not mergeable"
-- [ ] **merge_pr executor: handle merge conflicts** — if update branch fails due to conflicts, provide actionable error instead of generic failure
+- [x] Branch cleanup on session timeout — `cancelSessionPlans()` shared helper handles timeout + budget cap *(Wave 76)*
+- [x] **merge_pr executor: auto-update branch before merge** — `updatePullRequestBranch()` + auto-retry *(Wave 76)*
+- [x] **merge_pr executor: detect already-merged PR** — `getPullRequestState()` check before merge *(Wave 76)*
+- [x] **merge_pr executor: handle merge conflicts** — structured `errorReason` field *(Wave 76)*
 - [ ] SSE cross-tab: consider adding a leader tab indicator in dev mode for debugging
 
 ---
 
 ## Code Quality & Testing
 
-- [ ] Test coverage for fix_review (approved skip, AI fixes with source, deferred tasks, duplicate detection)
+- [x] Test coverage for fix_review (approved skip, AI fixes with source, deferred tasks, duplicate detection) *(Wave 76)*
 - [ ] Integration test for logout→login-as-different-user flow
 - [ ] merge-worker.sh: auto-detect lockfile changes
+- [ ] Test coverage for merge_pr executor (auto-update retry, state checks, conflict handling)
+- [ ] Audit remaining Prisma status filters for stale values (`'pending'`/`'running'` vs `'approved'`/`'executing'`)
 
 ---
 
@@ -114,5 +116,6 @@
 | 73 | 2026-03-28 | Follow-ups + UX: verify_build polling, session time/resume, chat validation/logging, sprint auto-activate, AI loading states |
 | 74 | 2026-03-28 | Quality + UX + refactors: test DB isolation, branch flow tests, priority colors, automation bot, column reorder, branch cleanup, Zod audit, planHelpers extraction |
 | 75 | 2026-03-30 | Column reorder wiring, sprint close→create flow, branch cleanup on cancel, SSE cross-tab sync, priority select colors |
+| 76 | 2026-03-31 | merge_pr hardening, resend verification email, PriorityDropdown a11y, session timeout cleanup, fix_review tests |
 
 Full wave details in `changelog.md`.

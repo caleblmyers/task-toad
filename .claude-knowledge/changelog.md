@@ -4,6 +4,53 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-03-31 (Wave 76 — Pipeline Hardening + Auth UX + Tests)
+
+### Wave 76: Pipeline Hardening + Auth UX + Tests (3 workers, 5 tasks)
+
+**Worker 1 — task-001: merge_pr executor hardening:**
+- New `getPullRequestState()` function checks PR state (OPEN/CLOSED/MERGED) before merge attempt
+- New `updatePullRequestBranch()` function calls GitHub REST API to update out-of-date branches
+- `mergePullRequest()` returns structured `errorReason` field: `'already_merged' | 'out_of_date' | 'conflict' | 'unknown'`
+- Executor auto-retries after branch update when error is `out_of_date`
+- Already-merged PRs detected and returned as success instead of failure
+- Merge conflicts return actionable error message
+
+**Worker 2 — task-002: Resend verification email from login page:**
+- New unauthenticated `requestVerificationEmail(email)` mutation — no `requireAuth`
+- Rate-limited: 2-minute cooldown on verification token generation
+- Does not leak user existence (always returns true)
+- Login page shows "Resend verification email" link when verification error appears
+- Clicking resend shows confirmation message
+
+**Worker 2 — task-003: PriorityDropdown keyboard accessibility:**
+- Arrow keys (Up/Down) cycle through priority options with `focusedIndex` state
+- Escape closes dropdown and returns focus to trigger button
+- Enter/Space selects focused option
+- ARIA attributes: `aria-haspopup`, `aria-expanded`, `role=listbox`, `role=option`, `aria-selected`
+- Focus moves to current selection on open
+
+**Worker 3 — task-004: Session timeout branch cleanup:**
+- Extracted `cancelSessionPlans()` shared helper from `cancelSession` resolver
+- Orchestrator listener calls helper on timeout and budget cap exceeded (was only pausing before)
+- Aborts running actions via `abortPlan()` and deletes GitHub branches
+- `cancelSession` resolver refactored to use the shared helper
+
+**Worker 3 — task-005: fix_review executor test suite:**
+- 10 tests covering all 7 major code paths
+- Approved review skip (nested and direct structures), missing review result
+- AI fixes with source context, invalid AI response, successful commit
+- Deferred task creation with duplicate detection, abort signal handling
+
+**414 tests** (56 web + 358 api, 10 new). All pass.
+
+### Open follow-ups
+- Test coverage for merge_pr executor (auto-update retry, state checks, conflict handling)
+- Audit remaining Prisma status filters for stale values (`'pending'`/`'running'` vs `'approved'`/`'executing'`)
+- Task `filesToChange` accuracy: when extracting shared code, include ALL files that import the extraction
+
+---
+
 ## 2026-03-30 (Wave 75 — UX Polish + Pipeline Reliability)
 
 ### Pre-wave work
@@ -103,41 +150,7 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-03-28 (Wave 72 — Pipeline Reliability + Session Planning)
-
-### Wave 72: Pipeline Reliability + Session Planning (3 workers, 4 tasks)
-
-**Worker 1 — task-001: R4 Post-merge build verification:**
-- New `verify_build` action type and executor — checks CI status on default branch after merge via GitHub check-runs API
-- Gracefully skips when no CI configured
-- Registered in action types, Zod schema, and planning prompt as optional post-merge step
-
-**Worker 1 — task-004: Session progress tracking + completion summary rate limiting:**
-- Session progress now tracks `tokensUsed` and `estimatedCostCents` from AIPromptLog, using atomic jsonb_set
-- Completion summary generation skipped when AI budget exhausted
-
-**Worker 2 — task-002: R5 Sprint close reconciliation:**
-- `closeSprint` checks CI on default branch when GitHub repo connected
-- Auto-creates high-priority reconciliation task with `autoComplete: true` on failure
-- New `ReconciliationResult` GraphQL type, frontend shows status in close modal
-
-**Worker 3 — task-003: Session planning:**
-- Sprint planning prompt rewritten for session-style planning: selects 3-5 coherent tasks with dependency awareness
-- `maxTasks` parameter (default 5) caps scope
-- `rationale` field in SprintPlanSchema explains task selection
-- Frontend relabeled to "Plan Session" with rationale display
-
-**Process notes:**
-- File lists wrong again (both task-002 and task-003 had incorrect file names). Workers found correct files but this caused friction. Need to verify file names exist before writing task descriptions.
-
-### Open follow-ups
-- `verify_build` retry/polling for in-progress checks (currently returns "pending")
-- `commitSprintPlan` resolver compatibility with session-style single plans
-- Reconciliation task should link back to triggering sprint
-
-### Pre-wave fixes
-- Single project interpretation: replaced 3-option prompt with single best recommendation in `generation.ts`, removed dead `projectOptions.ts`
-- Fixed 3 pre-existing `insightGeneration.test.ts` failures (missing mock methods)
+## 2026-03-28 (Wave 72) — verify_build action, sprint close reconciliation, session planning, session progress tracking
 
 ---
 

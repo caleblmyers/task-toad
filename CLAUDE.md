@@ -142,7 +142,7 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 - **Slack:** `slackIntegrations`, `slackUserMappings`
 
 **Mutations:**
-- **Auth:** `signup`, `login`, `sendVerificationEmail`, `verifyEmail`, `requestPasswordReset`, `resetPassword`, `updateProfile`, `inviteOrgMember`, `acceptInvite`, `revokeInvite`
+- **Auth:** `signup`, `login`, `sendVerificationEmail`, `verifyEmail`, `requestVerificationEmail`, `requestPasswordReset`, `resetPassword`, `updateProfile`, `inviteOrgMember`, `acceptInvite`, `revokeInvite`
 - **Org:** `createOrg`, `setOrgApiKey`, `setAIBudget`, `updateOrgPlan`
 - **Project:** `createProject`, `updateProject`, `archiveProject`, `generateProjectOptions`, `createProjectFromOption`, `saveFilter`, `updateFilter`, `deleteFilter`
 - **Task:** `createTask`, `updateTask`, `createSubtask`, `bulkUpdateTasks`, `createLabel`, `deleteLabel`, `addTaskLabel`, `removeTaskLabel`, `generateTaskPlan`, `previewTaskPlan`, `commitTaskPlan`, `expandTask`, `generateTaskInstructions`, `createCustomField`, `updateCustomField`, `deleteCustomField`, `setCustomFieldValue`, `addTaskAssignee`, `removeTaskAssignee`
