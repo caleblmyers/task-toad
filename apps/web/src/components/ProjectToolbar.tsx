@@ -355,7 +355,10 @@ export default function ProjectToolbar({
               { label: 'Health', onClick: () => onOpenModal('health'), disabled: projectData.isGenerating },
               { label: 'Trends', onClick: () => onOpenModal('trends'), disabled: projectData.isGenerating },
               { label: 'Cycle Time', onClick: () => onOpenModal('cycle-time'), disabled: projectData.isGenerating },
-              ...(projectData.activeSprint ? [{ label: 'Transition', onClick: () => onOpenModal(`transition:${projectData.activeSprint!.sprintId}:${projectData.activeSprint!.name}`), disabled: projectData.isGenerating }] : []),
+              ...(projectData.activeSprint ? [
+                { label: 'Transition', onClick: () => onOpenModal(`transition:${projectData.activeSprint!.sprintId}:${projectData.activeSprint!.name}`), disabled: projectData.isGenerating },
+                { label: 'Close Sprint', onClick: () => projectData.setCloseSprintId(projectData.activeSprint!.sprintId), disabled: projectData.isGenerating },
+              ] : []),
               { label: 'Notes', onClick: () => onOpenModal('meeting-notes'), disabled: projectData.isGenerating },
               { label: 'Bug Report', onClick: () => onOpenModal('bug-report'), disabled: projectData.isGenerating },
               { label: 'PRD Breakdown', onClick: () => onOpenModal('prd-breakdown'), disabled: projectData.isGenerating },
