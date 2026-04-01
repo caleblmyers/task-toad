@@ -132,6 +132,13 @@ export interface DomainEventMap {
     lastFailedActionType: string;
     errorMessage: string;
   };
+  'task.action_plan_replanned': BaseEventPayload & {
+    planId: string;
+    newPlanId: string;
+    taskId: string;
+    taskTitle: string;
+    attempt: number;
+  };
   'task.blocked': BaseEventPayload & {
     taskId: string;
     taskTitle: string;

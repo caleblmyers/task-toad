@@ -13,6 +13,7 @@ import { createChildLogger } from '../../utils/logger.js';
 import { createPlanWithActions } from '../../utils/planHelpers.js';
 import { deleteBranch } from '../../github/githubCommitService.js';
 import type { GitHubRepoLink } from '../../github/githubTypes.js';
+import { replanFailedTask as replanFailedTaskService } from '../../actions/replanService.js';
 
 const log = createChildLogger('taskaction-resolver');
 
@@ -420,83 +421,22 @@ export const taskActionMutations = {
 
     const plan = await context.prisma.taskActionPlan.findUnique({
       where: { id: args.planId },
-      include: {
-        task: { include: { project: true } },
-        actions: { orderBy: { position: 'asc' } },
-      },
     });
-
     if (!plan || plan.orgId !== user.orgId) throw new NotFoundError('Action plan not found');
     if (plan.status !== 'failed') throw new ValidationError('Plan must be in failed state to replan');
 
-    // Build failure context from failed actions
-    const failedActions = plan.actions.filter((a) => a.status === 'failed');
-    const failureContext = failedActions
-      .map((a) => `Action "${a.label}" (${a.actionType}) failed: ${a.errorMessage || 'Unknown error'}`)
-      .join('\n');
-
-    const task = plan.task;
-    const project = task.project;
-    const repo = await getProjectRepo(task.projectId);
-
-    // Retrieve relevant KB context
-    let knowledgeBase: string | null = null;
-    try {
-      const taskContext = `${task.title}. ${task.instructions || task.description || ''}`.slice(0, 500);
-      knowledgeBase = await retrieveRelevantKnowledge(context.prisma, task.projectId, taskContext, apiKey);
-    } catch (err) {
-      log.warn({ err, taskId: task.taskId }, 'KB retrieval failed for replan, falling back to legacy');
-    }
-    if (!knowledgeBase && project.knowledgeBase) {
-      knowledgeBase = project.knowledgeBase;
-    }
-
-    // Prepend failure context to knowledge base
-    const failureKnowledge = `PREVIOUS PLAN FAILED:\n${failureContext}\n\nGenerate a new plan that avoids these failures. Try a different approach.`;
-    const combinedKnowledge = knowledgeBase
-      ? `${failureKnowledge}\n\n${knowledgeBase}`
-      : failureKnowledge;
-
     const plc = await buildPromptLogContext(context);
-    const result = await aiPlanTaskActions(
-      apiKey,
-      {
-        taskTitle: task.title,
-        taskDescription: task.description ?? '',
-        taskInstructions: task.instructions || '',
-        acceptanceCriteria: task.acceptanceCriteria,
-        suggestedTools: task.suggestedTools,
-        projectName: project.name,
-        projectDescription: project.description,
-        knowledgeBase: combinedKnowledge,
-        hasGitHubRepo: !!repo,
-        availableActionTypes: availableTypes(),
-      },
-      plc,
-    );
-
-    // Cancel the old plan
-    await context.prisma.taskActionPlan.update({
-      where: { id: args.planId },
-      data: { status: 'cancelled' },
-    });
-
-    // Create new plan with actions (handles ID remapping)
-    const { plan: newPlan } = await createPlanWithActions(
+    const result = await replanFailedTaskService(
       context.prisma,
-      task.taskId,
+      args.planId,
       user.orgId,
       user.userId,
-      result.actions.map((a) => ({
-        actionType: a.actionType,
-        label: a.label,
-        config: JSON.stringify(a.config),
-        requiresApproval: a.requiresApproval,
-      })),
+      apiKey,
+      plc.promptLoggingEnabled ?? true,
     );
 
     return context.prisma.taskActionPlan.findUnique({
-      where: { id: newPlan.id },
+      where: { id: result.planId },
       include: { actions: { orderBy: { position: 'asc' } } },
     });
   },

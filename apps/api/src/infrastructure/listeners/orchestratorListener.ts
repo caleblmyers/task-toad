@@ -13,6 +13,7 @@ import { orchestratorTasksEnqueued, orchestratorFailures, orchestratorConcurrenc
 import { abortPlan } from '../jobs/actionExecutor.js';
 import { deleteBranch } from '../../github/githubCommitService.js';
 import type { GitHubRepoLink } from '../../github/githubTypes.js';
+import { replanFailedTask } from '../../actions/replanService.js';
 
 const log = createChildLogger('orchestrator-listener');
 
@@ -593,6 +594,71 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
       }
     } catch (err) {
       log.error({ err, taskId }, 'Failed to handle session failure policy');
+    }
+
+    // Auto-replan: generate a new plan if under the replan limit
+    const MAX_REPLANS = 2;
+    try {
+      // Count previous cancelled plans for this task as replan attempts
+      const failedPlan = await prisma.taskActionPlan.findUnique({
+        where: { id: event.planId },
+        select: { taskId: true },
+      });
+      if (failedPlan) {
+        const replanCount = await prisma.taskActionPlan.count({
+          where: { taskId: failedPlan.taskId, status: 'cancelled' },
+        });
+
+        if (replanCount < MAX_REPLANS) {
+          // Get the org's API key
+          const org = await prisma.org.findUnique({
+            where: { orgId },
+            select: { anthropicApiKeyEncrypted: true, promptLoggingEnabled: true },
+          });
+          if (org?.anthropicApiKeyEncrypted) {
+            const apiKey = decryptApiKey(org.anthropicApiKeyEncrypted);
+            const result = await replanFailedTask(prisma, event.planId, orgId, userId, apiKey, org.promptLoggingEnabled ?? true);
+
+            // Emit replanned event
+            bus.emit('task.action_plan_replanned', {
+              orgId,
+              userId,
+              projectId,
+              timestamp: new Date().toISOString(),
+              planId: event.planId,
+              newPlanId: result.planId,
+              taskId: result.taskId,
+              taskTitle: event.taskTitle,
+              attempt: replanCount + 1,
+            });
+
+            // Auto-execute the new plan
+            const newPlan = await prisma.taskActionPlan.update({
+              where: { id: result.planId },
+              data: { status: 'executing' },
+              include: { actions: { orderBy: { position: 'asc' } } },
+            });
+            const firstAction = newPlan.actions.find((a) => a.status === 'pending');
+            if (firstAction) {
+              const queue = getJobQueue();
+              queue.enqueue('action-execute', {
+                planId: result.planId,
+                actionId: firstAction.id,
+                orgId,
+                userId,
+              });
+              orchestratorTasksEnqueued.inc();
+            }
+
+            log.info({ taskId: result.taskId, oldPlanId: event.planId, newPlanId: result.planId, attempt: replanCount + 1 }, 'Auto-replanned failed task');
+            return; // Skip dependent-blocking since we're retrying
+          }
+        } else {
+          log.info({ taskId: failedPlan.taskId, replanCount }, 'Auto-replan limit reached, not replanning');
+        }
+      }
+    } catch (err) {
+      log.warn({ err, planId: event.planId }, 'Auto-replan failed, falling through to dependent blocking');
     }
 
     try {

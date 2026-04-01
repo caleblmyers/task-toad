@@ -75,6 +75,16 @@ export function register(bus: EventBus): void {
     });
   });
 
+  bus.on('task.action_plan_replanned', (e) => {
+    sseManager.broadcast(e.orgId, 'task.action_plan_replanned', {
+      planId: e.planId,
+      newPlanId: e.newPlanId,
+      taskId: e.taskId,
+      taskTitle: e.taskTitle,
+      attempt: e.attempt,
+    });
+  });
+
   bus.on('task.blocked', (e) => {
     sseManager.broadcast(e.orgId, 'task.blocked', {
       taskId: e.taskId,
