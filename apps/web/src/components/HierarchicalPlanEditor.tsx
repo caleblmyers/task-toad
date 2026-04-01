@@ -128,6 +128,10 @@ const TYPE_STYLES: Record<string, { bg: string; text: string; label: string }> =
 interface HierarchicalPlanEditorProps {
   plan: HierarchicalPlanPreview;
   onChange: (plan: HierarchicalPlanPreview) => void;
+  /** When provided, enables selection mode with a "Refine selected" button. */
+  onRefine?: (selectedTaskKeys: Set<string>, refinementPrompt: string) => void;
+  /** Whether a refinement is currently in progress. */
+  refining?: boolean;
 }
 
 // ── Component ────────────────────────────────────────────────────────────
@@ -135,6 +139,8 @@ interface HierarchicalPlanEditorProps {
 export function HierarchicalPlanEditor({
   plan,
   onChange,
+  onRefine,
+  refining,
 }: HierarchicalPlanEditorProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
     const ids = new Set<string>();
@@ -157,6 +163,28 @@ export function HierarchicalPlanEditor({
   const [editValue, setEditValue] = useState('');
   const editRef = useRef<HTMLInputElement>(null);
   const [editingDepsKey, setEditingDepsKey] = useState<string | null>(null);
+
+  // Selection mode for refinement
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [showRefinePrompt, setShowRefinePrompt] = useState(false);
+  const [refinePrompt, setRefinePrompt] = useState('');
+
+  const toggleSelection = useCallback((key: string) => {
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const handleRefineSubmit = useCallback(() => {
+    if (!onRefine || selectedKeys.size === 0 || !refinePrompt.trim()) return;
+    onRefine(selectedKeys, refinePrompt.trim());
+    setShowRefinePrompt(false);
+    setRefinePrompt('');
+    setSelectedKeys(new Set());
+  }, [onRefine, selectedKeys, refinePrompt]);
 
   // Drag state
   const draggedKey = useRef<string | null>(null);
@@ -449,6 +477,17 @@ export function HierarchicalPlanEditor({
           <span className="w-5 flex-shrink-0" />
         )}
 
+        {/* Selection checkbox (task-level only, when onRefine is provided) */}
+        {onRefine && nodeType === 'task' && (
+          <input
+            type="checkbox"
+            checked={selectedKeys.has(key)}
+            onChange={() => toggleSelection(key)}
+            className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 flex-shrink-0"
+            aria-label={`Select ${title} for refinement`}
+          />
+        )}
+
         {/* Type badge */}
         <span
           className={`${style.bg} ${style.text} text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0`}
@@ -679,6 +718,63 @@ export function HierarchicalPlanEditor({
           </React.Fragment>
         );
       })}
+
+      {/* Refinement bar */}
+      {onRefine && selectedKeys.size > 0 && (
+        <div className="mt-3 p-3 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/20 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
+              {selectedKeys.size} task{selectedKeys.size !== 1 ? 's' : ''} selected
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => { setSelectedKeys(new Set()); setShowRefinePrompt(false); }}
+                className="text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+              >
+                Clear
+              </button>
+              {!showRefinePrompt && (
+                <button
+                  onClick={() => setShowRefinePrompt(true)}
+                  className="px-3 py-1 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg"
+                  disabled={refining}
+                >
+                  Refine selected
+                </button>
+              )}
+            </div>
+          </div>
+          {showRefinePrompt && (
+            <div className="space-y-2">
+              <textarea
+                value={refinePrompt}
+                onChange={(e) => setRefinePrompt(e.target.value)}
+                placeholder="What should change about these tasks?"
+                rows={3}
+                className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded-lg resize-y focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                disabled={refining}
+                autoFocus
+              />
+              <div className="flex items-center gap-2 justify-end">
+                <button
+                  onClick={() => setShowRefinePrompt(false)}
+                  className="px-3 py-1 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+                  disabled={refining}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleRefineSubmit}
+                  className="px-3 py-1 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-50"
+                  disabled={refining || !refinePrompt.trim()}
+                >
+                  {refining ? 'Refining...' : 'Refine'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

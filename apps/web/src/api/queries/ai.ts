@@ -93,6 +93,20 @@ export const COMMIT_HIERARCHICAL_PLAN_MUTATION = `mutation CommitHierarchicalPla
   commitHierarchicalPlan(projectId: $projectId, epics: $epics, clearExisting: $clearExisting) { ${TASK_FIELDS} }
 }`;
 
+export const REFINE_HIERARCHICAL_PLAN_MUTATION = `mutation RefineHierarchicalPlan($projectId: ID!, $taskIds: [ID!]!, $refinementPrompt: String!) {
+  refineHierarchicalPlan(projectId: $projectId, taskIds: $taskIds, refinementPrompt: $refinementPrompt) {
+    epics {
+      title description instructions estimatedHours priority acceptanceCriteria autoComplete
+      dependsOn { title linkType }
+      tasks {
+        title description instructions estimatedHours priority acceptanceCriteria autoComplete
+        dependsOn { title linkType }
+        subtasks { title description estimatedHours priority acceptanceCriteria }
+      }
+    }
+  }
+}`;
+
 // ── Stack Recommendation ──
 
 export const RECOMMEND_STACK_QUERY = `query RecommendStack($projectId: ID!) {

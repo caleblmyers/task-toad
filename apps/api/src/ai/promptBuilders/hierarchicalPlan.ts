@@ -38,6 +38,33 @@ The following tasks were recently completed or failed. Use this to calibrate you
 ${lines.join('\n')}`;
 }
 
+export interface RefinementContext {
+  tasksToRefine: Array<{ title: string; description: string; instructions: string | null; status: string }>;
+  existingTasks: Array<{ title: string; status: string }>;
+  refinementPrompt: string;
+}
+
+export function buildRefinementSection(ctx: RefinementContext): string {
+  const refineList = ctx.tasksToRefine
+    .map((t) => `- "${t.title}" (${t.status}): ${t.description}`)
+    .join('\n');
+  const existingList = ctx.existingTasks
+    .map((t) => `- "${t.title}" (${t.status})`)
+    .join('\n');
+
+  return `
+## Refinement Request
+The user wants to re-plan the following tasks:
+${refineList}
+
+User's refinement: "${ctx.refinementPrompt}"
+
+## Existing tasks (keep as-is, for context):
+${existingList}
+
+Generate replacement tasks for ONLY the listed tasks above. Maintain dependencies with existing tasks where appropriate. Do NOT regenerate or include the existing tasks — only output replacements for the tasks being refined.`;
+}
+
 export function buildHierarchicalPlanPrompt(data: {
   projectName: string;
   projectDescription: string;
@@ -45,6 +72,7 @@ export function buildHierarchicalPlanPrompt(data: {
   knowledgeBase?: string | null;
   existingTaskTitles?: string[];
   executionHistory?: ExecutionHistoryEntry[];
+  refinementContext?: RefinementContext;
 }): Prompt {
   const kbLine = data.knowledgeBase
     ? `\nKnowledge Base:\n${userInput('knowledge_base', truncate(data.knowledgeBase, MAX_KB_CHARS))}`
@@ -58,12 +86,16 @@ export function buildHierarchicalPlanPrompt(data: {
     ? formatExecutionHistory(data.executionHistory)
     : '';
 
+  const refinementLine = data.refinementContext
+    ? buildRefinementSection(data.refinementContext)
+    : '';
+
   return {
     systemPrompt: SYSTEM_JSON,
     userPrompt: `Generate a hierarchical project plan with epics (high-level features), tasks (implementable work units), and subtasks (atomic steps).
 
 Project: ${userInput('name', data.projectName)}
-Description: ${userInput('description', truncate(data.projectDescription, MAX_PROJECT_DESCRIPTION_CHARS))}${kbLine}${dedupLine}${historyLine}
+Description: ${userInput('description', truncate(data.projectDescription, MAX_PROJECT_DESCRIPTION_CHARS))}${kbLine}${dedupLine}${historyLine}${refinementLine}
 
 User prompt:
 ${userInput('prompt', data.prompt)}

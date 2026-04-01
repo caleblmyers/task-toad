@@ -33,6 +33,8 @@ export {
   whatNext,
 } from './aiService.js';
 
+export type { RefinementContext } from './promptBuilders/hierarchicalPlan.js';
+
 export { logUsageToDB, checkBudget, type BudgetStatus } from './aiUsageTracker.js';
 
 export type { PromptLogContext } from './aiClient.js';

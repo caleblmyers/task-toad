@@ -13,6 +13,7 @@ import {
   generateHierarchicalPlan as aiGenerateHierarchicalPlan,
   generateManualTaskSpec as aiGenerateManualTaskSpec,
 } from '../../../ai/index.js';
+import type { RefinementContext } from '../../../ai/index.js';
 import { NotFoundError, ValidationError } from '../../errors.js';
 import { requireOrg, requireApiKey } from '../auth.js';
 import { requirePermission, Permission } from '../../../auth/permissions.js';
@@ -1023,6 +1024,76 @@ export const generationMutations = {
       repoFiles,
       task.acceptanceCriteria ?? undefined,
       plc
+    );
+  },
+
+  refineHierarchicalPlan: async (
+    _parent: unknown,
+    args: { projectId: string; taskIds: string[]; refinementPrompt: string },
+    context: Context
+  ) => {
+    const { project } = await requireProject(context, args.projectId);
+    const apiKey = requireApiKey(context);
+    await enforceBudget(context);
+
+    if (!args.refinementPrompt.trim()) {
+      throw new ValidationError('Refinement prompt is required');
+    }
+    if (args.taskIds.length === 0) {
+      throw new ValidationError('At least one task must be selected for refinement');
+    }
+
+    // Load selected tasks with full details
+    const selectedTasks = await context.prisma.task.findMany({
+      where: { taskId: { in: args.taskIds }, projectId: args.projectId },
+      select: { taskId: true, title: true, description: true, instructions: true, status: true },
+    });
+    if (selectedTasks.length === 0) {
+      throw new NotFoundError('None of the specified tasks were found in this project');
+    }
+
+    // Load all OTHER tasks in the project for context
+    const otherTasks = await context.prisma.task.findMany({
+      where: { projectId: args.projectId, taskId: { notIn: args.taskIds }, archived: false },
+      select: { title: true, status: true },
+    });
+
+    const refinementContext: RefinementContext = {
+      tasksToRefine: selectedTasks.map((t) => ({
+        title: t.title,
+        description: t.description ?? '',
+        instructions: t.instructions,
+        status: t.status,
+      })),
+      existingTasks: otherTasks.map((t) => ({
+        title: t.title,
+        status: t.status,
+      })),
+      refinementPrompt: args.refinementPrompt,
+    };
+
+    // Retrieve relevant knowledge
+    const taskContext = `${project.name}: ${args.refinementPrompt}`;
+    let knowledgeBase: string | null = null;
+    try {
+      knowledgeBase = await retrieveRelevantKnowledge(context.prisma, args.projectId, taskContext, apiKey);
+    } catch {
+      knowledgeBase = project.knowledgeBase ?? null;
+    }
+
+    const existingTitles = otherTasks.map((t) => t.title);
+
+    const plc = await buildPromptLogContext(context);
+    return aiGenerateHierarchicalPlan(
+      apiKey,
+      project.name,
+      project.description ?? '',
+      args.refinementPrompt,
+      knowledgeBase,
+      existingTitles,
+      plc,
+      undefined,
+      refinementContext
     );
   },
 };

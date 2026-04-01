@@ -32,6 +32,7 @@ export {
   buildReleaseNotesPrompt,
   buildHierarchicalPlanPrompt,
   type ExecutionHistoryEntry,
+  type RefinementContext,
   buildGenerateTaskInsightsPrompt,
   buildManualTaskSpecPrompt,
   buildScaffoldPrompt,

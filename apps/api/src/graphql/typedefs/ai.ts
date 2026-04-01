@@ -292,4 +292,6 @@ export const aiMutationFields = /* GraphQL */ `
   cancelSession(sessionId: ID!): Session!
   """One-click quick start: create + start a session for all todo tasks with sensible defaults."""
   autoStartProject(projectId: ID!): Session!
+  """Re-plan selected tasks while keeping the rest of the plan intact."""
+  refineHierarchicalPlan(projectId: ID!, taskIds: [ID!]!, refinementPrompt: String!): HierarchicalPlanPreview!
 `;

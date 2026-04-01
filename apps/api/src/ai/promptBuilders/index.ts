@@ -39,7 +39,7 @@ export {
   buildPlanTaskActionsPrompt,
 } from './planning.js';
 
-export { buildHierarchicalPlanPrompt, type ExecutionHistoryEntry } from './hierarchicalPlan.js';
+export { buildHierarchicalPlanPrompt, type ExecutionHistoryEntry, type RefinementContext } from './hierarchicalPlan.js';
 
 export { buildGenerateTaskInsightsPrompt } from './insights.js';
 
