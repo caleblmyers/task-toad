@@ -10,6 +10,7 @@ import Button from './shared/Button';
 import { IconClose } from './shared/Icons';
 import {
   HierarchicalPlanEditor,
+  countUnresolvedDecisions,
   type HierarchicalPlanPreview,
 } from './HierarchicalPlanEditor';
 import { useSSEListener } from '../hooks/useEventSource';
@@ -169,6 +170,7 @@ export default function HierarchicalPlanDialog({
   }, [generating]);
 
   // Count totals for summary
+  const unresolvedDecisions = plan ? countUnresolvedDecisions(plan) : 0;
   const totalEpics = plan?.epics.length ?? 0;
   const totalTasks = plan?.epics.reduce((s, e) => s + (e.tasks?.length ?? 0), 0) ?? 0;
   const totalSubtasks =
@@ -330,14 +332,21 @@ export default function HierarchicalPlanDialog({
             </Button>
           )}
           {state === 'editing' && (
-            <Button
-              size="sm"
-              onClick={handleCommit}
-              disabled={loading}
-              className="rounded-lg"
-            >
-              Commit Plan
-            </Button>
+            <>
+              {unresolvedDecisions > 0 && (
+                <span className="text-xs text-orange-600 dark:text-orange-400">
+                  {unresolvedDecisions} decision{unresolvedDecisions !== 1 ? 's' : ''} need{unresolvedDecisions === 1 ? 's' : ''} your input
+                </span>
+              )}
+              <Button
+                size="sm"
+                onClick={handleCommit}
+                disabled={loading || unresolvedDecisions > 0}
+                className="rounded-lg"
+              >
+                Commit Plan
+              </Button>
+            </>
           )}
         </div>
       </div>

@@ -54,6 +54,21 @@ export interface HierarchicalPlanPreview {
   epics: HierarchicalEpicPreview[];
 }
 
+// ── Decision validation helper ──────────────────────────────────────────
+
+/** Count decision tasks that have no selectedOption. */
+export function countUnresolvedDecisions(plan: HierarchicalPlanPreview): number {
+  let count = 0;
+  for (const epic of plan.epics) {
+    for (const task of epic.tasks ?? []) {
+      if (task.taskKind === 'decision' && !task.selectedOption) {
+        count++;
+      }
+    }
+  }
+  return count;
+}
+
 // ── Internal mutable node type (union of all levels) ─────────────────────
 
 type NodeKey = string;

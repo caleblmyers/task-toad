@@ -346,6 +346,8 @@ export const generationMutations = {
           acceptanceCriteria?: string | null;
           autoComplete?: boolean | null;
           dependsOn?: Array<{ title: string; linkType: string }> | null;
+          taskKind?: string | null;
+          selectedOption?: string | null;
           subtasks?: Array<{
             title: string;
             description: string;
@@ -361,6 +363,17 @@ export const generationMutations = {
   ) => {
     const { user } = await requireProject(context, args.projectId);
     await requirePermission(context, args.projectId, Permission.CREATE_TASKS);
+
+    // Validate all decision tasks have a selected option before committing
+    for (const epicInput of args.epics) {
+      for (const taskInput of epicInput.tasks ?? []) {
+        if (taskInput.taskKind === 'decision' && !taskInput.selectedOption) {
+          throw new ValidationError(
+            `Decision task "${taskInput.title}" requires a selected option before committing.`,
+          );
+        }
+      }
+    }
 
     return context.prisma.$transaction(async (tx) => {
       // Clear existing hierarchy if requested

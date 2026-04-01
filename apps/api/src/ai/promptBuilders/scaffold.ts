@@ -61,6 +61,12 @@ Project description: ${descBlock}${optionsBlock}
   - Tech stack and key dependencies
   - Directory structure overview
   Keep CLAUDE.md concise (under 30 lines).
+- .claude-knowledge/app-overview.md with:
+  - Data model overview (entities and relationships)
+  - API routes or page routes
+  - Key files and their purpose
+  - Architecture notes (e.g., state management, data flow)
+  Keep it factual and concise (under 50 lines).
 
 **Do NOT include:** README, test files, CI/CD configs, Docker files, deployment configs, .env files with secrets.
 
