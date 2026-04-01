@@ -107,7 +107,7 @@ export default function DetailsTab({
                     const source = dep.sourceTask;
                     const isDone = source?.status === 'done';
                     return (
-                      <div key={dep.taskDependencyId} className="flex items-center gap-2 ml-1">
+                      <div key={dep.taskDependencyId} className="flex items-center gap-2 ml-1" title={dep.reason || undefined}>
                         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isDone ? 'bg-green-500' : source?.status === 'in_progress' ? 'bg-blue-500' : source?.status === 'in_review' ? 'bg-amber-500' : 'bg-slate-400'}`} />
                         <button
                           type="button"
@@ -134,7 +134,7 @@ export default function DetailsTab({
                     const target = dep.targetTask;
                     const isDone = target?.status === 'done';
                     return (
-                      <div key={dep.taskDependencyId} className="flex items-center gap-2 ml-1">
+                      <div key={dep.taskDependencyId} className="flex items-center gap-2 ml-1" title={dep.reason || undefined}>
                         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isDone ? 'bg-green-500' : target?.status === 'in_progress' ? 'bg-blue-500' : target?.status === 'in_review' ? 'bg-amber-500' : 'bg-slate-400'}`} />
                         <button
                           type="button"

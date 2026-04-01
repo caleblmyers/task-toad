@@ -125,6 +125,7 @@ export interface TaskDependency {
   sourceTaskId: string;
   targetTaskId: string;
   linkType: 'blocks' | 'is_blocked_by' | 'relates_to' | 'duplicates' | 'informs';
+  reason?: string | null;
   sourceTask?: Task;
   targetTask?: Task;
   createdAt: string;

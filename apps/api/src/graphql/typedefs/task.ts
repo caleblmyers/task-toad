@@ -51,6 +51,7 @@ export const taskTypeDefs = /* GraphQL */ `
     sourceTaskId: ID!
     targetTaskId: ID!
     linkType: DependencyLinkType!
+    reason: String
     sourceTask: Task
     targetTask: Task
     createdAt: String!
