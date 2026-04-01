@@ -10,6 +10,7 @@ import MarkdownRenderer from '../shared/MarkdownRenderer';
 import MarkdownEditor from '../shared/MarkdownEditor';
 import TaskFieldsPanel from './TaskFieldsPanel';
 import TaskGitHubSection from './TaskGitHubSection';
+import Badge from '../shared/Badge';
 
 export interface DetailsTabProps {
   task: Task;
@@ -37,6 +38,7 @@ export interface DetailsTabProps {
   timeSummary?: TaskTimeSummary | null;
   onLogTime?: (taskId: string, durationMinutes: number, loggedDate: string, description?: string, billable?: boolean) => Promise<unknown>;
   onDeleteTimeEntry?: (timeEntryId: string, taskId: string) => Promise<void>;
+  onSelectTask?: (task: Task) => void;
 }
 
 export default function DetailsTab({
@@ -45,7 +47,7 @@ export default function DetailsTab({
   onStatusChange, onAssignSprint, onAssignUser, onDueDateChange,
   onUpdateTask, onAddTaskLabel, onRemoveTaskLabel, onCreateLabel,
   onAddWatcher, onRemoveWatcher, onGenerateInstructions, onSyncToGitHub,
-  timeSummary, onLogTime, onDeleteTimeEntry,
+  timeSummary, onLogTime, onDeleteTimeEntry, onSelectTask,
 }: DetailsTabProps) {
   const descField = useEditableField(
     task.description ?? '',
@@ -88,6 +90,72 @@ export default function DetailsTab({
         onLogTime={canDo && !canDo('LOG_TIME') ? undefined : onLogTime}
         onDeleteTimeEntry={onDeleteTimeEntry}
       />
+
+      {/* Dependencies summary */}
+      {(() => {
+        const blockedBy = (task.dependents ?? []).filter(d => d.linkType === 'blocks' || d.linkType === 'informs');
+        const blocks = (task.dependencies ?? []).filter(d => d.linkType === 'blocks' || d.linkType === 'informs');
+        if (blockedBy.length === 0 && blocks.length === 0) return null;
+        return (
+          <div className="mb-4">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">Dependencies</p>
+            {blockedBy.length > 0 && (
+              <div className="mb-2">
+                <span className="text-[10px] font-semibold text-slate-400 uppercase">Blocked by</span>
+                <div className="space-y-1 mt-1">
+                  {blockedBy.map(dep => {
+                    const source = dep.sourceTask;
+                    const isDone = source?.status === 'done';
+                    return (
+                      <div key={dep.taskDependencyId} className="flex items-center gap-2 ml-1">
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isDone ? 'bg-green-500' : source?.status === 'in_progress' ? 'bg-blue-500' : source?.status === 'in_review' ? 'bg-amber-500' : 'bg-slate-400'}`} />
+                        <button
+                          type="button"
+                          onClick={() => { if (onSelectTask && source) onSelectTask(source as unknown as Task); }}
+                          className="text-xs text-blue-600 dark:text-blue-400 hover:underline truncate text-left"
+                          disabled={!source}
+                        >
+                          {source?.title ?? dep.sourceTaskId.slice(0, 8)}
+                        </button>
+                        <Badge variant={dep.linkType === 'blocks' ? 'warning' : 'info'} size="sm">
+                          {dep.linkType}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {blocks.length > 0 && (
+              <div>
+                <span className="text-[10px] font-semibold text-slate-400 uppercase">Blocks</span>
+                <div className="space-y-1 mt-1">
+                  {blocks.map(dep => {
+                    const target = dep.targetTask;
+                    const isDone = target?.status === 'done';
+                    return (
+                      <div key={dep.taskDependencyId} className="flex items-center gap-2 ml-1">
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isDone ? 'bg-green-500' : target?.status === 'in_progress' ? 'bg-blue-500' : target?.status === 'in_review' ? 'bg-amber-500' : 'bg-slate-400'}`} />
+                        <button
+                          type="button"
+                          onClick={() => { if (onSelectTask && target) onSelectTask(target as unknown as Task); }}
+                          className="text-xs text-blue-600 dark:text-blue-400 hover:underline truncate text-left"
+                          disabled={!target}
+                        >
+                          {target?.title ?? dep.targetTaskId.slice(0, 8)}
+                        </button>
+                        <Badge variant={dep.linkType === 'blocks' ? 'warning' : 'info'} size="sm">
+                          {dep.linkType}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Recurrence */}
       <div className="mb-4">
