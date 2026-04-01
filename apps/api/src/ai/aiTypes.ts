@@ -265,6 +265,12 @@ export const HierarchicalDependencySchema = z.object({
   reason: z.string().optional().default(''),
 });
 
+export const DecisionOptionSchema = z.object({
+  label: z.string(),
+  description: z.string(),
+  recommended: z.boolean().optional().default(false),
+});
+
 export const HierarchicalTaskSchema = z.object({
   title: z.string(),
   description: z.string(),
@@ -273,6 +279,8 @@ export const HierarchicalTaskSchema = z.object({
   acceptanceCriteria: z.string().optional().default(''),
   instructions: z.string().optional().default(''),
   autoComplete: z.boolean().optional().default(false),
+  taskKind: z.enum(['implementation', 'decision']).optional().default('implementation'),
+  options: z.array(DecisionOptionSchema).optional().default([]),
   dependsOn: z.array(HierarchicalDependencySchema).optional().default([]),
   subtasks: z.array(HierarchicalSubtaskSchema).optional().default([]),
 });
@@ -293,6 +301,7 @@ export const HierarchicalPlanResponseSchema = z.object({
   epics: z.array(HierarchicalEpicSchema).min(1).max(10),
 });
 
+export type DecisionOption = z.infer<typeof DecisionOptionSchema>;
 export type HierarchicalDependency = z.infer<typeof HierarchicalDependencySchema>;
 export type HierarchicalSubtask = z.infer<typeof HierarchicalSubtaskSchema>;
 export type HierarchicalTask = z.infer<typeof HierarchicalTaskSchema>;

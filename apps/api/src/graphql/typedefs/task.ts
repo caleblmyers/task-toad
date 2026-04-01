@@ -204,6 +204,12 @@ export const taskTypeDefs = /* GraphQL */ `
     acceptanceCriteria: String
   }
 
+  type DecisionOption {
+    label: String!
+    description: String!
+    recommended: Boolean
+  }
+
   type HierarchicalTaskPreview {
     title: String!
     description: String!
@@ -212,6 +218,8 @@ export const taskTypeDefs = /* GraphQL */ `
     priority: String
     acceptanceCriteria: String
     autoComplete: Boolean
+    taskKind: String
+    options: [DecisionOption!]
     dependsOn: [DependencyRef!]
     subtasks: [HierarchicalSubtaskPreview!]
   }
@@ -266,6 +274,12 @@ export const taskTypeDefs = /* GraphQL */ `
     acceptanceCriteria: String
   }
 
+  input DecisionOptionInput {
+    label: String!
+    description: String!
+    recommended: Boolean
+  }
+
   input CommitHierarchicalTaskInput {
     title: String!
     description: String!
@@ -274,6 +288,9 @@ export const taskTypeDefs = /* GraphQL */ `
     priority: String
     acceptanceCriteria: String
     autoComplete: Boolean
+    taskKind: String
+    options: [DecisionOptionInput!]
+    selectedOption: String
     dependsOn: [DependencyRefInput!]
     subtasks: [CommitHierarchicalSubtaskInput!]
   }

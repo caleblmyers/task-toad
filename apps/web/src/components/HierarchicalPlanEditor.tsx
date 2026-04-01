@@ -4,6 +4,12 @@ import PlanDependencyEditor from './PlanDependencyEditor';
 
 // ── Types ────────────────────────────────────────────────────────────────
 
+export interface DecisionOptionPreview {
+  label: string;
+  description: string;
+  recommended?: boolean;
+}
+
 export interface DependencyRef {
   title: string;
   linkType: string;
@@ -25,6 +31,9 @@ export interface HierarchicalTaskPreview {
   priority: string | null;
   acceptanceCriteria: string | null;
   autoComplete: boolean | null;
+  taskKind: string | null;
+  options: DecisionOptionPreview[] | null;
+  selectedOption: string | null;
   dependsOn: DependencyRef[] | null;
   subtasks: HierarchicalSubtaskPreview[] | null;
 }
@@ -229,6 +238,32 @@ export function HierarchicalPlanEditor({
     [plan, onChange],
   );
 
+  // ── Select decision option ───────────────────────────────────────────
+
+  const selectDecisionOption = useCallback(
+    (key: string, optionLabel: string) => {
+      const updated = structuredClone(plan);
+      const parts = key.split('-');
+      if (parts[0] === 'task') {
+        const tasks = updated.epics[Number(parts[1])].tasks;
+        if (tasks) {
+          const task = tasks[Number(parts[2])];
+          task.selectedOption = optionLabel;
+          // Fold selected option into instructions
+          const opt = task.options?.find((o) => o.label === optionLabel);
+          if (opt) {
+            const selectionLine = `\nSelected: ${opt.label} — ${opt.description}`;
+            // Remove any previous selection line
+            const base = (task.instructions ?? '').replace(/\nSelected: .+$/, '');
+            task.instructions = base + selectionLine;
+          }
+        }
+      }
+      onChange(updated);
+    },
+    [plan, onChange],
+  );
+
   // ── Update node dependencies ─────────────────────────────────────────
 
   const updateNodeDeps = useCallback(
@@ -361,6 +396,9 @@ export function HierarchicalPlanEditor({
     hasChildren: boolean,
     key: NodeKey,
     depth: number,
+    taskKind?: string | null,
+    options?: DecisionOptionPreview[] | null,
+    selectedOption?: string | null,
   ) => {
     const isExpanded = expandedIds.has(key);
     const isEditing = editingKey === key;
@@ -402,6 +440,13 @@ export function HierarchicalPlanEditor({
         >
           {style.label}
         </span>
+
+        {/* Decision badge */}
+        {taskKind === 'decision' && (
+          <span className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0">
+            Decision
+          </span>
+        )}
 
         {/* Title (inline editable) */}
         <div className="flex-1 min-w-0">
@@ -499,6 +544,43 @@ export function HierarchicalPlanEditor({
           />
         </div>
       )}
+      {/* Decision options */}
+      {taskKind === 'decision' && options && options.length > 0 && (
+        <div style={{ marginLeft: `${depth * 24 + 20}px` }} className="mb-1 space-y-1">
+          {options.map((opt) => {
+            const isSelected = selectedOption === opt.label;
+            return (
+              <button
+                key={opt.label}
+                type="button"
+                onClick={() => selectDecisionOption(key, opt.label)}
+                className={`w-full text-left px-3 py-2 rounded-lg border transition-all text-sm ${
+                  isSelected
+                    ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-400'
+                    : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-900'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <span className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                    isSelected ? 'border-blue-500' : 'border-slate-300 dark:border-slate-600'
+                  }`}>
+                    {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
+                  </span>
+                  <span className="font-medium">{opt.label}</span>
+                  {opt.recommended && (
+                    <span className="text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-1.5 py-0.5 rounded-full">
+                      Recommended
+                    </span>
+                  )}
+                </span>
+                <span className="block ml-[22px] text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  {opt.description}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
       </React.Fragment>
     );
   };
@@ -551,6 +633,9 @@ export function HierarchicalPlanEditor({
                       subtasks.length > 0,
                       taskKey,
                       1,
+                      task.taskKind,
+                      task.options,
+                      task.selectedOption,
                     )}
 
                     {taskExpanded &&

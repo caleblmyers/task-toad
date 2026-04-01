@@ -94,6 +94,12 @@ Calibration:
 Be conservative — overestimates are better than underestimates for planning.
 Include buffer for AI retry attempts and review cycles.
 10. Each task should be scoped so that code generation produces 3–8 files maximum. If a task would require generating more than 8 files, break it into smaller tasks. For example, "Set up API framework" should be split into "Create data models", "Add CRUD API routes", "Add auth middleware" as separate tasks. Each task should produce one focused, reviewable PR.
+11. Tasks that involve choosing between technologies, services, or approaches should use "taskKind": "decision" with an "options" array of 2–4 choices. Examples:
+    - "Set up authentication" → decision with options: Auth0, in-house JWT, Clerk
+    - "Choose database" → decision with options: PostgreSQL, MySQL, MongoDB
+    - "Select hosting" → decision with options: Vercel, Railway, AWS
+    Mark your recommendation with "recommended": true, but don't assume the user will pick it.
+    Implementation tasks use "taskKind": "implementation" (default) — they have clear, opinionated instructions and no options.
 
 Return JSON:
 {
@@ -114,6 +120,8 @@ Return JSON:
       "priority": "low" | "medium" | "high" | "critical",
       "acceptanceCriteria": string,
       "autoComplete": boolean,
+      "taskKind": "implementation" | "decision",
+      "options": [{ "label": string, "description": string, "recommended": boolean }],
       "dependsOn": [{ "title": string, "linkType": "blocks" | "informs", "reason": string }],
       "subtasks": [{
         "title": string,
