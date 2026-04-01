@@ -8,6 +8,7 @@ import { createHandler as createRecurrenceHandler } from './recurrenceScheduler.
 import { createHandler as createPrismaMetricsHandler } from './prismaMetrics.js';
 import { createHandler as createActionExecutorHandler } from './actionExecutor.js';
 import { createHandler as createMonitorCIPollHandler } from './monitorCIPoll.js';
+import { createHandler as createHealthMonitorHandler } from './healthMonitor.js';
 
 export function registerJobs(queue: JobQueue, prisma: PrismaClient): void {
   // Register handlers
@@ -36,12 +37,15 @@ export function registerJobs(queue: JobQueue, prisma: PrismaClient): void {
 
   queue.registerHandler('monitor-ci-poll', createMonitorCIPollHandler(prisma));
 
+  queue.registerHandler('health-monitor', createHealthMonitorHandler(prisma));
+
   // Schedule recurring jobs
   queue.schedule('due-date-reminders', 15 * 60 * 1000, 'due-date-reminders');
   queue.schedule('prompt-cleanup', 6 * 60 * 60 * 1000, 'prompt-cleanup');
   queue.schedule('webhook-retry', 30_000, 'webhook-retry');
   queue.schedule('recurrence-scheduler', 60_000, 'recurrence-scheduler');
   queue.schedule('prisma-metrics', 30_000, 'prisma-metrics');
+  queue.schedule('health-monitor', 15 * 60 * 1000, 'health-monitor');
 
   // Run prompt cleanup once at startup
   queue.enqueue('prompt-cleanup', {} as Record<string, never>);

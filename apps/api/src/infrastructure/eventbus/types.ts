@@ -159,6 +159,13 @@ export interface DomainEventMap {
     operation: string;
     step: string;
   };
+  'health.alert': BaseEventPayload & {
+    taskId: string;
+    taskTitle: string;
+    planId: string;
+    status: 'executing' | 'approved';
+    minutesStuck: number;
+  };
 }
 
 export type EventName = keyof DomainEventMap;
