@@ -4,6 +4,36 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-04-01 (Wave 80 — Decomposition Engine: Feedback, Decisions, Estimation)
+
+### Wave 80: Decomposition Engine Improvements (3 workers, 3 tasks)
+
+**Worker 1 — task-001: Planning quality feedback loop:**
+- `previewHierarchicalPlan` now queries recent completed/failed tasks (last 10 with completion summaries)
+- Execution history formatted and passed to the hierarchical plan prompt
+- AI sees what succeeded, what failed, and how accurate past estimates were
+- New projects with no history skip the section gracefully
+
+**Worker 2 — task-002: Decision points in task plans:**
+- `taskKind` enum added to plan schema: `implementation` (default) or `decision`
+- Decision tasks include 2-4 options with `label`, `description`, and `recommended` flag
+- Prompt instructs AI to generate decision tasks for tech/service/approach choices
+- HierarchicalPlanEditor shows selectable option cards for decision tasks with recommended highlight
+- Selected option folded into task instructions on commit
+- GraphQL types updated for `taskKind` and `options`
+
+**Worker 3 — task-003: Dependency reason in GraphQL + scope estimation:**
+- `reason` field added to TaskDependency GraphQL type and included in blockedBy/blocks queries
+- Dependency display in DetailsTab shows reason as tooltip on hover
+- Estimation calibration guidelines added to hierarchical plan prompt (AI agent execution time, buffer for retries)
+
+### Open follow-ups
+- Decision task validation on commit — enforce that all decision tasks have a selectedOption
+- Dependency reason in plan editor — show/edit reasons in HierarchicalPlanEditor
+- `filesToChange` accuracy: when adding fields to Zod schema, include corresponding GraphQL typedef file
+
+---
+
 ## 2026-04-01 (Wave 79 — Dependencies + Scaffold Progress + Deferred Quality)
 
 ### Wave 79: Dependencies + Scaffold Progress + Deferred Quality (3 workers, 3 tasks)
@@ -94,50 +124,7 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-03-31 (Wave 76 — Pipeline Hardening + Auth UX + Tests)
-
-### Wave 76: Pipeline Hardening + Auth UX + Tests (3 workers, 5 tasks)
-
-**Worker 1 — task-001: merge_pr executor hardening:**
-- New `getPullRequestState()` function checks PR state (OPEN/CLOSED/MERGED) before merge attempt
-- New `updatePullRequestBranch()` function calls GitHub REST API to update out-of-date branches
-- `mergePullRequest()` returns structured `errorReason` field: `'already_merged' | 'out_of_date' | 'conflict' | 'unknown'`
-- Executor auto-retries after branch update when error is `out_of_date`
-- Already-merged PRs detected and returned as success instead of failure
-- Merge conflicts return actionable error message
-
-**Worker 2 — task-002: Resend verification email from login page:**
-- New unauthenticated `requestVerificationEmail(email)` mutation — no `requireAuth`
-- Rate-limited: 2-minute cooldown on verification token generation
-- Does not leak user existence (always returns true)
-- Login page shows "Resend verification email" link when verification error appears
-- Clicking resend shows confirmation message
-
-**Worker 2 — task-003: PriorityDropdown keyboard accessibility:**
-- Arrow keys (Up/Down) cycle through priority options with `focusedIndex` state
-- Escape closes dropdown and returns focus to trigger button
-- Enter/Space selects focused option
-- ARIA attributes: `aria-haspopup`, `aria-expanded`, `role=listbox`, `role=option`, `aria-selected`
-- Focus moves to current selection on open
-
-**Worker 3 — task-004: Session timeout branch cleanup:**
-- Extracted `cancelSessionPlans()` shared helper from `cancelSession` resolver
-- Orchestrator listener calls helper on timeout and budget cap exceeded (was only pausing before)
-- Aborts running actions via `abortPlan()` and deletes GitHub branches
-- `cancelSession` resolver refactored to use the shared helper
-
-**Worker 3 — task-005: fix_review executor test suite:**
-- 10 tests covering all 7 major code paths
-- Approved review skip (nested and direct structures), missing review result
-- AI fixes with source context, invalid AI response, successful commit
-- Deferred task creation with duplicate detection, abort signal handling
-
-**414 tests** (56 web + 358 api, 10 new). All pass.
-
-### Open follow-ups
-- Test coverage for merge_pr executor (auto-update retry, state checks, conflict handling)
-- Audit remaining Prisma status filters for stale values (`'pending'`/`'running'` vs `'approved'`/`'executing'`)
-- Task `filesToChange` accuracy: when extracting shared code, include ALL files that import the extraction
+## 2026-03-31 (Wave 76) — merge_pr hardening, resend verification email, PriorityDropdown a11y, session timeout cleanup, fix_review tests
 
 ---
 

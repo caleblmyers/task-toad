@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work
 
-79 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Pipeline mechanics work; launching as closed-source SaaS.
+80 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Pipeline mechanics work; launching as closed-source SaaS.
 
 ---
 
@@ -58,11 +58,13 @@
 
 ## Pillar 1: Decomposition Engine
 
-- [ ] **Expose dependency reason in GraphQL** — TaskDependency.reason is persisted (Wave 79) but not in the GraphQL type or UI. Add `reason` field to TaskDependency typedef and show as tooltip in dependency display
+- [x] **Expose dependency reason in GraphQL** — `reason` field added to TaskDependency typedef, shown as tooltip in dependency display *(Wave 80)*
 - [ ] **Dependency inference during planning** — planner generates tasks but doesn't infer dependencies. Should output a dependency graph, not just a flat list
-- [ ] **Decision points in task plans** — distinguish implementation tasks from decision tasks. Tech/service choices should be generic with options, not opinionated picks (e.g., "Set up auth" with Auth0/JWT/Clerk options, not "Set up Auth0")
-- [ ] **Planning quality feedback loop** — when tasks fail during execution, feed that back to improve future decomposition
-- [ ] **Scope estimation** — each decomposed task should have estimated complexity/effort for orchestrator sequencing decisions
+- [x] **Decision points in task plans** — taskKind (implementation/decision) with selectable options and recommendations in plan editor *(Wave 80)*
+- [x] **Planning quality feedback loop** — execution history (last 10 completed/failed tasks with summaries) fed into hierarchical plan prompt *(Wave 80)*
+- [x] **Scope estimation** — estimation calibration guidelines added to hierarchical plan prompt (AI agent execution time, not human time) *(Wave 80)*
+- [ ] **Decision task validation on commit** — enforce that all decision tasks have a selectedOption before allowing plan commit
+- [ ] **Dependency reason in plan editor** — show/edit dependency reasons in the HierarchicalPlanEditor dependency view, not just in task detail
 - [ ] **Iterative refinement** — re-plan a subset of tasks when requirements change without regenerating the entire plan
 
 ---
@@ -188,5 +190,6 @@
 | 77 | 2026-03-31 | Auto-Complete button fix, commit attribution, kanban scroll, review collapsed, close sprint from board |
 | 78 | 2026-04-01 | Concurrent plan prevention, fix_review reliability, hierarchical plan progress events |
 | 79 | 2026-04-01 | Dependency reason + ordering, scaffold progress, deferred task quality, dependency UI |
+| 80 | 2026-04-01 | Planning feedback loop, decision points in plans, scope estimation, dependency reason GraphQL |
 
 Full wave details in `changelog.md`.
