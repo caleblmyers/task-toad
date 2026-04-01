@@ -106,12 +106,28 @@ export const fixReviewExecutor: ActionExecutor = {
 
 Your goal is cohesive, production-quality code — not just patching individual lines. Consider how review comments relate to each other and address them holistically. A single well-thought-out refactor that resolves five related comments is better than five isolated patches.
 
-**Fixing:** Apply every improvement you can deliver correctly in one commit. This includes security hardening, input validation, error handling, naming, structure, and any other concrete code change. Use the full source code provided to ensure your fixes are accurate and complete. Each fix must contain the COMPLETE file content.
+**Fixing:** Apply every improvement you can deliver correctly in one commit. This includes security hardening, input validation, error handling, naming, structure, and any other concrete code change. Use the full source code provided to ensure your fixes are accurate and complete.
 
 **Deferring:** Create focused, actionable tasks for work that genuinely can't be done well in this commit — things that need new infrastructure (rate limiting middleware, test suites), cross-cutting changes across files you don't have, or design decisions that need human input. Each deferred task should have a clear title and enough description that someone can pick it up independently.
 
 Use your judgment. The bar is: will this fix make the code better without introducing new problems? If yes, fix it.
-Return valid JSON matching the required schema.`;
+
+**Response constraints:**
+- Each fix.content MUST be the COMPLETE file content, not a diff or snippet.
+- The commitMessage MUST start with a conventional commit prefix (fix:, feat:, refactor:, chore:, docs:).
+- The summary MUST be one sentence.
+
+**Example response:**
+\`\`\`json
+{
+  "fixes": [{ "path": "src/auth.ts", "content": "// complete file content...", "description": "Added input validation" }],
+  "commitMessage": "fix: address review comments",
+  "deferredIssues": [{ "title": "Add rate limiting", "description": "The auth endpoint needs rate limiting to prevent brute force attacks.", "severity": "warning" }],
+  "summary": "Fixed 2 issues and deferred 1 for follow-up."
+}
+\`\`\`
+
+Return valid JSON matching this exact structure.`;
 
     // Build full context from upstream tasks, previous steps, and failure history
     let fullContext = ctx.knowledgeContext ?? ctx.project.knowledgeBase ?? '';
@@ -162,7 +178,40 @@ Address the review holistically. Fix everything you can do well in one commit. D
       return { success: false, data: { error: 'AI did not return valid fix response' } };
     }
 
-    const parsed = aiResult.parsed;
+    // Normalize common AI response quirks before using the parsed result
+    const normalized = aiResult.parsed as Record<string, unknown>;
+    if (!normalized.fixes && normalized.path && normalized.content) {
+      // Single fix object at root — wrap in array
+      normalized.fixes = [{ path: normalized.path, content: normalized.content, description: normalized.description ?? '' }];
+    }
+    if (!normalized.commitMessage && normalized.summary) {
+      normalized.commitMessage = `fix: ${String(normalized.summary).slice(0, 70)}`;
+    }
+    if (!normalized.deferredIssues) {
+      normalized.deferredIssues = [];
+    }
+    if (!normalized.summary) {
+      const fixCount = Array.isArray(normalized.fixes) ? normalized.fixes.length : 0;
+      const deferredCount = Array.isArray(normalized.deferredIssues) ? normalized.deferredIssues.length : 0;
+      normalized.summary = `Applied ${fixCount} fix(es), deferred ${deferredCount} issue(s).`;
+    }
+    // Trim whitespace from string fields
+    for (const key of ['commitMessage', 'summary'] as const) {
+      if (typeof normalized[key] === 'string') {
+        normalized[key] = (normalized[key] as string).trim();
+      }
+    }
+    if (Array.isArray(normalized.fixes)) {
+      for (const fix of normalized.fixes as Array<Record<string, unknown>>) {
+        for (const key of ['path', 'content', 'description']) {
+          if (typeof fix[key] === 'string') {
+            fix[key] = (fix[key] as string).trim();
+          }
+        }
+      }
+    }
+
+    const parsed = FixReviewResponseSchema.parse(normalized);
 
     // Check for cancellation after AI call
     if (signal?.aborted) {

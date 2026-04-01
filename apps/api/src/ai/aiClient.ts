@@ -291,6 +291,7 @@ export async function callAIStructured<T>(
     : rawJsonSchema;
 
   let lastError: unknown;
+  let validationRetried = false;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     if (attempt > 0) {
       const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
@@ -363,6 +364,57 @@ export async function callAIStructured<T>(
       // Validate against Zod schema
       const result = schema.safeParse(coercedInput);
       if (!result.success) {
+        // Retry once with validation error feedback appended to the prompt
+        if (!validationRetried) {
+          validationRetried = true;
+          const errorSummary = result.error.issues
+            .slice(0, 5)
+            .map((i) => `${i.path.join('.')}: ${i.message}`)
+            .join('; ');
+          log.warn({ issues: result.error.issues.slice(0, 3) }, 'Structured output validation failed, retrying with error feedback');
+
+          const retryStart = Date.now();
+          try {
+            const retryResponse = await getClient(apiKey).messages.create({
+              model,
+              max_tokens: maxTokens,
+              system: systemPrompt,
+              messages: [
+                { role: 'user', content: userPrompt },
+                { role: 'assistant', content: [{ type: 'tool_use', id: toolBlock.id, name: 'structured_response', input: toolBlock.input }] },
+                { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolBlock.id, content: `Your previous response failed validation: ${errorSummary}. Please return valid JSON matching the schema exactly.` }] },
+              ],
+              tools: [{
+                name: 'structured_response',
+                description: 'Return the structured response',
+                input_schema: jsonSchema as Anthropic.Tool.InputSchema,
+              }],
+              tool_choice: { type: 'tool', name: 'structured_response' },
+            });
+
+            const retryLatencyMs = Date.now() - retryStart;
+            const retryUsage: AIUsage = {
+              inputTokens: retryResponse.usage.input_tokens,
+              outputTokens: retryResponse.usage.output_tokens,
+              stopReason: retryResponse.stop_reason ?? 'unknown',
+            };
+            logAICall({ feature, model, usage: retryUsage, latencyMs: retryLatencyMs, cached: false });
+
+            const retryToolBlock = retryResponse.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
+            if (retryToolBlock) {
+              const retryRawInput = isArrayAtTop
+                ? (retryToolBlock.input as Record<string, unknown>).items
+                : retryToolBlock.input;
+              const retryResult = schema.safeParse(retryRawInput);
+              if (retryResult.success) {
+                return { parsed: retryResult.data, usage: retryUsage };
+              }
+            }
+          } catch (retryErr) {
+            log.warn({ err: retryErr }, 'Validation retry AI call failed');
+          }
+        }
+
         log.error({ issues: result.error.issues.slice(0, 3) }, 'Structured output validation failed');
         throw new GraphQLError('AI response did not match expected format');
       }
