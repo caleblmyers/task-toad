@@ -758,7 +758,7 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
     }
   });
 
-  // ── CI failed: mark monitor_ci as failed ──
+  // ── CI failed: mark monitor_ci as failed, trigger fix_ci if available ──
   bus.on('task.ci_failed', async (event) => {
     const { taskId, orgId, projectId } = event;
 
@@ -784,12 +784,6 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
         },
       });
 
-      // Mark the plan as failed
-      await prisma.taskActionPlan.update({
-        where: { id: plan.id },
-        data: { status: 'failed' },
-      });
-
       bus.emit('task.action_completed', {
         orgId,
         userId: event.userId,
@@ -802,20 +796,43 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
         success: false,
       });
 
-      bus.emit('task.action_plan_failed', {
-        orgId,
-        userId: event.userId,
-        projectId,
-        timestamp: new Date().toISOString(),
-        planId: plan.id,
-        taskId,
-        taskTitle: '', // Title not available from event, non-critical for this path
-        lastFailedActionId: monitorAction.id,
-        lastFailedActionType: 'monitor_ci',
-        errorMessage: `CI failed: ${event.conclusion}`,
-      });
+      // Check for a pending fix_ci action after the failed monitor_ci
+      const fixCIAction = plan.actions.find(
+        (a) => a.position > monitorAction.position && a.actionType === 'fix_ci' && a.status === 'pending',
+      );
 
-      log.info({ taskId, planId: plan.id, conclusion: event.conclusion }, 'CI failed via webhook — plan marked as failed');
+      if (fixCIAction) {
+        // Enqueue fix_ci — it will read CI logs and attempt a fix
+        const queue = getJobQueue();
+        queue.enqueue('action-execute', {
+          planId: plan.id,
+          actionId: fixCIAction.id,
+          orgId,
+          userId: plan.createdById,
+        });
+        log.info({ taskId, planId: plan.id, fixCIActionId: fixCIAction.id, conclusion: event.conclusion }, 'CI failed via webhook — triggering fix_ci recovery');
+      } else {
+        // No fix_ci in plan — mark plan as failed, auto-replan will handle it
+        await prisma.taskActionPlan.update({
+          where: { id: plan.id },
+          data: { status: 'failed' },
+        });
+
+        bus.emit('task.action_plan_failed', {
+          orgId,
+          userId: event.userId,
+          projectId,
+          timestamp: new Date().toISOString(),
+          planId: plan.id,
+          taskId,
+          taskTitle: '',
+          lastFailedActionId: monitorAction.id,
+          lastFailedActionType: 'monitor_ci',
+          errorMessage: `CI failed: ${event.conclusion}`,
+        });
+
+        log.info({ taskId, planId: plan.id, conclusion: event.conclusion }, 'CI failed via webhook — no fix_ci available, plan marked as failed');
+      }
     } catch (err) {
       log.error({ err, taskId }, 'Failed to handle task.ci_failed event');
     }
