@@ -49,7 +49,12 @@ export const SUMMARIZE_PROJECT_MUTATION = `mutation SummarizeProject($projectId:
 }`;
 
 export const AUTO_START_PROJECT_MUTATION = `mutation AutoStartProject($projectId: ID!) {
-  autoStartProject(projectId: $projectId) { projectId name }
+  autoStartProject(projectId: $projectId) {
+    id status taskIds
+    config { autonomyLevel budgetCapCents failurePolicy maxRetries scopeLimit }
+    progress { tasksCompleted tasksFailed tasksSkipped tokensUsed estimatedCostCents }
+    startedAt createdAt
+  }
 }`;
 
 export const PARSE_BUG_REPORT_MUTATION = `mutation ParseBugReport($projectId: ID!, $bugReport: String!) {

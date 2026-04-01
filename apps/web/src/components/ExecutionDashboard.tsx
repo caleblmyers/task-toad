@@ -9,6 +9,7 @@ import {
   START_SESSION_MUTATION,
   PAUSE_SESSION_MUTATION,
   CANCEL_SESSION_MUTATION,
+  AUTO_START_PROJECT_MUTATION,
   TASKS_QUERY,
 } from '../api/queries';
 import { useSSEListener } from '../hooks/useEventSource';
@@ -556,6 +557,10 @@ export default function ExecutionDashboard({ projectId, onClose }: ExecutionDash
   const [filter, setFilter] = useState<FilterStatus>('all');
   const [sessions, setSessions] = useState<Session[]>([]);
   const [showSessionDialog, setShowSessionDialog] = useState(false);
+  const [showQuickStartConfirm, setShowQuickStartConfirm] = useState(false);
+  const [quickStarting, setQuickStarting] = useState(false);
+  const [quickStartError, setQuickStartError] = useState<string | null>(null);
+  const [todoTaskCount, setTodoTaskCount] = useState(0);
 
   // Fetch filtered plans for the list
   const fetchPlans = useCallback(async () => {
@@ -608,6 +613,40 @@ export default function ExecutionDashboard({ projectId, onClose }: ExecutionDash
   useEffect(() => {
     fetchSessions();
   }, [fetchSessions]);
+
+  // Fetch count of todo tasks for Quick Start button
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await gql<{ tasks: { tasks: Task[] } }>(TASKS_QUERY, { projectId });
+        const todoCount = data.tasks.tasks.filter(
+          (t) => t.status === 'todo' && !t.archived,
+        ).length;
+        setTodoTaskCount(todoCount);
+      } catch {
+        // ignore
+      }
+    })();
+  }, [projectId]);
+
+  const handleQuickStart = useCallback(async () => {
+    setQuickStarting(true);
+    setQuickStartError(null);
+    try {
+      await gql<{ autoStartProject: Session }>(
+        AUTO_START_PROJECT_MUTATION,
+        { projectId },
+      );
+      setShowQuickStartConfirm(false);
+      void fetchSessions();
+      void fetchPlans();
+      void fetchAllPlans();
+    } catch (err) {
+      setQuickStartError(err instanceof Error ? err.message : 'Failed to quick start');
+    } finally {
+      setQuickStarting(false);
+    }
+  }, [projectId, fetchSessions, fetchPlans, fetchAllPlans]);
 
   // SSE: auto-refresh on action plan events
   useSSEListener(SSE_REFRESH_EVENTS, useCallback(() => {
@@ -666,12 +705,22 @@ export default function ExecutionDashboard({ projectId, onClose }: ExecutionDash
         <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Execution Dashboard</h2>
         <div className="flex items-center gap-3">
           {!activeSession && (
-            <button
-              onClick={() => setShowSessionDialog(true)}
-              className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm font-medium"
-            >
-              Start Session
-            </button>
+            <>
+              <button
+                onClick={() => setShowQuickStartConfirm(true)}
+                disabled={todoTaskCount === 0}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                title={todoTaskCount === 0 ? 'No todo tasks to execute' : `Quick start autopilot for ${todoTaskCount} tasks`}
+              >
+                Quick Start
+              </button>
+              <button
+                onClick={() => setShowSessionDialog(true)}
+                className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm font-medium"
+              >
+                Start Session
+              </button>
+            </>
           )}
           <button
             onClick={onClose}
@@ -731,6 +780,40 @@ export default function ExecutionDashboard({ projectId, onClose }: ExecutionDash
           {plans.map((plan) => (
             <PlanCard key={plan.id} plan={plan} onRetry={handleRetry} onCancel={handleCancel} />
           ))}
+        </div>
+      )}
+
+      {/* Quick Start confirmation */}
+      {showQuickStartConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-2">
+              Start autopilot for {todoTaskCount} task{todoTaskCount !== 1 ? 's' : ''}?
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+              All todo tasks will be queued for automatic execution with default settings (approve PRs only, retry then pause).
+            </p>
+            {quickStartError && (
+              <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2 mb-3">
+                {quickStartError}
+              </p>
+            )}
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => { setShowQuickStartConfirm(false); setQuickStartError(null); }}
+                className="text-xs px-4 py-2 text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => void handleQuickStart()}
+                disabled={quickStarting}
+                className="text-xs px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium"
+              >
+                {quickStarting ? 'Starting...' : 'Start'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

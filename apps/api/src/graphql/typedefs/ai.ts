@@ -290,4 +290,6 @@ export const aiMutationFields = /* GraphQL */ `
   pauseSession(sessionId: ID!): Session!
   """Cancel a session and stop any running action plans."""
   cancelSession(sessionId: ID!): Session!
+  """One-click quick start: create + start a session for all todo tasks with sensible defaults."""
+  autoStartProject(projectId: ID!): Session!
 `;

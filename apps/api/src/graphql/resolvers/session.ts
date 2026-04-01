@@ -50,6 +50,78 @@ export const sessionQueries = {
 // ── Mutations ──
 
 export const sessionMutations = {
+  autoStartProject: async (
+    _parent: unknown,
+    args: { projectId: string },
+    context: Context,
+  ) => {
+    const { user } = await requireProjectAccess(context, args.projectId);
+
+    // Check no session already running for this project
+    const existing = await context.prisma.session.findFirst({
+      where: { projectId: args.projectId, status: 'running' },
+    });
+    if (existing) {
+      throw new ValidationError('A session is already running on this project');
+    }
+
+    // Find all eligible tasks: status='todo', not archived
+    const tasks = await context.prisma.task.findMany({
+      where: { projectId: args.projectId, orgId: user.orgId, status: 'todo', archived: false },
+      select: { taskId: true },
+      orderBy: { position: 'asc' },
+    });
+    if (tasks.length === 0) {
+      throw new ValidationError('No tasks ready to execute');
+    }
+
+    const taskIds = tasks.map(t => t.taskId);
+
+    // Create session with sensible defaults and start it immediately
+    const session = await context.prisma.session.create({
+      data: {
+        projectId: args.projectId,
+        orgId: user.orgId,
+        createdById: user.userId,
+        status: 'running',
+        startedAt: new Date(),
+        taskIds: JSON.stringify(taskIds),
+        config: JSON.stringify({
+          autonomyLevel: 'approve_external',
+          failurePolicy: 'retry_then_pause',
+          maxRetries: 2,
+        }),
+        progress: JSON.stringify({
+          tasksCompleted: 0,
+          tasksFailed: 0,
+          tasksSkipped: 0,
+          tokensUsed: 0,
+          estimatedCostCents: 0,
+        }),
+      },
+    });
+
+    // Mark tasks for auto-complete
+    await context.prisma.task.updateMany({
+      where: { taskId: { in: taskIds } },
+      data: { autoComplete: true },
+    });
+
+    // Emit session.started → orchestrator takes over
+    const bus = getEventBus();
+    bus.emit('session.started', {
+      orgId: user.orgId,
+      userId: user.userId,
+      projectId: args.projectId,
+      timestamp: new Date().toISOString(),
+      sessionId: session.id,
+    });
+
+    log.info({ sessionId: session.id, projectId: args.projectId, taskCount: taskIds.length }, 'Quick-start session created');
+
+    return session;
+  },
+
   createSession: async (
     _parent: unknown,
     args: { projectId: string; taskIds: string[]; config: SessionConfigInput },

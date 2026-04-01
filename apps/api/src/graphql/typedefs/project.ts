@@ -124,8 +124,6 @@ export const projectMutationFields = /* GraphQL */ `
   saveFilter(projectId: ID!, name: String!, filters: String!, viewType: String, sortBy: String, sortOrder: String, groupBy: String, visibleColumns: String, isShared: Boolean): SavedFilter!
   updateFilter(savedFilterId: ID!, name: String, filters: String, viewType: String, sortBy: String, sortOrder: String, groupBy: String, visibleColumns: String, isShared: Boolean): SavedFilter!
   deleteFilter(savedFilterId: ID!): Boolean!
-  """Create a GitHub repo if needed and trigger auto-complete for all eligible tasks."""
-  autoStartProject(projectId: ID!): Project!
   """Generate a project scaffold from a structured config and commit it to the GitHub repo."""
   scaffoldProject(projectId: ID!, config: ScaffoldConfigInput!, options: String): ScaffoldResult!
 `;
