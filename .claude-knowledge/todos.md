@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work
 
-78 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Pipeline mechanics work; launching as closed-source SaaS.
+79 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Pipeline mechanics work; launching as closed-source SaaS.
 
 ---
 
@@ -32,8 +32,8 @@
 - [ ] **Swimlane-specific overflow** — individual swimlane sections within a kanban column may need their own max-height + scroll if a single swimlane has many tasks, rather than relying solely on the column-level scroll
 - [x] **Hierarchical plan progress events** — real SSE progress events replace fake cycling messages during plan generation *(Wave 78)*
 - [ ] **Hierarchical plan streaming results** — stream partial results (epics first, then tasks per epic) instead of waiting for full response
-- [ ] **Scaffold generation progress events** — scaffoldProject needs the same ai.progress SSE treatment as hierarchical plan generation
-- [ ] **Long user-facing flows need progress indicators** — remaining synchronous AI flows (scaffold, bootstrap) need step-by-step progress feedback, not just a spinner
+- [x] **Scaffold generation progress events** — scaffoldProject emits ai.progress SSE events at each stage *(Wave 79)*
+- [ ] **Long user-facing flows need progress indicators** — bootstrap still needs ai.progress SSE treatment (scaffold done in Wave 79)
 - [ ] Release notes: manual entry option
 - [ ] Time entry deletion: admin-only
 - [ ] Mobile: horizontal scrolling on project page
@@ -51,13 +51,14 @@
 - [x] **fix_review vague results** — stricter prompt with few-shot example, response normalization, and validation retry with error feedback in callAIStructured *(Wave 78)*
 - [ ] **Concurrent plan check optimization** — `checkProjectBusy` in useAIGeneration makes two sequential API calls (executing + approved); combine into a single query that checks both statuses
 - [ ] **Move fix_review normalization before Zod validation** — normalization in fixReview.ts runs after `callAIStructured` already validates, making it dead code. Move inside `callAIStructured` before `safeParse`, or expose raw response for pre-validation normalization
-- [ ] **Verify offloaded task quality** — deferred tasks created by fix_review should match the detail level of originals, have no duplicates, and not conflict with project goals. Audit and improve the deferred task creation prompt
+- [x] **Verify offloaded task quality** — fix_review prompt now requires specific titles, acceptance criteria, and severity guidelines; deferred tasks get instructions populated *(Wave 79)*
 - [ ] SSE cross-tab: consider adding a leader tab indicator in dev mode for debugging
 
 ---
 
 ## Pillar 1: Decomposition Engine
 
+- [ ] **Expose dependency reason in GraphQL** — TaskDependency.reason is persisted (Wave 79) but not in the GraphQL type or UI. Add `reason` field to TaskDependency typedef and show as tooltip in dependency display
 - [ ] **Dependency inference during planning** — planner generates tasks but doesn't infer dependencies. Should output a dependency graph, not just a flat list
 - [ ] **Decision points in task plans** — distinguish implementation tasks from decision tasks. Tech/service choices should be generic with options, not opinionated picks (e.g., "Set up auth" with Auth0/JWT/Clerk options, not "Set up Auth0")
 - [ ] **Planning quality feedback loop** — when tasks fail during execution, feed that back to improve future decomposition
@@ -68,7 +69,7 @@
 
 ## Pillar 2: Context Threading
 
-- [ ] **Dependency-aware execution ordering** — orchestrator should execute tasks in topological order based on dependency graph, not just sequentially within a plan
+- [x] **Dependency-aware execution ordering** — orchestrator checks blocking dependencies before starting tasks, emits task.blocked events for unmet deps *(Wave 79)*
 
 ---
 
@@ -186,5 +187,6 @@
 | 76 | 2026-03-31 | merge_pr hardening, resend verification email, PriorityDropdown a11y, session timeout cleanup, fix_review tests |
 | 77 | 2026-03-31 | Auto-Complete button fix, commit attribution, kanban scroll, review collapsed, close sprint from board |
 | 78 | 2026-04-01 | Concurrent plan prevention, fix_review reliability, hierarchical plan progress events |
+| 79 | 2026-04-01 | Dependency reason + ordering, scaffold progress, deferred task quality, dependency UI |
 
 Full wave details in `changelog.md`.
