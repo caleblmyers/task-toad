@@ -76,6 +76,9 @@ export async function handleGitHubWebhook(req: Request, res: Response): Promise<
       case 'pull_request_review':
         await handlePullRequestReviewEvent(payload);
         break;
+      case 'check_suite':
+        await handleCheckSuiteEvent(payload);
+        break;
       case 'push':
         await handlePushEvent(payload);
         break;
@@ -223,6 +226,17 @@ async function handlePullRequestEvent(payload: GitHubWebhookEvent): Promise<void
           const previousStatus = task.status;
           await prisma.task.update({ where: { taskId: task.taskId }, data: { status: 'done' } });
           await emitTaskUpdatedEvent(task, previousStatus, 'done');
+
+          const userId = await resolveOrgAdminUserId(task.orgId);
+          getEventBus().emit('task.pr_merged', {
+            orgId: task.orgId,
+            userId,
+            projectId: task.projectId,
+            timestamp: new Date().toISOString(),
+            taskId: task.taskId,
+            prNumber: payload.pull_request.number,
+            prNodeId: link.prNodeId,
+          });
         }
       }
       break;
@@ -252,6 +266,58 @@ async function handlePullRequestReviewEvent(payload: GitHubWebhookEvent): Promis
     data: { status: 'done', sprintColumn: 'Done' },
   });
   await emitTaskUpdatedEvent(task, previousStatus, 'done');
+}
+
+interface CheckSuitePayload {
+  check_suite?: {
+    conclusion: string | null;
+    head_sha: string;
+    pull_requests?: Array<{ number: number }>;
+  };
+}
+
+async function handleCheckSuiteEvent(payload: GitHubWebhookEvent): Promise<void> {
+  const suite = (payload as unknown as CheckSuitePayload).check_suite;
+  if (!suite || suite.conclusion === null) return; // still running
+
+  const pullRequests = suite.pull_requests ?? [];
+  if (pullRequests.length === 0) return;
+
+  const owner = payload.repository?.owner?.login ?? payload.repository?.owner?.name;
+  const repoName = payload.repository?.name;
+  if (!owner || !repoName) return;
+
+  // Find the project linked to this repository
+  const project = await prisma.project.findFirst({
+    where: { githubRepositoryOwner: owner, githubRepositoryName: repoName },
+    select: { projectId: true, orgId: true },
+  });
+  if (!project) return;
+
+  for (const pr of pullRequests) {
+    // Find the task linked to this PR
+    const prLink = await prisma.gitHubPullRequestLink.findFirst({
+      where: {
+        prNumber: pr.number,
+        task: { projectId: project.projectId },
+      },
+      include: { task: { select: { taskId: true, projectId: true, orgId: true } } },
+    });
+    if (!prLink) continue;
+
+    const userId = await resolveOrgAdminUserId(prLink.task.orgId);
+    const eventType = suite.conclusion === 'success' ? 'task.ci_passed' : 'task.ci_failed';
+    getEventBus().emit(eventType, {
+      orgId: prLink.task.orgId,
+      userId,
+      projectId: prLink.task.projectId,
+      timestamp: new Date().toISOString(),
+      taskId: prLink.task.taskId,
+      conclusion: suite.conclusion,
+      prNumber: pr.number,
+      headSha: suite.head_sha,
+    });
+  }
 }
 
 async function handlePushEvent(payload: GitHubWebhookEvent): Promise<void> {

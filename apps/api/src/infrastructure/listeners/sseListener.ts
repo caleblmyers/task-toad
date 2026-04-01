@@ -108,4 +108,30 @@ export function register(bus: EventBus): void {
       step: e.step,
     });
   });
+
+  bus.on('task.ci_passed', (e) => {
+    sseManager.broadcast(e.orgId, 'task.ci_passed', {
+      taskId: e.taskId,
+      conclusion: e.conclusion,
+      prNumber: e.prNumber,
+      headSha: e.headSha,
+    });
+  });
+
+  bus.on('task.ci_failed', (e) => {
+    sseManager.broadcast(e.orgId, 'task.ci_failed', {
+      taskId: e.taskId,
+      conclusion: e.conclusion,
+      prNumber: e.prNumber,
+      headSha: e.headSha,
+    });
+  });
+
+  bus.on('task.pr_merged', (e) => {
+    sseManager.broadcast(e.orgId, 'task.pr_merged', {
+      taskId: e.taskId,
+      prNumber: e.prNumber,
+      prNodeId: e.prNodeId,
+    });
+  });
 }

@@ -166,6 +166,23 @@ export interface DomainEventMap {
     status: 'executing' | 'approved';
     minutesStuck: number;
   };
+  'task.ci_passed': BaseEventPayload & {
+    taskId: string;
+    conclusion: string;
+    prNumber: number;
+    headSha: string;
+  };
+  'task.ci_failed': BaseEventPayload & {
+    taskId: string;
+    conclusion: string;
+    prNumber: number;
+    headSha: string;
+  };
+  'task.pr_merged': BaseEventPayload & {
+    taskId: string;
+    prNumber: number;
+    prNodeId: string;
+  };
 }
 
 export type EventName = keyof DomainEventMap;
