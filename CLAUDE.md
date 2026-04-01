@@ -148,7 +148,7 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 - **Task:** `createTask`, `updateTask`, `createSubtask`, `bulkUpdateTasks`, `createLabel`, `deleteLabel`, `addTaskLabel`, `removeTaskLabel`, `generateTaskPlan`, `previewTaskPlan`, `commitTaskPlan`, `expandTask`, `generateTaskInstructions`, `createCustomField`, `updateCustomField`, `deleteCustomField`, `setCustomFieldValue`, `addTaskAssignee`, `removeTaskAssignee`
 - **Sprint:** `createSprint`, `updateSprint`, `deleteSprint`, `closeSprint`, `previewSprintPlan`, `commitSprintPlan`
 - **Comment:** `createComment`, `updateComment`, `deleteComment`
-- **AI:** `generateCodeFromTask`, `regenerateCodeFile`, `reviewPullRequest`, `parseBugReport`, `previewPRDBreakdown`, `commitPRDBreakdown`, `bootstrapProjectFromRepo`, `batchGenerateCode`, `generateOnboardingQuestions`, `saveOnboardingAnswers`, `commitHierarchicalPlan`, `dismissInsight`, `cancelActionPlan`, `generateManualTaskSpec`, `autoStartProject`, `scaffoldProject`
+- **AI:** `generateCodeFromTask`, `regenerateCodeFile`, `reviewPullRequest`, `parseBugReport`, `previewPRDBreakdown`, `commitPRDBreakdown`, `bootstrapProjectFromRepo`, `batchGenerateCode`, `commitHierarchicalPlan`, `dismissInsight`, `cancelActionPlan`, `generateManualTaskSpec`, `autoStartProject`, `scaffoldProject`
 - **Notification:** `markNotificationRead`, `markAllNotificationsRead`, `updateNotificationPreference`
 - **GitHub:** `linkGitHubInstallation`, `connectGitHubRepo`, `disconnectGitHubRepo`, `createGitHubRepo`, `createPullRequestFromTask`, `syncTaskToGitHub`, `decomposeGitHubIssue`, `generateFixFromReview`
 - **Report:** `saveReport`, `deleteReport`, `summarizeProject`

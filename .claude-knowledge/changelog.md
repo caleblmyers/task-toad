@@ -4,6 +4,36 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-04-01 (Wave 82 — Quick Start + Interview Removal + Health Monitoring)
+
+### Wave 82: Quick Start + Cleanup + Monitoring (3 workers, 3 tasks)
+
+**Worker 1 — task-001: autoStartProject mutation + Quick Start button:**
+- New `autoStartProject` mutation: creates session with sensible defaults, selects all todo tasks, starts immediately
+- Quick Start button in ExecutionDashboard with confirmation dialog ("Start autopilot for N tasks?")
+- Disabled when session already running or no todo tasks
+- One click starts the full autonomous loop — orchestrator handles everything from there
+
+**Worker 2 — task-002: Remove onboarding interview:**
+- Deleted `onboarding.ts` prompt builder, removed AI service function, config, and schema
+- Removed UI buttons from ProjectToolbar and KnowledgeBasePanel
+- Removed GraphQL mutations (`generateOnboardingQuestions`, `saveOnboardingAnswers`)
+- Removed 'onboarding' from KB valid sources
+- Organic KB seeding (scaffold, bootstrap) remains as the replacement
+
+**Worker 3 — task-003: Health monitoring cron job:**
+- New `healthMonitor.ts` — runs every 15 minutes via cron
+- Detects stuck executing plans (no update in 30+ min) and stale approved plans (not started in 10+ min)
+- Creates notifications for affected users
+- Emits `health.alert` SSE event
+- Duplicate alert suppression (1-hour window per plan)
+
+### Open follow-ups
+- Stale CLAUDE.md references cleaned up (removed onboarding mutations)
+- `filesToChange` accuracy continues to be the main swarm process issue
+
+---
+
 ## 2026-04-01 (Wave 81 — Orchestration + Onboarding + Scaffold Quality)
 
 ### Wave 81: Auto-Replan + Repo Onboarding + Scaffold Quality (3 workers, 3 tasks)
@@ -95,31 +125,7 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-04-01 (Wave 78 — Pipeline Reliability + AI Progress)
-
-### Wave 78: Pipeline Reliability + AI Progress (3 workers, 3 tasks)
-
-**Worker 1 — task-001: Concurrent action plan prevention:**
-- Backend guard in `commitActionPlan` and `executeActionPlan` — throws `ValidationError` if another plan is `approved` or `executing` on the same project
-- Frontend `isProjectBusy` check via `checkProjectBusy()` in `useAIGeneration` — disables Auto-Complete button with explanatory message when another plan is running
-- Prop threaded through ProjectDetail → ActionsTab
-
-**Worker 2 — task-002: fix_review reliability improvements:**
-- Stricter system prompt with few-shot JSON example and explicit constraints (complete file content, conventional commit prefix, one-sentence summary)
-- Response normalization for common AI quirks (missing fields, stringified arrays, empty defaults)
-- Validation retry in `callAIStructured` — when Zod parse fails, retries once with error feedback appended to prompt
-
-**Worker 3 — task-003: Real progress events for hierarchical plan generation:**
-- New `ai.progress` event type in event bus
-- `previewHierarchicalPlan` resolver emits SSE events at each stage (KB retrieval, AI generation, validation)
-- HierarchicalPlanDialog replaces fake cycling messages with real SSE progress events
-- Skeleton animation preserved, fallback to generic message if no events arrive
-
-### Open follow-ups
-- Concurrent plan check optimization: `checkProjectBusy` makes two sequential API calls, combine into single query
-- fix_review normalization is effectively dead code (runs after `callAIStructured` already validates) — move normalization inside `callAIStructured` before `safeParse` if needed
-- Scaffold generation needs same `ai.progress` SSE treatment as hierarchical plan
-- `filesToChange` accuracy for prop-threading and event bus features — include ALL files in chain
+## 2026-04-01 (Wave 78) — concurrent plan prevention, fix_review reliability, hierarchical plan progress events
 
 ---
 

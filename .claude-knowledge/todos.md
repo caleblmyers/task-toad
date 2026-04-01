@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work
 
-81 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Pipeline mechanics work; launching as closed-source SaaS.
+82 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Pipeline mechanics work; launching as closed-source SaaS.
 
 ---
 
@@ -77,10 +77,12 @@
 
 ## Pillar 3: Orchestration
 
-- [ ] **Session auto start/stop** — simple start/stop toggle that kicks off autonomous loop: pick next task → generate plan → execute → proceed to next. With configurable retries. Premium feature candidate
+- [x] **Session auto start/stop** — `autoStartProject` mutation + Quick Start button in ExecutionDashboard for one-click autopilot *(Wave 82)*
 - [ ] **Parallel execution streams** — independent tasks (no dependency) should execute in parallel. Requires DAG-based scheduler instead of sequential executor. Premium feature
 - [x] **Re-planning on failure** — orchestrator auto-replans failed action plans up to 2 times with shared replanService *(Wave 81)*
-- [ ] **Health monitoring** — detect stuck tasks, stale branches, conflicting changes. Alert user when intervention needed
+- [x] **Health monitoring** — periodic cron job detects stuck/stale action plans, creates notifications + SSE alerts with dedup *(Wave 82)*
+- [ ] **Quick Start task count optimization** — ExecutionDashboard fetches all tasks via TASKS_QUERY just to count todos; add a lightweight `projectTaskCounts` query instead
+- [ ] **Health monitor: stale branch detection** — current health monitor only checks action plans; extend to detect stale GitHub branches (PRs open > 7 days with no activity)
 - [ ] **Merge orchestration** — after PR approved + CI passes, auto-merge and trigger downstream tasks
 - [ ] **Progress dashboard improvements** — project-level pipeline status ("3 of 12 tasks executing, 2 PRs open, 1 blocked on CI"), not just per-task action plans
 - [ ] **Bidirectional GitHub sync** — GitHub events (commits, PR merges, issue closes, CI status) should update TaskToad task state. Currently one-directional. Webhook handler only creates link records, doesn't update task statuses
@@ -92,7 +94,8 @@
 
 - [x] **Existing repo onboarding flow** — intent threaded into bootstrap AI, post-bootstrap plan generation step added to wizard *(Wave 81)*
 - [x] **AI-friendly repo scaffolding** — scaffold should also generate `CLAUDE.md` and `.claude-knowledge/` context files so repos are immediately usable with Claude Code/Codex *(Wave 81)*
-- [ ] **Remove onboarding interview** — replace multi-question technical interview with organic KB seeding (project description, scaffold output, decision points, task summaries, repo analysis). Optional single free-text field on creation instead
+- [x] **Remove onboarding interview** — deleted dead onboarding code (prompt builder, AI service, types, UI), removed 'onboarding' from valid KB sources *(Wave 82)*
+- [ ] **Clean CLAUDE.md onboarding references** — `generateOnboardingQuestions` and `saveOnboardingAnswers` still listed in CLAUDE.md mutations section despite being removed
 - [ ] **Global org/user knowledge base** — context that spans all projects, not just per-project KB
 
 ---
@@ -192,5 +195,6 @@
 | 79 | 2026-04-01 | Dependency reason + ordering, scaffold progress, deferred task quality, dependency UI |
 | 80 | 2026-04-01 | Planning feedback loop, decision points in plans, scope estimation, dependency reason GraphQL |
 | 81 | 2026-04-01 | Auto-replan on failure, repo onboarding intent threading, decision validation, AI-friendly scaffolding |
+| 82 | 2026-04-01 | Quick Start autopilot, remove onboarding interview, health monitoring cron |
 
 Full wave details in `changelog.md`.
