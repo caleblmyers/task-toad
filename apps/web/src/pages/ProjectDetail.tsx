@@ -152,6 +152,7 @@ export default function ProjectDetail() {
         if (payload?.taskId && projectData.selectedTask?.taskId === payload.taskId) {
           void projectData.loadActionPlan(payload.taskId);
         }
+        void projectData.checkProjectBusy();
         if (event === 'task.action_plan_completed' && payload?.taskTitle) {
           addToast('success', `Auto-complete finished for "${payload.taskTitle}"`);
         }
@@ -161,6 +162,7 @@ export default function ProjectDetail() {
         if (payload?.taskId && projectData.selectedTask?.taskId === payload.taskId) {
           void projectData.loadActionPlan(payload.taskId);
         }
+        void projectData.checkProjectBusy();
         addToast('error', `Auto-complete failed: ${(payload?.errorMessage || 'Unknown error').slice(0, 100)}`);
       }
       if (event === 'task.blocked') {
@@ -398,6 +400,7 @@ export default function ProjectDetail() {
     autoCompleteLoading: projectData.actionPlanPreviewLoading,
     loadingMessage: projectData.loadingMessage,
     actionPlan: projectData.actionPlan,
+    isProjectBusy: projectData.isProjectBusy,
     onCompleteManualAction: projectData.handleCompleteManualAction,
     onSkipAction: projectData.handleSkipAction,
     onRetryAction: projectData.handleRetryAction,

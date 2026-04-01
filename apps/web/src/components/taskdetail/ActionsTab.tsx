@@ -20,6 +20,7 @@ export interface ActionsTabProps {
   onCancelActionPlan?: (planId: string) => Promise<void>;
   onExecuteActionPlan?: (planId: string) => Promise<void>;
   onArchiveTask?: (taskId: string, archived: boolean) => Promise<void>;
+  isProjectBusy?: boolean;
 }
 
 export default function ActionsTab({
@@ -27,7 +28,7 @@ export default function ActionsTab({
   onReviewPR, reviewResult, reviewLoading,
   onAutoComplete, autoCompleteLoading, loadingMessage,
   actionPlan, onCompleteManualAction, onSkipAction, onRetryAction, onCancelActionPlan, onExecuteActionPlan,
-  onArchiveTask,
+  onArchiveTask, isProjectBusy,
 }: ActionsTabProps) {
   return (
     <section aria-labelledby="task-tab-actions-heading">
@@ -57,11 +58,15 @@ export default function ActionsTab({
           <button
             type="button"
             onClick={() => onAutoComplete(task)}
-            disabled={disabled || autoCompleteLoading}
+            disabled={disabled || autoCompleteLoading || isProjectBusy}
+            title={isProjectBusy ? 'Another action plan is running on this project' : undefined}
             className="px-3 py-1.5 text-sm border border-indigo-300 dark:border-indigo-600 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/30 disabled:opacity-50"
           >
-            {autoCompleteLoading ? 'Planning…' : '⚡ Auto-Complete'}
+            {autoCompleteLoading ? 'Planning…' : isProjectBusy ? '⚡ Auto-Complete (busy)' : '⚡ Auto-Complete'}
           </button>
+          {isProjectBusy && !autoCompleteLoading && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Another action plan is running on this project</p>
+          )}
           {autoCompleteLoading && loadingMessage && (
             <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-1">{loadingMessage}</p>
           )}

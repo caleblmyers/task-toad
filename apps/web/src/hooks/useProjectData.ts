@@ -137,6 +137,7 @@ export interface ProjectData {
   actionPlanPreviewLoading: boolean;
   loadingMessage: string | null;
   actionPlan: TaskActionPlan | null;
+  isProjectBusy: boolean;
   handlePreviewActionPlan: (task: Task) => Promise<void>;
   handleCommitActionPlan: (taskId: string, actions: Array<{ actionType: string; label: string; config: string; requiresApproval: boolean }>) => Promise<TaskActionPlan | null>;
   handleExecuteActionPlan: (planId: string) => Promise<TaskActionPlan | null>;
@@ -145,6 +146,7 @@ export interface ProjectData {
   handleRetryAction: (actionId: string) => Promise<void>;
   handleCancelActionPlan: (planId: string) => Promise<void>;
   loadActionPlan: (taskId: string) => Promise<void>;
+  checkProjectBusy: () => Promise<void>;
   setActionPlanPreview: React.Dispatch<React.SetStateAction<ActionPlanPreview | null>>;
   setActionPlan: React.Dispatch<React.SetStateAction<TaskActionPlan | null>>;
 
@@ -359,13 +361,13 @@ export function useProjectData(): ProjectData {
 
     // Action plan
     actionPlanPreview: ai.actionPlanPreview, actionPlanPreviewLoading: ai.actionPlanPreviewLoading, loadingMessage: ai.loadingMessage,
-    actionPlan: ai.actionPlan,
+    actionPlan: ai.actionPlan, isProjectBusy: ai.isProjectBusy,
     handlePreviewActionPlan: ai.handlePreviewActionPlan,
     handleCommitActionPlan: ai.handleCommitActionPlan,
     handleExecuteActionPlan: ai.handleExecuteActionPlan,
     handleCompleteManualAction: ai.handleCompleteManualAction,
     handleSkipAction: ai.handleSkipAction, handleRetryAction: ai.handleRetryAction,
-    handleCancelActionPlan: ai.handleCancelActionPlan, loadActionPlan: ai.loadActionPlan,
+    handleCancelActionPlan: ai.handleCancelActionPlan, loadActionPlan: ai.loadActionPlan, checkProjectBusy: ai.checkProjectBusy,
     setActionPlanPreview: ai.setActionPlanPreview, setActionPlan: ai.setActionPlan,
 
     // Permissions

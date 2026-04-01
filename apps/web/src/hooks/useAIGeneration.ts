@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { gql } from '../api/client';
 import {
   PREVIEW_TASK_PLAN_MUTATION, COMMIT_TASK_PLAN_MUTATION, SUMMARIZE_PROJECT_MUTATION,
@@ -8,6 +8,7 @@ import {
   PREVIEW_ACTION_PLAN_MUTATION, COMMIT_ACTION_PLAN_MUTATION, EXECUTE_ACTION_PLAN_MUTATION,
   COMPLETE_MANUAL_ACTION_MUTATION, SKIP_ACTION_MUTATION, RETRY_ACTION_MUTATION,
   CANCEL_ACTION_PLAN_MUTATION, TASK_ACTION_PLAN_QUERY,
+  PROJECT_ACTION_PLANS_QUERY,
 } from '../api/queries';
 import type { Task, TaskPlanPreview, ActionPlanPreview, TaskActionPlan } from '../types';
 
@@ -179,6 +180,32 @@ export function useAIGeneration({
   const [actionPlanPreview, setActionPlanPreview] = useState<ActionPlanPreview | null>(null);
   const [actionPlanPreviewLoading, setActionPlanPreviewLoading] = useState(false);
   const [actionPlan, setActionPlan] = useState<TaskActionPlan | null>(null);
+  const [isProjectBusy, setIsProjectBusy] = useState(false);
+
+  // Check if any action plan is currently active (approved/executing) on the project
+  const checkProjectBusy = useCallback(async () => {
+    if (!projectId) { setIsProjectBusy(false); return; }
+    try {
+      const data = await gql<{ projectActionPlans: Array<{ id: string; status: string }> }>(
+        PROJECT_ACTION_PLANS_QUERY, { projectId, status: 'executing' },
+      );
+      const hasActive = data.projectActionPlans.length > 0;
+      if (!hasActive) {
+        // Also check for approved plans
+        const approved = await gql<{ projectActionPlans: Array<{ id: string; status: string }> }>(
+          PROJECT_ACTION_PLANS_QUERY, { projectId, status: 'approved' },
+        );
+        setIsProjectBusy(approved.projectActionPlans.length > 0);
+      } else {
+        setIsProjectBusy(true);
+      }
+    } catch {
+      // ignore — default to not busy
+    }
+  }, [projectId]);
+
+  // Recheck when action plan state changes
+  useEffect(() => { checkProjectBusy(); }, [checkProjectBusy, actionPlan]);
 
   const handlePreviewActionPlan = useCallback(async (task: Task) => {
     const controller = new AbortController();
@@ -327,10 +354,10 @@ export function useAIGeneration({
     handleParseBugReport, handlePreviewPRD, handleCommitPRD, handleBootstrapFromRepo,
     setPreviewTasks, setPreviewError, setSummary,
     // Action plan
-    actionPlanPreview, actionPlanPreviewLoading, actionPlan,
+    actionPlanPreview, actionPlanPreviewLoading, actionPlan, isProjectBusy,
     handlePreviewActionPlan, handleCommitActionPlan, handleExecuteActionPlan,
     handleCompleteManualAction, handleSkipAction, handleRetryAction,
-    handleCancelActionPlan, loadActionPlan,
+    handleCancelActionPlan, loadActionPlan, checkProjectBusy,
     setActionPlanPreview, setActionPlan,
   };
 }

@@ -188,6 +188,17 @@ export const taskActionMutations = {
       throw new ValidationError('Plans with review_pr must include fix_review to handle review feedback.');
     }
 
+    // Guard: prevent concurrent action plans on the same project
+    const activePlanCount = await context.prisma.taskActionPlan.count({
+      where: {
+        task: { projectId: task.projectId },
+        status: { in: ['approved', 'executing'] },
+      },
+    });
+    if (activePlanCount > 0) {
+      throw new ValidationError('Another action plan is already running on this project. Wait for it to complete or cancel it first.');
+    }
+
     // Cancel any existing draft/executing plans for this task
     await context.prisma.taskActionPlan.updateMany({
       where: { taskId: args.taskId, status: { in: ['draft', 'approved', 'executing'] } },
@@ -219,6 +230,21 @@ export const taskActionMutations = {
     if (!plan || plan.orgId !== user.orgId) throw new NotFoundError('Action plan not found');
     if (plan.status !== 'approved' && plan.status !== 'failed' && plan.status !== 'executing') {
       throw new ValidationError(`Cannot execute plan in '${plan.status}' status`);
+    }
+
+    // Guard: prevent concurrent action plans on the same project
+    const task = await context.loaders.taskById.load(plan.taskId);
+    if (task) {
+      const activePlanCount = await context.prisma.taskActionPlan.count({
+        where: {
+          task: { projectId: task.projectId },
+          status: { in: ['approved', 'executing'] },
+          id: { not: args.planId },
+        },
+      });
+      if (activePlanCount > 0) {
+        throw new ValidationError('Another action plan is already running on this project. Wait for it to complete or cancel it first.');
+      }
     }
 
     // When retrying a failed plan, reset failed actions to pending
