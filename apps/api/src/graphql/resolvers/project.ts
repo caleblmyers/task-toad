@@ -6,6 +6,7 @@ import { AuthorizationError, NotFoundError, ValidationError } from '../errors.js
 import { requireAuth, requireOrg, requireProjectAccess, requireApiKey } from './auth.js';
 import { parseInput, CreateProjectInput, requireProject } from '../../utils/resolverHelpers.js';
 import { emitProjectEvent, emitTaskEvent } from '../../infrastructure/eventbus/emitters.js';
+import { getEventBus } from '../../infrastructure/eventbus/index.js';
 import { calculateHealthScore, calculateCycleTime } from '../../utils/metricsCalc.js';
 import { buildProjectOptionsPrompt } from '../../ai/promptBuilders/generation.js';
 import { callAI } from '../../ai/aiClient.js';
@@ -522,8 +523,21 @@ export const projectMutations = {
     }
 
     const defaultBranch = project.githubDefaultBranch ?? 'main';
+    const user = requireOrg(context);
+
+    const emitProgress = (step: string) => {
+      getEventBus().emit('ai.progress', {
+        orgId: user.orgId,
+        userId: user.userId,
+        projectId: args.projectId,
+        timestamp: new Date().toISOString(),
+        operation: 'scaffoldProject',
+        step,
+      });
+    };
 
     // Generate scaffold files via AI
+    emitProgress('Generating scaffold files...');
     const { scaffoldProject: aiScaffold } = await import('../../ai/aiService.js');
     const result = await aiScaffold(
       apiKey,
@@ -547,8 +561,10 @@ export const projectMutations = {
       defaultBranch,
     };
 
+    emitProgress('Checking repository state...');
     const headOid = await getDefaultBranchOid(repoData);
 
+    emitProgress('Committing files to repository...');
     let commitUrl: string | null = null;
 
     if (!headOid) {
@@ -569,6 +585,7 @@ export const projectMutations = {
       commitUrl = commitResult.url;
     }
 
+    emitProgress('Populating project knowledge base...');
     // Auto-populate knowledge base with key scaffolded files
     const KB_USEFUL_PATTERNS = [
       /^package\.json$/,

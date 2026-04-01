@@ -22,6 +22,7 @@ const FixReviewResponseSchema = z.object({
     title: z.string(),
     description: z.string(),
     severity: z.enum(['warning', 'error']),
+    acceptanceCriteria: z.string().optional().default(''),
     suggestedEpicTitle: z.string().optional(),
   })),
   summary: z.string(),
@@ -108,7 +109,12 @@ Your goal is cohesive, production-quality code — not just patching individual 
 
 **Fixing:** Apply every improvement you can deliver correctly in one commit. This includes security hardening, input validation, error handling, naming, structure, and any other concrete code change. Use the full source code provided to ensure your fixes are accurate and complete.
 
-**Deferring:** Create focused, actionable tasks for work that genuinely can't be done well in this commit — things that need new infrastructure (rate limiting middleware, test suites), cross-cutting changes across files you don't have, or design decisions that need human input. Each deferred task should have a clear title and enough description that someone can pick it up independently.
+**Deferring:** Create focused, actionable tasks for work that genuinely can't be done well in this commit — things that need new infrastructure (rate limiting middleware, test suites), cross-cutting changes across files you don't have, or design decisions that need human input.
+Each deferred task MUST have:
+- A specific, measurable title (e.g., 'Add rate limiting to POST /auth/login' not 'Improve security')
+- A description with: what needs to change, why, and the specific context from this review
+- An acceptanceCriteria field describing what 'done' looks like (e.g., 'Rate limiter returns 429 after 5 failed attempts within 15 minutes')
+- severity 'error' only for bugs or security issues; 'warning' for improvements
 
 Use your judgment. The bar is: will this fix make the code better without introducing new problems? If yes, fix it.
 
@@ -122,7 +128,7 @@ Use your judgment. The bar is: will this fix make the code better without introd
 {
   "fixes": [{ "path": "src/auth.ts", "content": "// complete file content...", "description": "Added input validation" }],
   "commitMessage": "fix: address review comments",
-  "deferredIssues": [{ "title": "Add rate limiting", "description": "The auth endpoint needs rate limiting to prevent brute force attacks.", "severity": "warning" }],
+  "deferredIssues": [{ "title": "Add rate limiting to POST /auth/login", "description": "The auth endpoint needs rate limiting to prevent brute force attacks.", "severity": "warning", "acceptanceCriteria": "Rate limiter returns 429 after 5 failed attempts within 15 minutes" }],
   "summary": "Fixed 2 issues and deferred 1 for follow-up."
 }
 \`\`\`
@@ -293,6 +299,7 @@ Address the review holistically. Fix everything you can do well in one commit. D
             taskType: 'task',
             priority: issue.severity === 'error' ? 'high' : 'medium',
             parentTaskId: sourceParentTaskId,
+            instructions: issue.acceptanceCriteria || issue.description,
           },
         });
 
