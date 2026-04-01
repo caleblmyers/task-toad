@@ -11,12 +11,40 @@ import {
 // Hierarchical plan generation prompt (epics → tasks → subtasks)
 // ---------------------------------------------------------------------------
 
+export interface ExecutionHistoryEntry {
+  title: string;
+  status: string;
+  estimatedHours: number | null;
+  completionSummary: string | null;
+  taskType: string | null;
+}
+
+const MAX_SUMMARY_CHARS = 200;
+
+function formatExecutionHistory(history: ExecutionHistoryEntry[]): string {
+  if (history.length === 0) return '';
+
+  const lines = history.map((t) => {
+    const est = t.estimatedHours != null ? `, estimated ${t.estimatedHours}h` : '';
+    const summary = t.completionSummary
+      ? ` — Summary: ${t.completionSummary.length > MAX_SUMMARY_CHARS ? t.completionSummary.slice(0, MAX_SUMMARY_CHARS) + '…' : t.completionSummary}`
+      : '';
+    return `- "${t.title}" (${t.status}${est})${summary}`;
+  });
+
+  return `\n## Recent execution history for this project
+The following tasks were recently completed or failed. Use this to calibrate your estimates and avoid repeating planning mistakes.
+
+${lines.join('\n')}`;
+}
+
 export function buildHierarchicalPlanPrompt(data: {
   projectName: string;
   projectDescription: string;
   prompt: string;
   knowledgeBase?: string | null;
   existingTaskTitles?: string[];
+  executionHistory?: ExecutionHistoryEntry[];
 }): Prompt {
   const kbLine = data.knowledgeBase
     ? `\nKnowledge Base:\n${userInput('knowledge_base', truncate(data.knowledgeBase, MAX_KB_CHARS))}`
@@ -26,12 +54,16 @@ export function buildHierarchicalPlanPrompt(data: {
     ? `\nExisting task titles (do NOT duplicate these):\n${data.existingTaskTitles.map((t) => `- ${t}`).join('\n')}`
     : '';
 
+  const historyLine = data.executionHistory && data.executionHistory.length > 0
+    ? formatExecutionHistory(data.executionHistory)
+    : '';
+
   return {
     systemPrompt: SYSTEM_JSON,
     userPrompt: `Generate a hierarchical project plan with epics (high-level features), tasks (implementable work units), and subtasks (atomic steps).
 
 Project: ${userInput('name', data.projectName)}
-Description: ${userInput('description', truncate(data.projectDescription, MAX_PROJECT_DESCRIPTION_CHARS))}${kbLine}${dedupLine}
+Description: ${userInput('description', truncate(data.projectDescription, MAX_PROJECT_DESCRIPTION_CHARS))}${kbLine}${dedupLine}${historyLine}
 
 User prompt:
 ${userInput('prompt', data.prompt)}

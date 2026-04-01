@@ -73,6 +73,7 @@ import {
   buildReleaseNotesPrompt,
   buildOnboardingQuestionsPrompt,
   buildHierarchicalPlanPrompt,
+  type ExecutionHistoryEntry,
   buildGenerateTaskInsightsPrompt,
   buildManualTaskSpecPrompt,
   buildScaffoldPrompt,
@@ -673,9 +674,10 @@ export async function generateHierarchicalPlan(
   prompt: string,
   knowledgeBase?: string | null,
   existingTaskTitles?: string[],
-  promptLogContext?: PromptLogContext
+  promptLogContext?: PromptLogContext,
+  executionHistory?: ExecutionHistoryEntry[]
 ): Promise<HierarchicalPlanResponse> {
-  const p = buildHierarchicalPlanPrompt({ projectName, projectDescription, prompt, knowledgeBase, existingTaskTitles });
+  const p = buildHierarchicalPlanPrompt({ projectName, projectDescription, prompt, knowledgeBase, existingTaskTitles, executionHistory });
   return callAndParse(apiKey, 'generateHierarchicalPlan', p, HierarchicalPlanResponseSchema, promptLogContext);
 }
 

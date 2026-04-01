@@ -1034,6 +1034,24 @@ export const generationQueries = {
       knowledgeBase = project.knowledgeBase ?? null;
     }
 
+    // Fetch recent execution history for planning context
+    const recentTasks = await context.prisma.task.findMany({
+      where: {
+        projectId: args.projectId,
+        status: { in: ['done', 'failed'] },
+        completionSummary: { not: null },
+      },
+      select: {
+        title: true,
+        status: true,
+        estimatedHours: true,
+        completionSummary: true,
+        taskType: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
+
     emitProgress('Generating epics and tasks...');
     const plc = await buildPromptLogContext(context);
     const result = await aiGenerateHierarchicalPlan(
@@ -1043,7 +1061,8 @@ export const generationQueries = {
       args.prompt,
       knowledgeBase,
       existingTitles,
-      plc
+      plc,
+      recentTasks.length > 0 ? recentTasks : undefined
     );
 
     emitProgress('Validating plan structure...');
