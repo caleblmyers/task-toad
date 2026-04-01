@@ -153,6 +153,7 @@ model TaskDependency {
   sourceTaskId     String   @map("source_task_id")
   targetTaskId     String   @map("target_task_id")
   linkType         String   @default("blocks") @map("link_type")
+  reason           String?
   createdAt        DateTime @default(now()) @map("created_at")
   sourceTask       Task     @relation("TaskDependenciesSource", fields: [sourceTaskId], references: [taskId], onDelete: Cascade)
   targetTask       Task     @relation("TaskDependenciesTarget", fields: [targetTaskId], references: [taskId], onDelete: Cascade)

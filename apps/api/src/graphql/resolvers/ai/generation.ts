@@ -398,7 +398,7 @@ export const generationMutations = {
       // Collect nodes with dependsOn for resolution
       const nodesWithDeps: Array<{
         taskId: string;
-        dependsOn: Array<{ title: string; linkType: string }>;
+        dependsOn: Array<{ title: string; linkType: string; reason?: string }>;
       }> = [];
 
       // Create epics
@@ -481,7 +481,7 @@ export const generationMutations = {
       }
 
       // Resolve dependencies and build proposed edges
-      const proposedEdges: Array<{ sourceTaskId: string; targetTaskId: string; linkType: string }> = [];
+      const proposedEdges: Array<{ sourceTaskId: string; targetTaskId: string; linkType: string; reason?: string }> = [];
       for (const node of nodesWithDeps) {
         for (const dep of node.dependsOn) {
           const targetId = titleToId.get(dep.title);
@@ -490,6 +490,7 @@ export const generationMutations = {
             sourceTaskId: targetId,
             targetTaskId: node.taskId,
             linkType: dep.linkType === 'informs' ? 'informs' : 'blocks',
+            reason: dep.reason || undefined,
           });
         }
       }
@@ -512,6 +513,7 @@ export const generationMutations = {
               sourceTaskId: edge.sourceTaskId,
               targetTaskId: edge.targetTaskId,
               linkType: edge.linkType,
+              reason: edge.reason,
             },
           }).catch(() => {});
         }

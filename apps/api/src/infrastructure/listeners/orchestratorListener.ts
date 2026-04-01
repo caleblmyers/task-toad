@@ -171,11 +171,30 @@ async function orchestrateProject(
   for (const task of candidates) {
     const blockers = await prisma.taskDependency.findMany({
       where: { targetTaskId: task.taskId, linkType: 'blocks' },
-      include: { sourceTask: { select: { status: true } } },
+      include: { sourceTask: { select: { taskId: true, title: true, status: true } } },
     });
-    const allBlockersDone = blockers.every((b) => b.sourceTask.status === 'done');
-    if (allBlockersDone) {
+    const unmetBlockers = blockers.filter((b) => b.sourceTask.status !== 'done');
+    if (unmetBlockers.length === 0) {
       eligible.push(task);
+    } else {
+      // Emit task.blocked for each unmet dependency so the user knows why
+      for (const blocker of unmetBlockers) {
+        getEventBus().emit('task.blocked', {
+          orgId,
+          userId,
+          projectId,
+          timestamp: new Date().toISOString(),
+          taskId: task.taskId,
+          taskTitle: task.title,
+          blockerTaskId: blocker.sourceTask.taskId,
+          blockerTaskTitle: blocker.sourceTask.title,
+          reason: 'dependency_failed',
+        });
+      }
+      log.info(
+        { taskId: task.taskId, unmetCount: unmetBlockers.length },
+        'Task skipped — blocking dependencies not yet done',
+      );
     }
   }
 
