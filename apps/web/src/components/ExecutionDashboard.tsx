@@ -11,6 +11,7 @@ import {
   CANCEL_SESSION_MUTATION,
   AUTO_START_PROJECT_MUTATION,
   TASKS_QUERY,
+  PROJECT_PIPELINE_STATUS_QUERY,
 } from '../api/queries';
 import { useSSEListener } from '../hooks/useEventSource';
 import type { Task, TaskActionPlan, TaskActionType } from '../types';
@@ -61,6 +62,26 @@ interface Session {
   createdAt: string;
 }
 
+interface PipelineStatus {
+  totalTasks: number;
+  todoTasks: number;
+  executingTasks: number;
+  inReviewTasks: number;
+  completedTasks: number;
+  failedTasks: number;
+  blockedTasks: number;
+  openPRs: number;
+  mergedPRs: number;
+  activePlans: number;
+  estimatedRemainingHours: number | null;
+  activeSession: {
+    id: string;
+    status: string;
+    tasksCompleted: number;
+    tasksFailed: number;
+  } | null;
+}
+
 const STATUS_ICONS: Record<string, string> = {
   pending: '\u25CB',
   executing: '\u25D4',
@@ -94,6 +115,7 @@ const SSE_REFRESH_EVENTS = [
   'task.action_plan_failed',
   'task.blocked',
   'task.unblocked',
+  'task.updated',
 ] as const;
 
 const SESSION_SSE_EVENTS = [
@@ -543,6 +565,62 @@ function SessionBanner({ session, onPause, onCancel, onRefresh }: {
   );
 }
 
+// ── Pipeline Overview ──
+
+function PipelineOverview({ status }: { status: PipelineStatus }) {
+  const completionPct = status.totalTasks > 0
+    ? Math.round((status.completedTasks / status.totalTasks) * 100)
+    : 0;
+
+  const cards: Array<{ label: string; value: number | string; color?: string }> = [
+    { label: 'Todo', value: status.todoTasks },
+    { label: 'Executing', value: status.executingTasks, color: status.executingTasks > 0 ? 'text-blue-600 dark:text-blue-400' : undefined },
+    { label: 'In Review', value: status.inReviewTasks, color: status.inReviewTasks > 0 ? 'text-amber-600 dark:text-amber-400' : undefined },
+    { label: 'Done', value: status.completedTasks, color: status.completedTasks > 0 ? 'text-green-600 dark:text-green-400' : undefined },
+    { label: 'Failed', value: status.failedTasks, color: status.failedTasks > 0 ? 'text-red-600 dark:text-red-400' : undefined },
+    { label: 'Blocked', value: status.blockedTasks, color: status.blockedTasks > 0 ? 'text-amber-600 dark:text-amber-400' : undefined },
+  ];
+
+  return (
+    <div className="mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">Pipeline Status</h3>
+        <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+          {status.openPRs > 0 && <span>{status.openPRs} open PR{status.openPRs !== 1 ? 's' : ''}</span>}
+          {status.mergedPRs > 0 && <span>{status.mergedPRs} merged</span>}
+          {status.estimatedRemainingHours != null && status.estimatedRemainingHours > 0 && (
+            <span>~{status.estimatedRemainingHours.toFixed(1)}h remaining</span>
+          )}
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div className="mb-3">
+        <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+          <span>{completionPct}% complete</span>
+          <span>{status.completedTasks}/{status.totalTasks} tasks</span>
+        </div>
+        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+          <div
+            className="rounded-full h-2 transition-all bg-green-500"
+            style={{ width: `${completionPct}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Stat cards row */}
+      <div className="grid grid-cols-6 gap-2">
+        {cards.map((card) => (
+          <div key={card.label} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-center">
+            <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">{card.label}</p>
+            <p className={`text-lg font-bold mt-0.5 ${card.color ?? 'text-slate-800 dark:text-slate-200'}`}>{card.value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Main Dashboard ──
 
 interface ExecutionDashboardProps {
@@ -561,6 +639,7 @@ export default function ExecutionDashboard({ projectId, onClose }: ExecutionDash
   const [quickStarting, setQuickStarting] = useState(false);
   const [quickStartError, setQuickStartError] = useState<string | null>(null);
   const [todoTaskCount, setTodoTaskCount] = useState(0);
+  const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus | null>(null);
 
   // Fetch filtered plans for the list
   const fetchPlans = useCallback(async () => {
@@ -591,6 +670,19 @@ export default function ExecutionDashboard({ projectId, onClose }: ExecutionDash
     }
   }, [projectId]);
 
+  // Fetch pipeline status
+  const fetchPipelineStatus = useCallback(async () => {
+    try {
+      const data = await gql<{ projectPipelineStatus: PipelineStatus }>(
+        PROJECT_PIPELINE_STATUS_QUERY,
+        { projectId },
+      );
+      setPipelineStatus(data.projectPipelineStatus);
+    } catch {
+      // silently fail
+    }
+  }, [projectId]);
+
   // Fetch sessions
   const fetchSessions = useCallback(async () => {
     try {
@@ -613,6 +705,10 @@ export default function ExecutionDashboard({ projectId, onClose }: ExecutionDash
   useEffect(() => {
     fetchSessions();
   }, [fetchSessions]);
+
+  useEffect(() => {
+    fetchPipelineStatus();
+  }, [fetchPipelineStatus]);
 
   // Fetch count of todo tasks for Quick Start button
   useEffect(() => {
@@ -653,7 +749,8 @@ export default function ExecutionDashboard({ projectId, onClose }: ExecutionDash
     void fetchPlans();
     void fetchAllPlans();
     void fetchSessions();
-  }, [fetchPlans, fetchAllPlans, fetchSessions]));
+    void fetchPipelineStatus();
+  }, [fetchPlans, fetchAllPlans, fetchSessions, fetchPipelineStatus]));
 
   const handleRetry = useCallback(async (planId: string) => {
     await gql<{ executeActionPlan: TaskActionPlan }>(
@@ -740,6 +837,9 @@ export default function ExecutionDashboard({ projectId, onClose }: ExecutionDash
           onRefresh={fetchSessions}
         />
       )}
+
+      {/* Pipeline status overview */}
+      {pipelineStatus && <PipelineOverview status={pipelineStatus} />}
 
       {/* Stat cards */}
       <div className="grid grid-cols-4 gap-4 mb-6">

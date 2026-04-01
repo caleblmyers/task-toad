@@ -96,6 +96,28 @@ export const projectTypeDefs = /* GraphQL */ `
     packages: [String!]!
     projectType: String!
   }
+
+  type PipelineSessionInfo {
+    id: ID!
+    status: String!
+    tasksCompleted: Int!
+    tasksFailed: Int!
+  }
+
+  type PipelineStatus {
+    totalTasks: Int!
+    todoTasks: Int!
+    executingTasks: Int!
+    inReviewTasks: Int!
+    completedTasks: Int!
+    failedTasks: Int!
+    blockedTasks: Int!
+    openPRs: Int!
+    mergedPRs: Int!
+    activePlans: Int!
+    estimatedRemainingHours: Float
+    activeSession: PipelineSessionInfo
+  }
 `;
 
 export const projectQueryFields = /* GraphQL */ `
@@ -111,6 +133,8 @@ export const projectQueryFields = /* GraphQL */ `
   sharedViews(projectId: ID!): [SavedFilter!]!
   """Get aggregate rollup metrics across all projects in the org."""
   portfolioRollup: PortfolioRollup!
+  """Get pipeline execution status overview for a project."""
+  projectPipelineStatus(projectId: ID!): PipelineStatus!
 `;
 
 export const projectMutationFields = /* GraphQL */ `

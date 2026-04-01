@@ -55,6 +55,16 @@ export const PORTFOLIO_OVERVIEW_QUERY = `query PortfolioOverview {
   }
 }`;
 
+// ── Pipeline Status ──
+
+export const PROJECT_PIPELINE_STATUS_QUERY = `query ProjectPipelineStatus($projectId: ID!) {
+  projectPipelineStatus(projectId: $projectId) {
+    totalTasks todoTasks executingTasks inReviewTasks completedTasks failedTasks blockedTasks
+    openPRs mergedPRs activePlans estimatedRemainingHours
+    activeSession { id status tasksCompleted tasksFailed }
+  }
+}`;
+
 // ── Project Members ──
 
 export const PROJECT_MEMBERS_QUERY = `query ProjectMembers($projectId: ID!) { projectMembers(projectId: $projectId) { id userId email role createdAt } }`;

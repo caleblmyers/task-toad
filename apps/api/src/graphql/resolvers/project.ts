@@ -237,6 +237,102 @@ export const projectQueries = {
     };
   },
 
+  projectPipelineStatus: async (_parent: unknown, args: { projectId: string }, context: Context) => {
+    await requireProjectAccess(context, args.projectId);
+
+    // Task counts by status
+    const tasks = await context.prisma.task.findMany({
+      where: {
+        projectId: args.projectId,
+        archived: false,
+        taskType: { not: 'epic' },
+        OR: [{ parentTaskId: null }, { parentTask: { taskType: 'epic' } }],
+      },
+      select: { taskId: true, status: true, estimatedHours: true },
+    });
+
+    const totalTasks = tasks.length;
+    const todoTasks = tasks.filter((t) => t.status === 'todo').length;
+    const executingTasks = tasks.filter((t) => t.status === 'in_progress').length;
+    const inReviewTasks = tasks.filter((t) => t.status === 'in_review').length;
+    const completedTasks = tasks.filter((t) => t.status === 'done').length;
+    const failedTasks = tasks.filter((t) => t.status === 'failed').length;
+
+    // Blocked tasks: tasks with unmet blocking dependencies
+    const blockedTasks = await context.prisma.task.count({
+      where: {
+        projectId: args.projectId,
+        status: 'todo',
+        archived: false,
+        dependenciesAsTarget: {
+          some: {
+            linkType: 'blocks',
+            sourceTask: { status: { not: 'done' } },
+          },
+        },
+      },
+    });
+
+    // PR counts
+    const taskIds = tasks.map((t) => t.taskId);
+    const [openPRs, mergedPRs] = await Promise.all([
+      context.prisma.gitHubPullRequestLink.count({
+        where: { taskId: { in: taskIds }, state: 'OPEN' },
+      }),
+      context.prisma.gitHubPullRequestLink.count({
+        where: { taskId: { in: taskIds }, state: 'MERGED' },
+      }),
+    ]);
+
+    // Active action plans
+    const activePlans = await context.prisma.taskActionPlan.count({
+      where: {
+        task: { projectId: args.projectId },
+        status: 'executing',
+      },
+    });
+
+    // Estimated remaining hours from todo tasks
+    const estimatedRemainingHours = tasks
+      .filter((t) => t.status !== 'done')
+      .reduce((sum, t) => sum + (t.estimatedHours ?? 0), 0) || null;
+
+    // Active session
+    const activeSession = await context.prisma.session.findFirst({
+      where: {
+        projectId: args.projectId,
+        status: { in: ['running', 'paused'] },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    let activeSessionInfo = null;
+    if (activeSession) {
+      const progress = activeSession.progress ? JSON.parse(activeSession.progress) as { tasksCompleted?: number; tasksFailed?: number } : null;
+      activeSessionInfo = {
+        id: activeSession.id,
+        status: activeSession.status,
+        tasksCompleted: progress?.tasksCompleted ?? 0,
+        tasksFailed: progress?.tasksFailed ?? 0,
+      };
+    }
+
+    return {
+      totalTasks,
+      todoTasks,
+      executingTasks,
+      inReviewTasks,
+      completedTasks,
+      failedTasks,
+      blockedTasks,
+      openPRs,
+      mergedPRs,
+      activePlans,
+      estimatedRemainingHours,
+      activeSession: activeSessionInfo,
+    };
+  },
+
   recommendStack: async (_parent: unknown, args: { projectId: string }, context: Context) => {
     const { project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
