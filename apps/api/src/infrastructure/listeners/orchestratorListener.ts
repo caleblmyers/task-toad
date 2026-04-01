@@ -699,6 +699,194 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
     }
   });
 
+  // ── CI webhook-driven flow: advance plan when CI passes ──
+  bus.on('task.ci_passed', async (event) => {
+    const { taskId, orgId, projectId } = event;
+
+    try {
+      // Find the task's active action plan with an executing monitor_ci action
+      const plan = await prisma.taskActionPlan.findFirst({
+        where: { taskId, status: 'executing' },
+        include: { actions: { orderBy: { position: 'asc' } } },
+      });
+      if (!plan) return;
+
+      const monitorAction = plan.actions.find(
+        (a) => a.actionType === 'monitor_ci' && a.status === 'executing',
+      );
+      if (!monitorAction) return;
+
+      // Mark monitor_ci as completed (CI passed via webhook)
+      await prisma.taskAction.update({
+        where: { id: monitorAction.id },
+        data: {
+          status: 'completed',
+          result: JSON.stringify({ ciPassed: true, via: 'webhook', conclusion: event.conclusion, headSha: event.headSha }),
+          completedAt: new Date(),
+        },
+      });
+
+      // Emit action completed event
+      bus.emit('task.action_completed', {
+        orgId,
+        userId: event.userId,
+        projectId,
+        timestamp: new Date().toISOString(),
+        actionId: monitorAction.id,
+        actionType: 'monitor_ci',
+        planId: plan.id,
+        taskId,
+        success: true,
+      });
+
+      // Enqueue the next pending action (likely merge_pr)
+      const nextAction = plan.actions.find(
+        (a) => a.position > monitorAction.position && a.status === 'pending',
+      );
+      if (nextAction) {
+        const queue = getJobQueue();
+        queue.enqueue('action-execute', {
+          planId: plan.id,
+          actionId: nextAction.id,
+          orgId,
+          userId: plan.createdById,
+        });
+        log.info({ taskId, planId: plan.id, nextActionId: nextAction.id }, 'CI passed via webhook — enqueued next action');
+      }
+    } catch (err) {
+      log.error({ err, taskId }, 'Failed to handle task.ci_passed event');
+    }
+  });
+
+  // ── CI failed: mark monitor_ci as failed ──
+  bus.on('task.ci_failed', async (event) => {
+    const { taskId, orgId, projectId } = event;
+
+    try {
+      const plan = await prisma.taskActionPlan.findFirst({
+        where: { taskId, status: 'executing' },
+        include: { actions: { orderBy: { position: 'asc' } } },
+      });
+      if (!plan) return;
+
+      const monitorAction = plan.actions.find(
+        (a) => a.actionType === 'monitor_ci' && a.status === 'executing',
+      );
+      if (!monitorAction) return;
+
+      // Mark monitor_ci as failed
+      await prisma.taskAction.update({
+        where: { id: monitorAction.id },
+        data: {
+          status: 'failed',
+          errorMessage: `CI failed: ${event.conclusion}`,
+          result: JSON.stringify({ ciPassed: false, via: 'webhook', conclusion: event.conclusion, headSha: event.headSha }),
+        },
+      });
+
+      // Mark the plan as failed
+      await prisma.taskActionPlan.update({
+        where: { id: plan.id },
+        data: { status: 'failed' },
+      });
+
+      bus.emit('task.action_completed', {
+        orgId,
+        userId: event.userId,
+        projectId,
+        timestamp: new Date().toISOString(),
+        actionId: monitorAction.id,
+        actionType: 'monitor_ci',
+        planId: plan.id,
+        taskId,
+        success: false,
+      });
+
+      bus.emit('task.action_plan_failed', {
+        orgId,
+        userId: event.userId,
+        projectId,
+        timestamp: new Date().toISOString(),
+        planId: plan.id,
+        taskId,
+        taskTitle: '', // Title not available from event, non-critical for this path
+        lastFailedActionId: monitorAction.id,
+        lastFailedActionType: 'monitor_ci',
+        errorMessage: `CI failed: ${event.conclusion}`,
+      });
+
+      log.info({ taskId, planId: plan.id, conclusion: event.conclusion }, 'CI failed via webhook — plan marked as failed');
+    } catch (err) {
+      log.error({ err, taskId }, 'Failed to handle task.ci_failed event');
+    }
+  });
+
+  // ── External PR merge: complete pending action plans ──
+  bus.on('task.pr_merged', async (event) => {
+    const { taskId, orgId, projectId } = event;
+
+    try {
+      // Check if there's an active plan with a pending or executing merge_pr action
+      const plan = await prisma.taskActionPlan.findFirst({
+        where: { taskId, status: 'executing' },
+        include: { actions: { orderBy: { position: 'asc' } } },
+      });
+      if (!plan) return;
+
+      // Find merge_pr or monitor_ci actions that are still pending/executing
+      const actionsToComplete = plan.actions.filter(
+        (a) => (a.actionType === 'merge_pr' || a.actionType === 'monitor_ci') &&
+               (a.status === 'pending' || a.status === 'executing'),
+      );
+
+      for (const action of actionsToComplete) {
+        await prisma.taskAction.update({
+          where: { id: action.id },
+          data: {
+            status: 'completed',
+            result: JSON.stringify({ via: 'external_merge', prNumber: event.prNumber }),
+            completedAt: new Date(),
+          },
+        });
+      }
+
+      // Mark remaining pending actions as skipped (they're not needed after external merge)
+      const remainingPending = plan.actions.filter(
+        (a) => a.status === 'pending' && !actionsToComplete.some((c) => c.id === a.id),
+      );
+      for (const action of remainingPending) {
+        await prisma.taskAction.update({
+          where: { id: action.id },
+          data: {
+            status: 'completed',
+            result: JSON.stringify({ via: 'external_merge', skipped: true }),
+            completedAt: new Date(),
+          },
+        });
+      }
+
+      // Complete the plan
+      await prisma.taskActionPlan.update({
+        where: { id: plan.id },
+        data: { status: 'completed' },
+      });
+
+      bus.emit('task.action_plan_completed', {
+        orgId,
+        userId: event.userId,
+        projectId,
+        timestamp: new Date().toISOString(),
+        planId: plan.id,
+        taskId,
+        taskTitle: '', // The task.updated handler (already in webhook handler) manages task status
+      });
+
+      log.info({ taskId, planId: plan.id, prNumber: event.prNumber }, 'External PR merge — completed action plan');
+    } catch (err) {
+      log.error({ err, taskId }, 'Failed to handle task.pr_merged event');
+    }
+  });
+
   bus.on('session.started', async (event) => {
     const { projectId, orgId, userId } = event;
     const lockId = lockIdForProject(projectId);
