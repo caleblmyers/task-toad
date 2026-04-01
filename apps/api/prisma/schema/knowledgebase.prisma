@@ -1,6 +1,6 @@
 model KnowledgeEntry {
   knowledgeEntryId String   @id @default(uuid()) @map("knowledge_entry_id")
-  projectId        String   @map("project_id")
+  projectId        String?  @map("project_id")
   orgId            String   @map("org_id")
   title            String
   content          String
@@ -8,7 +8,7 @@ model KnowledgeEntry {
   category         String   @default("standard") // standard, pattern, business, integration
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
-  project          Project  @relation(fields: [projectId], references: [projectId], onDelete: Cascade)
+  project          Project? @relation(fields: [projectId], references: [projectId], onDelete: Cascade)
   org              Org      @relation(fields: [orgId], references: [orgId])
 
   @@index([projectId])

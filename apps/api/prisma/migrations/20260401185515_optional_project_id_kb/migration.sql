@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "knowledge_entries" ALTER COLUMN "project_id" DROP NOT NULL;

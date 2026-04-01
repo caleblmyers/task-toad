@@ -1,7 +1,7 @@
 export const knowledgeBaseTypeDefs = /* GraphQL */ `
   type KnowledgeEntry {
     knowledgeEntryId: ID!
-    projectId: ID!
+    projectId: ID
     title: String!
     content: String!
     source: String!
@@ -12,13 +12,13 @@ export const knowledgeBaseTypeDefs = /* GraphQL */ `
 `;
 
 export const knowledgeBaseQueryFields = /* GraphQL */ `
-  """List knowledge entries for a project."""
-  knowledgeEntries(projectId: ID!): [KnowledgeEntry!]!
+  """List knowledge entries for a project, or org-level entries if orgOnly is true."""
+  knowledgeEntries(projectId: ID, orgOnly: Boolean): [KnowledgeEntry!]!
 `;
 
 export const knowledgeBaseMutationFields = /* GraphQL */ `
-  """Create a knowledge entry for a project."""
-  createKnowledgeEntry(projectId: ID!, title: String!, content: String!, source: String, category: String): KnowledgeEntry!
+  """Create a knowledge entry for a project (or org-level if projectId omitted)."""
+  createKnowledgeEntry(projectId: ID, title: String!, content: String!, source: String, category: String): KnowledgeEntry!
   """Update a knowledge entry."""
   updateKnowledgeEntry(knowledgeEntryId: ID!, title: String, content: String, category: String): KnowledgeEntry!
   """Delete a knowledge entry."""

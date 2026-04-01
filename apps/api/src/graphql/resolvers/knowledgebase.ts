@@ -10,9 +10,20 @@ const VALID_CATEGORIES = ['standard', 'pattern', 'business', 'integration'];
 export const knowledgeBaseQueries = {
   knowledgeEntries: async (
     _parent: unknown,
-    args: { projectId: string },
+    args: { projectId?: string; orgOnly?: boolean },
     context: Context
   ) => {
+    const user = requireOrg(context);
+    if (args.orgOnly) {
+      return context.prisma.knowledgeEntry.findMany({
+        where: { orgId: user.orgId, projectId: null },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+      });
+    }
+    if (!args.projectId) {
+      throw new ValidationError('Either projectId or orgOnly must be provided');
+    }
     await requireProject(context, args.projectId);
     return context.prisma.knowledgeEntry.findMany({
       where: { projectId: args.projectId },
@@ -25,12 +36,19 @@ export const knowledgeBaseQueries = {
 export const knowledgeBaseMutations = {
   createKnowledgeEntry: async (
     _parent: unknown,
-    args: { projectId: string; title: string; content: string; source?: string; category?: string },
+    args: { projectId?: string; title: string; content: string; source?: string; category?: string },
     context: Context
   ) => {
     parseInput(CreateKnowledgeEntryInput, { title: args.title, content: args.content });
-    const { user } = await requireProject(context, args.projectId);
-    await requirePermission(context, args.projectId, Permission.MANAGE_PROJECT_SETTINGS);
+    let orgId: string;
+    if (args.projectId) {
+      const { user } = await requireProject(context, args.projectId);
+      await requirePermission(context, args.projectId, Permission.MANAGE_PROJECT_SETTINGS);
+      orgId = user.orgId;
+    } else {
+      const user = requireOrg(context);
+      orgId = user.orgId;
+    }
     const source = args.source ?? 'upload';
     if (!VALID_SOURCES.includes(source)) {
       throw new ValidationError(`Invalid source "${source}". Valid: ${VALID_SOURCES.join(', ')}`);
@@ -41,8 +59,8 @@ export const knowledgeBaseMutations = {
     }
     return context.prisma.knowledgeEntry.create({
       data: {
-        projectId: args.projectId,
-        orgId: user.orgId,
+        projectId: args.projectId ?? null,
+        orgId,
         title: args.title.trim(),
         content: args.content,
         source,

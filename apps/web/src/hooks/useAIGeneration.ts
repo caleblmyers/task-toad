@@ -187,18 +187,12 @@ export function useAIGeneration({
     if (!projectId) { setIsProjectBusy(false); return; }
     try {
       const data = await gql<{ projectActionPlans: Array<{ id: string; status: string }> }>(
-        PROJECT_ACTION_PLANS_QUERY, { projectId, status: 'executing' },
+        PROJECT_ACTION_PLANS_QUERY, { projectId },
       );
-      const hasActive = data.projectActionPlans.length > 0;
-      if (!hasActive) {
-        // Also check for approved plans
-        const approved = await gql<{ projectActionPlans: Array<{ id: string; status: string }> }>(
-          PROJECT_ACTION_PLANS_QUERY, { projectId, status: 'approved' },
-        );
-        setIsProjectBusy(approved.projectActionPlans.length > 0);
-      } else {
-        setIsProjectBusy(true);
-      }
+      const hasActive = data.projectActionPlans.some(
+        p => p.status === 'executing' || p.status === 'approved'
+      );
+      setIsProjectBusy(hasActive);
     } catch {
       // ignore — default to not busy
     }

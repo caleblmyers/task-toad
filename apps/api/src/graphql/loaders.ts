@@ -233,6 +233,7 @@ export function createLoaders(prisma: PrismaClient, orgId: string | null): Loade
       });
       const map = new Map<string, KnowledgeEntry[]>();
       for (const e of entries) {
+        if (!e.projectId) continue;
         if (!map.has(e.projectId)) map.set(e.projectId, []);
         map.get(e.projectId)!.push(e);
       }
