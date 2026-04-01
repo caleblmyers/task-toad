@@ -148,6 +148,10 @@ export interface DomainEventMap {
   'session.completed': BaseEventPayload & { sessionId: string };
   'session.failed': BaseEventPayload & { sessionId: string; reason: string };
   'session.paused': BaseEventPayload & { sessionId: string };
+  'ai.progress': BaseEventPayload & {
+    operation: string;
+    step: string;
+  };
 }
 
 export type EventName = keyof DomainEventMap;

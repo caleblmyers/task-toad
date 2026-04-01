@@ -17,6 +17,7 @@ const SSE_EVENTS = [
   'notification.created',
   'approval.requested',
   'approval.decided',
+  'ai.progress',
 ] as const;
 
 type SSEEventHandler = (event: string, data: unknown) => void;

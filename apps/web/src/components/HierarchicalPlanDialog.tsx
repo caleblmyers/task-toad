@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { gql } from '../api/client';
 import {
   PREVIEW_HIERARCHICAL_PLAN_QUERY,
@@ -12,6 +12,7 @@ import {
   HierarchicalPlanEditor,
   type HierarchicalPlanPreview,
 } from './HierarchicalPlanEditor';
+import { useSSEListener } from '../hooks/useEventSource';
 
 interface HierarchicalPlanDialogProps {
   isOpen: boolean;
@@ -125,30 +126,44 @@ export default function HierarchicalPlanDialog({
 
   const loading = generating || committing;
 
-  // Time-based progress messages during generation
-  const PROGRESS_MESSAGES = [
-    'Analyzing project scope...',
-    'Generating epics...',
-    'Planning tasks and subtasks...',
-    'Finalizing dependency graph...',
-  ];
-  const [progressIndex, setProgressIndex] = useState(0);
-  const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const DEFAULT_PROGRESS = 'Generating plan...';
+  const [progressMessage, setProgressMessage] = useState(DEFAULT_PROGRESS);
+  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSSEEvent = useCallback(
+    (_event: string, data: unknown) => {
+      const payload = data as { projectId?: string; step?: string };
+      if (payload.projectId === projectId && payload.step) {
+        setProgressMessage(payload.step);
+        // Clear fallback timer since we got a real event
+        if (fallbackTimerRef.current) {
+          clearTimeout(fallbackTimerRef.current);
+          fallbackTimerRef.current = null;
+        }
+      }
+    },
+    [projectId],
+  );
+
+  const AI_PROGRESS_EVENTS = generating ? (['ai.progress'] as const) : ([] as const);
+  useSSEListener(AI_PROGRESS_EVENTS, handleSSEEvent);
 
   useEffect(() => {
     if (generating) {
-      setProgressIndex(0);
-      progressTimerRef.current = setInterval(() => {
-        setProgressIndex((i) => Math.min(i + 1, PROGRESS_MESSAGES.length - 1));
-      }, 3000);
+      setProgressMessage(DEFAULT_PROGRESS);
+      // Fallback: if no SSE events arrive within 5 seconds, keep the generic message
+      fallbackTimerRef.current = setTimeout(() => {
+        // No-op — DEFAULT_PROGRESS is already showing
+        fallbackTimerRef.current = null;
+      }, 5000);
     } else {
-      if (progressTimerRef.current) {
-        clearInterval(progressTimerRef.current);
-        progressTimerRef.current = null;
+      if (fallbackTimerRef.current) {
+        clearTimeout(fallbackTimerRef.current);
+        fallbackTimerRef.current = null;
       }
     }
     return () => {
-      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [generating]);
@@ -208,7 +223,7 @@ export default function HierarchicalPlanDialog({
         {generating && (
           <div className="space-y-4">
             <p className="text-sm font-medium text-slate-600 dark:text-slate-300 text-center">
-              {PROGRESS_MESSAGES[progressIndex]}
+              {progressMessage}
             </p>
             {/* Skeleton epic cards */}
             {[0, 1, 2, 3].map((i) => (

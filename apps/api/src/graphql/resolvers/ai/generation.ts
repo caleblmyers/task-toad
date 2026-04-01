@@ -23,6 +23,7 @@ import type { RelevantFile } from '../../../github/index.js';
 import { requireProject, sanitizeForPrompt } from '../../../utils/resolverHelpers.js';
 import { EpicsInputSchema } from '../../../utils/zodSchemas.js';
 import { retrieveRelevantKnowledge } from '../../../ai/knowledgeRetrieval.js';
+import { getEventBus } from '../../../infrastructure/eventbus/index.js';
 
 export const generationMutations = {
   saveReport: async (
@@ -999,7 +1000,7 @@ export const generationQueries = {
     args: { projectId: string; prompt: string },
     context: Context
   ) => {
-    const { project } = await requireProject(context, args.projectId);
+    const { user, project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
     await enforceBudget(context);
 
@@ -1009,7 +1010,19 @@ export const generationQueries = {
     });
     const existingTitles = existingTasks.map((t: { title: string }) => t.title);
 
+    const emitProgress = (step: string) => {
+      getEventBus().emit('ai.progress', {
+        orgId: user.orgId,
+        userId: user.userId,
+        projectId: args.projectId,
+        timestamp: new Date().toISOString(),
+        operation: 'hierarchicalPlan',
+        step,
+      });
+    };
+
     // Retrieve relevant knowledge base entries
+    emitProgress('Retrieving project knowledge...');
     const taskContext = `${project.name}: ${args.prompt}`;
     let knowledgeBase: string | null = null;
     try {
@@ -1019,8 +1032,9 @@ export const generationQueries = {
       knowledgeBase = project.knowledgeBase ?? null;
     }
 
+    emitProgress('Generating epics and tasks...');
     const plc = await buildPromptLogContext(context);
-    return aiGenerateHierarchicalPlan(
+    const result = await aiGenerateHierarchicalPlan(
       apiKey,
       project.name,
       project.description ?? '',
@@ -1029,5 +1043,8 @@ export const generationQueries = {
       existingTitles,
       plc
     );
+
+    emitProgress('Validating plan structure...');
+    return result;
   },
 };

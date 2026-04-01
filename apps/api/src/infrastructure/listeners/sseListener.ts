@@ -90,4 +90,12 @@ export function register(bus: EventBus): void {
       taskTitle: e.taskTitle,
     });
   });
+
+  bus.on('ai.progress', (e) => {
+    sseManager.broadcast(e.orgId, 'ai.progress', {
+      projectId: e.projectId,
+      operation: e.operation,
+      step: e.step,
+    });
+  });
 }
