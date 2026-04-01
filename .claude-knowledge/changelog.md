@@ -4,6 +4,33 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-04-01 (Wave 83 — Bidirectional GitHub Sync + Merge Orchestration + Pipeline Dashboard)
+
+### Wave 83: GitHub Sync + Merge Orchestration + Dashboard (3 workers, 3 tasks)
+
+**Worker 1 — task-001: Bidirectional GitHub sync:**
+- `check_suite` webhook events handled — finds linked task via PR number and emits CI events
+- `task.ci_passed` and `task.ci_failed` events emitted based on check suite conclusion
+- `task.pr_merged` event emitted on external PR merges for orchestrator consumption
+- All events broadcast via SSE for frontend real-time updates
+
+**Worker 2 — task-002: Merge orchestration:**
+- Orchestrator listens for `task.ci_passed` — completes `monitor_ci` action and enqueues `merge_pr`
+- Webhook-driven CI completion replaces polling when available (polling still works as fallback)
+- External PR merges (`task.pr_merged`) complete pending action plans and trigger downstream tasks
+- Full autonomous flow: generate code → create PR → CI passes (webhook) → auto-merge → next task
+
+**Worker 3 — task-003: Project pipeline status dashboard:**
+- New `projectPipelineStatus` query returns task counts by status, PR counts, blocked tasks, estimated hours
+- ExecutionDashboard shows overview stat cards (Todo, Executing, In Review, Done, Failed, Blocked, Open PRs)
+- Status refreshes on SSE events (task.updated, action plan events)
+
+### Open follow-ups
+- Verify check_suite webhook works with GitHub App permission set (may need `checks: read` scope)
+- Test external merge flow end-to-end with real GitHub PR
+
+---
+
 ## 2026-04-01 (Wave 82 — Quick Start + Interview Removal + Health Monitoring)
 
 ### Wave 82: Quick Start + Cleanup + Monitoring (3 workers, 3 tasks)
@@ -97,31 +124,7 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-04-01 (Wave 79 — Dependencies + Scaffold Progress + Deferred Quality)
-
-### Wave 79: Dependencies + Scaffold Progress + Deferred Quality (3 workers, 3 tasks)
-
-**Worker 1 — task-001: Surface task dependencies in GraphQL + frontend:**
-- Added `blockedBy` and `blocks` field resolvers on Task type with DataLoader batching
-- DetailsTab shows dependency sections with linked task titles, status badges, and link type badges (blocks in red, informs in blue)
-- Sections hidden when no dependencies exist
-
-**Worker 2 — task-002: Scaffold progress events + deferred task quality:**
-- `scaffoldProject` now emits `ai.progress` SSE events at each stage (AI generation, repo check, commit, KB population)
-- fix_review deferred issue schema extended with `acceptanceCriteria` field
-- System prompt requires specific titles and acceptance criteria for deferred tasks
-- Created deferred tasks now have `instructions` field populated from acceptance criteria
-
-**Worker 3 — task-003: Dependency reason persistence + dependency-aware orchestrator:**
-- Added `reason` column to `TaskDependency` model (nullable string) with migration
-- `commitHierarchicalPlan` now persists dependency reason from AI response
-- Orchestrator checks blocking dependencies before starting tasks — skips tasks with unmet `blocks` deps
-- `informs` dependencies don't block execution
-- `task.blocked` SSE event emitted when a task is skipped due to unmet dependencies
-
-### Open follow-ups
-- Expose `reason` field in TaskDependency GraphQL type and show as tooltip in dependency UI
-- Bootstrap flow still needs ai.progress SSE treatment (scaffold done, hierarchical plan done)
+## 2026-04-01 (Wave 79) — dependency reason + ordering, scaffold progress, deferred task quality, dependency UI
 
 ---
 

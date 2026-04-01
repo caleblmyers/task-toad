@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work
 
-82 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Pipeline mechanics work; launching as closed-source SaaS.
+83 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Pipeline mechanics work; launching as closed-source SaaS.
 
 ---
 
@@ -83,9 +83,12 @@
 - [x] **Health monitoring** — periodic cron job detects stuck/stale action plans, creates notifications + SSE alerts with dedup *(Wave 82)*
 - [ ] **Quick Start task count optimization** — ExecutionDashboard fetches all tasks via TASKS_QUERY just to count todos; add a lightweight `projectTaskCounts` query instead
 - [ ] **Health monitor: stale branch detection** — current health monitor only checks action plans; extend to detect stale GitHub branches (PRs open > 7 days with no activity)
-- [ ] **Merge orchestration** — after PR approved + CI passes, auto-merge and trigger downstream tasks
-- [ ] **Progress dashboard improvements** — project-level pipeline status ("3 of 12 tasks executing, 2 PRs open, 1 blocked on CI"), not just per-task action plans
-- [ ] **Bidirectional GitHub sync** — GitHub events (commits, PR merges, issue closes, CI status) should update TaskToad task state. Currently one-directional. Webhook handler only creates link records, doesn't update task statuses
+- [x] **Merge orchestration** — orchestrator listens for CI webhook events, auto-advances action plans (monitor_ci → merge_pr), handles external PR merges *(Wave 83)*
+- [x] **Progress dashboard improvements** — projectPipelineStatus query + PipelineOverview component with stat cards, progress bar, PR counts, session info *(Wave 83)*
+- [x] **Bidirectional GitHub sync** — check_suite webhook handler emits task.ci_passed/ci_failed/pr_merged events, SSE broadcast for real-time frontend updates *(Wave 83)*
+- [ ] **CI failure recovery in pipeline** — when CI fails via webhook, the plan is marked failed but no automatic fix_ci action is triggered. Wire task.ci_failed into the replan flow to auto-attempt fixes
+- [ ] **Pipeline dashboard: active plans detail** — PipelineOverview shows activePlans count but doesn't link to the specific plans. Add expandable list of active plan summaries
+- [ ] **External merge: task status sync** — pr_merged handler completes the action plan but relies on the webhook handler for task status. If the plan had post-merge actions (write_docs), they get skipped. Consider selective skipping
 - [ ] **Agent abstraction** — decouple from direct Claude API calls. Support pluggable agents (Claude Code, Codex, local LLMs) behind common interface. Phase 4
 
 ---
@@ -196,5 +199,6 @@
 | 80 | 2026-04-01 | Planning feedback loop, decision points in plans, scope estimation, dependency reason GraphQL |
 | 81 | 2026-04-01 | Auto-replan on failure, repo onboarding intent threading, decision validation, AI-friendly scaffolding |
 | 82 | 2026-04-01 | Quick Start autopilot, remove onboarding interview, health monitoring cron |
+| 83 | 2026-04-01 | Bidirectional GitHub sync, merge orchestration, pipeline status dashboard |
 
 Full wave details in `changelog.md`.
