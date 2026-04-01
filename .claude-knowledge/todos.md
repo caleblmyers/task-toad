@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work
 
-77 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Pipeline mechanics work; launching as closed-source SaaS.
+78 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Pipeline mechanics work; launching as closed-source SaaS.
 
 ---
 
@@ -30,8 +30,10 @@
 - [x] **AI review comments collapsed by default** — comments collapsed, consistent with suggestions section *(Wave 77)*
 - [x] **Close sprint/session from board view** — added 'Close Sprint' to board toolbar sprint dropdown *(Wave 77)*
 - [ ] **Swimlane-specific overflow** — individual swimlane sections within a kanban column may need their own max-height + scroll if a single swimlane has many tasks, rather than relying solely on the column-level scroll
-- [ ] **Hierarchical plan streaming progress** — plan generation (epics + tasks) should stream partial results (epics first, then tasks per epic) instead of showing only a spinner. User has no context on progress, failure, or status during long waits
-- [ ] **Long user-facing flows need progress indicators** — scaffold generation, plan generation, and other synchronous AI flows need step-by-step progress feedback, not just a spinner. Action plan timelines are fine (background), but user-directed flows that block the UI are bad UX
+- [x] **Hierarchical plan progress events** — real SSE progress events replace fake cycling messages during plan generation *(Wave 78)*
+- [ ] **Hierarchical plan streaming results** — stream partial results (epics first, then tasks per epic) instead of waiting for full response
+- [ ] **Scaffold generation progress events** — scaffoldProject needs the same ai.progress SSE treatment as hierarchical plan generation
+- [ ] **Long user-facing flows need progress indicators** — remaining synchronous AI flows (scaffold, bootstrap) need step-by-step progress feedback, not just a spinner
 - [ ] Release notes: manual entry option
 - [ ] Time entry deletion: admin-only
 - [ ] Mobile: horizontal scrolling on project page
@@ -45,8 +47,10 @@
 - [x] **merge_pr executor: auto-update branch before merge** — `updatePullRequestBranch()` + auto-retry *(Wave 76)*
 - [x] **merge_pr executor: detect already-merged PR** — `getPullRequestState()` check before merge *(Wave 76)*
 - [x] **merge_pr executor: handle merge conflicts** — structured `errorReason` field *(Wave 76)*
-- [ ] **Concurrent action plan prevention** — prevent starting a new action plan while one is running on the same project (backend guard). Parallel execution is a future premium feature
-- [ ] **fix_review vague results** — AI responses too varied, can break parsing. Three-pronged fix: (1) stricter prompt constraints with few-shot examples of expected output format, (2) response normalization layer that coerces common AI variations into expected schema, (3) retry with error feedback appended to prompt for self-correction
+- [x] **Concurrent action plan prevention** — backend guard in commitActionPlan/executeActionPlan + frontend button disabled when project busy *(Wave 78)*
+- [x] **fix_review vague results** — stricter prompt with few-shot example, response normalization, and validation retry with error feedback in callAIStructured *(Wave 78)*
+- [ ] **Concurrent plan check optimization** — `checkProjectBusy` in useAIGeneration makes two sequential API calls (executing + approved); combine into a single query that checks both statuses
+- [ ] **Move fix_review normalization before Zod validation** — normalization in fixReview.ts runs after `callAIStructured` already validates, making it dead code. Move inside `callAIStructured` before `safeParse`, or expose raw response for pre-validation normalization
 - [ ] **Verify offloaded task quality** — deferred tasks created by fix_review should match the detail level of originals, have no duplicates, and not conflict with project goals. Audit and improve the deferred task creation prompt
 - [ ] SSE cross-tab: consider adding a leader tab indicator in dev mode for debugging
 
@@ -109,10 +113,17 @@
 
 ---
 
+## Premium Feature Gating
+
+- [ ] **Wire new premium features into license system** — as parallel execution, session auto-start, and agent abstraction are implemented, add them to `PREMIUM_FEATURES` in `license.ts`, add `requireLicense()` checks in resolvers, and gate UI with `hasFeature()`. Current concurrent plan limit (hardcoded to 1) should become plan-aware (`free: 1, paid: 3`)
+- [ ] License gating test coverage — verify free users can't access premium features
+
+---
+
 ## Future
 
 - [ ] Scheduled report delivery (depends on SMTP — now configured)
-- [ ] License gating test coverage
+- [ ] Stripe integration for billing (currently `updateOrgPlan` is admin-only with no payment flow)
 - [ ] Multi-project decomposition — break down goals spanning multiple repos/projects
 
 ---
@@ -174,5 +185,6 @@
 | 75 | 2026-03-30 | Column reorder wiring, sprint close→create flow, branch cleanup on cancel, SSE cross-tab sync, priority select colors |
 | 76 | 2026-03-31 | merge_pr hardening, resend verification email, PriorityDropdown a11y, session timeout cleanup, fix_review tests |
 | 77 | 2026-03-31 | Auto-Complete button fix, commit attribution, kanban scroll, review collapsed, close sprint from board |
+| 78 | 2026-04-01 | Concurrent plan prevention, fix_review reliability, hierarchical plan progress events |
 
 Full wave details in `changelog.md`.

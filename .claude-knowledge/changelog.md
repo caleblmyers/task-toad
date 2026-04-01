@@ -4,6 +4,34 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-04-01 (Wave 78 — Pipeline Reliability + AI Progress)
+
+### Wave 78: Pipeline Reliability + AI Progress (3 workers, 3 tasks)
+
+**Worker 1 — task-001: Concurrent action plan prevention:**
+- Backend guard in `commitActionPlan` and `executeActionPlan` — throws `ValidationError` if another plan is `approved` or `executing` on the same project
+- Frontend `isProjectBusy` check via `checkProjectBusy()` in `useAIGeneration` — disables Auto-Complete button with explanatory message when another plan is running
+- Prop threaded through ProjectDetail → ActionsTab
+
+**Worker 2 — task-002: fix_review reliability improvements:**
+- Stricter system prompt with few-shot JSON example and explicit constraints (complete file content, conventional commit prefix, one-sentence summary)
+- Response normalization for common AI quirks (missing fields, stringified arrays, empty defaults)
+- Validation retry in `callAIStructured` — when Zod parse fails, retries once with error feedback appended to prompt
+
+**Worker 3 — task-003: Real progress events for hierarchical plan generation:**
+- New `ai.progress` event type in event bus
+- `previewHierarchicalPlan` resolver emits SSE events at each stage (KB retrieval, AI generation, validation)
+- HierarchicalPlanDialog replaces fake cycling messages with real SSE progress events
+- Skeleton animation preserved, fallback to generic message if no events arrive
+
+### Open follow-ups
+- Concurrent plan check optimization: `checkProjectBusy` makes two sequential API calls, combine into single query
+- fix_review normalization is effectively dead code (runs after `callAIStructured` already validates) — move normalization inside `callAIStructured` before `safeParse` if needed
+- Scaffold generation needs same `ai.progress` SSE treatment as hierarchical plan
+- `filesToChange` accuracy for prop-threading and event bus features — include ALL files in chain
+
+---
+
 ## 2026-03-31 (Wave 77 — Bug Fixes + UX)
 
 ### Pre-wave fixes
@@ -110,40 +138,7 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-03-28 (Wave 74 — Code Quality + UX + Refactors)
-
-### Wave 74: Code Quality + UX + Refactors (3 workers, 5 tasks)
-
-**Worker 1 — task-001: Test DB isolation + branch flow tests:**
-- `cleanDatabase()` uses `session_replication_role = 'replica'` to disable FK checks during truncation + 200ms settle delay
-- 6 new branch flow unit tests: branch creation, sequential commits, headOid tracking, commit failure safety, conflict handling, resolveCodeGenContext scoring
-
-**Worker 2 — task-002: Priority colors + automation bot attribution:**
-- `PRIORITY_COLORS` map in `taskHelpers.ts` — colored dots/text for critical (red), high (orange), medium (amber), low (slate)
-- Applied in TaskFieldsPanel, KanbanBoard task cards, BacklogView rows
-- Automation comments prefixed with bot indicator and rule name
-
-**Worker 2 — task-003: Sprint column reordering:**
-- Column headers on kanban board are draggable via HTML5 drag-and-drop
-- Visual feedback during drag (border highlight)
-- `onReorderColumns` callback for persistence
-
-**Worker 3 — task-004: Branch cleanup + executor Zod audit:**
-- `deleteBranch()` function in `githubCommitService.ts`
-- Auto-deletes feature branches after successful merge_pr (best-effort, non-blocking)
-- `ManualStepConfigSchema` and `MonitorCIConfigSchema` added to respective executors
-
-**Worker 3 — task-005: replanFailedTask helper extraction:**
-- `createPlanWithActions()` in `apps/api/src/utils/planHelpers.ts`
-- Both `commitActionPlan` and `replanFailedTask` now use shared helper
-- ID remapping logic centralized
-
-**306 tests** (6 new). All pass.
-
-### Open follow-ups
-- Column reorder: wire `onReorderColumns` callback in ProjectDetail to call `updateSprint` mutation
-- Priority color: add colored option backgrounds to priority `<select>` dropdown
-- Branch cleanup: also delete branches on plan cancellation
+## 2026-03-28 (Wave 74) — test DB isolation, branch flow tests, priority colors, automation bot, column reorder, branch cleanup, Zod audit, planHelpers extraction
 
 ---
 
