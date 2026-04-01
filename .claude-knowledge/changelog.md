@@ -4,6 +4,39 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-04-01 (Wave 81 — Orchestration + Onboarding + Scaffold Quality)
+
+### Wave 81: Auto-Replan + Repo Onboarding + Scaffold Quality (3 workers, 3 tasks)
+
+**Worker 1 — task-001: Auto-replan on failure:**
+- Extracted replan logic into `replanService.ts` — callable from both resolver and orchestrator
+- Orchestrator auto-replans when action plan fails (up to MAX_REPLANS = 2)
+- Replan count tracked via cancelled plan count to prevent infinite loops
+- New plan auto-executes after creation
+- `task.action_plan_replanned` SSE event emitted on auto-replan
+- Manual `replanFailedTask` resolver refactored to use shared service
+
+**Worker 2 — task-002: Existing repo onboarding improvements:**
+- User intent now passed to `bootstrapFromRepo` AI call via new `intent` argument
+- Bootstrap prompt includes intent section when provided, focusing analysis on user's goal
+- Wizard shows "Generate detailed plan" button after bootstrap success
+- Plan dialog pre-populated with user intent as initial prompt
+- Bootstrap emits `ai.progress` SSE events at each stage (fetch, analyze, generate)
+- `HierarchicalPlanDialog` accepts `initialPrompt` prop
+
+**Worker 3 — task-003: Decision task validation + AI-friendly scaffolding:**
+- `commitHierarchicalPlan` validates all decision tasks have `selectedOption` before committing
+- HierarchicalPlanEditor disables commit button with unresolved decision count
+- Scaffold prompt instructs AI to generate `CLAUDE.md` and `.claude-knowledge/app-overview.md`
+- Scaffolded repos are immediately usable with Claude Code and similar AI coding tools
+
+### Open follow-ups
+- `filesToChange` accuracy: include event bus types, SSE listener, and component interface files when task description mentions them
+- Test replan service with integration tests
+- Verify scaffolded CLAUDE.md quality with real project generation
+
+---
+
 ## 2026-04-01 (Wave 80 — Decomposition Engine: Feedback, Decisions, Estimation)
 
 ### Wave 80: Decomposition Engine Improvements (3 workers, 3 tasks)
@@ -90,37 +123,7 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-03-31 (Wave 77 — Bug Fixes + UX)
-
-### Pre-wave fixes
-- **GitHub OAuth popup:** Redirected callback to frontend `/github-callback` page instead of postMessage from API origin (fixes `window.opener` stripped by cross-origin navigation). Added localStorage fallback.
-- **tasktoad.dev links:** Updated to `tasktoad.app` in PR body, review footer, and PR template (3 files).
-- **Browser save-password:** Added `autoComplete="off"` to API key and password confirmation inputs in OrgSettings and CreateOrg.
-- **Todos overhaul:** Added all user notes + pillar gaps as categorized todos.
-
-### Wave 77: Bug Fixes + UX (3 workers, 4 tasks)
-
-**Worker 1 — task-001: Auto-Complete button text + review comments collapsed:**
-- Fixed button showing full `loadingMessage` text during loading — now shows 'Planning...' consistently
-- Review comments in ActionProgressPanel changed from `<details open>` to `<details>` (collapsed by default, consistent with suggestions)
-
-**Worker 2 — task-002: Commit attribution fix:**
-- Removed user OAuth token override from `actionExecutor.ts` — commits now use installation token exclusively
-- Removed `userGitHubToken` from action context and all executor references (`generateCode`, `fixReview`, `writeDocs`, `fixCI`)
-- Commits will now be attributed to TaskToad[bot] instead of the connected user
-
-**Worker 2 — task-003: Kanban column overflow:**
-- Added `overflow-y-auto` to column content wrapper in KanbanBoard
-- Columns now scroll internally when tasks overflow available height
-- Column headers remain fixed above scrolling content
-
-**Worker 3 — task-004: Close sprint from board view:**
-- Added 'Close Sprint' option to ProjectToolbar sprint dropdown
-- Uses same `setCloseSprintId` → `CloseSprintModal` flow as backlog view
-- Only appears when there's an active sprint
-
-### Open follow-ups
-- Swimlane-specific overflow — individual swimlane sections may need their own max-height + scroll
+## 2026-03-31 (Wave 77) — Auto-Complete button fix, commit attribution, kanban scroll, review collapsed, close sprint from board
 
 ---
 

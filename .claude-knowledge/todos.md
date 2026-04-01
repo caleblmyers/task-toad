@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work
 
-80 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Pipeline mechanics work; launching as closed-source SaaS.
+81 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Pipeline mechanics work; launching as closed-source SaaS.
 
 ---
 
@@ -33,7 +33,7 @@
 - [x] **Hierarchical plan progress events** — real SSE progress events replace fake cycling messages during plan generation *(Wave 78)*
 - [ ] **Hierarchical plan streaming results** — stream partial results (epics first, then tasks per epic) instead of waiting for full response
 - [x] **Scaffold generation progress events** — scaffoldProject emits ai.progress SSE events at each stage *(Wave 79)*
-- [ ] **Long user-facing flows need progress indicators** — bootstrap still needs ai.progress SSE treatment (scaffold done in Wave 79)
+- [x] **Long user-facing flows need progress indicators** — bootstrap now emits ai.progress SSE events *(Wave 81)*
 - [ ] Release notes: manual entry option
 - [ ] Time entry deletion: admin-only
 - [ ] Mobile: horizontal scrolling on project page
@@ -63,7 +63,7 @@
 - [x] **Decision points in task plans** — taskKind (implementation/decision) with selectable options and recommendations in plan editor *(Wave 80)*
 - [x] **Planning quality feedback loop** — execution history (last 10 completed/failed tasks with summaries) fed into hierarchical plan prompt *(Wave 80)*
 - [x] **Scope estimation** — estimation calibration guidelines added to hierarchical plan prompt (AI agent execution time, not human time) *(Wave 80)*
-- [ ] **Decision task validation on commit** — enforce that all decision tasks have a selectedOption before allowing plan commit
+- [x] **Decision task validation on commit** — enforce that all decision tasks have a selectedOption before allowing plan commit *(Wave 81)*
 - [ ] **Dependency reason in plan editor** — show/edit dependency reasons in the HierarchicalPlanEditor dependency view, not just in task detail
 - [ ] **Iterative refinement** — re-plan a subset of tasks when requirements change without regenerating the entire plan
 
@@ -79,7 +79,7 @@
 
 - [ ] **Session auto start/stop** — simple start/stop toggle that kicks off autonomous loop: pick next task → generate plan → execute → proceed to next. With configurable retries. Premium feature candidate
 - [ ] **Parallel execution streams** — independent tasks (no dependency) should execute in parallel. Requires DAG-based scheduler instead of sequential executor. Premium feature
-- [ ] **Re-planning on failure** — when an action fails and can't be retried, generate a new plan for remaining work instead of stopping
+- [x] **Re-planning on failure** — orchestrator auto-replans failed action plans up to 2 times with shared replanService *(Wave 81)*
 - [ ] **Health monitoring** — detect stuck tasks, stale branches, conflicting changes. Alert user when intervention needed
 - [ ] **Merge orchestration** — after PR approved + CI passes, auto-merge and trigger downstream tasks
 - [ ] **Progress dashboard improvements** — project-level pipeline status ("3 of 12 tasks executing, 2 PRs open, 1 blocked on CI"), not just per-task action plans
@@ -90,8 +90,8 @@
 
 ## Onboarding & Scaffolding
 
-- [ ] **Existing repo onboarding flow** — connect repo → provide intent → AI analyzes codebase → generates project description + KB entries + task backlog → user reviews
-- [ ] **AI-friendly repo scaffolding** — scaffold should also generate `CLAUDE.md` and `.claude-knowledge/` context files so repos are immediately usable with Claude Code/Codex
+- [x] **Existing repo onboarding flow** — intent threaded into bootstrap AI, post-bootstrap plan generation step added to wizard *(Wave 81)*
+- [x] **AI-friendly repo scaffolding** — scaffold should also generate `CLAUDE.md` and `.claude-knowledge/` context files so repos are immediately usable with Claude Code/Codex *(Wave 81)*
 - [ ] **Remove onboarding interview** — replace multi-question technical interview with organic KB seeding (project description, scaffold output, decision points, task summaries, repo analysis). Optional single free-text field on creation instead
 - [ ] **Global org/user knowledge base** — context that spans all projects, not just per-project KB
 
@@ -191,5 +191,6 @@
 | 78 | 2026-04-01 | Concurrent plan prevention, fix_review reliability, hierarchical plan progress events |
 | 79 | 2026-04-01 | Dependency reason + ordering, scaffold progress, deferred task quality, dependency UI |
 | 80 | 2026-04-01 | Planning feedback loop, decision points in plans, scope estimation, dependency reason GraphQL |
+| 81 | 2026-04-01 | Auto-replan on failure, repo onboarding intent threading, decision validation, AI-friendly scaffolding |
 
 Full wave details in `changelog.md`.
