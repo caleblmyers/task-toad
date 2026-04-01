@@ -926,7 +926,6 @@ export default function ProjectDetail() {
             knowledgeBase={projectData.project?.knowledgeBase ?? null}
             onRefreshFromRepo={projectData.handleRefreshRepoProfile}
             hasGitHubRepo={!!(projectData.project?.githubRepositoryName)}
-            onRunInterview={undefined}
           />
         </Suspense>
       )}

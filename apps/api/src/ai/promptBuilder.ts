@@ -30,7 +30,6 @@ export {
   buildProjectChatPrompt,
   buildPlanTaskActionsPrompt,
   buildReleaseNotesPrompt,
-  buildOnboardingQuestionsPrompt,
   buildHierarchicalPlanPrompt,
   type ExecutionHistoryEntry,
   buildGenerateTaskInsightsPrompt,

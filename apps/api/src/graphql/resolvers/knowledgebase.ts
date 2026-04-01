@@ -4,7 +4,7 @@ import { requireOrg } from './auth.js';
 import { requireProject, parseInput, CreateKnowledgeEntryInput } from '../../utils/resolverHelpers.js';
 import { requirePermission, Permission } from '../../auth/permissions.js';
 
-const VALID_SOURCES = ['upload', 'onboarding', 'learned', 'scaffold'];
+const VALID_SOURCES = ['upload', 'learned', 'scaffold'];
 const VALID_CATEGORIES = ['standard', 'pattern', 'business', 'integration'];
 
 export const knowledgeBaseQueries = {

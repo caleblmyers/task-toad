@@ -24,7 +24,6 @@ const CATEGORIES: { value: Category; label: string; color: string }[] = [
 
 const SOURCE_BADGES: Record<string, { label: string; className: string }> = {
   upload: { label: 'Upload', className: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400' },
-  onboarding: { label: 'Onboarding', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },
   learned: { label: 'Learned', className: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300' },
 };
 
@@ -58,7 +57,6 @@ interface KnowledgeBasePanelProps {
   knowledgeBase?: string | null;
   onRefreshFromRepo?: () => Promise<void>;
   hasGitHubRepo?: boolean;
-  onRunInterview?: () => void;
 }
 
 export default function KnowledgeBasePanel({
@@ -68,7 +66,6 @@ export default function KnowledgeBasePanel({
   knowledgeBase,
   onRefreshFromRepo,
   hasGitHubRepo,
-  onRunInterview,
 }: KnowledgeBasePanelProps) {
   const [entries, setEntries] = useState<KnowledgeEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -302,14 +299,6 @@ export default function KnowledgeBasePanel({
                 className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50"
               >
                 {refreshing ? 'Refreshing…' : 'Refresh from repo'}
-              </button>
-            )}
-            {onRunInterview && (
-              <button
-                onClick={onRunInterview}
-                className="px-3 py-1.5 text-xs text-purple-600 dark:text-purple-400 border border-purple-300 dark:border-purple-600 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/30"
-              >
-                Run Interview
               </button>
             )}
             <label className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer">
