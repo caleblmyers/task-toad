@@ -25,7 +25,7 @@ interface ProjectSetupWizardProps {
   onSkip: () => void;
 }
 
-type WizardStep = 'github' | 'recommend' | 'scaffolding' | 'analyze' | 'done';
+type WizardStep = 'github' | 'recommend' | 'scaffolding' | 'analyze' | 'plan' | 'done';
 
 interface ScaffoldResult {
   success: boolean;
@@ -82,6 +82,8 @@ export default function ProjectSetupWizard({
   const [analyzeIntent, setAnalyzeIntent] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeComplete, setAnalyzeComplete] = useState(false);
+  const [analyzeTaskCount, setAnalyzeTaskCount] = useState(0);
+  const [showPlanDialog, setShowPlanDialog] = useState(false);
 
   // Transition to a queued step once child modals close
   const safeSetStep = useCallback((nextStep: WizardStep) => {
@@ -241,7 +243,11 @@ export default function ProjectSetupWizard({
           category: 'context',
         });
       }
-      await gql<{ bootstrapProjectFromRepo: unknown[] }>(BOOTSTRAP_REPO_MUTATION, { projectId });
+      const result = await gql<{ bootstrapProjectFromRepo: unknown[] }>(BOOTSTRAP_REPO_MUTATION, {
+        projectId,
+        intent: analyzeIntent.trim() || undefined,
+      });
+      setAnalyzeTaskCount(result.bootstrapProjectFromRepo.length);
       setAnalyzeComplete(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to analyze repository');
@@ -534,10 +540,15 @@ export default function ProjectSetupWizard({
                     Repository analyzed
                   </h3>
                   <p className="text-slate-600 dark:text-slate-400 text-sm max-w-md mx-auto">
-                    Your project profile and knowledge base have been generated from the repo contents.
+                    Your project profile and {analyzeTaskCount} initial task{analyzeTaskCount !== 1 ? 's' : ''} have been generated from the repo contents.
                   </p>
-                  <div>
-                    <Button onClick={() => setStep('done')}>Continue</Button>
+                  <div className="flex justify-center gap-3">
+                    <Button onClick={() => setShowPlanDialog(true)}>
+                      Generate detailed plan
+                    </Button>
+                    <Button variant="ghost" onClick={() => setStep('done')}>
+                      Continue
+                    </Button>
                   </div>
                 </div>
               )}
@@ -618,6 +629,21 @@ export default function ProjectSetupWizard({
           onClose={() => setShowRepoModal(false)}
         />
       )}
+
+      {showPlanDialog && (
+        <HierarchicalPlanDialogWrapper
+          projectId={projectId}
+          initialPrompt={analyzeIntent.trim() || undefined}
+          onClose={() => {
+            setShowPlanDialog(false);
+            setStep('done');
+          }}
+          onPlanCommitted={() => {
+            setShowPlanDialog(false);
+            setStep('done');
+          }}
+        />
+      )}
     </>
   );
 }
@@ -657,6 +683,43 @@ function GitHubRepoModalWrapper({
       onConnected={() => onConnected()}
       onDisconnected={() => {}}
       onClose={onClose}
+    />
+  );
+}
+
+// Lazy wrapper for HierarchicalPlanDialog
+function HierarchicalPlanDialogWrapper({
+  projectId,
+  initialPrompt,
+  onClose,
+  onPlanCommitted,
+}: {
+  projectId: string;
+  initialPrompt?: string;
+  onClose: () => void;
+  onPlanCommitted: () => void;
+}) {
+  const [HierarchicalPlanDialog, setHierarchicalPlanDialog] = useState<React.ComponentType<{
+    isOpen: boolean;
+    onClose: () => void;
+    projectId: string;
+    onPlanCommitted: () => void;
+    initialPrompt?: string;
+  }> | null>(null);
+
+  useEffect(() => {
+    import('./HierarchicalPlanDialog').then((mod) => setHierarchicalPlanDialog(() => mod.default));
+  }, []);
+
+  if (!HierarchicalPlanDialog) return null;
+
+  return (
+    <HierarchicalPlanDialog
+      isOpen={true}
+      projectId={projectId}
+      initialPrompt={initialPrompt}
+      onClose={onClose}
+      onPlanCommitted={onPlanCommitted}
     />
   );
 }

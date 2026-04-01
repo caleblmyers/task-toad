@@ -105,8 +105,8 @@ export const RECOMMEND_STACK_QUERY = `query RecommendStack($projectId: ID!) {
 
 // ── Bootstrap / Repo ──
 
-export const BOOTSTRAP_REPO_MUTATION = `mutation BootstrapFromRepo($projectId: ID!) {
-  bootstrapProjectFromRepo(projectId: $projectId) { ${TASK_FIELDS} }
+export const BOOTSTRAP_REPO_MUTATION = `mutation BootstrapFromRepo($projectId: ID!, $intent: String) {
+  bootstrapProjectFromRepo(projectId: $projectId, intent: $intent) { ${TASK_FIELDS} }
 }`;
 
 export const REFRESH_REPO_PROFILE_MUTATION = `mutation RefreshRepoProfile($projectId: ID!) {

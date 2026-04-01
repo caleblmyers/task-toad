@@ -277,7 +277,7 @@ export const aiMutationFields = /* GraphQL */ `
   previewPRDBreakdown(projectId: ID!, prd: String!): PRDBreakdown!
   commitPRDBreakdown(projectId: ID!, epics: String!): [Task!]!
   """Analyze a linked GitHub repo and auto-generate tasks from its structure."""
-  bootstrapProjectFromRepo(projectId: ID!): [Task!]!
+  bootstrapProjectFromRepo(projectId: ID!, intent: String): [Task!]!
   """Refresh the repo profile (knowledge base) from the linked GitHub repository."""
   refreshRepoProfile(projectId: ID!): Project!
   """Apply a suggested action from projectChat (create task, update status, etc.)."""

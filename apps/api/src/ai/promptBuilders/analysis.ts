@@ -141,6 +141,7 @@ export function buildRepoBootstrapPrompt(data: {
   packageJson?: string | null;
   fileTree: Array<{ path: string; language?: string | null; size?: number | null }>;
   languages: string[];
+  intent?: string;
 }): Prompt {
   const filesSection = data.fileTree
     .slice(0, 50)
@@ -152,13 +153,16 @@ export function buildRepoBootstrapPrompt(data: {
   const packageSection = data.packageJson
     ? `\npackage.json:\n<user_input label="package_json">\n${truncate(data.packageJson, 1000)}\n</user_input>`
     : '';
+  const intentSection = data.intent
+    ? `\n## User Intent\nThe user wants to: ${userInput('intent', data.intent)}\n\nFocus your analysis and task generation on this goal. Generated tasks should directly support this intent.`
+    : '';
 
   return {
     systemPrompt: SYSTEM_JSON,
     userPrompt: `Analyze this GitHub repository and generate a project description, repo profile, and initial task breakdown for improving and maintaining the codebase.
 
 Repository: ${userInput('repo', data.repoName)}${data.repoDescription ? `\nDescription: ${userInput('description', data.repoDescription)}` : ''}
-Languages: ${data.languages.join(', ')}
+Languages: ${data.languages.join(', ')}${intentSection}
 
 File tree (${data.fileTree.length} files):
 ${filesSection}${readmeSection}${packageSection}

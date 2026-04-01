@@ -816,16 +816,30 @@ export const generationMutations = {
 
   bootstrapProjectFromRepo: async (
     _parent: unknown,
-    args: { projectId: string },
+    args: { projectId: string; intent?: string | null },
     context: Context
   ) => {
     const { user, project } = await requireProject(context, args.projectId);
     const apiKey = requireApiKey(context);
     await enforceBudget(context);
+
+    const emitProgress = (step: string) => {
+      getEventBus().emit('ai.progress', {
+        orgId: user.orgId,
+        userId: user.userId,
+        projectId: args.projectId,
+        timestamp: new Date().toISOString(),
+        operation: 'bootstrapRepo',
+        step,
+      });
+    };
+
     const repo = await getProjectRepo(args.projectId);
     if (!repo) {
       throw new ValidationError('Project has no linked GitHub repository');
     }
+
+    emitProgress('Fetching repository structure...');
     const fileTree = await fetchProjectFileTree(repo).catch(() => []);
     const readme = await fetchFileContent(repo.installationId, repo.repositoryOwner, repo.repositoryName, 'README.md').catch(() => null);
     const packageJson = await fetchFileContent(repo.installationId, repo.repositoryOwner, repo.repositoryName, 'package.json').catch(() => null);
@@ -835,6 +849,7 @@ export const generationMutations = {
       if (f.language) languageSet.add(f.language);
     }
 
+    emitProgress('Analyzing codebase...');
     const plc = await buildPromptLogContext(context);
     const result = await aiBootstrapFromRepo(apiKey, {
       repoName: `${repo.repositoryOwner}/${repo.repositoryName}`,
@@ -843,7 +858,10 @@ export const generationMutations = {
       packageJson,
       fileTree: fileTree.map((f) => ({ path: f.path, language: f.language, size: f.size })),
       languages: [...languageSet],
+      intent: args.intent ?? undefined,
     }, plc);
+
+    emitProgress('Generating project profile and tasks...');
 
     // Update project description and knowledge base (repo profile)
     const projectUpdates: Record<string, string> = {};

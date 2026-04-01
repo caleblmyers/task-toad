@@ -522,6 +522,7 @@ export async function bootstrapFromRepo(
     packageJson?: string | null;
     fileTree: Array<{ path: string; language?: string | null; size?: number | null }>;
     languages: string[];
+    intent?: string;
   },
   promptLogContext?: PromptLogContext
 ): Promise<RepoBootstrap> {

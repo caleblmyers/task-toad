@@ -20,6 +20,7 @@ interface HierarchicalPlanDialogProps {
   onClose: () => void;
   projectId: string;
   onPlanCommitted: () => void;
+  initialPrompt?: string;
 }
 
 type DialogState = 'prompt' | 'editing' | 'committing';
@@ -29,9 +30,10 @@ export default function HierarchicalPlanDialog({
   onClose,
   projectId,
   onPlanCommitted,
+  initialPrompt,
 }: HierarchicalPlanDialogProps) {
   const [state, setState] = useState<DialogState>('prompt');
-  const [prompt, setPrompt] = useState('');
+  const [prompt, setPrompt] = useState(initialPrompt ?? '');
   const [feedback, setFeedback] = useState('');
   const [plan, setPlan] = useState<HierarchicalPlanPreview | null>(null);
   const [generating, setGenerating] = useState(false);
