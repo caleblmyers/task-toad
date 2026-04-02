@@ -125,6 +125,18 @@ const TYPE_STYLES: Record<string, { bg: string; text: string; label: string }> =
 
 // ── Props ────────────────────────────────────────────────────────────────
 
+/** Snapshot of a task before refinement, keyed by task key. */
+export interface RefinementDiff {
+  /** The original tasks, keyed by task key (e.g. "task-0-2"). */
+  originals: Map<string, HierarchicalTaskPreview>;
+  /** The refined tasks, keyed by task key. */
+  refined: Map<string, HierarchicalTaskPreview>;
+  /** Keys that are entirely new (not in originals). */
+  added: Set<string>;
+  /** Keys that were removed (in originals but not in refined). */
+  removed: Set<string>;
+}
+
 interface HierarchicalPlanEditorProps {
   plan: HierarchicalPlanPreview;
   onChange: (plan: HierarchicalPlanPreview) => void;
@@ -132,6 +144,168 @@ interface HierarchicalPlanEditorProps {
   onRefine?: (selectedTaskKeys: Set<string>, refinementPrompt: string) => void;
   /** Whether a refinement is currently in progress. */
   refining?: boolean;
+  /**
+   * When set, the editor shows a diff view comparing originals to refined tasks.
+   * The parent should build this after a refinement completes.
+   */
+  refinementDiff?: RefinementDiff | null;
+  /** Accept the refinement (apply the refined tasks). */
+  onAcceptRefinement?: () => void;
+  /** Discard the refinement (revert to originals). */
+  onDiscardRefinement?: () => void;
+}
+
+// ── Diff field comparison helper ────────────────────────────────────────
+
+const DIFF_FIELDS: { key: keyof HierarchicalTaskPreview; label: string }[] = [
+  { key: 'title', label: 'Title' },
+  { key: 'description', label: 'Description' },
+  { key: 'instructions', label: 'Instructions' },
+  { key: 'priority', label: 'Priority' },
+  { key: 'estimatedHours', label: 'Estimated Hours' },
+];
+
+function formatFieldValue(value: unknown): string {
+  if (value == null) return '—';
+  if (typeof value === 'number') return String(value);
+  return String(value);
+}
+
+// ── Refinement diff view component ─────────────────────────────────────
+
+function RefinementDiffView({
+  diff,
+  onAccept,
+  onDiscard,
+}: {
+  diff: RefinementDiff;
+  onAccept: () => void;
+  onDiscard: () => void;
+}) {
+  // Collect all keys in order: originals first, then added
+  const allKeys: string[] = [];
+  for (const key of diff.originals.keys()) allKeys.push(key);
+  for (const key of diff.added) {
+    if (!allKeys.includes(key)) allKeys.push(key);
+  }
+
+  return (
+    <div className="mt-3 p-3 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-900/10 space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
+          Refinement Preview
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onDiscard}
+            className="px-3 py-1 text-sm text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 border border-slate-300 dark:border-slate-600 rounded-lg"
+          >
+            Discard
+          </button>
+          <button
+            onClick={onAccept}
+            className="px-3 py-1 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg"
+          >
+            Accept
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {allKeys.map((key) => {
+          const isRemoved = diff.removed.has(key);
+          const isAdded = diff.added.has(key);
+          const original = diff.originals.get(key);
+          const refined = diff.refined.get(key);
+
+          if (isRemoved && original) {
+            return (
+              <div
+                key={key}
+                className="p-2 rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20"
+              >
+                <span className="text-xs font-semibold text-red-600 dark:text-red-400">
+                  Removed
+                </span>
+                <p className="text-sm text-red-700 dark:text-red-300 line-through">
+                  {original.title}
+                </p>
+              </div>
+            );
+          }
+
+          if (isAdded && refined) {
+            return (
+              <div
+                key={key}
+                className="p-2 rounded border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20"
+              >
+                <span className="text-xs font-semibold text-green-600 dark:text-green-400">
+                  New task
+                </span>
+                <p className="text-sm font-medium text-green-700 dark:text-green-300">
+                  {refined.title}
+                </p>
+                {refined.description && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
+                    {refined.description}
+                  </p>
+                )}
+              </div>
+            );
+          }
+
+          // Modified task — show field-by-field diff
+          if (original && refined) {
+            const changedFields = DIFF_FIELDS.filter(
+              (f) =>
+                formatFieldValue(original[f.key]) !==
+                formatFieldValue(refined[f.key]),
+            );
+            if (changedFields.length === 0) return null; // No changes
+
+            return (
+              <div
+                key={key}
+                className="p-2 rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10"
+              >
+                <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                  Modified
+                </span>
+                <p className="text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">
+                  {refined.title}
+                </p>
+                <div className="space-y-1">
+                  {changedFields.map((field) => (
+                    <div key={field.key} className="text-xs grid grid-cols-2 gap-2">
+                      <div>
+                        <span className="text-slate-400 dark:text-slate-500">
+                          {field.label}:{' '}
+                        </span>
+                        <span className="text-red-600 dark:text-red-400 line-through">
+                          {formatFieldValue(original[field.key])}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 dark:text-slate-500">
+                          →{' '}
+                        </span>
+                        <span className="text-green-600 dark:text-green-400">
+                          {formatFieldValue(refined[field.key])}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          }
+
+          return null;
+        })}
+      </div>
+    </div>
+  );
 }
 
 // ── Component ────────────────────────────────────────────────────────────
@@ -141,6 +315,9 @@ export function HierarchicalPlanEditor({
   onChange,
   onRefine,
   refining,
+  refinementDiff,
+  onAcceptRefinement,
+  onDiscardRefinement,
 }: HierarchicalPlanEditorProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
     const ids = new Set<string>();
@@ -177,6 +354,39 @@ export function HierarchicalPlanEditor({
       return next;
     });
   }, []);
+
+  /** Toggle all tasks in an epic. If all are selected, deselect all; otherwise select all. */
+  const toggleEpicSelection = useCallback(
+    (epicIdx: number) => {
+      const tasks = plan.epics[epicIdx]?.tasks ?? [];
+      const taskKeys = tasks.map((_, ti) => makeKey(epicIdx, ti));
+      setSelectedKeys((prev) => {
+        const next = new Set(prev);
+        const allSelected = taskKeys.every((k) => next.has(k));
+        if (allSelected) {
+          taskKeys.forEach((k) => next.delete(k));
+        } else {
+          taskKeys.forEach((k) => next.add(k));
+        }
+        return next;
+      });
+    },
+    [plan.epics],
+  );
+
+  /** Compute epic checkbox state: 'all' | 'some' | 'none'. */
+  const getEpicSelectionState = useCallback(
+    (epicIdx: number): 'all' | 'some' | 'none' => {
+      const tasks = plan.epics[epicIdx]?.tasks ?? [];
+      if (tasks.length === 0) return 'none';
+      const taskKeys = tasks.map((_, ti) => makeKey(epicIdx, ti));
+      const selectedCount = taskKeys.filter((k) => selectedKeys.has(k)).length;
+      if (selectedCount === 0) return 'none';
+      if (selectedCount === taskKeys.length) return 'all';
+      return 'some';
+    },
+    [plan.epics, selectedKeys],
+  );
 
   const handleRefineSubmit = useCallback(() => {
     if (!onRefine || selectedKeys.size === 0 || !refinePrompt.trim()) return;
@@ -477,7 +687,23 @@ export function HierarchicalPlanEditor({
           <span className="w-5 flex-shrink-0" />
         )}
 
-        {/* Selection checkbox (task-level only, when onRefine is provided) */}
+        {/* Selection checkbox — epic-level (selects/deselects all children) */}
+        {onRefine && nodeType === 'epic' && (() => {
+          const epicIdx = Number(key.split('-')[1]);
+          const epicState = getEpicSelectionState(epicIdx);
+          return (
+            <input
+              type="checkbox"
+              checked={epicState === 'all'}
+              ref={(el) => { if (el) el.indeterminate = epicState === 'some'; }}
+              onChange={() => toggleEpicSelection(epicIdx)}
+              className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 flex-shrink-0"
+              aria-label={`Select all tasks in ${title} for refinement`}
+            />
+          );
+        })()}
+
+        {/* Selection checkbox — task-level */}
         {onRefine && nodeType === 'task' && (
           <input
             type="checkbox"
@@ -719,8 +945,17 @@ export function HierarchicalPlanEditor({
         );
       })}
 
+      {/* Refinement diff view */}
+      {refinementDiff && onAcceptRefinement && onDiscardRefinement && (
+        <RefinementDiffView
+          diff={refinementDiff}
+          onAccept={onAcceptRefinement}
+          onDiscard={onDiscardRefinement}
+        />
+      )}
+
       {/* Refinement bar */}
-      {onRefine && selectedKeys.size > 0 && (
+      {onRefine && selectedKeys.size > 0 && !refinementDiff && (
         <div className="mt-3 p-3 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/20 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
