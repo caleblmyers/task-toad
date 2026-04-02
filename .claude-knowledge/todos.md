@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work
 
-84 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Autopilot pipeline feature-complete for launch.
+85 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Autopilot pipeline feature-complete for launch.
 
 ---
 
@@ -14,8 +14,8 @@
 
 ## Pipeline Polish
 
-- [ ] **Move fix_review normalization before Zod validation** — normalization in fixReview.ts runs after `callAIStructured` already validates (dead code). Move inside `callAIStructured` before `safeParse`
-- [ ] **CI fix retry limit** — fix_ci can loop (fix_ci → monitor_ci → fix_ci) but there's no max retry count. Add configurable cap to prevent infinite fix loops
+- [x] **Move fix_review normalization before Zod validation** — moved into `callAIStructured` before `safeParse` (Wave 85)
+- [x] **CI fix retry limit** — MAX_CI_FIX_ATTEMPTS = 3, plan fails when exhausted (Wave 85)
 - [ ] **External merge: post-merge actions** — pr_merged handler completes the action plan but skips post-merge actions (write_docs). Consider selective skipping
 - [ ] SSE cross-tab: dev-mode leader tab indicator
 
@@ -39,15 +39,15 @@
 
 ## Onboarding & Knowledge Base
 
-- [ ] **Org KB retrieval in AI prompts** — org-level KB entries exist but aren't fed into planning/generation prompts. Update `retrieveRelevantKnowledge`
-- [ ] **Org KB management UI** — no UI to view/create/edit org-level KB entries. Add org settings section
+- [x] **Org KB retrieval in AI prompts** — org entries included with [Org] prefix, ranked below project entries (Wave 85)
+- [x] **Org KB management UI** — Knowledge Base tab in OrgSettings with full CRUD (Wave 85)
 
 ---
 
 ## Dashboard & UX
 
-- [ ] **Pipeline dashboard: active plans detail** — PipelineOverview shows count but doesn't link to specific plans. Add expandable list
-- [ ] **Quick Start task count optimization** — add lightweight `projectTaskCounts` query instead of fetching all tasks
+- [x] **Pipeline dashboard: active plans detail** — expandable section with task title, current action, elapsed time, cancel (Wave 85)
+- [x] **Quick Start task count optimization** — uses pipelineStatus.todoTasks instead of fetching all tasks (Wave 85)
 - [ ] **Health monitor: stale branch detection** — extend to detect PRs open > 7 days with no activity
 - [ ] **Hierarchical plan streaming results** — stream partial results (epics first, then tasks) instead of waiting for full response
 - [ ] **Swimlane-specific overflow** — individual swimlane sections may need own max-height + scroll
@@ -154,5 +154,6 @@
 | 82 | 2026-04-01 | Quick Start autopilot, remove onboarding interview, health monitoring cron |
 | 83 | 2026-04-01 | Bidirectional GitHub sync, merge orchestration, pipeline status dashboard |
 | 84 | 2026-04-01 | CI failure recovery, iterative plan refinement, global org KB, concurrent plan check optimization |
+| 85 | 2026-04-02 | CI fix retry limit, AI normalization, org KB retrieval + UI, pipeline dashboard detail |
 
 Full wave details in `changelog.md`.

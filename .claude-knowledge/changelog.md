@@ -4,6 +4,30 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-04-02 (Wave 85 — Pipeline Polish + Org KB + Dashboard Detail)
+
+### Wave 85: Pipeline Polish + Org KB + Dashboard (3 workers, 3 tasks)
+
+**Worker 1 — task-001: CI fix retry limit + AI response normalization:**
+- CI fix_ci loop capped at MAX_CI_FIX_ATTEMPTS = 3, plan fails with warning when exhausted
+- `normalizeAIResponse` moved into `callAIStructured` before Zod validation — handles string trimming, stringified arrays, default empty arrays
+- Dead normalization code removed from fixReview.ts
+
+**Worker 2 — task-002: Org KB retrieval + management UI:**
+- `retrieveRelevantKnowledge` now includes org-level KB entries alongside project entries
+- Org entries labeled with `[Org]` prefix, ranked slightly lower than project-specific
+- OrgSettings has new "Knowledge Base" tab with add/edit/delete for org-level entries
+
+**Worker 3 — task-003: Pipeline dashboard detail + Quick Start optimization:**
+- Active Plans stat card expandable — shows task title, current action, elapsed time, cancel button
+- `activePlanDetails` added to `projectPipelineStatus` query
+- Quick Start button uses `pipelineStatus.todoTasks` instead of fetching all tasks
+
+### Open follow-ups
+- Integration tests skip when DB unavailable — reviewer couldn't use merge-worker auto-flow
+
+---
+
 ## 2026-04-01 (Wave 84 — CI Recovery + Iterative Refinement + Global KB)
 
 ### Wave 84: CI Recovery + Plan Refinement + Cleanup (3 workers, 3 tasks)
@@ -90,36 +114,7 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-04-01 (Wave 81 — Orchestration + Onboarding + Scaffold Quality)
-
-### Wave 81: Auto-Replan + Repo Onboarding + Scaffold Quality (3 workers, 3 tasks)
-
-**Worker 1 — task-001: Auto-replan on failure:**
-- Extracted replan logic into `replanService.ts` — callable from both resolver and orchestrator
-- Orchestrator auto-replans when action plan fails (up to MAX_REPLANS = 2)
-- Replan count tracked via cancelled plan count to prevent infinite loops
-- New plan auto-executes after creation
-- `task.action_plan_replanned` SSE event emitted on auto-replan
-- Manual `replanFailedTask` resolver refactored to use shared service
-
-**Worker 2 — task-002: Existing repo onboarding improvements:**
-- User intent now passed to `bootstrapFromRepo` AI call via new `intent` argument
-- Bootstrap prompt includes intent section when provided, focusing analysis on user's goal
-- Wizard shows "Generate detailed plan" button after bootstrap success
-- Plan dialog pre-populated with user intent as initial prompt
-- Bootstrap emits `ai.progress` SSE events at each stage (fetch, analyze, generate)
-- `HierarchicalPlanDialog` accepts `initialPrompt` prop
-
-**Worker 3 — task-003: Decision task validation + AI-friendly scaffolding:**
-- `commitHierarchicalPlan` validates all decision tasks have `selectedOption` before committing
-- HierarchicalPlanEditor disables commit button with unresolved decision count
-- Scaffold prompt instructs AI to generate `CLAUDE.md` and `.claude-knowledge/app-overview.md`
-- Scaffolded repos are immediately usable with Claude Code and similar AI coding tools
-
-### Open follow-ups
-- `filesToChange` accuracy: include event bus types, SSE listener, and component interface files when task description mentions them
-- Test replan service with integration tests
-- Verify scaffolded CLAUDE.md quality with real project generation
+## 2026-04-01 (Wave 81) — auto-replan on failure, repo onboarding intent, decision validation, AI-friendly scaffolding
 
 ---
 
