@@ -8,7 +8,8 @@ export type LicenseFeature =
   | 'cron_automations'
   | 'workflow_restrictions'
   | 'field_permissions'
-  | 'project_roles';
+  | 'project_roles'
+  | 'parallel_execution';
 
 const ALL_FEATURES: LicenseFeature[] = [
   'slack',
@@ -19,6 +20,7 @@ const ALL_FEATURES: LicenseFeature[] = [
   'workflow_restrictions',
   'field_permissions',
   'project_roles',
+  'parallel_execution',
 ];
 
 export function isPremiumEnabled(orgPlan?: string): boolean {

@@ -9,6 +9,7 @@ const PREMIUM_FEATURES = [
   'workflow_restrictions',
   'field_permissions',
   'project_roles',
+  'parallel_execution',
 ];
 
 export function useLicenseFeatures() {

@@ -14,6 +14,7 @@ import { createPlanWithActions } from '../../utils/planHelpers.js';
 import { deleteBranch } from '../../github/githubCommitService.js';
 import type { GitHubRepoLink } from '../../github/githubTypes.js';
 import { replanFailedTask as replanFailedTaskService } from '../../actions/replanService.js';
+import { getOrgPlan } from '../../utils/license.js';
 
 const log = createChildLogger('taskaction-resolver');
 
@@ -189,15 +190,21 @@ export const taskActionMutations = {
       throw new ValidationError('Plans with review_pr must include fix_review to handle review feedback.');
     }
 
-    // Guard: prevent concurrent action plans on the same project
+    // Guard: prevent concurrent action plans on the same project (plan-aware limit)
+    const org = await context.prisma.org.findUnique({ where: { orgId: user.orgId }, select: { plan: true } });
+    const maxConcurrent = getOrgPlan(org) === 'paid' ? 3 : 1;
     const activePlanCount = await context.prisma.taskActionPlan.count({
       where: {
         task: { projectId: task.projectId },
         status: { in: ['approved', 'executing'] },
       },
     });
-    if (activePlanCount > 0) {
-      throw new ValidationError('Another action plan is already running on this project. Wait for it to complete or cancel it first.');
+    if (activePlanCount >= maxConcurrent) {
+      throw new ValidationError(
+        maxConcurrent === 1
+          ? 'Another action plan is already running. Upgrade to paid plan for parallel execution.'
+          : `Maximum ${maxConcurrent} concurrent plans reached.`,
+      );
     }
 
     // Cancel any existing draft/executing plans for this task
@@ -233,9 +240,11 @@ export const taskActionMutations = {
       throw new ValidationError(`Cannot execute plan in '${plan.status}' status`);
     }
 
-    // Guard: prevent concurrent action plans on the same project
+    // Guard: prevent concurrent action plans on the same project (plan-aware limit)
     const task = await context.loaders.taskById.load(plan.taskId);
     if (task) {
+      const org = await context.prisma.org.findUnique({ where: { orgId: user.orgId }, select: { plan: true } });
+      const maxConcurrent = getOrgPlan(org) === 'paid' ? 3 : 1;
       const activePlanCount = await context.prisma.taskActionPlan.count({
         where: {
           task: { projectId: task.projectId },
@@ -243,8 +252,12 @@ export const taskActionMutations = {
           id: { not: args.planId },
         },
       });
-      if (activePlanCount > 0) {
-        throw new ValidationError('Another action plan is already running on this project. Wait for it to complete or cancel it first.');
+      if (activePlanCount >= maxConcurrent) {
+        throw new ValidationError(
+          maxConcurrent === 1
+            ? 'Another action plan is already running. Upgrade to paid plan for parallel execution.'
+            : `Maximum ${maxConcurrent} concurrent plans reached.`,
+        );
       }
     }
 
