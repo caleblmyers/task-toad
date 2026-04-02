@@ -248,6 +248,44 @@ export async function callAI(params: CallAIParams): Promise<CallAIResult> {
 }
 
 // ---------------------------------------------------------------------------
+// Pre-validation normalization for AI responses
+// ---------------------------------------------------------------------------
+
+/**
+ * Normalize common AI response quirks before Zod validation.
+ * Handles: trimming whitespace, parsing stringified arrays/objects,
+ * defaulting common optional array fields to empty arrays.
+ */
+function normalizeAIResponse(input: unknown): unknown {
+  if (input == null || typeof input !== 'object') return input;
+
+  if (Array.isArray(input)) {
+    return input.map(normalizeAIResponse);
+  }
+
+  const obj = { ...(input as Record<string, unknown>) };
+  for (const [key, val] of Object.entries(obj)) {
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      // Try to parse stringified arrays or objects
+      if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+        try {
+          obj[key] = JSON.parse(trimmed);
+          continue;
+        } catch { /* leave as trimmed string */ }
+      }
+      obj[key] = trimmed;
+    } else if (Array.isArray(val)) {
+      obj[key] = val.map(normalizeAIResponse);
+    } else if (val && typeof val === 'object') {
+      obj[key] = normalizeAIResponse(val);
+    }
+  }
+
+  return obj;
+}
+
+// ---------------------------------------------------------------------------
 // Structured output — grammar-constrained JSON via Anthropic SDK
 // ---------------------------------------------------------------------------
 
@@ -361,8 +399,11 @@ export async function callAIStructured<T>(
         }
       }
 
+      // Normalize common AI response quirks before Zod validation
+      const normalized = normalizeAIResponse(coercedInput);
+
       // Validate against Zod schema
-      const result = schema.safeParse(coercedInput);
+      const result = schema.safeParse(normalized);
       if (!result.success) {
         // Retry once with validation error feedback appended to the prompt
         if (!validationRetried) {

@@ -802,6 +802,31 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
       );
 
       if (fixCIAction) {
+        // Check if we've already exhausted fix_ci retries
+        const MAX_CI_FIX_ATTEMPTS = 3;
+        const fixCIAttempts = plan.actions.filter(
+          (a) => a.actionType === 'fix_ci' && (a.status === 'completed' || a.status === 'failed'),
+        ).length;
+
+        if (fixCIAttempts >= MAX_CI_FIX_ATTEMPTS) {
+          // Too many fix attempts — fail the plan
+          await prisma.taskActionPlan.update({ where: { id: plan.id }, data: { status: 'failed' } });
+          bus.emit('task.action_plan_failed', {
+            orgId,
+            userId: event.userId,
+            projectId,
+            timestamp: new Date().toISOString(),
+            planId: plan.id,
+            taskId,
+            taskTitle: '',
+            lastFailedActionId: monitorAction.id,
+            lastFailedActionType: 'monitor_ci',
+            errorMessage: `CI fix attempts exhausted (${fixCIAttempts}/${MAX_CI_FIX_ATTEMPTS})`,
+          });
+          log.warn({ planId: plan.id, taskId, attempts: fixCIAttempts }, 'CI fix attempts exhausted — failing plan');
+          return;
+        }
+
         // Enqueue fix_ci — it will read CI logs and attempt a fix
         const queue = getJobQueue();
         queue.enqueue('action-execute', {
@@ -810,7 +835,7 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
           orgId,
           userId: plan.createdById,
         });
-        log.info({ taskId, planId: plan.id, fixCIActionId: fixCIAction.id, conclusion: event.conclusion }, 'CI failed via webhook — triggering fix_ci recovery');
+        log.info({ taskId, planId: plan.id, fixCIActionId: fixCIAction.id, conclusion: event.conclusion, attempt: fixCIAttempts + 1 }, 'CI failed via webhook — triggering fix_ci recovery');
       } else {
         // No fix_ci in plan — mark plan as failed, auto-replan will handle it
         await prisma.taskActionPlan.update({
