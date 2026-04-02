@@ -18,22 +18,47 @@ export async function retrieveRelevantKnowledge(
   taskContext: string,
   apiKey: string
 ): Promise<string> {
-  const entries = await prisma.knowledgeEntry.findMany({
+  // Fetch project-specific KB entries
+  const projectEntries = await prisma.knowledgeEntry.findMany({
     where: { projectId },
     orderBy: { createdAt: 'desc' },
   });
 
+  // Fetch org-level KB entries (applies to all projects in the org)
+  const project = await prisma.project.findUnique({
+    where: { projectId },
+    select: { orgId: true },
+  });
+  const orgEntries = project
+    ? await prisma.knowledgeEntry.findMany({
+        where: { orgId: project.orgId, projectId: null },
+        orderBy: { createdAt: 'desc' },
+      })
+    : [];
+
+  // Combine: project entries first (higher priority), then org entries
+  const entries = [...projectEntries, ...orgEntries];
+
   if (entries.length === 0) return '';
+
+  // Track which entries are org-level for labeling
+  const orgEntryIds = new Set(orgEntries.map(e => e.knowledgeEntryId));
+  const formatEntry = (e: typeof entries[number]) => {
+    const prefix = orgEntryIds.has(e.knowledgeEntryId) ? '[Org] ' : '';
+    return `## ${prefix}${e.title} [${e.category}]\n${e.content}`;
+  };
 
   // If few entries, return all directly
   if (entries.length <= 10) {
-    return entries
-      .map(e => `## ${e.title} [${e.category}]\n${e.content}`)
-      .join('\n\n');
+    return entries.map(formatEntry).join('\n\n');
   }
 
   // Use AI to select the most relevant entries
-  const titles = entries.map(e => ({ id: e.knowledgeEntryId, title: e.title, category: e.category }));
+  const titles = entries.map(e => ({
+    id: e.knowledgeEntryId,
+    title: `${orgEntryIds.has(e.knowledgeEntryId) ? '[Org] ' : ''}${e.title}`,
+    category: e.category,
+  }));
   const prompt = buildKnowledgeRetrievalPrompt(taskContext, titles);
   const config = FEATURE_CONFIG.knowledgeRetrieval;
 
@@ -54,18 +79,12 @@ export async function retrieveRelevantKnowledge(
 
     if (selected.length === 0) {
       log.warn({ projectId, taskContext: taskContext.slice(0, 100) }, 'AI selected no entries, returning top 3');
-      return entries.slice(0, 3)
-        .map(e => `## ${e.title} [${e.category}]\n${e.content}`)
-        .join('\n\n');
+      return entries.slice(0, 3).map(formatEntry).join('\n\n');
     }
 
-    return selected
-      .map(e => `## ${e.title} [${e.category}]\n${e.content}`)
-      .join('\n\n');
+    return selected.map(formatEntry).join('\n\n');
   } catch (err) {
     log.warn({ err, projectId }, 'KB retrieval AI call failed, returning top 3 entries');
-    return entries.slice(0, 3)
-      .map(e => `## ${e.title} [${e.category}]\n${e.content}`)
-      .join('\n\n');
+    return entries.slice(0, 3).map(formatEntry).join('\n\n');
   }
 }
