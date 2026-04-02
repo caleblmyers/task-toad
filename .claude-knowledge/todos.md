@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work
 
-85 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Autopilot pipeline feature-complete for launch.
+86 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Autopilot pipeline feature-complete for launch.
 
 ---
 
@@ -24,9 +24,10 @@
 ## Decomposition & Planning
 
 - [ ] **Dependency inference during planning** — the flat `generateTaskPlan` path doesn't infer dependencies (hierarchical plan already does)
-- [ ] **Dependency reason in plan editor** — show/edit dependency reasons in HierarchicalPlanEditor, not just in task detail
-- [ ] **Refinement: epic-level selection** — currently only task-level checkboxes for refinement; allow selecting entire epics
-- [ ] **Refinement: diff view** — show what changed between original and refined tasks before committing
+- [x] **Dependency reason in plan editor** — show/edit dependency reasons in HierarchicalPlanEditor, not just in task detail (Wave 86)
+- [x] **Refinement: epic-level selection** — currently only task-level checkboxes for refinement; allow selecting entire epics (Wave 86)
+- [x] **Refinement: diff view** — show what changed between original and refined tasks before committing (Wave 86)
+- [ ] **Refinement: parent wiring** — HierarchicalPlanDialog needs to build RefinementDiff and pass accept/discard callbacks to the editor
 
 ---
 
@@ -48,7 +49,8 @@
 
 - [x] **Pipeline dashboard: active plans detail** — expandable section with task title, current action, elapsed time, cancel (Wave 85)
 - [x] **Quick Start task count optimization** — uses pipelineStatus.todoTasks instead of fetching all tasks (Wave 85)
-- [ ] **Health monitor: stale branch detection** — extend to detect PRs open > 7 days with no activity
+- [x] **Health monitor: stale branch detection** — extend to detect PRs open > 7 days with no activity (Wave 86)
+- [ ] **Stale PR alerts: SSE events** — stale PR health alerts don't emit SSE events (stuck plan alerts do)
 - [ ] **Hierarchical plan streaming results** — stream partial results (epics first, then tasks) instead of waiting for full response
 - [ ] **Swimlane-specific overflow** — individual swimlane sections may need own max-height + scroll
 - [ ] Release notes: manual entry option
@@ -67,8 +69,8 @@
 ## Code Quality & Testing
 
 - [ ] Integration test for logout→login-as-different-user flow
-- [ ] Test coverage for merge_pr executor (auto-update retry, state checks, conflict handling)
-- [ ] Audit remaining Prisma status filters for stale values (`'pending'`/`'running'` vs `'approved'`/`'executing'`)
+- [x] Test coverage for merge_pr executor (auto-update retry, state checks, conflict handling) (Wave 86)
+- [x] Audit remaining Prisma status filters for stale values — confirmed all correct for their models (Wave 86)
 - [ ] merge-worker.sh: auto-detect lockfile changes
 
 ---
@@ -155,5 +157,6 @@
 | 83 | 2026-04-01 | Bidirectional GitHub sync, merge orchestration, pipeline status dashboard |
 | 84 | 2026-04-01 | CI failure recovery, iterative plan refinement, global org KB, concurrent plan check optimization |
 | 85 | 2026-04-02 | CI fix retry limit, AI normalization, org KB retrieval + UI, pipeline dashboard detail |
+| 86 | 2026-04-02 | Refinement UX (epic selection, diff view), stale branch detection, merge_pr tests, status audit |
 
 Full wave details in `changelog.md`.

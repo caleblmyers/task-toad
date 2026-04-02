@@ -4,6 +4,30 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-04-02 (Wave 86 — Refinement UX + Health Monitor + merge_pr Tests)
+
+### Wave 86: Refinement UX + Stale Branch Detection + Test Coverage (3 workers, 3 tasks)
+
+**Worker 1 — task-001: Plan refinement UX improvements:**
+- Epic-level checkboxes with indeterminate state for bulk selection
+- Diff view after refinement: field-by-field comparison with color highlighting (green=new, amber=changed, red=removed)
+- Accept/Discard buttons for reviewing changes before committing
+- Original tasks stored in state for discard restoration
+
+**Worker 2 — task-002: Stale branch detection + dependency reason in plan editor:**
+- Health monitor extended to detect PRs open > 7 days with 24-hour dedup alerts
+- HierarchicalPlanEditor shows dependency list with title, linkType badge, and reason for each task
+
+**Worker 3 — task-003: merge_pr test suite + status filter audit:**
+- 8 test cases: already-merged, closed PR, successful merge, out-of-date retry, retry fail, conflict, missing PR, abort signal
+- Prisma status filter audit confirmed all values correct (Action uses 'pending', Session uses 'running', only ActionPlan uses 'approved'/'executing')
+
+### Open follow-ups
+- Status audit: Action model correctly uses 'pending' (not stale) — different model from ActionPlan
+- DependencyRef GraphQL type needed `reason` field added to pass data to frontend
+
+---
+
 ## 2026-04-02 (Wave 85 — Pipeline Polish + Org KB + Dashboard Detail)
 
 ### Wave 85: Pipeline Polish + Org KB + Dashboard (3 workers, 3 tasks)
@@ -84,33 +108,7 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-04-01 (Wave 82 — Quick Start + Interview Removal + Health Monitoring)
-
-### Wave 82: Quick Start + Cleanup + Monitoring (3 workers, 3 tasks)
-
-**Worker 1 — task-001: autoStartProject mutation + Quick Start button:**
-- New `autoStartProject` mutation: creates session with sensible defaults, selects all todo tasks, starts immediately
-- Quick Start button in ExecutionDashboard with confirmation dialog ("Start autopilot for N tasks?")
-- Disabled when session already running or no todo tasks
-- One click starts the full autonomous loop — orchestrator handles everything from there
-
-**Worker 2 — task-002: Remove onboarding interview:**
-- Deleted `onboarding.ts` prompt builder, removed AI service function, config, and schema
-- Removed UI buttons from ProjectToolbar and KnowledgeBasePanel
-- Removed GraphQL mutations (`generateOnboardingQuestions`, `saveOnboardingAnswers`)
-- Removed 'onboarding' from KB valid sources
-- Organic KB seeding (scaffold, bootstrap) remains as the replacement
-
-**Worker 3 — task-003: Health monitoring cron job:**
-- New `healthMonitor.ts` — runs every 15 minutes via cron
-- Detects stuck executing plans (no update in 30+ min) and stale approved plans (not started in 10+ min)
-- Creates notifications for affected users
-- Emits `health.alert` SSE event
-- Duplicate alert suppression (1-hour window per plan)
-
-### Open follow-ups
-- Stale CLAUDE.md references cleaned up (removed onboarding mutations)
-- `filesToChange` accuracy continues to be the main swarm process issue
+## 2026-04-01 (Wave 82) — Quick Start autopilot, remove onboarding interview, health monitoring cron
 
 ---
 
