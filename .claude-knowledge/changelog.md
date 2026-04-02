@@ -4,6 +4,35 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-04-01 (Wave 84 — CI Recovery + Iterative Refinement + Global KB)
+
+### Wave 84: CI Recovery + Plan Refinement + Cleanup (3 workers, 3 tasks)
+
+**Worker 1 — task-001: CI failure recovery:**
+- `task.ci_failed` webhook event now triggers `monitor_ci` action failure in the orchestrator
+- If `fix_ci` is the next action in the plan, it gets enqueued automatically
+- If no `fix_ci` exists, plan fails and auto-replan (Wave 81) takes over
+- Full CI recovery loop: CI fails (webhook) → fix_ci → re-monitor → merge
+
+**Worker 2 — task-002: Iterative plan refinement:**
+- New `refineHierarchicalPlan` mutation: accepts taskIds + refinementPrompt
+- Prompt includes selected tasks for re-planning + existing tasks as context
+- HierarchicalPlanEditor has checkbox selection mode with "Refine selected" button
+- Refined tasks replace selected tasks in the editor, keeping unselected intact
+
+**Worker 3 — task-003: Global org KB + concurrent plan check optimization:**
+- `KnowledgeEntry.projectId` made nullable — org-level KB entries now supported
+- Migration created for optional project_id
+- `knowledgeEntries` query supports `orgOnly` filter
+- `createKnowledgeEntry` allows optional projectId
+- `checkProjectBusy` combined into single query (was two sequential calls)
+
+### Open follow-ups
+- Include DataLoader files when making Prisma fields nullable
+- Feed org-level KB entries into planning prompts (retrieval integration)
+
+---
+
 ## 2026-04-01 (Wave 83 — Bidirectional GitHub Sync + Merge Orchestration + Pipeline Dashboard)
 
 ### Wave 83: GitHub Sync + Merge Orchestration + Dashboard (3 workers, 3 tasks)
@@ -94,33 +123,7 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-04-01 (Wave 80 — Decomposition Engine: Feedback, Decisions, Estimation)
-
-### Wave 80: Decomposition Engine Improvements (3 workers, 3 tasks)
-
-**Worker 1 — task-001: Planning quality feedback loop:**
-- `previewHierarchicalPlan` now queries recent completed/failed tasks (last 10 with completion summaries)
-- Execution history formatted and passed to the hierarchical plan prompt
-- AI sees what succeeded, what failed, and how accurate past estimates were
-- New projects with no history skip the section gracefully
-
-**Worker 2 — task-002: Decision points in task plans:**
-- `taskKind` enum added to plan schema: `implementation` (default) or `decision`
-- Decision tasks include 2-4 options with `label`, `description`, and `recommended` flag
-- Prompt instructs AI to generate decision tasks for tech/service/approach choices
-- HierarchicalPlanEditor shows selectable option cards for decision tasks with recommended highlight
-- Selected option folded into task instructions on commit
-- GraphQL types updated for `taskKind` and `options`
-
-**Worker 3 — task-003: Dependency reason in GraphQL + scope estimation:**
-- `reason` field added to TaskDependency GraphQL type and included in blockedBy/blocks queries
-- Dependency display in DetailsTab shows reason as tooltip on hover
-- Estimation calibration guidelines added to hierarchical plan prompt (AI agent execution time, buffer for retries)
-
-### Open follow-ups
-- Decision task validation on commit — enforce that all decision tasks have a selectedOption
-- Dependency reason in plan editor — show/edit reasons in HierarchicalPlanEditor
-- `filesToChange` accuracy: when adding fields to Zod schema, include corresponding GraphQL typedef file
+## 2026-04-01 (Wave 80) — planning feedback loop, decision points in plans, scope estimation, dependency reason GraphQL
 
 ---
 

@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work
 
-83 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Pipeline mechanics work; launching as closed-source SaaS.
+84 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Pipeline mechanics work; launching as closed-source SaaS.
 
 ---
 
@@ -49,7 +49,7 @@
 - [x] **merge_pr executor: handle merge conflicts** — structured `errorReason` field *(Wave 76)*
 - [x] **Concurrent action plan prevention** — backend guard in commitActionPlan/executeActionPlan + frontend button disabled when project busy *(Wave 78)*
 - [x] **fix_review vague results** — stricter prompt with few-shot example, response normalization, and validation retry with error feedback in callAIStructured *(Wave 78)*
-- [ ] **Concurrent plan check optimization** — `checkProjectBusy` in useAIGeneration makes two sequential API calls (executing + approved); combine into a single query that checks both statuses
+- [x] **Concurrent plan check optimization** — `checkProjectBusy` in useAIGeneration makes two sequential API calls (executing + approved); combined into a single query *(Wave 84)*
 - [ ] **Move fix_review normalization before Zod validation** — normalization in fixReview.ts runs after `callAIStructured` already validates, making it dead code. Move inside `callAIStructured` before `safeParse`, or expose raw response for pre-validation normalization
 - [x] **Verify offloaded task quality** — fix_review prompt now requires specific titles, acceptance criteria, and severity guidelines; deferred tasks get instructions populated *(Wave 79)*
 - [ ] SSE cross-tab: consider adding a leader tab indicator in dev mode for debugging
@@ -65,7 +65,9 @@
 - [x] **Scope estimation** — estimation calibration guidelines added to hierarchical plan prompt (AI agent execution time, not human time) *(Wave 80)*
 - [x] **Decision task validation on commit** — enforce that all decision tasks have a selectedOption before allowing plan commit *(Wave 81)*
 - [ ] **Dependency reason in plan editor** — show/edit dependency reasons in the HierarchicalPlanEditor dependency view, not just in task detail
-- [ ] **Iterative refinement** — re-plan a subset of tasks when requirements change without regenerating the entire plan
+- [x] **Iterative refinement** — refineHierarchicalPlan mutation + HierarchicalPlanEditor checkbox selection with refinement prompt *(Wave 84)*
+- [ ] **Refinement: epic-level selection** — currently only task-level checkboxes; allow selecting entire epics for bulk refinement
+- [ ] **Refinement: diff view** — show what changed between original and refined tasks before committing
 
 ---
 
@@ -86,7 +88,8 @@
 - [x] **Merge orchestration** — orchestrator listens for CI webhook events, auto-advances action plans (monitor_ci → merge_pr), handles external PR merges *(Wave 83)*
 - [x] **Progress dashboard improvements** — projectPipelineStatus query + PipelineOverview component with stat cards, progress bar, PR counts, session info *(Wave 83)*
 - [x] **Bidirectional GitHub sync** — check_suite webhook handler emits task.ci_passed/ci_failed/pr_merged events, SSE broadcast for real-time frontend updates *(Wave 83)*
-- [ ] **CI failure recovery in pipeline** — when CI fails via webhook, the plan is marked failed but no automatic fix_ci action is triggered. Wire task.ci_failed into the replan flow to auto-attempt fixes
+- [x] **CI failure recovery in pipeline** — task.ci_failed now auto-triggers fix_ci action if available in the plan, otherwise falls back to auto-replan *(Wave 84)*
+- [ ] **CI fix retry limit** — fix_ci can loop (fix_ci → monitor_ci → fix_ci) but there's no max retry count. Add a configurable cap to prevent infinite fix loops
 - [ ] **Pipeline dashboard: active plans detail** — PipelineOverview shows activePlans count but doesn't link to the specific plans. Add expandable list of active plan summaries
 - [ ] **External merge: task status sync** — pr_merged handler completes the action plan but relies on the webhook handler for task status. If the plan had post-merge actions (write_docs), they get skipped. Consider selective skipping
 - [ ] **Agent abstraction** — decouple from direct Claude API calls. Support pluggable agents (Claude Code, Codex, local LLMs) behind common interface. Phase 4
@@ -98,8 +101,10 @@
 - [x] **Existing repo onboarding flow** — intent threaded into bootstrap AI, post-bootstrap plan generation step added to wizard *(Wave 81)*
 - [x] **AI-friendly repo scaffolding** — scaffold should also generate `CLAUDE.md` and `.claude-knowledge/` context files so repos are immediately usable with Claude Code/Codex *(Wave 81)*
 - [x] **Remove onboarding interview** — deleted dead onboarding code (prompt builder, AI service, types, UI), removed 'onboarding' from valid KB sources *(Wave 82)*
-- [ ] **Clean CLAUDE.md onboarding references** — `generateOnboardingQuestions` and `saveOnboardingAnswers` still listed in CLAUDE.md mutations section despite being removed
-- [ ] **Global org/user knowledge base** — context that spans all projects, not just per-project KB
+- [x] **Clean CLAUDE.md onboarding references** — verified already removed in Wave 82 *(Wave 84)*
+- [x] **Global org/user knowledge base** — KnowledgeEntry.projectId now nullable, orgOnly filter on query, org-level entry creation *(Wave 84)*
+- [ ] **Org KB retrieval in AI prompts** — org-level KB entries exist in DB but aren't fed into planning/generation prompts yet. Update `retrieveRelevantKnowledge` to include org-level entries
+- [ ] **Org KB management UI** — no UI to view/create/edit org-level KB entries. Add an org settings section or standalone KB page
 
 ---
 
@@ -200,5 +205,6 @@
 | 81 | 2026-04-01 | Auto-replan on failure, repo onboarding intent threading, decision validation, AI-friendly scaffolding |
 | 82 | 2026-04-01 | Quick Start autopilot, remove onboarding interview, health monitoring cron |
 | 83 | 2026-04-01 | Bidirectional GitHub sync, merge orchestration, pipeline status dashboard |
+| 84 | 2026-04-01 | CI failure recovery, iterative plan refinement, global org KB, concurrent plan check optimization |
 
 Full wave details in `changelog.md`.
