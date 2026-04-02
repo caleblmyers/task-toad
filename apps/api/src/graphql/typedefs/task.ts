@@ -169,6 +169,11 @@ export const taskTypeDefs = /* GraphQL */ `
     status: String
   }
 
+  input ChildTaskDependencyInput {
+    title: String!
+    linkType: String!
+  }
+
   input ChildTaskInput {
     title: String!
     description: String!
@@ -177,6 +182,7 @@ export const taskTypeDefs = /* GraphQL */ `
     priority: String
     acceptanceCriteria: String
     suggestedTools: String
+    dependsOn: [ChildTaskDependencyInput!]
   }
 
   input CommitTaskInput {

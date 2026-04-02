@@ -15,6 +15,11 @@ export const ToolSuggestionSchema = z.object({
   reason: z.string(),
 });
 
+export const ChildTaskDependencySchema = z.object({
+  title: z.string(),
+  linkType: z.enum(['blocks', 'informs']),
+});
+
 export const ChildTaskPlanSchema = z.object({
   title: z.string(),
   description: z.string(),
@@ -23,6 +28,7 @@ export const ChildTaskPlanSchema = z.object({
   priority: z.enum(['low', 'medium', 'high', 'critical']).optional().default('medium'),
   acceptanceCriteria: z.string().optional().default(''),
   suggestedTools: z.array(ToolSuggestionSchema).optional().default([]),
+  dependsOn: z.array(ChildTaskDependencySchema).optional().default([]),
 });
 
 export const TaskPlanSchema = z.object({
@@ -59,6 +65,7 @@ export const TaskInstructionsSchema = z.object({
 
 export type ProjectOption = z.infer<typeof ProjectOptionSchema>;
 export type ToolSuggestion = z.infer<typeof ToolSuggestionSchema>;
+export type ChildTaskDependency = z.infer<typeof ChildTaskDependencySchema>;
 export type ChildTaskPlan = z.infer<typeof ChildTaskPlanSchema>;
 export type TaskPlan = z.infer<typeof TaskPlanSchema>;
 export type SprintPlan = z.infer<typeof SprintPlanSchema>;

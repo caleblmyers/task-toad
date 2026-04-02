@@ -61,7 +61,7 @@ Return a JSON array of 3–10 epics (NEVER more than 10). Use as few as 3 for si
   "estimatedHours": number,
   "priority": "low" | "medium" | "high" | "critical",
   "dependsOn": string[],
-  "tasks": [{ "title": string, "description": string, "instructions": string, "estimatedHours": number, "priority": "low" | "medium" | "high" | "critical", "acceptanceCriteria": string, "suggestedTools": [{ "name": string, "category": string, "reason": string }] }],
+  "tasks": [{ "title": string, "description": string, "instructions": string, "estimatedHours": number, "priority": "low" | "medium" | "high" | "critical", "acceptanceCriteria": string, "suggestedTools": [{ "name": string, "category": string, "reason": string }], "dependsOn": [{ "title": string, "linkType": "blocks" | "informs" }] }],
   "acceptanceCriteria": string
 }
 "title" is a short action phrase. "description" is 1–2 sentences. "instructions" is 3–6 sentences of detailed step-by-step guidance for a human or AI agent.
@@ -70,6 +70,7 @@ List 1–3 tools per epic. Be specific (e.g. "Claude Sonnet", "Figma", "Vercel",
 "estimatedHours" is a realistic work estimate (e.g. 1, 2, 4, 8, 16). "priority" reflects business impact.
 "dependsOn" lists titles of OTHER epics in this same list that must be completed first (empty array if none).
 "tasks" is 1–8 implementation tasks that break down this epic. Each task has its own instructions, estimatedHours, priority, acceptanceCriteria, and suggestedTools.
+For each task, include a "dependsOn" array of dependencies on OTHER tasks (within the same epic or across epics). Use "blocks" for hard dependencies (must complete first) and "informs" for context dependencies (provides useful context but not strictly required). Example: { "title": "Create API routes", "dependsOn": [{ "title": "Set up database schema", "linkType": "blocks" }] }. Use an empty array if no dependencies.
 Keep "instructions" to 2–3 sentences. Keep "acceptanceCriteria" to 3–5 bullet items. Be concise.
 "acceptanceCriteria" is a bullet list of testable conditions that define when the epic is complete.`;
 

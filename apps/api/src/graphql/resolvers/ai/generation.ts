@@ -186,7 +186,7 @@ export const generationMutations = {
         estimatedHours?: number | null;
         priority?: string | null;
         dependsOn: string[];
-        tasks: Array<{ title: string; description: string; instructions?: string | null; estimatedHours?: number | null; priority?: string | null; acceptanceCriteria?: string | null; suggestedTools?: string | null }>;
+        tasks: Array<{ title: string; description: string; instructions?: string | null; estimatedHours?: number | null; priority?: string | null; acceptanceCriteria?: string | null; suggestedTools?: string | null; dependsOn?: Array<{ title: string; linkType: string }> | null }>;
         acceptanceCriteria?: string | null;
       }>;
       clearExisting?: boolean | null;
@@ -317,6 +317,37 @@ export const generationMutations = {
         }
       }
       await Promise.all(depCreates);
+    }
+
+    // Resolve child-task-level dependencies (from AI-inferred dependsOn on each child task)
+    const allChildTasksForDeps = await context.prisma.task.findMany({
+      where: { projectId: args.projectId, taskType: 'task', parentTaskId: { in: created.map((c) => c.taskId) } },
+      select: { taskId: true, title: true },
+    });
+    const childTitleToId = new Map<string, string>();
+    for (const ct of allChildTasksForDeps) {
+      childTitleToId.set(ct.title, ct.taskId);
+    }
+
+    const childDepCreates: Promise<unknown>[] = [];
+    for (const inputTask of args.tasks) {
+      for (const ct of inputTask.tasks) {
+        if (!ct.dependsOn || ct.dependsOn.length === 0) continue;
+        const targetId = childTitleToId.get(ct.title);
+        if (!targetId) continue;
+        for (const dep of ct.dependsOn) {
+          const sourceId = childTitleToId.get(dep.title);
+          if (!sourceId || sourceId === targetId) continue;
+          childDepCreates.push(
+            context.prisma.taskDependency.create({
+              data: { sourceTaskId: sourceId, targetTaskId: targetId, linkType: dep.linkType === 'informs' ? 'informs' : 'blocks' },
+            }).catch(() => { /* ignore duplicate constraint violations */ })
+          );
+        }
+      }
+    }
+    if (childDepCreates.length > 0) {
+      await Promise.all(childDepCreates);
     }
 
     return context.prisma.task.findMany({

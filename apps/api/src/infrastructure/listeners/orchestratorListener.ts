@@ -863,7 +863,7 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
     }
   });
 
-  // ── External PR merge: complete pending action plans ──
+  // ── External PR merge: advance plan past merge, continue remaining actions ──
   bus.on('task.pr_merged', async (event) => {
     const { taskId, orgId, projectId } = event;
 
@@ -875,55 +875,77 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
       });
       if (!plan) return;
 
-      // Find merge_pr or monitor_ci actions that are still pending/executing
-      const actionsToComplete = plan.actions.filter(
-        (a) => (a.actionType === 'merge_pr' || a.actionType === 'monitor_ci') &&
-               (a.status === 'pending' || a.status === 'executing'),
+      // Find the merge_pr action
+      const mergeAction = plan.actions.find(
+        (a) => a.actionType === 'merge_pr' && (a.status === 'pending' || a.status === 'executing'),
       );
 
-      for (const action of actionsToComplete) {
+      // Auto-complete any monitor_ci actions before/at merge_pr (CI must have passed if PR was merged)
+      const monitorActions = plan.actions.filter(
+        (a) => a.actionType === 'monitor_ci' &&
+               (a.status === 'pending' || a.status === 'executing') &&
+               (!mergeAction || a.position <= mergeAction.position),
+      );
+      for (const action of monitorActions) {
         await prisma.taskAction.update({
           where: { id: action.id },
           data: {
             status: 'completed',
-            result: JSON.stringify({ via: 'external_merge', prNumber: event.prNumber }),
+            result: JSON.stringify({ via: 'external_merge', ciPassed: true, prNumber: event.prNumber }),
             completedAt: new Date(),
           },
         });
       }
 
-      // Mark remaining pending actions as skipped (they're not needed after external merge)
-      const remainingPending = plan.actions.filter(
-        (a) => a.status === 'pending' && !actionsToComplete.some((c) => c.id === a.id),
-      );
-      for (const action of remainingPending) {
+      // Complete the merge_pr action
+      if (mergeAction) {
         await prisma.taskAction.update({
-          where: { id: action.id },
+          where: { id: mergeAction.id },
           data: {
             status: 'completed',
-            result: JSON.stringify({ via: 'external_merge', skipped: true }),
+            result: JSON.stringify({ merged: true, via: 'external_merge', prNumber: event.prNumber }),
             completedAt: new Date(),
           },
         });
       }
 
-      // Complete the plan
-      await prisma.taskActionPlan.update({
-        where: { id: plan.id },
-        data: { status: 'completed' },
-      });
+      // Determine the position threshold — actions after merge_pr may still need to run (e.g. write_docs)
+      const mergePosition = mergeAction?.position ?? -1;
 
-      bus.emit('task.action_plan_completed', {
-        orgId,
-        userId: event.userId,
-        projectId,
-        timestamp: new Date().toISOString(),
-        planId: plan.id,
-        taskId,
-        taskTitle: '', // The task.updated handler (already in webhook handler) manages task status
-      });
+      // Check for remaining pending actions after merge_pr
+      const nextAction = plan.actions.find(
+        (a) => a.position > mergePosition && a.status === 'pending',
+      );
 
-      log.info({ taskId, planId: plan.id, prNumber: event.prNumber }, 'External PR merge — completed action plan');
+      if (nextAction) {
+        // Continue executing remaining post-merge actions (e.g., write_docs, verify_build)
+        const queue = getJobQueue();
+        queue.enqueue('action-execute', {
+          planId: plan.id,
+          actionId: nextAction.id,
+          orgId,
+          userId: plan.createdById,
+        });
+        log.info({ taskId, planId: plan.id, prNumber: event.prNumber, nextActionId: nextAction.id, nextActionType: nextAction.actionType }, 'External PR merge — continuing with post-merge actions');
+      } else {
+        // No more actions — complete the plan
+        await prisma.taskActionPlan.update({
+          where: { id: plan.id },
+          data: { status: 'completed' },
+        });
+
+        bus.emit('task.action_plan_completed', {
+          orgId,
+          userId: event.userId,
+          projectId,
+          timestamp: new Date().toISOString(),
+          planId: plan.id,
+          taskId,
+          taskTitle: '',
+        });
+
+        log.info({ taskId, planId: plan.id, prNumber: event.prNumber }, 'External PR merge — all actions done, plan completed');
+      }
     } catch (err) {
       log.error({ err, taskId }, 'Failed to handle task.pr_merged event');
     }
