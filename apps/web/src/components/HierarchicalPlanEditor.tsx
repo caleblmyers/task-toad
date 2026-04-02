@@ -13,6 +13,7 @@ export interface DecisionOptionPreview {
 export interface DependencyRef {
   title: string;
   linkType: string;
+  reason?: string;
 }
 
 export interface HierarchicalSubtaskPreview {
@@ -103,6 +104,14 @@ function priorityVariant(
       return 'neutral';
   }
 }
+
+const LINK_TYPE_STYLES: Record<string, { bg: string; text: string }> = {
+  blocks: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400' },
+  is_blocked_by: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400' },
+  informs: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-400' },
+  relates_to: { bg: 'bg-slate-100 dark:bg-slate-700', text: 'text-slate-600 dark:text-slate-300' },
+  duplicates: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400' },
+};
 
 const TYPE_STYLES: Record<string, { bg: string; text: string; label: string }> =
   {
@@ -822,6 +831,29 @@ export function HierarchicalPlanEditor({
             onChange={(newDeps) => updateNodeDeps(key, newDeps)}
             nodeLevels={nodeLevels}
           />
+        </div>
+      )}
+      {/* Dependency list (read-only display when not editing deps) */}
+      {editingDepsKey !== key && dependsOn && dependsOn.length > 0 && (
+        <div style={{ marginLeft: `${depth * 24 + 20}px` }} className="mb-1 px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
+          <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Dependencies</span>
+          <div className="mt-0.5 space-y-0.5">
+            {dependsOn.map((dep, i) => {
+              const ltStyle = LINK_TYPE_STYLES[dep.linkType] ?? LINK_TYPE_STYLES.relates_to;
+              return (
+                <div key={i} className="flex items-center gap-1.5 text-xs">
+                  <span className="text-slate-400 dark:text-slate-500 flex-shrink-0">→</span>
+                  <span className="text-slate-700 dark:text-slate-300 truncate">&ldquo;{dep.title}&rdquo;</span>
+                  <span className={`${ltStyle.bg} ${ltStyle.text} text-[9px] font-semibold px-1 py-0.5 rounded-full flex-shrink-0`}>
+                    {dep.linkType}
+                  </span>
+                  {dep.reason && (
+                    <span className="text-slate-400 dark:text-slate-500 truncate">— {dep.reason}</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
       {/* Decision options */}

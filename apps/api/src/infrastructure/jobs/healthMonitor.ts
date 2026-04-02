@@ -14,6 +14,13 @@ const STALE_APPROVED_MS = 10 * 60_000;
 /** Minimum interval between duplicate alerts for the same plan (1 hour). */
 const DEDUP_WINDOW_MS = 60 * 60_000;
 
+/** Threshold for stale PRs (7 days with no activity). */
+const STALE_PR_DAYS = 7;
+const STALE_PR_MS = STALE_PR_DAYS * 24 * 60 * 60_000;
+
+/** Minimum interval between duplicate stale PR alerts (24 hours). */
+const STALE_PR_DEDUP_WINDOW_MS = 24 * 60 * 60_000;
+
 export function createHandler(prisma: PrismaClient) {
   return async () => {
     await runHealthCheck(prisma);
@@ -121,5 +128,72 @@ async function runHealthCheck(prisma: PrismaClient): Promise<void> {
 
   if (alertCount > 0) {
     log.info({ alertCount }, 'Health alerts created for stuck/stale plans');
+  }
+
+  // ── Stale PR detection ──────────────────────────────────────────────────
+  await checkStalePullRequests(prisma, now);
+}
+
+async function checkStalePullRequests(prisma: PrismaClient, now: Date): Promise<void> {
+  const stalePRs = await prisma.gitHubPullRequestLink.findMany({
+    where: {
+      state: 'OPEN',
+      updatedAt: { lt: new Date(now.getTime() - STALE_PR_MS) },
+    },
+    include: {
+      task: { select: { taskId: true, title: true, projectId: true, orgId: true } },
+    },
+  });
+
+  if (stalePRs.length === 0) return;
+
+  // Dedup: check for recent stale PR alerts (24-hour window)
+  const recentAlerts = await prisma.notification.findMany({
+    where: {
+      type: 'health_alert',
+      createdAt: { gt: new Date(now.getTime() - STALE_PR_DEDUP_WINDOW_MS) },
+    },
+    select: { body: true },
+  });
+
+  const recentlyAlertedPRIds = new Set<string>();
+  for (const alert of recentAlerts) {
+    if (alert.body) {
+      const match = alert.body.match(/stalePR:([a-zA-Z0-9_-]+)/);
+      if (match) recentlyAlertedPRIds.add(match[1]);
+    }
+  }
+
+  let alertCount = 0;
+
+  for (const pr of stalePRs) {
+    if (recentlyAlertedPRIds.has(pr.id)) continue;
+
+    const daysOpen = Math.round((now.getTime() - pr.updatedAt.getTime()) / (24 * 60 * 60_000));
+    const title = `PR for "${pr.task.title}" has been open for ${daysOpen} days`;
+    const body = `Consider merging, closing, or updating PR #${pr.prNumber}. stalePR:${pr.id}`;
+
+    const orgUsers = await prisma.user.findMany({
+      where: { orgId: pr.task.orgId },
+      select: { userId: true },
+    });
+
+    for (const user of orgUsers) {
+      createNotification(prisma, {
+        orgId: pr.task.orgId,
+        userId: user.userId,
+        type: 'health_alert',
+        title,
+        body,
+        relatedTaskId: pr.task.taskId,
+        relatedProjectId: pr.task.projectId,
+      });
+    }
+
+    alertCount++;
+  }
+
+  if (alertCount > 0) {
+    log.info({ alertCount }, 'Health alerts created for stale pull requests');
   }
 }

@@ -194,6 +194,7 @@ export const taskTypeDefs = /* GraphQL */ `
   type DependencyRef {
     title: String!
     linkType: String!
+    reason: String
   }
 
   type HierarchicalSubtaskPreview {
@@ -264,6 +265,7 @@ export const taskTypeDefs = /* GraphQL */ `
   input DependencyRefInput {
     title: String!
     linkType: String!
+    reason: String
   }
 
   input CommitHierarchicalSubtaskInput {
