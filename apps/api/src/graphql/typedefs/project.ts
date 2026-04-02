@@ -104,6 +104,13 @@ export const projectTypeDefs = /* GraphQL */ `
     tasksFailed: Int!
   }
 
+  type ActivePlanDetail {
+    planId: ID!
+    taskTitle: String!
+    currentAction: String
+    startedAt: String!
+  }
+
   type PipelineStatus {
     totalTasks: Int!
     todoTasks: Int!
@@ -115,6 +122,7 @@ export const projectTypeDefs = /* GraphQL */ `
     openPRs: Int!
     mergedPRs: Int!
     activePlans: Int!
+    activePlanDetails: [ActivePlanDetail!]!
     estimatedRemainingHours: Float
     activeSession: PipelineSessionInfo
   }

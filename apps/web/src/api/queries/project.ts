@@ -61,6 +61,7 @@ export const PROJECT_PIPELINE_STATUS_QUERY = `query ProjectPipelineStatus($proje
   projectPipelineStatus(projectId: $projectId) {
     totalTasks todoTasks executingTasks inReviewTasks completedTasks failedTasks blockedTasks
     openPRs mergedPRs activePlans estimatedRemainingHours
+    activePlanDetails { planId taskTitle currentAction startedAt }
     activeSession { id status tasksCompleted tasksFailed }
   }
 }`;

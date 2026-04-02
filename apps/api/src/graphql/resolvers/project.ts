@@ -284,13 +284,25 @@ export const projectQueries = {
       }),
     ]);
 
-    // Active action plans
-    const activePlans = await context.prisma.taskActionPlan.count({
+    // Active action plans (count + details)
+    const activePlanRecords = await context.prisma.taskActionPlan.findMany({
       where: {
         task: { projectId: args.projectId },
-        status: 'executing',
+        status: { in: ['approved', 'executing'] },
       },
+      include: {
+        task: { select: { title: true } },
+        actions: { where: { status: 'executing' }, select: { label: true, actionType: true } },
+      },
+      orderBy: { updatedAt: 'desc' },
     });
+    const activePlans = activePlanRecords.filter((p) => p.status === 'executing').length;
+    const activePlanDetails = activePlanRecords.map((p) => ({
+      planId: p.id,
+      taskTitle: p.task.title,
+      currentAction: p.actions[0]?.label ?? p.actions[0]?.actionType ?? null,
+      startedAt: p.updatedAt.toISOString(),
+    }));
 
     // Estimated remaining hours from todo tasks
     const estimatedRemainingHours = tasks
@@ -328,6 +340,7 @@ export const projectQueries = {
       openPRs,
       mergedPRs,
       activePlans,
+      activePlanDetails,
       estimatedRemainingHours,
       activeSession: activeSessionInfo,
     };
