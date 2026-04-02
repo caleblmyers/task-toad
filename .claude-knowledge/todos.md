@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work
 
-84 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Pipeline mechanics work; launching as closed-source SaaS.
+84 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Autopilot pipeline feature-complete for launch.
 
 ---
 
@@ -8,113 +8,68 @@
 
 - [ ] **Landing page polish** — current version is functional but needs professional design work
 - [ ] **Test signup flow on prod** — verify Resend emails arrive, full signup→verify→login works
-- [x] **Resend verification email from login page** — unauthenticated `requestVerificationEmail` mutation + login page resend button *(Wave 76)*
-- [x] Custom domain — `tasktoad.app` registered on Cloudflare, DNS pointed to Railway *(2026-03-30)*
-- [x] SMTP setup — Resend configured for transactional email *(2026-03-30)*
-- [ ] Stripe integration for billing
+- [ ] **Stripe integration for billing** — currently `updateOrgPlan` is admin-only with no payment flow
 
 ---
 
-## Bug Fixes
+## Pipeline Polish
 
-- [x] **Auto-Complete button text changes** — button now always shows 'Planning…' during loading *(Wave 77)*
-- [x] **Commits attributed to user not bot** — removed user OAuth token override, installation token used for all commits *(Wave 77)*
-- [x] **Kanban column overflow not scrollable** — added overflow-y-auto to column content wrapper *(Wave 77)*
-- [x] **GitHub OAuth popup redirect** — popup navigates through github.com and loses `window.opener`, redirect to frontend callback page instead *(pre-Wave 77)*
-
----
-
-## UX
-
-- [x] PriorityDropdown: keyboard accessibility (arrow keys, Escape to close, ARIA attributes) *(Wave 76)*
-- [x] **AI review comments collapsed by default** — comments collapsed, consistent with suggestions section *(Wave 77)*
-- [x] **Close sprint/session from board view** — added 'Close Sprint' to board toolbar sprint dropdown *(Wave 77)*
-- [ ] **Swimlane-specific overflow** — individual swimlane sections within a kanban column may need their own max-height + scroll if a single swimlane has many tasks, rather than relying solely on the column-level scroll
-- [x] **Hierarchical plan progress events** — real SSE progress events replace fake cycling messages during plan generation *(Wave 78)*
-- [ ] **Hierarchical plan streaming results** — stream partial results (epics first, then tasks per epic) instead of waiting for full response
-- [x] **Scaffold generation progress events** — scaffoldProject emits ai.progress SSE events at each stage *(Wave 79)*
-- [x] **Long user-facing flows need progress indicators** — bootstrap now emits ai.progress SSE events *(Wave 81)*
-- [ ] Release notes: manual entry option
-- [ ] Time entry deletion: admin-only
-- [ ] Mobile: horizontal scrolling on project page
-- [ ] Replace stacked modals with single-panel wizard (step 1 of N) — lower priority
+- [ ] **Move fix_review normalization before Zod validation** — normalization in fixReview.ts runs after `callAIStructured` already validates (dead code). Move inside `callAIStructured` before `safeParse`
+- [ ] **CI fix retry limit** — fix_ci can loop (fix_ci → monitor_ci → fix_ci) but there's no max retry count. Add configurable cap to prevent infinite fix loops
+- [ ] **External merge: post-merge actions** — pr_merged handler completes the action plan but skips post-merge actions (write_docs). Consider selective skipping
+- [ ] SSE cross-tab: dev-mode leader tab indicator
 
 ---
 
-## Pipeline
+## Decomposition & Planning
 
-- [x] Branch cleanup on session timeout — `cancelSessionPlans()` shared helper handles timeout + budget cap *(Wave 76)*
-- [x] **merge_pr executor: auto-update branch before merge** — `updatePullRequestBranch()` + auto-retry *(Wave 76)*
-- [x] **merge_pr executor: detect already-merged PR** — `getPullRequestState()` check before merge *(Wave 76)*
-- [x] **merge_pr executor: handle merge conflicts** — structured `errorReason` field *(Wave 76)*
-- [x] **Concurrent action plan prevention** — backend guard in commitActionPlan/executeActionPlan + frontend button disabled when project busy *(Wave 78)*
-- [x] **fix_review vague results** — stricter prompt with few-shot example, response normalization, and validation retry with error feedback in callAIStructured *(Wave 78)*
-- [x] **Concurrent plan check optimization** — `checkProjectBusy` in useAIGeneration makes two sequential API calls (executing + approved); combined into a single query *(Wave 84)*
-- [ ] **Move fix_review normalization before Zod validation** — normalization in fixReview.ts runs after `callAIStructured` already validates, making it dead code. Move inside `callAIStructured` before `safeParse`, or expose raw response for pre-validation normalization
-- [x] **Verify offloaded task quality** — fix_review prompt now requires specific titles, acceptance criteria, and severity guidelines; deferred tasks get instructions populated *(Wave 79)*
-- [ ] SSE cross-tab: consider adding a leader tab indicator in dev mode for debugging
-
----
-
-## Pillar 1: Decomposition Engine
-
-- [x] **Expose dependency reason in GraphQL** — `reason` field added to TaskDependency typedef, shown as tooltip in dependency display *(Wave 80)*
-- [ ] **Dependency inference during planning** — planner generates tasks but doesn't infer dependencies. Should output a dependency graph, not just a flat list
-- [x] **Decision points in task plans** — taskKind (implementation/decision) with selectable options and recommendations in plan editor *(Wave 80)*
-- [x] **Planning quality feedback loop** — execution history (last 10 completed/failed tasks with summaries) fed into hierarchical plan prompt *(Wave 80)*
-- [x] **Scope estimation** — estimation calibration guidelines added to hierarchical plan prompt (AI agent execution time, not human time) *(Wave 80)*
-- [x] **Decision task validation on commit** — enforce that all decision tasks have a selectedOption before allowing plan commit *(Wave 81)*
-- [ ] **Dependency reason in plan editor** — show/edit dependency reasons in the HierarchicalPlanEditor dependency view, not just in task detail
-- [x] **Iterative refinement** — refineHierarchicalPlan mutation + HierarchicalPlanEditor checkbox selection with refinement prompt *(Wave 84)*
-- [ ] **Refinement: epic-level selection** — currently only task-level checkboxes; allow selecting entire epics for bulk refinement
+- [ ] **Dependency inference during planning** — the flat `generateTaskPlan` path doesn't infer dependencies (hierarchical plan already does)
+- [ ] **Dependency reason in plan editor** — show/edit dependency reasons in HierarchicalPlanEditor, not just in task detail
+- [ ] **Refinement: epic-level selection** — currently only task-level checkboxes for refinement; allow selecting entire epics
 - [ ] **Refinement: diff view** — show what changed between original and refined tasks before committing
 
 ---
 
-## Pillar 2: Context Threading
+## Orchestration
 
-- [x] **Dependency-aware execution ordering** — orchestrator checks blocking dependencies before starting tasks, emits task.blocked events for unmet deps *(Wave 79)*
-
----
-
-## Pillar 3: Orchestration
-
-- [x] **Session auto start/stop** — `autoStartProject` mutation + Quick Start button in ExecutionDashboard for one-click autopilot *(Wave 82)*
-- [ ] **Parallel execution streams** — independent tasks (no dependency) should execute in parallel. Requires DAG-based scheduler instead of sequential executor. Premium feature
-- [x] **Re-planning on failure** — orchestrator auto-replans failed action plans up to 2 times with shared replanService *(Wave 81)*
-- [x] **Health monitoring** — periodic cron job detects stuck/stale action plans, creates notifications + SSE alerts with dedup *(Wave 82)*
-- [ ] **Quick Start task count optimization** — ExecutionDashboard fetches all tasks via TASKS_QUERY just to count todos; add a lightweight `projectTaskCounts` query instead
-- [ ] **Health monitor: stale branch detection** — current health monitor only checks action plans; extend to detect stale GitHub branches (PRs open > 7 days with no activity)
-- [x] **Merge orchestration** — orchestrator listens for CI webhook events, auto-advances action plans (monitor_ci → merge_pr), handles external PR merges *(Wave 83)*
-- [x] **Progress dashboard improvements** — projectPipelineStatus query + PipelineOverview component with stat cards, progress bar, PR counts, session info *(Wave 83)*
-- [x] **Bidirectional GitHub sync** — check_suite webhook handler emits task.ci_passed/ci_failed/pr_merged events, SSE broadcast for real-time frontend updates *(Wave 83)*
-- [x] **CI failure recovery in pipeline** — task.ci_failed now auto-triggers fix_ci action if available in the plan, otherwise falls back to auto-replan *(Wave 84)*
-- [ ] **CI fix retry limit** — fix_ci can loop (fix_ci → monitor_ci → fix_ci) but there's no max retry count. Add a configurable cap to prevent infinite fix loops
-- [ ] **Pipeline dashboard: active plans detail** — PipelineOverview shows activePlans count but doesn't link to the specific plans. Add expandable list of active plan summaries
-- [ ] **External merge: task status sync** — pr_merged handler completes the action plan but relies on the webhook handler for task status. If the plan had post-merge actions (write_docs), they get skipped. Consider selective skipping
-- [ ] **Agent abstraction** — decouple from direct Claude API calls. Support pluggable agents (Claude Code, Codex, local LLMs) behind common interface. Phase 4
+- [ ] **Parallel execution streams** — independent tasks (no dependency) should execute in parallel. DAG-based scheduler. Premium feature
+- [ ] **Agent abstraction** — pluggable AI backends (Claude Code, Codex, local LLMs). Phase 4
 
 ---
 
-## Onboarding & Scaffolding
+## Onboarding & Knowledge Base
 
-- [x] **Existing repo onboarding flow** — intent threaded into bootstrap AI, post-bootstrap plan generation step added to wizard *(Wave 81)*
-- [x] **AI-friendly repo scaffolding** — scaffold should also generate `CLAUDE.md` and `.claude-knowledge/` context files so repos are immediately usable with Claude Code/Codex *(Wave 81)*
-- [x] **Remove onboarding interview** — deleted dead onboarding code (prompt builder, AI service, types, UI), removed 'onboarding' from valid KB sources *(Wave 82)*
-- [x] **Clean CLAUDE.md onboarding references** — verified already removed in Wave 82 *(Wave 84)*
-- [x] **Global org/user knowledge base** — KnowledgeEntry.projectId now nullable, orgOnly filter on query, org-level entry creation *(Wave 84)*
-- [ ] **Org KB retrieval in AI prompts** — org-level KB entries exist in DB but aren't fed into planning/generation prompts yet. Update `retrieveRelevantKnowledge` to include org-level entries
-- [ ] **Org KB management UI** — no UI to view/create/edit org-level KB entries. Add an org settings section or standalone KB page
+- [ ] **Org KB retrieval in AI prompts** — org-level KB entries exist but aren't fed into planning/generation prompts. Update `retrieveRelevantKnowledge`
+- [ ] **Org KB management UI** — no UI to view/create/edit org-level KB entries. Add org settings section
+
+---
+
+## Dashboard & UX
+
+- [ ] **Pipeline dashboard: active plans detail** — PipelineOverview shows count but doesn't link to specific plans. Add expandable list
+- [ ] **Quick Start task count optimization** — add lightweight `projectTaskCounts` query instead of fetching all tasks
+- [ ] **Health monitor: stale branch detection** — extend to detect PRs open > 7 days with no activity
+- [ ] **Hierarchical plan streaming results** — stream partial results (epics first, then tasks) instead of waiting for full response
+- [ ] **Swimlane-specific overflow** — individual swimlane sections may need own max-height + scroll
+- [ ] Release notes: manual entry option
+- [ ] Time entry deletion: admin-only
+- [ ] Mobile: horizontal scrolling on project page
+
+---
+
+## Premium Feature Gating
+
+- [ ] **Wire premium features into license system** — parallel execution, agent abstraction. Make concurrent plan limit plan-aware (`free: 1, paid: 3`)
+- [ ] License gating test coverage
 
 ---
 
 ## Code Quality & Testing
 
-- [x] Test coverage for fix_review (approved skip, AI fixes with source, deferred tasks, duplicate detection) *(Wave 76)*
 - [ ] Integration test for logout→login-as-different-user flow
-- [ ] merge-worker.sh: auto-detect lockfile changes
 - [ ] Test coverage for merge_pr executor (auto-update retry, state checks, conflict handling)
 - [ ] Audit remaining Prisma status filters for stale values (`'pending'`/`'running'` vs `'approved'`/`'executing'`)
+- [ ] merge-worker.sh: auto-detect lockfile changes
 
 ---
 
@@ -123,22 +78,15 @@
 - [ ] **Split useProjectData** — 100+ properties → focused sub-interfaces
 - [ ] **Resolver auth guards** — `requireEntity<T>()` helper, do incrementally
 - [ ] **AI feature registry** — consolidate 40+ wrapper functions in aiService.ts
-- [ ] **Extract insight generation to event listeners** — move from actionExecutor to async event-driven pattern
-
----
-
-## Premium Feature Gating
-
-- [ ] **Wire new premium features into license system** — as parallel execution, session auto-start, and agent abstraction are implemented, add them to `PREMIUM_FEATURES` in `license.ts`, add `requireLicense()` checks in resolvers, and gate UI with `hasFeature()`. Current concurrent plan limit (hardcoded to 1) should become plan-aware (`free: 1, paid: 3`)
-- [ ] License gating test coverage — verify free users can't access premium features
+- [ ] **Extract insight generation to event listeners** — move from actionExecutor to async event-driven
 
 ---
 
 ## Future
 
-- [ ] Scheduled report delivery (depends on SMTP — now configured)
-- [ ] Stripe integration for billing (currently `updateOrgPlan` is admin-only with no payment flow)
-- [ ] Multi-project decomposition — break down goals spanning multiple repos/projects
+- [ ] Scheduled report delivery
+- [ ] Multi-project decomposition — goals spanning multiple repos/projects
+- [ ] Replace stacked modals with single-panel wizard (step 1 of N)
 
 ---
 

@@ -90,23 +90,27 @@ pnpm --filter web lint
 
 ### Action Plan Pipeline
 
-Tasks with instructions can be auto-completed via the **Auto-Complete** button, which generates an action plan and executes it step-by-step via a job queue.
+Tasks can be auto-completed individually via the **Auto-Complete** button, or in bulk via **Quick Start** (one-click session that runs all todo tasks autonomously).
 
 - **Action types:** `generate_code`, `create_pr`, `review_pr`, `fix_review`, `merge_pr`, `write_docs`, `manual_step`, `monitor_ci`, `fix_ci`
-- **Pipeline flow (GitHub-connected projects):** `generate_code` → `create_pr` → `review_pr` → `fix_review` → `merge_pr`
+- **Pipeline flow (GitHub-connected projects):** `generate_code` → `create_pr` → `review_pr` → `fix_review` → `monitor_ci` → `merge_pr`
 - **Task status transitions:** plan starts → `in_progress`, review starts → `in_review`, plan completes with merge → `done`. All transitions also update `sprintColumn` to keep board in sync.
 - **Executors:** `apps/api/src/actions/executors/` — one file per action type
 - **Registry:** `apps/api/src/actions/registry.ts` — maps action types to executors
 - **Job executor:** `apps/api/src/infrastructure/jobs/actionExecutor.ts` — processes actions sequentially, handles budget checks, emits SSE events
+- **Orchestrator:** `orchestratorListener.ts` — session management, dependency-aware task scheduling, webhook-driven CI/merge automation
+- **Auto-replan:** Failed plans auto-replan up to 2 times via `replanService.ts` with failure context
+- **CI integration:** `check_suite` webhooks drive CI status (replaces polling when available); CI failures auto-trigger `fix_ci`
+- **Health monitoring:** `healthMonitor.ts` cron detects stuck/stale plans every 15 minutes
 - **Event bus:** `apps/api/src/infrastructure/eventbus/` — typed domain events for real-time updates
 - **AI planner:** `promptBuilder.ts:buildActionPlanPrompt()` generates the action sequence; validated by `ActionPlanResponseSchema` in `aiTypes.ts`
-- **Frontend:** `ActionProgressPanel.tsx` shows live progress; `ActionPlanDialog.tsx` for plan preview/approval; SSE events refresh state in real-time
-- **Auto-Complete is the sole code generation entry point** — the standalone "Generate code" button has been removed from the UI.
+- **Frontend:** `ActionProgressPanel.tsx` shows live progress; `ExecutionDashboard.tsx` for session management + pipeline overview; SSE events refresh state in real-time
+- **Concurrent plan prevention:** Only one action plan per project at a time (backend guard in `commitActionPlan`/`executeActionPlan`)
 
 ### Real-Time
 
 - **SSE:** Server-Sent Events via fetch-based client (not native `EventSource`) for real-time notifications and action plan progress. API: `apps/api/src/utils/sseManager.ts`. Client: `apps/web/src/hooks/useEventSource.ts`.
-- **SSE events:** `task.created`, `task.updated`, `tasks.bulk_updated`, `task.action_started`, `task.action_completed`, `task.action_plan_completed`, `task.action_plan_failed`, `task.blocked`, `task.unblocked`, `sprint.created`, `sprint.updated`, `sprint.closed`, `notification.created`, `approval.requested`, `approval.decided`
+- **SSE events:** `task.created`, `task.updated`, `tasks.bulk_updated`, `task.action_started`, `task.action_completed`, `task.action_plan_completed`, `task.action_plan_failed`, `task.action_plan_replanned`, `task.blocked`, `task.unblocked`, `task.ci_passed`, `task.ci_failed`, `task.pr_merged`, `ai.progress`, `health.alert`, `session.started`, `session.paused`, `session.completed`, `sprint.created`, `sprint.updated`, `sprint.closed`, `notification.created`, `approval.requested`, `approval.decided`
 - **SSE note:** Compression middleware must skip the SSE endpoint (`/events`, `/api/events`) — it buffers `res.write()` and breaks real-time delivery. All SSE writes call `res.flush()` after writing.
 
 ### Multiple Assignees
@@ -122,7 +126,7 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 **Queries:**
 - **Auth:** `me`, `orgInvites`
 - **Org:** `org`, `orgUsers`
-- **Project:** `projects`, `project(projectId)`, `projectStats`, `portfolioOverview`, `savedFilters`, `scaffoldTemplates`
+- **Project:** `projects`, `project(projectId)`, `projectStats`, `portfolioOverview`, `savedFilters`, `scaffoldTemplates`, `projectPipelineStatus`
 - **Task:** `tasks(projectId)`, `epics`, `labels`, `customFields`
 - **Sprint:** `sprints(projectId)`, `sprintVelocity`, `sprintBurndown`, `sprintForecast`, `workloadHeatmap`
 - **Comment:** `comments`, `activities`
@@ -148,7 +152,7 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 - **Task:** `createTask`, `updateTask`, `createSubtask`, `bulkUpdateTasks`, `createLabel`, `deleteLabel`, `addTaskLabel`, `removeTaskLabel`, `generateTaskPlan`, `previewTaskPlan`, `commitTaskPlan`, `expandTask`, `generateTaskInstructions`, `createCustomField`, `updateCustomField`, `deleteCustomField`, `setCustomFieldValue`, `addTaskAssignee`, `removeTaskAssignee`
 - **Sprint:** `createSprint`, `updateSprint`, `deleteSprint`, `closeSprint`, `previewSprintPlan`, `commitSprintPlan`
 - **Comment:** `createComment`, `updateComment`, `deleteComment`
-- **AI:** `generateCodeFromTask`, `regenerateCodeFile`, `reviewPullRequest`, `parseBugReport`, `previewPRDBreakdown`, `commitPRDBreakdown`, `bootstrapProjectFromRepo`, `batchGenerateCode`, `commitHierarchicalPlan`, `dismissInsight`, `cancelActionPlan`, `generateManualTaskSpec`, `autoStartProject`, `scaffoldProject`
+- **AI:** `generateCodeFromTask`, `regenerateCodeFile`, `reviewPullRequest`, `parseBugReport`, `previewPRDBreakdown`, `commitPRDBreakdown`, `bootstrapProjectFromRepo`, `batchGenerateCode`, `commitHierarchicalPlan`, `refineHierarchicalPlan`, `dismissInsight`, `cancelActionPlan`, `generateManualTaskSpec`, `autoStartProject`, `scaffoldProject`
 - **Notification:** `markNotificationRead`, `markAllNotificationsRead`, `updateNotificationPreference`
 - **GitHub:** `linkGitHubInstallation`, `connectGitHubRepo`, `disconnectGitHubRepo`, `createGitHubRepo`, `createPullRequestFromTask`, `syncTaskToGitHub`, `decomposeGitHubIssue`, `generateFixFromReview`
 - **Report:** `saveReport`, `deleteReport`, `summarizeProject`
@@ -185,7 +189,10 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 - `apps/api/prisma/schema/` — Domain-split Prisma schema files (auth, org, project, projectrole, task, sprint, comment, activity, notification, report, github, aiusage, slack, webhook, knowledgebase)
 - `apps/api/src/actions/` — Action plan executor registry and per-type executors (generateCode, createPR, reviewPR, fixReview, mergePR, writeDocs, manualStep, monitorCI, fixCI)
 - `apps/api/src/infrastructure/jobs/actionExecutor.ts` — Job handler that processes action plan steps sequentially
-- `apps/api/src/infrastructure/eventbus/` — Typed domain event bus (task, sprint, action events)
+- `apps/api/src/infrastructure/jobs/healthMonitor.ts` — Periodic health check for stuck/stale action plans (15-min cron)
+- `apps/api/src/infrastructure/listeners/orchestratorListener.ts` — Session orchestration, dependency-aware task scheduling, CI/merge event handling
+- `apps/api/src/actions/replanService.ts` — Auto-replan logic for failed action plans (shared by resolver + orchestrator)
+- `apps/api/src/infrastructure/eventbus/` — Typed domain event bus (task, sprint, action, CI, session events)
 - `apps/api/src/routes/export.ts` — REST endpoints for project/activity CSV/JSON export
 - `apps/api/src/routes/docs.ts` — REST endpoint serving API documentation page
 - `apps/api/vitest.config.ts` — API test configuration (Vitest)
@@ -196,6 +203,8 @@ All operations require `Authorization: Bearer <token>` (except `signup` and `log
 - `apps/web/src/hooks/useKeyboardShortcuts.ts` — keyboard shortcut handling
 - `apps/web/src/hooks/useEventSource.ts` — fetch-based SSE client for real-time notifications and action plan progress
 - `apps/web/src/components/ActionProgressPanel.tsx` — Live action plan progress display with inline review results
+- `apps/web/src/components/ExecutionDashboard.tsx` — Session management, Quick Start, pipeline status overview, plan cards
+- `apps/web/src/components/HierarchicalPlanEditor.tsx` — Plan editor with decision tasks, refinement, dependency display
 - `apps/web/src/utils/taskHelpers.ts` — `TASK_FIELDS`, status↔column mapping
 - `apps/web/src/components/shared/` — reusable UI (SearchInput, FilterBar, Icons, Toast, etc.)
 - `apps/web/src/components/Skeleton.tsx` — Loading skeleton components
