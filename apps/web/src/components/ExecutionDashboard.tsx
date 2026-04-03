@@ -14,6 +14,8 @@ import {
   PROJECT_PIPELINE_STATUS_QUERY,
 } from '../api/queries';
 import { useSSEListener } from '../hooks/useEventSource';
+import { useLicenseFeatures } from '../hooks/useLicenseFeatures';
+import UpgradePrompt from './shared/UpgradePrompt';
 import type { Task, TaskActionPlan, TaskActionType } from '../types';
 
 interface PlanDependency {
@@ -673,6 +675,7 @@ interface ExecutionDashboardProps {
 }
 
 export default function ExecutionDashboard({ projectId, onClose }: ExecutionDashboardProps) {
+  const { hasFeature } = useLicenseFeatures();
   const [plans, setPlans] = useState<ActionPlanWithTask[]>([]);
   const [allPlans, setAllPlans] = useState<ActionPlanWithTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -858,6 +861,16 @@ export default function ExecutionDashboard({ projectId, onClose }: ExecutionDash
           </button>
         </div>
       </div>
+
+      {/* Upgrade prompt for free plan users hitting concurrency limit */}
+      {!hasFeature('parallel_execution') && pipelineStatus && pipelineStatus.activePlans > 0 && (
+        <div className="mb-4">
+          <UpgradePrompt
+            feature="parallel execution"
+            message="Free plan runs 1 task at a time. Upgrade to Pro for 3 parallel streams."
+          />
+        </div>
+      )}
 
       {/* Active session banner */}
       {activeSession && (

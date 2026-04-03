@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/context';
-import { gql } from '../api/client';
+import { gql, restPost } from '../api/client';
 import {
-  ORG_QUERY,
   ORG_USERS_QUERY,
   ORG_INVITES_QUERY,
   GITHUB_INSTALLATIONS_QUERY,
@@ -28,13 +27,26 @@ import Select from '../components/shared/Select';
 import { useLicenseFeatures } from '../hooks/useLicenseFeatures';
 
 const GITHUB_APP_SLUG = import.meta.env.VITE_GITHUB_APP_SLUG as string | undefined;
+const STRIPE_PRO_MONTHLY_PRICE_ID = import.meta.env.VITE_STRIPE_PRO_MONTHLY_PRICE_ID as string | undefined;
+const STRIPE_PRO_ANNUAL_PRICE_ID = import.meta.env.VITE_STRIPE_PRO_ANNUAL_PRICE_ID as string | undefined;
+
+/** Extended ORG query that includes billing fields */
+const BILLING_ORG_QUERY = `query GetOrg { org { orgId name hasApiKey apiKeyHint promptLoggingEnabled plan licenseFeatures trialEndsAt stripeSubscriptionId } }`;
+
+interface OrgBilling extends Org {
+  trialEndsAt?: string | null;
+  stripeSubscriptionId?: string | null;
+}
 
 export default function OrgSettings() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { hasFeature } = useLicenseFeatures();
-  const [org, setOrg] = useState<Org | null>(null);
+  const [org, setOrg] = useState<OrgBilling | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
+
+  // Support ?tab=billing deep link (e.g. from Stripe redirect or upgrade prompts)
+  const initialTab = new URLSearchParams(window.location.search).get('tab') ?? undefined;
 
   // API Key form
   const apiKeyForm = useFormState(
@@ -103,7 +115,7 @@ export default function OrgSettings() {
       navigate('/home', { replace: true });
       return;
     }
-    gql<{ org: Org }>(ORG_QUERY)
+    gql<{ org: OrgBilling }>(BILLING_ORG_QUERY)
       .then((data) => setOrg(data.org))
       .catch((e) => setLoadErr(e instanceof Error ? e.message : 'Failed to load org'));
     gql<{ orgUsers: OrgUser[] }>(ORG_USERS_QUERY)
@@ -189,6 +201,7 @@ export default function OrgSettings() {
       <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-6">Settings</h1>
 
       <Tabs
+        defaultTab={initialTab}
         tabs={[
           {
             id: 'general',
@@ -469,9 +482,9 @@ export default function OrgSettings() {
             content: <OrgKnowledgeBaseTab />,
           },
           {
-            id: 'plans',
-            label: 'Plans',
-            content: <PlansTab org={org} />,
+            id: 'billing',
+            label: 'Billing',
+            content: <BillingTab org={org} />,
           },
         ]}
       />
@@ -490,26 +503,139 @@ const PREMIUM_FEATURE_LIST = [
   { key: 'project_roles', label: 'Project member roles' },
 ];
 
-function PlansTab({ org }: { org: Org }) {
+function BillingTab({ org }: { org: OrgBilling }) {
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const isPaid = org.plan === 'paid';
+  const hasSubscription = !!org.stripeSubscriptionId;
+  const trialEndsAt = org.trialEndsAt ? new Date(org.trialEndsAt) : null;
+  const trialExpired = trialEndsAt ? new Date() > trialEndsAt : false;
+  const trialDaysRemaining = trialEndsAt && !trialExpired
+    ? Math.max(0, Math.ceil((trialEndsAt.getTime() - Date.now()) / (24 * 60 * 60_000)))
+    : 0;
+  const isOnTrial = isPaid && trialEndsAt && !trialExpired && !hasSubscription;
+  const effectivePlan = isPaid && !trialExpired ? 'paid' : (hasSubscription ? 'paid' : 'free');
+
+  const handleCheckout = async () => {
+    const priceId = billingCycle === 'annual' ? STRIPE_PRO_ANNUAL_PRICE_ID : STRIPE_PRO_MONTHLY_PRICE_ID;
+    if (!priceId) {
+      setError('Stripe price IDs not configured');
+      return;
+    }
+    setCheckoutLoading(true);
+    setError(null);
+    try {
+      const data = await restPost<{ url: string }>('/stripe/checkout', { priceId });
+      window.location.href = data.url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start checkout');
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
+  const handlePortal = async () => {
+    setPortalLoading(true);
+    setError(null);
+    try {
+      const data = await restPost<{ url: string }>('/stripe/portal');
+      window.location.href = data.url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to open billing portal');
+    } finally {
+      setPortalLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
+      {/* Current plan status */}
       <Card className="space-y-4">
         <SectionHeader>Current Plan</SectionHeader>
         <div className="flex items-center gap-3">
           <span
             className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-              isPaid
+              effectivePlan === 'paid'
                 ? 'bg-brand-green/10 text-brand-green'
                 : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
             }`}
           >
-            {isPaid ? 'Premium' : 'Free'}
+            {effectivePlan === 'paid' ? 'Pro' : 'Free'}
           </span>
+          {isOnTrial && (
+            <span className="text-xs text-amber-600 dark:text-amber-400">
+              Trial: {trialDaysRemaining} day{trialDaysRemaining !== 1 ? 's' : ''} remaining
+            </span>
+          )}
+          {trialExpired && !hasSubscription && (
+            <span className="text-xs text-red-600 dark:text-red-400">Trial expired</span>
+          )}
         </div>
+
+        {error && (
+          <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">
+            {error}
+          </p>
+        )}
+
+        {/* Paid org with active subscription */}
+        {hasSubscription && (
+          <div>
+            <button
+              onClick={() => void handlePortal()}
+              disabled={portalLoading}
+              className="px-4 py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50 text-sm"
+            >
+              {portalLoading ? 'Loading...' : 'Manage Subscription'}
+            </button>
+          </div>
+        )}
       </Card>
 
+      {/* Upgrade section — show for free orgs or trial orgs without subscription */}
+      {!hasSubscription && (
+        <Card className="space-y-4">
+          <SectionHeader>Upgrade to Pro</SectionHeader>
+
+          {/* Billing cycle toggle */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setBillingCycle('monthly')}
+              className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                billingCycle === 'monthly'
+                  ? 'border-brand-green bg-brand-green/10 text-brand-green font-medium'
+                  : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+              }`}
+            >
+              Monthly — $19/mo
+            </button>
+            <button
+              onClick={() => setBillingCycle('annual')}
+              className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                billingCycle === 'annual'
+                  ? 'border-brand-green bg-brand-green/10 text-brand-green font-medium'
+                  : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+              }`}
+            >
+              Annual — $190/yr
+              <span className="ml-1 text-xs text-green-600 dark:text-green-400">(save $38)</span>
+            </button>
+          </div>
+
+          <button
+            onClick={() => void handleCheckout()}
+            disabled={checkoutLoading}
+            className="px-4 py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover disabled:opacity-50 text-sm font-medium"
+          >
+            {checkoutLoading ? 'Redirecting...' : 'Upgrade Now'}
+          </button>
+        </Card>
+      )}
+
+      {/* Feature comparison */}
       <Card className="space-y-4">
         <SectionHeader>Feature Comparison</SectionHeader>
         <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
@@ -518,14 +644,24 @@ function PlansTab({ org }: { org: Org }) {
               <tr className="bg-slate-50 dark:bg-slate-800">
                 <th className="text-left px-4 py-2 font-medium text-slate-600 dark:text-slate-300">Feature</th>
                 <th className="text-center px-4 py-2 font-medium text-slate-600 dark:text-slate-300">Free</th>
-                <th className="text-center px-4 py-2 font-medium text-slate-600 dark:text-slate-300">Premium</th>
+                <th className="text-center px-4 py-2 font-medium text-slate-600 dark:text-slate-300">Pro</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
               <tr>
-                <td className="px-4 py-2 text-slate-700 dark:text-slate-300">Projects, tasks, sprints</td>
-                <td className="text-center px-4 py-2 text-green-600">&#10003;</td>
-                <td className="text-center px-4 py-2 text-green-600">&#10003;</td>
+                <td className="px-4 py-2 text-slate-700 dark:text-slate-300">Projects</td>
+                <td className="text-center px-4 py-2 text-slate-600 dark:text-slate-400">3</td>
+                <td className="text-center px-4 py-2 text-green-600">Unlimited</td>
+              </tr>
+              <tr>
+                <td className="px-4 py-2 text-slate-700 dark:text-slate-300">Team members</td>
+                <td className="text-center px-4 py-2 text-slate-600 dark:text-slate-400">3</td>
+                <td className="text-center px-4 py-2 text-green-600">Unlimited</td>
+              </tr>
+              <tr>
+                <td className="px-4 py-2 text-slate-700 dark:text-slate-300">Concurrent task execution</td>
+                <td className="text-center px-4 py-2 text-slate-600 dark:text-slate-400">1</td>
+                <td className="text-center px-4 py-2 text-green-600">3 parallel</td>
               </tr>
               <tr>
                 <td className="px-4 py-2 text-slate-700 dark:text-slate-300">AI task planning &amp; code generation</td>
@@ -548,21 +684,6 @@ function PlansTab({ org }: { org: Org }) {
           </table>
         </div>
       </Card>
-
-      {!isPaid && (
-        <Card className="space-y-3">
-          <SectionHeader>Upgrade</SectionHeader>
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            Premium plans coming soon. Contact us for early access.
-          </p>
-          <a
-            href="mailto:hello@tasktoad.dev?subject=Premium%20early%20access"
-            className="inline-flex items-center px-4 py-2 bg-brand-green text-white rounded hover:bg-brand-green-hover text-sm"
-          >
-            Contact us
-          </a>
-        </Card>
-      )}
     </div>
   );
 }

@@ -104,3 +104,41 @@ export async function gql<T>(
   }
   return json.data as T;
 }
+
+/** POST to a REST endpoint (e.g. Stripe routes). Returns parsed JSON. */
+export async function restPost<T>(
+  path: string,
+  body?: Record<string, unknown>,
+): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  if (res.status === 401) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      const retryRes = await fetch(`${BASE}${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (!retryRes.ok) {
+        const text = await retryRes.text().catch(() => '');
+        throw new Error(`Server error (${retryRes.status}): ${text.slice(0, 200)}`);
+      }
+      return retryRes.json();
+    }
+    window.dispatchEvent(new CustomEvent('session-expired'));
+    throw new Error('Session expired');
+  }
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Server error (${res.status}): ${text.slice(0, 200)}`);
+  }
+  return res.json();
+}
