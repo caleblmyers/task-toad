@@ -27,6 +27,8 @@ FROM shared-build AS web-build
 COPY apps/web/ apps/web/
 ARG VITE_API_URL=
 ARG VITE_GITHUB_APP_SLUG=tasktoad
+ARG VITE_STRIPE_PRO_MONTHLY_PRICE_ID=
+ARG VITE_STRIPE_PRO_ANNUAL_PRICE_ID=
 RUN pnpm --filter web build
 
 # Production image — API serves both GraphQL and static web files
