@@ -4,6 +4,34 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-04-02 (Wave 87 — External Merge + Premium Gating + Flat Plan Deps)
+
+### Wave 87: Pipeline + Licensing + Refactor (3 workers, 3 tasks)
+
+**Worker 1 — task-001: External merge post-actions + flat plan dependency inference:**
+- External PR merges now continue executing post-merge actions (write_docs) instead of completing plan early
+- monitor_ci actions before merge_pr auto-completed on external merge
+- Flat plan prompt updated with dependency inference instructions (dependsOn array)
+- Flat plan commit resolver creates TaskDependency records from AI-inferred dependencies
+- Note: reviewer initially rejected due to wrong file path in task description (planning.ts vs generation.ts)
+
+**Worker 2 — task-002: Premium feature gating:**
+- `parallel_execution` added to PREMIUM_FEATURES
+- Concurrent plan limit now plan-aware: free=1, paid=3
+- Error message prompts upgrade on free plan
+- License unit test added for parallel_execution gating
+- autoStartProject remains accessible on free tier
+
+**Worker 3 — task-003: Split useProjectData (no-op):**
+- Task was already completed in a prior wave — useProjectData already composes sub-hooks
+- Worker correctly identified and reported, merged as no-op
+
+### Open follow-ups
+- Flat plan prompt file is in generation.ts, not planning.ts — update internal docs if referenced
+- Verify before planning refactor tasks that the work hasn't already been done
+
+---
+
 ## 2026-04-02 (Wave 86 — Refinement UX + Health Monitor + merge_pr Tests)
 
 ### Wave 86: Refinement UX + Stale Branch Detection + Test Coverage (3 workers, 3 tasks)
@@ -81,30 +109,7 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-04-01 (Wave 83 — Bidirectional GitHub Sync + Merge Orchestration + Pipeline Dashboard)
-
-### Wave 83: GitHub Sync + Merge Orchestration + Dashboard (3 workers, 3 tasks)
-
-**Worker 1 — task-001: Bidirectional GitHub sync:**
-- `check_suite` webhook events handled — finds linked task via PR number and emits CI events
-- `task.ci_passed` and `task.ci_failed` events emitted based on check suite conclusion
-- `task.pr_merged` event emitted on external PR merges for orchestrator consumption
-- All events broadcast via SSE for frontend real-time updates
-
-**Worker 2 — task-002: Merge orchestration:**
-- Orchestrator listens for `task.ci_passed` — completes `monitor_ci` action and enqueues `merge_pr`
-- Webhook-driven CI completion replaces polling when available (polling still works as fallback)
-- External PR merges (`task.pr_merged`) complete pending action plans and trigger downstream tasks
-- Full autonomous flow: generate code → create PR → CI passes (webhook) → auto-merge → next task
-
-**Worker 3 — task-003: Project pipeline status dashboard:**
-- New `projectPipelineStatus` query returns task counts by status, PR counts, blocked tasks, estimated hours
-- ExecutionDashboard shows overview stat cards (Todo, Executing, In Review, Done, Failed, Blocked, Open PRs)
-- Status refreshes on SSE events (task.updated, action plan events)
-
-### Open follow-ups
-- Verify check_suite webhook works with GitHub App permission set (may need `checks: read` scope)
-- Test external merge flow end-to-end with real GitHub PR
+## 2026-04-01 (Wave 83) — bidirectional GitHub sync, merge orchestration, pipeline status dashboard
 
 ---
 

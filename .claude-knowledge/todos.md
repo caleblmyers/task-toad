@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work
 
-86 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Autopilot pipeline feature-complete for launch.
+87 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Autopilot pipeline feature-complete for launch.
 
 ---
 
@@ -16,14 +16,14 @@
 
 - [x] **Move fix_review normalization before Zod validation** — moved into `callAIStructured` before `safeParse` (Wave 85)
 - [x] **CI fix retry limit** — MAX_CI_FIX_ATTEMPTS = 3, plan fails when exhausted (Wave 85)
-- [ ] **External merge: post-merge actions** — pr_merged handler completes the action plan but skips post-merge actions (write_docs). Consider selective skipping
+- [x] **External merge: post-merge actions** — pr_merged handler now continues executing post-merge actions instead of completing the plan (Wave 87)
 - [ ] SSE cross-tab: dev-mode leader tab indicator
 
 ---
 
 ## Decomposition & Planning
 
-- [ ] **Dependency inference during planning** — the flat `generateTaskPlan` path doesn't infer dependencies (hierarchical plan already does)
+- [x] **Dependency inference during planning** — flat plan now infers task-level dependencies and creates TaskDependency records on commit (Wave 87)
 - [x] **Dependency reason in plan editor** — show/edit dependency reasons in HierarchicalPlanEditor, not just in task detail (Wave 86)
 - [x] **Refinement: epic-level selection** — currently only task-level checkboxes for refinement; allow selecting entire epics (Wave 86)
 - [x] **Refinement: diff view** — show what changed between original and refined tasks before committing (Wave 86)
@@ -61,8 +61,8 @@
 
 ## Premium Feature Gating
 
-- [ ] **Wire premium features into license system** — parallel execution, agent abstraction. Make concurrent plan limit plan-aware (`free: 1, paid: 3`)
-- [ ] License gating test coverage
+- [x] **Wire premium features into license system** — parallel_execution added, concurrent limit plan-aware (free: 1, paid: 3), license unit test *(Wave 87)*
+- [x] License gating test coverage — parallel_execution free/paid gating verified *(Wave 87)*
 
 ---
 
@@ -77,7 +77,6 @@
 
 ## Refactors
 
-- [ ] **Split useProjectData** — 100+ properties → focused sub-interfaces
 - [ ] **Resolver auth guards** — `requireEntity<T>()` helper, do incrementally
 - [ ] **AI feature registry** — consolidate 40+ wrapper functions in aiService.ts
 - [ ] **Extract insight generation to event listeners** — move from actionExecutor to async event-driven
@@ -158,5 +157,6 @@
 | 84 | 2026-04-01 | CI failure recovery, iterative plan refinement, global org KB, concurrent plan check optimization |
 | 85 | 2026-04-02 | CI fix retry limit, AI normalization, org KB retrieval + UI, pipeline dashboard detail |
 | 86 | 2026-04-02 | Refinement UX (epic selection, diff view), stale branch detection, merge_pr tests, status audit |
+| 87 | 2026-04-02 | External merge post-actions, flat plan deps, premium gating, license tests |
 
 Full wave details in `changelog.md`.
