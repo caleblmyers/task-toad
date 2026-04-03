@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work
 
-88 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Autopilot pipeline feature-complete for launch.
+89 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Autopilot pipeline feature-complete for launch.
 
 ---
 
@@ -27,7 +27,7 @@
 - [x] **Dependency reason in plan editor** — show/edit dependency reasons in HierarchicalPlanEditor, not just in task detail (Wave 86)
 - [x] **Refinement: epic-level selection** — currently only task-level checkboxes for refinement; allow selecting entire epics (Wave 86)
 - [x] **Refinement: diff view** — show what changed between original and refined tasks before committing (Wave 86)
-- [ ] **Refinement: parent wiring** — HierarchicalPlanDialog needs to build RefinementDiff and pass accept/discard callbacks to the editor
+- [x] **Refinement: parent wiring** — HierarchicalPlanDialog builds RefinementDiff, passes accept/discard callbacks to editor *(Wave 89)*
 
 ---
 
@@ -52,7 +52,7 @@
 - [x] **Health monitor: stale branch detection** — extend to detect PRs open > 7 days with no activity (Wave 86)
 - [x] **Stale PR alerts: SSE events** — health.alert discriminated union for stuck_plan vs stale_pr, SSE broadcast *(Wave 88)*
 - [ ] **Hierarchical plan streaming results** — stream partial results (epics first, then tasks) instead of waiting for full response
-- [ ] **Swimlane-specific overflow** — individual swimlane sections may need own max-height + scroll
+- [x] **Swimlane-specific overflow** — max-h-[300px] overflow-y-auto on swimlane sections *(Wave 89)*
 - [ ] Release notes: manual entry option
 - [ ] Time entry deletion: admin-only
 - [ ] Mobile: horizontal scrolling on project page
@@ -78,10 +78,10 @@
 ## Refactors
 
 - [x] **Resolver auth guards** — `requireEntity<T>()` helper with overloads, applied to 5 mutations *(Wave 88)*
-- [ ] **Resolver auth guards: broader adoption** — requireEntity applied to 5 mutations; ~20+ more could benefit from incremental conversion
-- [ ] **AI feature registry** — consolidate 40+ wrapper functions in aiService.ts
+- [ ] **Resolver auth guards: broader adoption** — requireEntity applied to 10 mutations (5 in Wave 88, 5 sprint in Wave 89); ~15+ more could benefit (comment resolvers next)
+- [x] **AI feature registry** — callAIFeature() pattern with 8 functions converted *(Wave 89)*; remaining complex functions still direct
 - [x] **Extract insight generation to event listeners** — insightListener.ts handles insights async via task.action_completed *(Wave 88)*
-- [ ] **Insight listener: use KB retrieval** — insightListener falls back to raw knowledgeBase field; should call retrieveRelevantKnowledge for better context (matches old actionExecutor behavior)
+- [x] **Insight listener: use KB retrieval** — insightListener calls retrieveRelevantKnowledge with graceful fallback *(Wave 89)*
 
 ---
 
@@ -161,5 +161,6 @@
 | 86 | 2026-04-02 | Refinement UX (epic selection, diff view), stale branch detection, merge_pr tests, status audit |
 | 87 | 2026-04-02 | External merge post-actions, flat plan deps, premium gating, license tests |
 | 88 | 2026-04-03 | Parallel execution, requireEntity auth guards, insight extraction, stale PR SSE |
+| 89 | 2026-04-03 | Insight KB retrieval, AI feature registry, refinement wiring, swimlane overflow |
 
 Full wave details in `changelog.md`.

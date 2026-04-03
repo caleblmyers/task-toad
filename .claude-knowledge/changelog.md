@@ -4,6 +4,29 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-04-03 (Wave 89 — KB Retrieval + AI Registry + Refinement Wiring)
+
+### Wave 89: Refactors + UX Wiring (3 workers, 3 tasks)
+
+**Worker 1 — task-001: Insight listener KB retrieval + requireEntity adoption:**
+- insightListener now calls `retrieveRelevantKnowledge()` for curated KB context (was using raw field)
+- Fallback to raw `project.knowledgeBase` if retrieval fails
+- `requireEntity` applied to 8 more mutations across sprint and comment resolvers
+
+**Worker 2 — task-002: AI feature registry:**
+- `callAIFeature<T>()` generic function with registry pattern in aiService.ts
+- 8 wrapper functions converted to delegate to registry (generateTaskPlan, scaffoldProject, etc.)
+- Existing exported signatures unchanged — no caller changes needed
+- Complex functions with special pre/post-processing left as-is
+
+**Worker 3 — task-003: Refinement parent wiring + swimlane overflow:**
+- HierarchicalPlanDialog now wires `onRefine` callback to `refineHierarchicalPlan` mutation
+- Refinement diff passed to editor, accept/discard callbacks wired
+- Swimlane sections have `max-h-80 overflow-y-auto` when enabled
+- Column-level scroll preserved when swimlanes disabled
+
+---
+
 ## 2026-04-03 (Wave 88 — Parallel Execution + Auth Guards + Insight Extraction)
 
 ### Wave 88: Parallel Execution + Refactors (3 workers, 3 tasks)
@@ -82,27 +105,7 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-04-02 (Wave 85 — Pipeline Polish + Org KB + Dashboard Detail)
-
-### Wave 85: Pipeline Polish + Org KB + Dashboard (3 workers, 3 tasks)
-
-**Worker 1 — task-001: CI fix retry limit + AI response normalization:**
-- CI fix_ci loop capped at MAX_CI_FIX_ATTEMPTS = 3, plan fails with warning when exhausted
-- `normalizeAIResponse` moved into `callAIStructured` before Zod validation — handles string trimming, stringified arrays, default empty arrays
-- Dead normalization code removed from fixReview.ts
-
-**Worker 2 — task-002: Org KB retrieval + management UI:**
-- `retrieveRelevantKnowledge` now includes org-level KB entries alongside project entries
-- Org entries labeled with `[Org]` prefix, ranked slightly lower than project-specific
-- OrgSettings has new "Knowledge Base" tab with add/edit/delete for org-level entries
-
-**Worker 3 — task-003: Pipeline dashboard detail + Quick Start optimization:**
-- Active Plans stat card expandable — shows task title, current action, elapsed time, cancel button
-- `activePlanDetails` added to `projectPipelineStatus` query
-- Quick Start button uses `pipelineStatus.todoTasks` instead of fetching all tasks
-
-### Open follow-ups
-- Integration tests skip when DB unavailable — reviewer couldn't use merge-worker auto-flow
+## 2026-04-02 (Wave 85) — CI fix retry limit, AI normalization, org KB retrieval + UI, pipeline dashboard detail
 
 ---
 
