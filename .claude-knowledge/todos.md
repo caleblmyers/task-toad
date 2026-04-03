@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work
 
-89 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Autopilot pipeline feature-complete for launch.
+90 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Autopilot pipeline feature-complete for launch.
 
 ---
 
@@ -17,7 +17,7 @@
 - [x] **Move fix_review normalization before Zod validation** — moved into `callAIStructured` before `safeParse` (Wave 85)
 - [x] **CI fix retry limit** — MAX_CI_FIX_ATTEMPTS = 3, plan fails when exhausted (Wave 85)
 - [x] **External merge: post-merge actions** — pr_merged handler now continues executing post-merge actions instead of completing the plan (Wave 87)
-- [ ] SSE cross-tab: dev-mode leader tab indicator
+- [x] SSE cross-tab: dev-mode leader tab indicator *(Wave 90)*
 
 ---
 
@@ -53,9 +53,9 @@
 - [x] **Stale PR alerts: SSE events** — health.alert discriminated union for stuck_plan vs stale_pr, SSE broadcast *(Wave 88)*
 - [ ] **Hierarchical plan streaming results** — stream partial results (epics first, then tasks) instead of waiting for full response
 - [x] **Swimlane-specific overflow** — max-h-[300px] overflow-y-auto on swimlane sections *(Wave 89)*
-- [ ] Release notes: manual entry option
-- [ ] Time entry deletion: admin-only
-- [ ] Mobile: horizontal scrolling on project page
+- [x] Release notes: manual entry option *(Wave 90)*
+- [x] Time entry deletion: admin-only *(Wave 90)*
+- [x] Mobile: horizontal scrolling on project page *(Wave 90)*
 
 ---
 
@@ -68,10 +68,10 @@
 
 ## Code Quality & Testing
 
-- [ ] Integration test for logout→login-as-different-user flow
+- [x] Integration test for logout→login-as-different-user flow *(Wave 90)*
 - [x] Test coverage for merge_pr executor (auto-update retry, state checks, conflict handling) (Wave 86)
 - [x] Audit remaining Prisma status filters for stale values — confirmed all correct for their models (Wave 86)
-- [ ] merge-worker.sh: auto-detect lockfile changes
+- [x] merge-worker.sh: auto-detect lockfile changes *(Wave 90)*
 
 ---
 
@@ -162,5 +162,6 @@
 | 87 | 2026-04-02 | External merge post-actions, flat plan deps, premium gating, license tests |
 | 88 | 2026-04-03 | Parallel execution, requireEntity auth guards, insight extraction, stale PR SSE |
 | 89 | 2026-04-03 | Insight KB retrieval, AI feature registry, refinement wiring, swimlane overflow |
+| 90 | 2026-04-03 | Release notes manual entry, time entry admin-only, SSE leader indicator, mobile scroll, auth test, lockfile detection |
 
 Full wave details in `changelog.md`.

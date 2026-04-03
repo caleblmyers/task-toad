@@ -4,6 +4,25 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-04-03 (Wave 90 — UX Polish + Testing + Script Improvements)
+
+### Wave 90: Final Polish (3 workers, 3 tasks)
+
+**Worker 1 — task-001: Release notes manual entry + time entry admin-only deletion:**
+- ReleaseModal/ReleaseDetailPanel gets manual notes textarea alongside auto-generated content
+- Time entry deletion restricted to admins or entry creator (AuthorizationError for others)
+
+**Worker 2 — task-002: SSE dev-mode leader indicator + mobile horizontal scroll:**
+- Dev-only CSS pseudo-element shows "SSE Leader" in bottom-right corner when tab is the leader
+- Tree-shaken in production builds
+- ProjectDetail main content wrapper gets `overflow-x-auto` for mobile horizontal scrolling
+
+**Worker 3 — task-003: Integration test for logout→login + merge-worker lockfile detection:**
+- New integration test: signup A → auth request → signup B → login B → verify tenant isolation
+- merge-worker.sh detects pnpm-lock.yaml changes after merge, runs `pnpm install` when needed
+
+---
+
 ## 2026-04-03 (Wave 89 — KB Retrieval + AI Registry + Refinement Wiring)
 
 ### Wave 89: Refactors + UX Wiring (3 workers, 3 tasks)
@@ -81,27 +100,7 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-04-02 (Wave 86 — Refinement UX + Health Monitor + merge_pr Tests)
-
-### Wave 86: Refinement UX + Stale Branch Detection + Test Coverage (3 workers, 3 tasks)
-
-**Worker 1 — task-001: Plan refinement UX improvements:**
-- Epic-level checkboxes with indeterminate state for bulk selection
-- Diff view after refinement: field-by-field comparison with color highlighting (green=new, amber=changed, red=removed)
-- Accept/Discard buttons for reviewing changes before committing
-- Original tasks stored in state for discard restoration
-
-**Worker 2 — task-002: Stale branch detection + dependency reason in plan editor:**
-- Health monitor extended to detect PRs open > 7 days with 24-hour dedup alerts
-- HierarchicalPlanEditor shows dependency list with title, linkType badge, and reason for each task
-
-**Worker 3 — task-003: merge_pr test suite + status filter audit:**
-- 8 test cases: already-merged, closed PR, successful merge, out-of-date retry, retry fail, conflict, missing PR, abort signal
-- Prisma status filter audit confirmed all values correct (Action uses 'pending', Session uses 'running', only ActionPlan uses 'approved'/'executing')
-
-### Open follow-ups
-- Status audit: Action model correctly uses 'pending' (not stale) — different model from ActionPlan
-- DependencyRef GraphQL type needed `reason` field added to pass data to frontend
+## 2026-04-02 (Wave 86) — refinement UX (epic selection, diff view), stale branch detection, merge_pr tests, status audit
 
 ---
 
