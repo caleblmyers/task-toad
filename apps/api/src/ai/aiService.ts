@@ -174,6 +174,75 @@ async function callAndParse<T>(
 }
 
 // ---------------------------------------------------------------------------
+// AI Feature Registry — maps feature names to prompt builder + schema
+// ---------------------------------------------------------------------------
+// Features registered here can use callAIFeature() for a single-line call.
+// FEATURE_CONFIG (aiConfig.ts) provides maxTokens, caching, retry, etc.
+// Only simple callAndParse features belong here — functions with custom
+// pre/post-processing keep their own implementation.
+
+interface AIFeatureRegistryEntry {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  promptBuilder: (params: any) => { systemPrompt: string; userPrompt: string };
+  schema: z.ZodType;
+}
+
+const AI_FEATURE_REGISTRY: Partial<Record<AIFeature, AIFeatureRegistryEntry>> = {
+  generateTaskInstructions: {
+    promptBuilder: (p: { taskTitle: string; taskDescription: string; projectName: string; existingTaskTitles?: string[]; knowledgeBase?: string | null }) =>
+      buildGenerateTaskInstructionsPrompt(p.taskTitle, p.taskDescription, p.projectName, p.existingTaskTitles ?? [], p.knowledgeBase),
+    schema: TaskInstructionsSchema,
+  },
+  generateStandupReport: {
+    promptBuilder: buildStandupPrompt,
+    schema: StandupReportSchema,
+  },
+  generateSprintReport: {
+    promptBuilder: buildSprintReportPrompt,
+    schema: SprintReportSchema,
+  },
+  analyzeProjectHealth: {
+    promptBuilder: buildHealthAnalysisPrompt,
+    schema: HealthAnalysisSchema,
+  },
+  extractTasksFromNotes: {
+    promptBuilder: (p: { notes: string; projectName: string; teamMembers: string[] }) =>
+      buildMeetingNotesPrompt(p.notes, p.projectName, p.teamMembers),
+    schema: MeetingNotesExtractionSchema,
+  },
+  parseBugReport: {
+    promptBuilder: buildParseBugReportPrompt,
+    schema: BugReportTaskSchema,
+  },
+  breakdownPRD: {
+    promptBuilder: buildPRDBreakdownPrompt,
+    schema: PRDBreakdownSchema,
+  },
+  analyzeSprintTransition: {
+    promptBuilder: buildSprintTransitionPrompt,
+    schema: SprintTransitionSchema,
+  },
+};
+
+/**
+ * Generic entry point for registered AI features.
+ * Looks up prompt builder + schema from the registry, delegates to callAndParse.
+ */
+export async function callAIFeature<T>(
+  featureName: AIFeature,
+  apiKey: string,
+  params: Record<string, unknown>,
+  promptLogContext?: PromptLogContext,
+): Promise<T> {
+  const entry = AI_FEATURE_REGISTRY[featureName];
+  if (!entry) {
+    throw new Error(`AI feature "${featureName}" is not in the registry. Use the feature-specific function instead.`);
+  }
+  const prompt = entry.promptBuilder(params);
+  return callAndParse(apiKey, featureName, prompt, entry.schema as z.ZodType<T>, promptLogContext);
+}
+
+// ---------------------------------------------------------------------------
 // Feature functions — maintain exact signatures for schema.ts compatibility
 // ---------------------------------------------------------------------------
 
@@ -274,8 +343,7 @@ export async function generateTaskInstructions(
   knowledgeBase?: string | null,
   promptLogContext?: PromptLogContext
 ): Promise<TaskInstructions> {
-  const p = buildGenerateTaskInstructionsPrompt(taskTitle, taskDescription, projectName, existingTaskTitles, knowledgeBase);
-  return callAndParse(apiKey, 'generateTaskInstructions', p, TaskInstructionsSchema, promptLogContext);
+  return callAIFeature('generateTaskInstructions', apiKey, { taskTitle, taskDescription, projectName, existingTaskTitles, knowledgeBase }, promptLogContext);
 }
 
 export async function generateStandupReport(
@@ -291,8 +359,7 @@ export async function generateStandupReport(
   },
   promptLogContext?: PromptLogContext
 ): Promise<StandupReport> {
-  const p = buildStandupPrompt(data);
-  return callAndParse(apiKey, 'generateStandupReport', p, StandupReportSchema, promptLogContext);
+  return callAIFeature('generateStandupReport', apiKey, data, promptLogContext);
 }
 
 export async function generateSprintReport(
@@ -307,8 +374,7 @@ export async function generateSprintReport(
   },
   promptLogContext?: PromptLogContext
 ): Promise<SprintReport> {
-  const p = buildSprintReportPrompt(data);
-  return callAndParse(apiKey, 'generateSprintReport', p, SprintReportSchema, promptLogContext);
+  return callAIFeature('generateSprintReport', apiKey, data, promptLogContext);
 }
 
 export async function analyzeProjectHealth(
@@ -324,8 +390,7 @@ export async function analyzeProjectHealth(
   },
   promptLogContext?: PromptLogContext
 ): Promise<HealthAnalysis> {
-  const p = buildHealthAnalysisPrompt(data);
-  return callAndParse(apiKey, 'analyzeProjectHealth', p, HealthAnalysisSchema, promptLogContext);
+  return callAIFeature('analyzeProjectHealth', apiKey, data, promptLogContext);
 }
 
 export async function extractTasksFromNotes(
@@ -335,8 +400,7 @@ export async function extractTasksFromNotes(
   teamMembers: string[],
   promptLogContext?: PromptLogContext
 ): Promise<MeetingNotesExtraction> {
-  const p = buildMeetingNotesPrompt(notes, projectName, teamMembers);
-  return callAndParse(apiKey, 'extractTasksFromNotes', p, MeetingNotesExtractionSchema, promptLogContext);
+  return callAIFeature('extractTasksFromNotes', apiKey, { notes, projectName, teamMembers }, promptLogContext);
 }
 
 export async function generateCode(
@@ -485,8 +549,7 @@ export async function parseBugReport(
   data: { bugReport: string; projectName: string; projectDescription?: string | null },
   promptLogContext?: PromptLogContext
 ): Promise<BugReportTask> {
-  const p = buildParseBugReportPrompt(data);
-  return callAndParse(apiKey, 'parseBugReport', p, BugReportTaskSchema, promptLogContext);
+  return callAIFeature('parseBugReport', apiKey, data, promptLogContext);
 }
 
 export async function breakdownPRD(
@@ -494,8 +557,7 @@ export async function breakdownPRD(
   data: { prd: string; projectName: string; projectDescription?: string | null },
   promptLogContext?: PromptLogContext
 ): Promise<PRDBreakdown> {
-  const p = buildPRDBreakdownPrompt(data);
-  return callAndParse(apiKey, 'breakdownPRD', p, PRDBreakdownSchema, promptLogContext);
+  return callAIFeature('breakdownPRD', apiKey, data, promptLogContext);
 }
 
 export async function analyzeSprintTransition(
@@ -508,8 +570,7 @@ export async function analyzeSprintTransition(
   },
   promptLogContext?: PromptLogContext
 ): Promise<SprintTransition> {
-  const p = buildSprintTransitionPrompt(data);
-  return callAndParse(apiKey, 'analyzeSprintTransition', p, SprintTransitionSchema, promptLogContext);
+  return callAIFeature('analyzeSprintTransition', apiKey, data, promptLogContext);
 }
 
 export async function bootstrapFromRepo(
