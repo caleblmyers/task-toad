@@ -6,6 +6,7 @@ import {
 import { NotFoundError, ValidationError } from '../errors.js';
 import { requireOrg, requireProjectAccess, requireApiKey } from './auth.js';
 import { requireProject, parseInput, CreateSprintInput } from '../../utils/resolverHelpers.js';
+import { requireEntity } from './helpers.js';
 import { requirePermission, Permission } from '../../auth/permissions.js';
 import { StringArraySchema } from '../../utils/zodSchemas.js';
 import { createChildLogger } from '../../utils/logger.js';
@@ -256,10 +257,11 @@ export const sprintQueries = {
 
   sprintWipStatus: async (_parent: unknown, args: { sprintId: string }, context: Context) => {
     const user = requireOrg(context);
-    const sprint = await context.prisma.sprint.findUnique({ where: { sprintId: args.sprintId } });
-    if (!sprint || sprint.orgId !== user.orgId) {
-      throw new NotFoundError('Sprint not found');
-    }
+    const sprint = await requireEntity(
+      () => context.prisma.sprint.findUnique({ where: { sprintId: args.sprintId } }),
+      user.orgId,
+      'Sprint',
+    );
     const columns: string[] = JSON.parse(sprint.columns);
     const wipLimits: Record<string, number> = sprint.wipLimits ? JSON.parse(sprint.wipLimits) : {};
     const tasks = await context.prisma.task.findMany({
@@ -430,10 +432,11 @@ export const sprintQueries = {
 
   sprintBurndown: async (_parent: unknown, args: { sprintId: string }, context: Context) => {
     const user = requireOrg(context);
-    const sprint = await context.prisma.sprint.findUnique({ where: { sprintId: args.sprintId } });
-    if (!sprint || sprint.orgId !== user.orgId) {
-      throw new NotFoundError('Sprint not found');
-    }
+    const sprint = await requireEntity(
+      () => context.prisma.sprint.findUnique({ where: { sprintId: args.sprintId } }),
+      user.orgId,
+      'Sprint',
+    );
     if (!sprint.startDate || !sprint.endDate) {
       throw new ValidationError('Sprint must have start and end dates');
     }
@@ -532,10 +535,11 @@ export const sprintMutations = {
 
   updateSprint: async (_parent: unknown, args: { sprintId: string; name?: string | null; goal?: string | null; columns?: string | null; isActive?: boolean | null; startDate?: string | null; endDate?: string | null; wipLimits?: string | null }, context: Context) => {
     const user = requireOrg(context);
-    const sprint = await context.prisma.sprint.findUnique({ where: { sprintId: args.sprintId } });
-    if (!sprint || sprint.orgId !== user.orgId) {
-      throw new NotFoundError('Sprint not found');
-    }
+    const sprint = await requireEntity(
+      () => context.prisma.sprint.findUnique({ where: { sprintId: args.sprintId } }),
+      user.orgId,
+      'Sprint',
+    );
     await requirePermission(context, sprint.projectId, Permission.MANAGE_SPRINTS);
     if (args.wipLimits) validateWipLimits(args.wipLimits);
     if (args.isActive === true) {
@@ -565,10 +569,11 @@ export const sprintMutations = {
 
   deleteSprint: async (_parent: unknown, args: { sprintId: string }, context: Context) => {
     const user = requireOrg(context);
-    const sprint = await context.prisma.sprint.findUnique({ where: { sprintId: args.sprintId } });
-    if (!sprint || sprint.orgId !== user.orgId) {
-      throw new NotFoundError('Sprint not found');
-    }
+    const sprint = await requireEntity(
+      () => context.prisma.sprint.findUnique({ where: { sprintId: args.sprintId } }),
+      user.orgId,
+      'Sprint',
+    );
     await context.prisma.task.updateMany({
       where: { sprintId: args.sprintId },
       data: { sprintId: null, sprintColumn: null },
@@ -590,10 +595,11 @@ export const sprintMutations = {
     context: Context
   ) => {
     const user = requireOrg(context);
-    const sprint = await context.prisma.sprint.findUnique({ where: { sprintId: args.sprintId } });
-    if (!sprint || sprint.orgId !== user.orgId) {
-      throw new NotFoundError('Sprint not found');
-    }
+    const sprint = await requireEntity(
+      () => context.prisma.sprint.findUnique({ where: { sprintId: args.sprintId } }),
+      user.orgId,
+      'Sprint',
+    );
     await requirePermission(context, sprint.projectId, Permission.CLOSE_SPRINTS);
 
     for (const item of args.incompleteTaskActions) {

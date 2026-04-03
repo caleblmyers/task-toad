@@ -3,6 +3,7 @@ import type { EventBus } from '../eventbus/port.js';
 import { createChildLogger } from '../../utils/logger.js';
 import { generateTaskInsights } from '../../ai/aiService.js';
 import { checkBudget } from '../../ai/aiUsageTracker.js';
+import { retrieveRelevantKnowledge } from '../../ai/knowledgeRetrieval.js';
 
 const log = createChildLogger('insight-listener');
 
@@ -58,11 +59,22 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
       const budget = await checkBudget(prisma, event.orgId);
       if (!budget.allowed) return;
 
-      // Load project name and knowledge base for context
+      // Load project name for context
       const project = await prisma.project.findUnique({
         where: { projectId: task.projectId },
         select: { name: true, knowledgeBase: true },
       });
+
+      // Use AI-powered KB retrieval for better context (fallback to raw field)
+      const taskContext = `${task.title}: ${task.instructions || ''}`;
+      let kb: string | null = null;
+      try {
+        kb = await retrieveRelevantKnowledge(prisma, task.projectId, taskContext, apiKey);
+      } catch (err) {
+        log.warn({ err, taskId: task.taskId }, 'KB retrieval failed, falling back to raw knowledgeBase');
+        kb = project?.knowledgeBase || null;
+      }
+      if (!kb) kb = project?.knowledgeBase || null;
 
       const siblingTitles = siblingTasks.map((t) => t.title);
       const insightsResponse = await generateTaskInsights(
@@ -73,7 +85,7 @@ export function register(bus: EventBus, prisma: PrismaClient): void {
         codeResult.summary || '',
         siblingTitles,
         project?.name || '',
-        project?.knowledgeBase || null,
+        kb,
       );
 
       for (const insight of insightsResponse.insights) {
