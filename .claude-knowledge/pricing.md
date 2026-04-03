@@ -9,7 +9,24 @@ This document defines what's free, what's premium, and what's planned. **Read th
 - **Free tier is generous enough to be useful** — a solo developer can run their project autopilot with real value
 - **Paid tier unlocks scale and team features** — parallel execution, team roles, integrations, SLAs
 - **The moat is the pipeline, not the PM dashboard** — free users get the autopilot (sequentially), paid users get it at scale
-- **AI costs are real** — free tier should have reasonable AI usage limits to prevent abuse
+- **Users bring their own API key** — TaskToad doesn't pay AI costs, so no AI usage limits needed
+- **Per-org pricing** — one subscription covers the whole org, encourages team adoption
+
+---
+
+## Pricing
+
+| | Free | Pro |
+|--|------|-----|
+| **Price** | $0 forever | **$19/mo** per org (or **$190/year** — 2 months free) |
+| **Projects** | 3 | Unlimited |
+| **Team members** | 3 | Unlimited |
+| **Concurrent execution** | 1 task at a time | 3 parallel streams |
+| **Trial** | — | 14 days free for new orgs |
+
+**Billing unit:** Per org, not per seat. All members in the org get Pro features when the org subscribes.
+
+**AI costs:** Users provide their own Anthropic API key. TaskToad doesn't meter or charge for AI usage.
 
 ---
 
@@ -18,13 +35,13 @@ This document defines what's free, what's premium, and what's planned. **Read th
 Everything a solo developer or small team needs to use TaskToad as an autopilot:
 
 ### Core Autopilot (the product)
-- Project creation, task management, sprints, board views
-- **AI planning** — hierarchical plan generation with decision points, dependency inference, feedback loop
-- **AI code generation** — Auto-Complete with full pipeline (generate → PR → review → merge)
+- **AI planning** — hierarchical plan generation with decision points, dependency inference, feedback loop, iterative refinement
+- **AI code generation** — Auto-Complete with full pipeline (generate → PR → review → fix → merge)
 - **Session execution** — Quick Start autopilot (sequential, 1 task at a time)
 - **Auto-replan on failure** — up to 2 retries with failure context
 - **CI monitoring + fix_ci recovery** — webhook-driven CI status
 - **Real-time progress** — SSE events, pipeline dashboard, action progress
+- **Health monitoring** — stuck plan + stale PR detection with notifications
 
 ### GitHub Integration
 - Connect repos, create PRs, merge, branch management
@@ -43,91 +60,61 @@ Everything a solo developer or small team needs to use TaskToad as an autopilot:
 - Custom fields, labels, priorities
 - Comments, activity feed
 - Basic reports (standup, sprint, health)
+- Event-based automations
 
-### Limits (to define)
-- **Concurrent execution:** 1 task at a time (sequential only)
-- **AI budget:** TBD — consider per-month token cap or request limit
-- **Projects:** TBD — consider 3-5 project limit
-- **Team size:** TBD — consider 1-3 members
+### Limits
+- **3 projects** per org
+- **3 team members** per org
+- **1 concurrent task** execution (sequential autopilot only)
 
 ---
 
-## Paid Plan
+## Pro Plan — $19/mo per org
 
 Everything in Free, plus:
 
-### Scale & Parallel Execution
-- **Parallel execution streams** — up to 3 concurrent tasks (premium, Wave 88)
-- Higher AI budget / usage limits
-- Unlimited projects
-- Larger team size
+### Scale
+- **Parallel execution** — up to 3 concurrent tasks in autopilot sessions
+- **Unlimited projects**
+- **Unlimited team members**
 
 ### Team & Workflow
-- **Project roles** — viewer/editor/admin per project (gated)
-- **Field permissions** — role-based access to specific fields (gated)
-- **Approval workflows** — task transition approvals (gated)
-- **SLA policies** — response/resolution timers with breach detection (gated)
+- **Project roles** — viewer/editor/admin per project
+- **Field permissions** — role-based access to specific fields
+- **Approval workflows** — task transition approvals
+- **SLA policies** — response/resolution timers with breach detection
 
 ### Integrations
-- **Slack integration** — webhooks, user mappings, notifications (gated)
-- **Cron automations** — scheduled automation rules (gated, event-based automations are free)
+- **Slack integration** — webhooks, user mappings, notifications
+- **Cron automations** — scheduled automation rules (event-based automations are free)
 
 ### Portfolio
-- **Initiatives** — cross-project portfolio tracking (gated)
+- **Initiatives** — cross-project portfolio tracking
 
 ---
 
 ## Currently Gated (in code)
 
-These features have `requireLicense()` checks in resolvers:
-
 | Feature | Code Key | Resolver | Status |
 |---------|----------|----------|--------|
-| Slack | `slack` | slack.ts | Gated |
-| Initiatives | `initiatives` | initiative.ts | Gated |
-| SLA policies | `sla` | sla.ts | Gated |
-| Approvals | `approvals` | approval.ts | Gated |
-| Cron automations | `cron_automations` | projectrole.ts | Gated |
-| Field permissions | `field_permissions` | fieldpermission.ts | Gated |
-| Project roles | `project_roles` | projectrole.ts | Gated |
-| Parallel execution | `parallel_execution` | orchestratorListener.ts | Gated (limit-based) |
-| Workflow restrictions | `workflow_restrictions` | — | Defined but unused |
+| Slack | `slack` | slack.ts | ✅ Gated |
+| Initiatives | `initiatives` | initiative.ts | ✅ Gated |
+| SLA policies | `sla` | sla.ts | ✅ Gated |
+| Approvals | `approvals` | approval.ts | ✅ Gated |
+| Cron automations | `cron_automations` | projectrole.ts | ✅ Gated |
+| Field permissions | `field_permissions` | fieldpermission.ts | ✅ Gated |
+| Project roles | `project_roles` | projectrole.ts | ✅ Gated |
+| Parallel execution | `parallel_execution` | orchestratorListener.ts | ✅ Gated (limit-based) |
 
 Frontend gating: `useLicenseFeatures()` hook checks `orgPlan` and conditionally renders premium UI.
 
----
+### Not Yet Gated (needs implementation)
 
-## Not Yet Gated (decide before launch)
-
-These features are available to all users. Decide if any should be premium:
-
-| Feature | Current | Recommendation |
-|---------|---------|---------------|
-| GitHub integration | Free | **Keep free** — core to the autopilot value prop |
-| Event-based automations | Free | **Keep free** — basic automation is table stakes |
-| Webhooks (non-Slack) | Free | **Keep free** — developers expect this |
-| Org-level KB | Free | **Keep free** — improves AI quality for everyone |
-| Reports & dashboards | Free | Consider gating advanced reports (trend analysis, Monte Carlo) |
-| Time tracking | Free | **Keep free** — basic feature |
-| Custom fields | Free | **Keep free** — basic feature |
-| Multiple sprints | Free | Consider gating sprint analytics (velocity, burndown) |
-
----
-
-## Pricing Structure (to define)
-
-### Options to Consider
-1. **Flat monthly** — $X/user/month for paid plan
-2. **Usage-based** — free tier with AI token cap, pay per additional usage
-3. **Hybrid** — flat monthly + usage overage for AI
-
-### Key Decisions Needed
-- [ ] Monthly price point
-- [ ] Free tier AI usage limits (tokens/requests per month)
-- [ ] Free tier project/team size limits
-- [ ] Stripe product/price IDs
-- [ ] Trial period for paid features?
-- [ ] Annual discount?
+| Limit | Current | Needed |
+|-------|---------|--------|
+| Project count (3 free) | No limit | Add check in `createProject` resolver |
+| Team size (3 free) | No limit | Add check in `inviteOrgMember` resolver |
+| 14-day Pro trial | No trial | Add `trialEndsAt` field to Org, auto-set on signup |
 
 ---
 
@@ -139,17 +126,52 @@ These features are available to all users. Decide if any should be premium:
 | `requireLicense()` checks | ✅ 8 features gated |
 | `useLicenseFeatures()` frontend hook | ✅ Hides premium UI |
 | `updateOrgPlan` mutation | ✅ Admin-only, no payment flow |
+| Project count limit (free: 3) | ❌ Not enforced |
+| Team size limit (free: 3) | ❌ Not enforced |
+| 14-day Pro trial | ❌ Not implemented |
 | Stripe integration | ❌ Not started |
 | Payment flow (subscribe/cancel) | ❌ Not started |
-| Usage metering | ❌ Not started |
-| Plan limits enforcement | ⚠️ Partial (concurrent execution only) |
+| Billing portal (manage subscription) | ❌ Not started |
+| Annual billing option ($190/yr) | ❌ Not started |
+| Upgrade prompts in UI | ❌ Not started |
+
+---
+
+## Stripe Integration Plan
+
+### Products to Create
+- **TaskToad Pro Monthly** — $19/mo recurring
+- **TaskToad Pro Annual** — $190/yr recurring (save $38)
+
+### Flow
+1. User clicks "Upgrade to Pro" in org settings
+2. Redirect to Stripe Checkout with org ID in metadata
+3. Stripe webhook (`checkout.session.completed`) updates `org.plan = 'paid'`
+4. Stripe webhook (`customer.subscription.deleted`) downgrades `org.plan = 'free'`
+5. Billing portal link in org settings for managing subscription
+
+### Env Vars Needed
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_PRO_MONTHLY_PRICE_ID`
+- `STRIPE_PRO_ANNUAL_PRICE_ID`
+
+---
+
+## Future Pricing Considerations
+
+- **Advanced analytics tier** — if trend analysis, Monte Carlo, cycle time analytics prove valuable, consider gating behind Pro
+- **Enterprise tier** — SSO, audit logs, custom contracts. Build when there's demand.
+- **Usage-based add-on** — if some orgs run massive parallel sessions, consider usage-based pricing on top of Pro
+- **Per-seat pricing** — revisit if large teams (10+) start subscribing at $19 flat
 
 ---
 
 ## Rules for Development
 
 1. **Never add premium features to the free plan** — check this doc before implementing
-2. **New features default to free** unless they're in the "Paid Plan" section above
+2. **New features default to free** unless they're in the "Pro Plan" section above
 3. **If unsure, ask** — better to gate and ungrate later than give away value
-4. **AI-heavy features** should respect the free tier AI budget (once defined)
-5. **The autopilot pipeline is free** — that's the hook. Scale and team features are paid.
+4. **The autopilot pipeline is free** — that's the hook. Scale and team features are paid
+5. **Pro limits (projects, members) must be enforced in resolvers** — not just frontend
+6. **Upgrade prompts** should appear naturally when users hit limits, not as popups/nags
