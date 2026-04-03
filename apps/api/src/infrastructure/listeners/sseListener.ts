@@ -134,4 +134,14 @@ export function register(bus: EventBus): void {
       prNodeId: e.prNodeId,
     });
   });
+
+  bus.on('health.alert', (e) => {
+    sseManager.broadcast(e.orgId, 'health.alert', {
+      taskId: e.taskId,
+      taskTitle: e.taskTitle,
+      ...('alertType' in e && e.alertType === 'stale_pr'
+        ? { alertType: 'stale_pr', prNumber: e.prNumber, daysOpen: e.daysOpen, message: e.message }
+        : { alertType: 'stuck_plan', planId: e.planId, status: e.status, minutesStuck: e.minutesStuck }),
+    });
+  });
 }

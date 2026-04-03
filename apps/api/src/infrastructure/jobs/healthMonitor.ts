@@ -118,6 +118,7 @@ async function runHealthCheck(prisma: PrismaClient): Promise<void> {
       timestamp: now.toISOString(),
       taskId: plan.task.taskId,
       taskTitle: plan.task.title,
+      alertType: 'stuck_plan',
       planId: plan.id,
       status: reason,
       minutesStuck,
@@ -165,6 +166,7 @@ async function checkStalePullRequests(prisma: PrismaClient, now: Date): Promise<
   }
 
   let alertCount = 0;
+  const bus = getEventBus();
 
   for (const pr of stalePRs) {
     if (recentlyAlertedPRIds.has(pr.id)) continue;
@@ -189,6 +191,20 @@ async function checkStalePullRequests(prisma: PrismaClient, now: Date): Promise<
         relatedProjectId: pr.task.projectId,
       });
     }
+
+    // Emit SSE event for real-time UI updates
+    bus.emit('health.alert', {
+      orgId: pr.task.orgId,
+      userId: '',
+      projectId: pr.task.projectId,
+      timestamp: now.toISOString(),
+      taskId: pr.task.taskId,
+      taskTitle: pr.task.title,
+      alertType: 'stale_pr',
+      prNumber: pr.prNumber,
+      daysOpen,
+      message: `PR #${pr.prNumber} for "${pr.task.title}" has been open for ${daysOpen} days`,
+    });
 
     alertCount++;
   }

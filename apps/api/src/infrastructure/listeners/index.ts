@@ -9,6 +9,7 @@ import * as slackListener from './slackListener.js';
 import * as orchestratorListener from './orchestratorListener.js';
 import * as slaListener from './slaListener.js';
 import * as timeTrackingListener from './timeTrackingListener.js';
+import * as insightListener from './insightListener.js';
 
 export function registerListeners(bus: EventBus, prisma: PrismaClient): void {
   activityListener.register(bus, prisma);
@@ -20,4 +21,5 @@ export function registerListeners(bus: EventBus, prisma: PrismaClient): void {
   orchestratorListener.register(bus, prisma);
   slaListener.register(bus, prisma);
   timeTrackingListener.register(bus, prisma);
+  insightListener.register(bus, prisma);
 }

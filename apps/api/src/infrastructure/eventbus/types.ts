@@ -162,10 +162,10 @@ export interface DomainEventMap {
   'health.alert': BaseEventPayload & {
     taskId: string;
     taskTitle: string;
-    planId: string;
-    status: 'executing' | 'approved';
-    minutesStuck: number;
-  };
+  } & (
+    | { alertType?: 'stuck_plan'; planId: string; status: 'executing' | 'approved'; minutesStuck: number }
+    | { alertType: 'stale_pr'; prNumber: number; daysOpen: number; message: string }
+  );
   'task.ci_passed': BaseEventPayload & {
     taskId: string;
     conclusion: string;
