@@ -8,6 +8,9 @@ model Org {
   budgetEnforcement        String    @default("soft") @map("budget_enforcement")
   promptLoggingEnabled     Boolean   @default(true) @map("prompt_logging_enabled")
   plan                     String    @default("free")
+  trialEndsAt              DateTime? @map("trial_ends_at")
+  stripeCustomerId         String?   @map("stripe_customer_id")
+  stripeSubscriptionId     String?   @map("stripe_subscription_id")
   users           User[]
   projects        Project[]
   sprints         Sprint[]

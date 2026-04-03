@@ -19,7 +19,7 @@ let projectId: string;
 function makeContext(): Context {
   return {
     user: { userId, email: 'task-test@example.com', orgId, role: 'org:admin', emailVerifiedAt: null },
-    org: { orgId, name: 'Test Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, plan: 'free', createdAt: new Date() },
+    org: { orgId, name: 'Test Org', anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, plan: 'free', createdAt: new Date(), trialEndsAt: null, stripeCustomerId: null, stripeSubscriptionId: null },
     prisma,
     loaders: createLoaders(prisma, null),
   };

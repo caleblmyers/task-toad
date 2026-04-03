@@ -45,6 +45,16 @@ export function requireLicense(feature: LicenseFeature, orgPlan?: string): void 
   }
 }
 
+/** Returns the effective plan for an org, accounting for trial expiry.
+ *  If the org is on 'paid' with a trial that expired and no active Stripe subscription,
+ *  the effective plan is 'free'. */
+export function getEffectivePlan(org: { plan: string; trialEndsAt?: Date | null; stripeSubscriptionId?: string | null }): string {
+  if (org.plan === 'paid' && org.trialEndsAt && new Date() > new Date(org.trialEndsAt) && !org.stripeSubscriptionId) {
+    return 'free';
+  }
+  return org.plan;
+}
+
 /** Extract org plan from context.org. Uses `unknown` so callers work
  *  before and after context.ts adds the `plan` field to the Context type. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -19,6 +19,7 @@ import {
   ValidationError,
   ConflictError,
 } from '../errors.js';
+import { getEffectivePlan } from '../../utils/license.js';
 import { validatePassword } from '../../utils/passwordPolicy.js';
 import { getPermissionsForProject } from '../../auth/permissions.js';
 import { auditLog } from '../../utils/auditLog.js';
@@ -72,7 +73,7 @@ export const authQueries = {
     if (!context.user) return null;
     const user = await context.prisma.user.findUnique({ where: { userId: context.user.userId } });
     if (!user) return null;
-    return { ...user, orgPlan: context.org?.plan ?? 'free' };
+    return { ...user, orgPlan: context.org?.plan ?? 'free', trialEndsAt: context.org?.trialEndsAt ?? null };
   },
 
   myPermissions: async (_parent: unknown, args: { projectId: string }, context: Context) => {
@@ -256,6 +257,17 @@ export const authMutations = {
     const user = requireOrg(context);
     if (user.role !== 'org:admin') {
       throw new AuthorizationError('Admin role required');
+    }
+    if (context.org) {
+      const effectivePlan = getEffectivePlan(context.org);
+      if (effectivePlan === 'free') {
+        const memberCount = await context.prisma.user.count({
+          where: { orgId: user.orgId },
+        });
+        if (memberCount >= 3) {
+          throw new ValidationError('Free plan is limited to 3 team members. Upgrade to Pro for unlimited members.');
+        }
+      }
     }
     const existingUser = await context.prisma.user.findUnique({ where: { email: args.email } });
     if (existingUser?.orgId) {

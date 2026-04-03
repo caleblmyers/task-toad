@@ -23,7 +23,7 @@ function noAuthContext(): Context {
 function makeContext(user: { userId: string; email: string; orgId: string; role: string }, orgName: string): Context {
   return {
     user: { ...user, emailVerifiedAt: new Date() },
-    org: { orgId: user.orgId, name: orgName, anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, plan: 'free', createdAt: new Date() },
+    org: { orgId: user.orgId, name: orgName, anthropicApiKeyEncrypted: null, promptLoggingEnabled: true, monthlyBudgetCentsUSD: null, budgetAlertThreshold: 80, plan: 'free', createdAt: new Date(), trialEndsAt: null, stripeCustomerId: null, stripeSubscriptionId: null },
     prisma,
     loaders: createLoaders(prisma, null),
   };

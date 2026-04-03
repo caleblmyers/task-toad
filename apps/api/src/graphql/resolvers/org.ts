@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import type { Context } from '../context.js';
 import { encryptApiKey, decryptApiKey } from '../../utils/encryption.js';
 import { AuthenticationError, AuthorizationError, ValidationError } from '../errors.js';
-import { getEnabledFeatures } from '../../utils/license.js';
+import { getEnabledFeatures, getEffectivePlan } from '../../utils/license.js';
 import { requireAuth, requireOrg } from './auth.js';
 import { auditLog } from '../../utils/auditLog.js';
 import { invalidateOrgPlanCache } from '../../utils/orgPlanCache.js';
@@ -46,9 +46,12 @@ export const orgMutations = {
     if (!args.name.trim()) {
       throw new ValidationError('Name is required');
     }
+    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60_000);
     const org = await context.prisma.org.create({
       data: {
         name: args.name,
+        plan: 'paid',
+        trialEndsAt,
         ...(args.apiKey ? { anthropicApiKeyEncrypted: encryptApiKey(args.apiKey) } : {}),
       },
     });
@@ -103,7 +106,8 @@ export const orgMutations = {
 export const orgFieldResolvers = {
   Org: {
     createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
-    licenseFeatures: (org: { plan?: string }) => getEnabledFeatures(org.plan),
+    trialEndsAt: (parent: { trialEndsAt: Date | null }) => parent.trialEndsAt ? parent.trialEndsAt.toISOString() : null,
+    licenseFeatures: (org: { plan?: string; trialEndsAt?: Date | null; stripeSubscriptionId?: string | null }) => getEnabledFeatures(getEffectivePlan({ plan: org.plan ?? 'free', trialEndsAt: org.trialEndsAt, stripeSubscriptionId: org.stripeSubscriptionId })),
     hasApiKey: (parent: { anthropicApiKeyEncrypted?: string | null }) => !!parent.anthropicApiKeyEncrypted,
     apiKeyHint: (parent: { anthropicApiKeyEncrypted?: string | null }) => {
       if (!parent.anthropicApiKeyEncrypted) return null;

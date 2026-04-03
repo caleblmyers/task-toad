@@ -10,6 +10,9 @@ export const orgTypeDefs = /* GraphQL */ `
     budgetEnforcement: String!
     promptLoggingEnabled: Boolean!
     plan: String!
+    trialEndsAt: String
+    stripeCustomerId: String
+    stripeSubscriptionId: String
     licenseFeatures: [String!]!
   }
 
