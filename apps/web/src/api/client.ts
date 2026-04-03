@@ -1,4 +1,4 @@
-const BASE = (import.meta.env.VITE_API_URL as string) ?? '/api';
+const BASE = (import.meta.env.VITE_API_URL as string) || '/api';
 
 let isRefreshing = false;
 let refreshPromise: Promise<boolean> | null = null;
