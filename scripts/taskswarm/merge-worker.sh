@@ -115,6 +115,15 @@ else
   }
 fi
 
+# Install deps if lockfile changed (worker added/updated npm packages)
+if git -C "$MAIN_REPO" diff --cached --name-only | grep -q 'pnpm-lock.yaml'; then
+  echo "Lockfile changed — running pnpm install..."
+  (cd "$MAIN_REPO" && pnpm install --frozen-lockfile 2>&1) || {
+    echo "Warning: pnpm install --frozen-lockfile failed, trying pnpm install..."
+    (cd "$MAIN_REPO" && pnpm install 2>&1) || echo "Warning: pnpm install failed"
+  }
+fi
+
 # Strip swarm role content from CLAUDE.md if present
 CLAUDE_MD="$MAIN_REPO/CLAUDE.md"
 if [ -f "$CLAUDE_MD" ] && grep -q '<!-- swarm-role -->' "$CLAUDE_MD"; then
