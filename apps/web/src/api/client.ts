@@ -1,4 +1,4 @@
-const BASE = (import.meta.env.VITE_API_URL as string) || '/api';
+const BASE = (import.meta.env.VITE_API_URL as string) ?? '';
 
 let isRefreshing = false;
 let refreshPromise: Promise<boolean> | null = null;
@@ -110,7 +110,8 @@ export async function restPost<T>(
   path: string,
   body?: Record<string, unknown>,
 ): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const url = `/api${path}`;
+  const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -120,7 +121,7 @@ export async function restPost<T>(
   if (res.status === 401) {
     const refreshed = await refreshAccessToken();
     if (refreshed) {
-      const retryRes = await fetch(`${BASE}${path}`, {
+      const retryRes = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
