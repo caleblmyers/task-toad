@@ -30,7 +30,7 @@ function getClientSecret(): string {
  * Redirect to GitHub OAuth authorization page.
  * Passes the user's JWT as state so we can identify them on callback.
  */
-router.get(['/api/auth/github', '/auth/github'], (req, res) => {
+router.get('/api/auth/github', (req, res) => {
   const token = req.cookies?.['tt-access'] ?? req.headers.authorization?.replace('Bearer ', '');
   if (!token) {
     res.status(401).json({ error: 'Must be logged in to connect GitHub' });
@@ -50,7 +50,7 @@ router.get(['/api/auth/github', '/auth/github'], (req, res) => {
 /**
  * GitHub OAuth callback. Exchange code for token, store it, and close the popup.
  */
-router.get(['/api/auth/github/callback', '/auth/github/callback'], async (req, res) => {
+router.get('/api/auth/github/callback', async (req, res) => {
   const { code, state } = req.query;
 
   if (!code || !state || typeof code !== 'string' || typeof state !== 'string') {

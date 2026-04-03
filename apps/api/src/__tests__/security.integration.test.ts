@@ -99,7 +99,7 @@ describe('Cookie-based Auth Flow', () => {
     await signupAndVerify(email, password);
 
     const res = await request(app)
-      .post('/graphql')
+      .post('/api/graphql')
       .set('X-Requested-With', 'XMLHttpRequest')
       .send({
         query: `mutation { login(email: "${email}", password: "${password}") { token } }`,
@@ -121,7 +121,7 @@ describe('Cookie-based Auth Flow', () => {
 
     // Login first to get cookies
     const loginRes = await request(app)
-      .post('/graphql')
+      .post('/api/graphql')
       .set('X-Requested-With', 'XMLHttpRequest')
       .send({
         query: `mutation { login(email: "${email}", password: "${password}") { token } }`,
@@ -129,7 +129,7 @@ describe('Cookie-based Auth Flow', () => {
     const token = loginRes.body.data.login.token;
 
     const res = await request(app)
-      .post('/graphql')
+      .post('/api/graphql')
       .set('X-Requested-With', 'XMLHttpRequest')
       .set('Authorization', `Bearer ${token}`)
       .send({
@@ -194,7 +194,7 @@ describe('Cookie-based Auth Flow', () => {
 describe('CSRF Protection', () => {
   it('POST /graphql without X-Requested-With returns 403', async () => {
     const res = await request(app)
-      .post('/graphql')
+      .post('/api/graphql')
       .send({ query: '{ me { userId } }' });
 
     expect(res.status).toBe(403);
@@ -203,7 +203,7 @@ describe('CSRF Protection', () => {
 
   it('POST /graphql with X-Requested-With succeeds', async () => {
     const res = await request(app)
-      .post('/graphql')
+      .post('/api/graphql')
       .set('X-Requested-With', 'XMLHttpRequest')
       .send({ query: '{ me { userId } }' });
 

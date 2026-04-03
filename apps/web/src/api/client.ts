@@ -1,4 +1,5 @@
-const BASE = (import.meta.env.VITE_API_URL as string) ?? '';
+// All API endpoints are under /api/ — GraphQL at /api/graphql, REST at /api/*
+const API_BASE = '/api';
 
 let isRefreshing = false;
 let refreshPromise: Promise<boolean> | null = null;
@@ -27,7 +28,7 @@ export async function gql<T>(
   variables?: Record<string, unknown>,
   signal?: AbortSignal
 ): Promise<T> {
-  const res = await fetch(`${BASE}/graphql`, {
+  const res = await fetch(`${API_BASE}/graphql`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -42,7 +43,7 @@ export async function gql<T>(
   if (res.status === 401) {
     const refreshed = await refreshAccessToken();
     if (refreshed) {
-      const retryRes = await fetch(`${BASE}/graphql`, {
+      const retryRes = await fetch(`${API_BASE}/graphql`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -79,7 +80,7 @@ export async function gql<T>(
     if (authError) {
       const refreshed = await refreshAccessToken();
       if (refreshed) {
-        const retryRes = await fetch(`${BASE}/graphql`, {
+        const retryRes = await fetch(`${API_BASE}/graphql`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

@@ -124,7 +124,7 @@ app.use((req, res, next) => {
 
     // Extract GraphQL operation name for both metrics and logging
     let operationName: string | undefined;
-    const isGraphQL = url === '/graphql' || url.startsWith('/graphql?');
+    const isGraphQL = url === '/api/graphql' || url.startsWith('/api/graphql?');
     if (isGraphQL) {
       const body = req.body as { query?: string; operationName?: string } | undefined;
       operationName = body?.operationName
@@ -174,7 +174,7 @@ app.post('/api/slack/commands', express.urlencoded({ extended: false }), handleS
 // Compress responses — skip SSE endpoint (compression buffers res.write, breaking real-time delivery)
 app.use(compression({
   filter: (req, res) => {
-    if (req.path === '/events' || req.path === '/api/events') return false;
+    if (req.path === '/api/events') return false;
     return compression.filter(req, res);
   },
 }));
@@ -239,11 +239,11 @@ const refreshHandler: import('express').RequestHandler = async (req, res) => {
   }
 };
 app.post('/api/auth/refresh', refreshHandler);
-app.post('/auth/refresh', refreshHandler);
+// Removed: app.post('/auth/refresh', ...) — dev proxy no longer strips /api prefix
 
 
 // SSE endpoint for real-time events — reads token from cookie with Authorization fallback
-app.get(['/events', '/api/events'], async (req, res) => {
+app.get('/api/events', async (req, res) => {
   const token = req.cookies?.['tt-access'] || req.headers.authorization?.replace('Bearer ', '');
   if (!token) { res.status(401).json({ error: 'No token' }); return; }
   try {
@@ -318,7 +318,7 @@ const authLimiter = rateLimit({
     return !/\b(signup|login)\s*\(/.test(body.query);
   },
 });
-app.use('/graphql', authLimiter);
+app.use('/api/graphql', authLimiter);
 
 // Tighter rate limit for password reset & email verification: 5 per minute per IP
 const sensitiveAuthLimiter = rateLimit({
@@ -333,7 +333,7 @@ const sensitiveAuthLimiter = rateLimit({
     return !/\b(requestPasswordReset|sendVerificationEmail)\s*[({]/.test(body.query);
   },
 });
-app.use('/graphql', sensitiveAuthLimiter);
+app.use('/api/graphql', sensitiveAuthLimiter);
 
 
 // Expected user error codes that should NOT be reported to Sentry
@@ -365,7 +365,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 const yoga = createYoga({
   schema,
   context: buildContext,
-  graphqlEndpoint: '/graphql',
+  graphqlEndpoint: '/api/graphql',
   graphiql: !isProduction,
   maskedErrors: {
     isDev: !isProduction,
@@ -424,8 +424,8 @@ const yoga = createYoga({
     },
   ],
 });
-// CSRF protection: POST /graphql must include X-Requested-With header
-app.use('/graphql', (req, res, next) => {
+// CSRF protection: POST /api/graphql must include X-Requested-With header
+app.use('/api/graphql', (req, res, next) => {
   if (req.method === 'POST' && !req.headers['x-requested-with']) {
     res.status(403).json({ errors: [{ message: 'Missing X-Requested-With header' }] });
     return;
@@ -434,7 +434,7 @@ app.use('/graphql', (req, res, next) => {
 });
 
 // graphql-yoga's server adapter is compatible with Express but requires a type cast
-app.use('/graphql', yoga as unknown as express.RequestHandler);
+app.use('/api/graphql', yoga as unknown as express.RequestHandler);
 
 // In production, serve the web frontend as static files
 if (process.env.NODE_ENV === 'production') {

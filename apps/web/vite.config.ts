@@ -49,7 +49,7 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:3001',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
+        // No path rewrite — server handles /api/* paths directly
         configure: (proxy) => {
           // SSE support: prevent proxy from buffering event-stream responses
           proxy.on('proxyRes', (proxyRes) => {
