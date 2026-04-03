@@ -81,6 +81,9 @@ pnpm --filter web lint
 - `GET /api/docs` — API documentation page
 - `GET /api/export/project/:projectId/{json,csv}` — Project data export
 - `GET /api/export/project/:projectId/activity/{json,csv}` — Activity audit log export
+- `POST /api/stripe/checkout` — Create Stripe Checkout Session (requires auth, org admin)
+- `POST /api/stripe/webhook` — Stripe webhook handler (signature verified, raw body)
+- `POST /api/stripe/portal` — Create Stripe billing portal session (requires auth, org admin)
 
 ### Observability
 
@@ -216,8 +219,8 @@ All packages extend `tsconfig.base.json`. Strict mode + `noUnusedLocals` + `noUn
 
 ### Env Files
 
-- `apps/api/.env` — `DATABASE_URL`, `JWT_SECRET`, `ENCRYPTION_MASTER_KEY`, `CORS_ORIGINS`, `LOG_LEVEL` (optional, defaults to `info`), `SENTRY_DSN` (optional), `AI_RATE_LIMIT_PER_HOUR` (optional, defaults to `60`), `MAX_SESSIONS_PER_USER` (optional, defaults to `5`), `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` (optional — falls back to local disk storage if not set)
-- `apps/web/.env` — `VITE_API_URL` (set to `/api` in dev; Vite proxy handles routing)
+- `apps/api/.env` — `DATABASE_URL`, `JWT_SECRET`, `ENCRYPTION_MASTER_KEY`, `CORS_ORIGINS`, `LOG_LEVEL` (optional, defaults to `info`), `SENTRY_DSN` (optional), `AI_RATE_LIMIT_PER_HOUR` (optional, defaults to `60`), `MAX_SESSIONS_PER_USER` (optional, defaults to `5`), `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` (optional — falls back to local disk storage if not set), `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRO_MONTHLY_PRICE_ID`, `STRIPE_PRO_ANNUAL_PRICE_ID` (optional — billing disabled if not set)
+- `apps/web/.env` — `VITE_API_URL` (set to `/api` in dev; Vite proxy handles routing), `VITE_STRIPE_PRO_MONTHLY_PRICE_ID`, `VITE_STRIPE_PRO_ANNUAL_PRICE_ID`
 
 Copy from `.env.example` and fill in values.
 

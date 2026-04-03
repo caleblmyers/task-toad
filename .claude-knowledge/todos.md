@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work
 
-90 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Autopilot pipeline feature-complete. All three pillars implemented. Backlog nearly empty.
+91 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Autopilot pipeline feature-complete. All three pillars implemented. Backlog nearly empty.
 
 ---
 
@@ -8,7 +8,7 @@
 
 - [ ] **Landing page polish** — current version is functional but needs professional design work
 - [ ] **Test signup flow on prod** — verify Resend emails arrive, full signup→verify→login works
-- [ ] **Stripe integration for billing** — currently `updateOrgPlan` is admin-only with no payment flow
+- [x] **Stripe integration for billing** — checkout, webhooks, portal, upgrade UI (Wave 91)
 
 ---
 
@@ -27,6 +27,13 @@
 ### Manual Testing
 - [ ] Verify concurrent plan execution doesn't corrupt branch state
 - [ ] Verify failed plan leaves branch in recoverable state
+
+### Billing Polish
+- [ ] **Hide Stripe internal IDs from GraphQL** — `stripeCustomerId` and `stripeSubscriptionId` are exposed in the Org type; only admins should see these (or remove from public schema)
+- [ ] **Upgrade prompts at limit boundaries** — show UpgradePrompt in createProject UI when at 3 projects, in invite UI when at 3 members
+- [ ] **`getEffectivePlan` in more resolvers** — session concurrency limit, SLA policies, and other paid features should check effective plan (not raw `org.plan`)
+- [ ] **Stripe webhook idempotency** — add idempotency key handling for webhook retries
+- [ ] **`me` query: expose `trialEndsAt`** — the auth resolver adds it but the `User` GraphQL type may not include it; verify frontend can query it
 
 ### Future
 - [ ] Scheduled report delivery
@@ -98,5 +105,6 @@
 | 88 | 2026-04-03 | Parallel execution, requireEntity auth guards, insight extraction, stale PR SSE |
 | 89 | 2026-04-03 | Insight KB retrieval, AI feature registry, refinement wiring, swimlane overflow |
 | 90 | 2026-04-03 | Release notes manual entry, time entry admin-only, SSE leader indicator, mobile scroll, auth test, lockfile detection |
+| 91 | 2026-04-03 | Stripe billing integration, free tier limits (3 projects, 3 members), 14-day Pro trial, upgrade UI |
 
 Full wave details in `changelog.md`.

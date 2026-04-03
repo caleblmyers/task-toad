@@ -108,13 +108,13 @@ Everything in Free, plus:
 
 Frontend gating: `useLicenseFeatures()` hook checks `orgPlan` and conditionally renders premium UI.
 
-### Not Yet Gated (needs implementation)
+### Limits (enforced in Wave 91)
 
-| Limit | Current | Needed |
-|-------|---------|--------|
-| Project count (3 free) | No limit | Add check in `createProject` resolver |
-| Team size (3 free) | No limit | Add check in `inviteOrgMember` resolver |
-| 14-day Pro trial | No trial | Add `trialEndsAt` field to Org, auto-set on signup |
+| Limit | Status |
+|-------|--------|
+| Project count (3 free) | ✅ Enforced in `createProject` resolver |
+| Team size (3 free) | ✅ Enforced in `inviteOrgMember` resolver |
+| 14-day Pro trial | ✅ Auto-set on org creation, checked by `getEffectivePlan()` |
 
 ---
 
@@ -125,15 +125,15 @@ Frontend gating: `useLicenseFeatures()` hook checks `orgPlan` and conditionally 
 | Org plan field (`free`/`paid`) | ✅ In DB |
 | `requireLicense()` checks | ✅ 8 features gated |
 | `useLicenseFeatures()` frontend hook | ✅ Hides premium UI |
-| `updateOrgPlan` mutation | ✅ Admin-only, no payment flow |
-| Project count limit (free: 3) | ❌ Not enforced |
-| Team size limit (free: 3) | ❌ Not enforced |
-| 14-day Pro trial | ❌ Not implemented |
-| Stripe integration | ❌ Not started |
-| Payment flow (subscribe/cancel) | ❌ Not started |
-| Billing portal (manage subscription) | ❌ Not started |
-| Annual billing option ($190/yr) | ❌ Not started |
-| Upgrade prompts in UI | ❌ Not started |
+| `updateOrgPlan` mutation | ✅ Admin-only |
+| Project count limit (free: 3) | ✅ Enforced (Wave 91) |
+| Team size limit (free: 3) | ✅ Enforced (Wave 91) |
+| 14-day Pro trial | ✅ Auto-set on org creation (Wave 91) |
+| Stripe integration | ✅ Checkout + webhooks + portal (Wave 91) |
+| Payment flow (subscribe/cancel) | ✅ Stripe Checkout redirect (Wave 91) |
+| Billing portal (manage subscription) | ✅ Stripe portal redirect (Wave 91) |
+| Annual billing option ($190/yr) | ✅ Monthly/annual toggle in UI (Wave 91) |
+| Upgrade prompts in UI | ✅ UpgradePrompt component + billing tab (Wave 91) |
 
 ---
 

@@ -4,6 +4,35 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-04-03 (Wave 91 — Stripe Billing + Free Tier Limits + Trial)
+
+### Wave 91: Billing Integration (3 workers, 3 tasks)
+
+**Worker 1 — task-001: Free tier limits + 14-day trial:**
+- Added `trialEndsAt`, `stripeCustomerId`, `stripeSubscriptionId` fields to Org model (migration)
+- New orgs auto-start 14-day Pro trial (`plan='paid'`, `trialEndsAt` set)
+- `getEffectivePlan()` checks trial expiry — returns 'free' when trial expired with no subscription
+- `createProject` enforces 3-project limit on free plan
+- `inviteOrgMember` enforces 3-member limit on free plan
+- Context object updated with billing fields across all test mocks (12 files)
+
+**Worker 2 — task-002: Stripe integration:**
+- Stripe SDK installed (`pnpm --filter api add stripe`)
+- `POST /api/stripe/checkout` — creates Checkout Session with org metadata
+- `POST /api/stripe/webhook` — handles `checkout.session.completed`, `subscription.updated`, `subscription.deleted`
+- `POST /api/stripe/portal` — creates billing portal session for subscription management
+- Webhook uses `express.raw()` for signature verification
+- Routes guarded by JWT auth (org admins only)
+
+**Worker 3 — task-003: Billing UI + upgrade prompts:**
+- New "Billing" tab in OrgSettings with plan status, trial countdown, upgrade/manage buttons
+- Monthly ($19/mo) vs annual ($190/yr) toggle on upgrade
+- Stripe Checkout redirect for upgrades, billing portal for management
+- Reusable `UpgradePrompt` component for limit boundaries
+- Upgrade prompt in ExecutionDashboard when concurrent limit hit on free plan
+
+---
+
 ## 2026-04-03 (Wave 90 — UX Polish + Testing + Script Improvements)
 
 ### Wave 90: Final Polish (3 workers, 3 tasks)
@@ -72,31 +101,7 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-04-02 (Wave 87 — External Merge + Premium Gating + Flat Plan Deps)
-
-### Wave 87: Pipeline + Licensing + Refactor (3 workers, 3 tasks)
-
-**Worker 1 — task-001: External merge post-actions + flat plan dependency inference:**
-- External PR merges now continue executing post-merge actions (write_docs) instead of completing plan early
-- monitor_ci actions before merge_pr auto-completed on external merge
-- Flat plan prompt updated with dependency inference instructions (dependsOn array)
-- Flat plan commit resolver creates TaskDependency records from AI-inferred dependencies
-- Note: reviewer initially rejected due to wrong file path in task description (planning.ts vs generation.ts)
-
-**Worker 2 — task-002: Premium feature gating:**
-- `parallel_execution` added to PREMIUM_FEATURES
-- Concurrent plan limit now plan-aware: free=1, paid=3
-- Error message prompts upgrade on free plan
-- License unit test added for parallel_execution gating
-- autoStartProject remains accessible on free tier
-
-**Worker 3 — task-003: Split useProjectData (no-op):**
-- Task was already completed in a prior wave — useProjectData already composes sub-hooks
-- Worker correctly identified and reported, merged as no-op
-
-### Open follow-ups
-- Flat plan prompt file is in generation.ts, not planning.ts — update internal docs if referenced
-- Verify before planning refactor tasks that the work hasn't already been done
+## 2026-04-02 (Wave 87) — external merge post-actions, flat plan deps, premium gating, license tests
 
 ---
 
