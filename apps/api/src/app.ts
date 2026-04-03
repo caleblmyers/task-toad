@@ -18,6 +18,7 @@ import { exportRouter } from './routes/export.js';
 import { docsRouter } from './routes/docs.js';
 import { uploadRouter } from './routes/upload.js';
 import githubOAuthRouter from './routes/githubOAuth.js';
+import { stripeRouter, stripeWebhookHandler } from './routes/stripe.js';
 import { logger } from './utils/logger.js';
 import { sseManager } from './utils/sseManager.js';
 import { jwtVerify } from 'jose';
@@ -164,6 +165,9 @@ app.use((req, res, next) => {
 // GitHub webhook endpoint needs raw body for signature verification — must be before JSON parser
 app.post('/api/github/webhooks', express.raw({ type: 'application/json' }), handleGitHubWebhook);
 
+// Stripe webhook needs raw body for signature verification — must be before JSON parser
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), stripeWebhookHandler);
+
 // Slack slash command endpoint — URL-encoded form data from Slack
 app.post('/api/slack/commands', express.urlencoded({ extended: false }), handleSlackCommand);
 
@@ -276,6 +280,9 @@ const exportLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Too many export requests. Please try again later.' },
 });
+
+// Stripe checkout/portal endpoints (require JSON body)
+app.use('/api/stripe', stripeRouter);
 
 // Export REST endpoints (file downloads — not suited for GraphQL)
 app.use(githubOAuthRouter);
