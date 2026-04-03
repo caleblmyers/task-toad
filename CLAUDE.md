@@ -11,7 +11,7 @@ TaskToad is an **autopilot for software projects** — an abstraction layer on t
 2. **Context threading** — each task inherits relevant context from completed upstream work. Task #5 succeeds because tasks #1-4 informed it.
 3. **Orchestration loop** — monitor execution, handle failures, re-plan when things change.
 
-**Business model:** Closed source SaaS. Free tier = basic AI planning + single-agent execution. Paid tier = full autopilot pipeline (dependency-aware sequencing, parallel execution, context threading, auto-retry).
+**Business model:** Closed source SaaS. Free tier = full autopilot pipeline (sequential execution, 1 task at a time). Paid tier = parallel execution (3 concurrent), team features (roles, approvals, SLAs), integrations (Slack, cron automations), portfolio management. See `pricing.md` for the complete tier breakdown.
 
 **Positioning:** "Autopilot for software projects." Code gen is table stakes; the pipeline around it is the moat.
 
