@@ -1,5 +1,5 @@
 import type { Context } from '../context.js';
-import { NotFoundError, ValidationError } from '../errors.js';
+import { AuthorizationError, NotFoundError, ValidationError } from '../errors.js';
 import { requireOrg } from './auth.js';
 import { requireTask } from '../../utils/resolverHelpers.js';
 import { requirePermission, Permission } from '../../auth/permissions.js';
@@ -508,8 +508,8 @@ export const timeEntryMutations = {
     if (!entry || entry.orgId !== user.orgId) {
       throw new NotFoundError('Time entry not found');
     }
-    if (entry.userId !== user.userId) {
-      throw new ValidationError('You can only delete your own time entries');
+    if (entry.userId !== user.userId && user.role !== 'org:admin') {
+      throw new AuthorizationError('Only admins or the entry creator can delete time entries');
     }
 
     await context.prisma.timeEntry.delete({
