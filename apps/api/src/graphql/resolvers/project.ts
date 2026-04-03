@@ -2,8 +2,9 @@ import type { Context } from '../context.js';
 // Re-export shared types for cross-package type consistency (API ↔ Web).
 // These match the GraphQL response shapes consumed by the web client.
 export type { Project as SharedProject } from '@tasktoad/shared-types';
-import { AuthorizationError, NotFoundError, ValidationError } from '../errors.js';
+import { AuthorizationError, ValidationError } from '../errors.js';
 import { requireAuth, requireOrg, requireProjectAccess, requireApiKey } from './auth.js';
+import { requireEntity } from './helpers.js';
 import { parseInput, CreateProjectInput, requireProject } from '../../utils/resolverHelpers.js';
 import { emitProjectEvent } from '../../infrastructure/eventbus/emitters.js';
 import { getEventBus } from '../../infrastructure/eventbus/index.js';
@@ -512,12 +513,15 @@ export const projectMutations = {
 
   updateFilter: async (_parent: unknown, args: { savedFilterId: string; name?: string | null; filters?: string | null; viewType?: string | null; sortBy?: string | null; sortOrder?: string | null; groupBy?: string | null; visibleColumns?: string | null; isShared?: boolean | null }, context: Context) => {
     const user = requireAuth(context);
-    const filter = await context.prisma.savedFilter.findUnique({
-      where: { savedFilterId: args.savedFilterId },
-      include: { project: { select: { orgId: true } } },
-    });
-    if (!filter || filter.userId !== user.userId) throw new NotFoundError('Saved filter not found');
-    if (filter.project.orgId !== user.orgId) throw new AuthorizationError('Access denied');
+    await requireEntity(
+      () => context.prisma.savedFilter.findUnique({
+        where: { savedFilterId: args.savedFilterId },
+        include: { project: { select: { orgId: true } } },
+      }),
+      user.orgId!,
+      'Saved filter',
+      (f) => f.userId === user.userId && f.project.orgId === user.orgId,
+    );
     if (args.viewType != null && !['list', 'board', 'table'].includes(args.viewType)) {
       throw new ValidationError('viewType must be one of: list, board, table');
     }
@@ -539,12 +543,15 @@ export const projectMutations = {
 
   deleteFilter: async (_parent: unknown, args: { savedFilterId: string }, context: Context) => {
     const user = requireAuth(context);
-    const filter = await context.prisma.savedFilter.findUnique({
-      where: { savedFilterId: args.savedFilterId },
-      include: { project: { select: { orgId: true } } },
-    });
-    if (!filter || filter.userId !== user.userId) throw new NotFoundError('Saved filter not found');
-    if (filter.project.orgId !== user.orgId) throw new AuthorizationError('Access denied');
+    await requireEntity(
+      () => context.prisma.savedFilter.findUnique({
+        where: { savedFilterId: args.savedFilterId },
+        include: { project: { select: { orgId: true } } },
+      }),
+      user.orgId!,
+      'Saved filter',
+      (f) => f.userId === user.userId && f.project.orgId === user.orgId,
+    );
     await context.prisma.savedFilter.delete({ where: { savedFilterId: args.savedFilterId } });
     return true;
   },

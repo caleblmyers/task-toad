@@ -1,6 +1,7 @@
 import type { Context } from '../../context.js';
 import { NotFoundError, ValidationError, AuthorizationError } from '../../errors.js';
 import { requireAuth, requireOrg, requireProjectAccess } from '../auth.js';
+import { requireEntity } from '../helpers.js';
 import { requireTask, requireProject, requireOrgUser, requireProjectField, validateStatus, parseInput, CreateTaskInput, UpdateTaskInput, CreateCommentInput, CreateCustomFieldInput } from '../../../utils/resolverHelpers.js';
 import { requirePermission, Permission } from '../../../auth/permissions.js';
 import { StringArraySchema } from '../../../utils/zodSchemas.js';
@@ -559,15 +560,15 @@ export const taskMutations = {
 
   deleteComment: async (_parent: unknown, args: { commentId: string }, context: Context) => {
     const user = requireOrg(context);
-    const comment = await context.prisma.comment.findUnique({
-      where: { commentId: args.commentId },
-      include: { user: { select: { email: true } }, task: { select: { orgId: true } } },
-    });
-    if (!comment) throw new NotFoundError('Comment not found');
-    // Validate tenant ownership — comment's task must belong to user's org
-    if (comment.task.orgId !== user.orgId) {
-      throw new NotFoundError('Comment not found');
-    }
+    const comment = await requireEntity(
+      () => context.prisma.comment.findUnique({
+        where: { commentId: args.commentId },
+        include: { user: { select: { email: true } }, task: { select: { orgId: true } } },
+      }),
+      user.orgId,
+      'Comment',
+      (c) => c.task.orgId === user.orgId,
+    );
     if (comment.userId !== user.userId && user.role !== 'org:admin') {
       throw new AuthorizationError('Not authorized to delete this comment');
     }
@@ -614,8 +615,11 @@ export const taskMutations = {
     context: Context
   ) => {
     const user = requireOrg(context);
-    const field = await context.prisma.customField.findUnique({ where: { customFieldId: args.customFieldId } });
-    if (!field || field.orgId !== user.orgId) throw new NotFoundError('Custom field not found');
+    await requireEntity(
+      () => context.prisma.customField.findUnique({ where: { customFieldId: args.customFieldId } }),
+      user.orgId,
+      'Custom field',
+    );
     return context.prisma.customField.update({
       where: { customFieldId: args.customFieldId },
       data: {
@@ -629,8 +633,11 @@ export const taskMutations = {
 
   deleteCustomField: async (_parent: unknown, args: { customFieldId: string }, context: Context) => {
     const user = requireOrg(context);
-    const field = await context.prisma.customField.findUnique({ where: { customFieldId: args.customFieldId } });
-    if (!field || field.orgId !== user.orgId) throw new NotFoundError('Custom field not found');
+    await requireEntity(
+      () => context.prisma.customField.findUnique({ where: { customFieldId: args.customFieldId } }),
+      user.orgId,
+      'Custom field',
+    );
     await context.prisma.customField.delete({ where: { customFieldId: args.customFieldId } });
     return true;
   },
