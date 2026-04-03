@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work
 
-90 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Autopilot pipeline feature-complete for launch.
+90 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Autopilot pipeline feature-complete. All three pillars implemented. Backlog nearly empty.
 
 ---
 
@@ -12,91 +12,26 @@
 
 ---
 
-## Pipeline Polish
+## Remaining Work
 
-- [x] **Move fix_review normalization before Zod validation** — moved into `callAIStructured` before `safeParse` (Wave 85)
-- [x] **CI fix retry limit** — MAX_CI_FIX_ATTEMPTS = 3, plan fails when exhausted (Wave 85)
-- [x] **External merge: post-merge actions** — pr_merged handler now continues executing post-merge actions instead of completing the plan (Wave 87)
-- [x] SSE cross-tab: dev-mode leader tab indicator *(Wave 90)*
+### Pipeline
+- [ ] **Hierarchical plan streaming results** — stream partial results (epics first, then tasks) instead of waiting for full response
 
----
-
-## Decomposition & Planning
-
-- [x] **Dependency inference during planning** — flat plan now infers task-level dependencies and creates TaskDependency records on commit (Wave 87)
-- [x] **Dependency reason in plan editor** — show/edit dependency reasons in HierarchicalPlanEditor, not just in task detail (Wave 86)
-- [x] **Refinement: epic-level selection** — currently only task-level checkboxes for refinement; allow selecting entire epics (Wave 86)
-- [x] **Refinement: diff view** — show what changed between original and refined tasks before committing (Wave 86)
-- [x] **Refinement: parent wiring** — HierarchicalPlanDialog builds RefinementDiff, passes accept/discard callbacks to editor *(Wave 89)*
-
----
-
-## Orchestration
-
-- [x] **Parallel execution streams** — plan-aware concurrency: free=1, paid=MAX_CONCURRENT_PER_PROJECT. Orchestrator starts multiple eligible tasks per cycle *(Wave 88)*
+### Orchestration
 - [ ] **Agent abstraction** — pluggable AI backends (Claude Code, Codex, local LLMs). Phase 4
 
----
+### Refactors
+- [ ] **Resolver auth guards: broader adoption** — requireEntity applied to ~13 mutations; ~15+ more could benefit
+- [ ] **AI feature registry: broader adoption** — 8 functions converted to callAIFeature; remaining complex functions still direct
 
-## Onboarding & Knowledge Base
+### Manual Testing
+- [ ] Verify concurrent plan execution doesn't corrupt branch state
+- [ ] Verify failed plan leaves branch in recoverable state
 
-- [x] **Org KB retrieval in AI prompts** — org entries included with [Org] prefix, ranked below project entries (Wave 85)
-- [x] **Org KB management UI** — Knowledge Base tab in OrgSettings with full CRUD (Wave 85)
-
----
-
-## Dashboard & UX
-
-- [x] **Pipeline dashboard: active plans detail** — expandable section with task title, current action, elapsed time, cancel (Wave 85)
-- [x] **Quick Start task count optimization** — uses pipelineStatus.todoTasks instead of fetching all tasks (Wave 85)
-- [x] **Health monitor: stale branch detection** — extend to detect PRs open > 7 days with no activity (Wave 86)
-- [x] **Stale PR alerts: SSE events** — health.alert discriminated union for stuck_plan vs stale_pr, SSE broadcast *(Wave 88)*
-- [ ] **Hierarchical plan streaming results** — stream partial results (epics first, then tasks) instead of waiting for full response
-- [x] **Swimlane-specific overflow** — max-h-[300px] overflow-y-auto on swimlane sections *(Wave 89)*
-- [x] Release notes: manual entry option *(Wave 90)*
-- [x] Time entry deletion: admin-only *(Wave 90)*
-- [x] Mobile: horizontal scrolling on project page *(Wave 90)*
-
----
-
-## Premium Feature Gating
-
-- [x] **Wire premium features into license system** — parallel_execution added, concurrent limit plan-aware (free: 1, paid: 3), license unit test *(Wave 87)*
-- [x] License gating test coverage — parallel_execution free/paid gating verified *(Wave 87)*
-
----
-
-## Code Quality & Testing
-
-- [x] Integration test for logout→login-as-different-user flow *(Wave 90)*
-- [x] Test coverage for merge_pr executor (auto-update retry, state checks, conflict handling) (Wave 86)
-- [x] Audit remaining Prisma status filters for stale values — confirmed all correct for their models (Wave 86)
-- [x] merge-worker.sh: auto-detect lockfile changes *(Wave 90)*
-
----
-
-## Refactors
-
-- [x] **Resolver auth guards** — `requireEntity<T>()` helper with overloads, applied to 5 mutations *(Wave 88)*
-- [ ] **Resolver auth guards: broader adoption** — requireEntity applied to 10 mutations (5 in Wave 88, 5 sprint in Wave 89); ~15+ more could benefit (comment resolvers next)
-- [x] **AI feature registry** — callAIFeature() pattern with 8 functions converted *(Wave 89)*; remaining complex functions still direct
-- [x] **Extract insight generation to event listeners** — insightListener.ts handles insights async via task.action_completed *(Wave 88)*
-- [x] **Insight listener: use KB retrieval** — insightListener calls retrieveRelevantKnowledge with graceful fallback *(Wave 89)*
-
----
-
-## Future
-
+### Future
 - [ ] Scheduled report delivery
 - [ ] Multi-project decomposition — goals spanning multiple repos/projects
 - [ ] Replace stacked modals with single-panel wizard (step 1 of N)
-
----
-
-## Manual Testing
-
-- [ ] Verify concurrent plan execution doesn't corrupt branch state
-- [ ] Verify failed plan leaves branch in recoverable state
 
 ---
 
