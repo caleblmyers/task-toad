@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work
 
-87 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Autopilot pipeline feature-complete for launch.
+88 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Autopilot pipeline feature-complete for launch.
 
 ---
 
@@ -33,7 +33,7 @@
 
 ## Orchestration
 
-- [ ] **Parallel execution streams** — independent tasks (no dependency) should execute in parallel. DAG-based scheduler. Premium feature
+- [x] **Parallel execution streams** — plan-aware concurrency: free=1, paid=MAX_CONCURRENT_PER_PROJECT. Orchestrator starts multiple eligible tasks per cycle *(Wave 88)*
 - [ ] **Agent abstraction** — pluggable AI backends (Claude Code, Codex, local LLMs). Phase 4
 
 ---
@@ -50,7 +50,7 @@
 - [x] **Pipeline dashboard: active plans detail** — expandable section with task title, current action, elapsed time, cancel (Wave 85)
 - [x] **Quick Start task count optimization** — uses pipelineStatus.todoTasks instead of fetching all tasks (Wave 85)
 - [x] **Health monitor: stale branch detection** — extend to detect PRs open > 7 days with no activity (Wave 86)
-- [ ] **Stale PR alerts: SSE events** — stale PR health alerts don't emit SSE events (stuck plan alerts do)
+- [x] **Stale PR alerts: SSE events** — health.alert discriminated union for stuck_plan vs stale_pr, SSE broadcast *(Wave 88)*
 - [ ] **Hierarchical plan streaming results** — stream partial results (epics first, then tasks) instead of waiting for full response
 - [ ] **Swimlane-specific overflow** — individual swimlane sections may need own max-height + scroll
 - [ ] Release notes: manual entry option
@@ -77,9 +77,11 @@
 
 ## Refactors
 
-- [ ] **Resolver auth guards** — `requireEntity<T>()` helper, do incrementally
+- [x] **Resolver auth guards** — `requireEntity<T>()` helper with overloads, applied to 5 mutations *(Wave 88)*
+- [ ] **Resolver auth guards: broader adoption** — requireEntity applied to 5 mutations; ~20+ more could benefit from incremental conversion
 - [ ] **AI feature registry** — consolidate 40+ wrapper functions in aiService.ts
-- [ ] **Extract insight generation to event listeners** — move from actionExecutor to async event-driven
+- [x] **Extract insight generation to event listeners** — insightListener.ts handles insights async via task.action_completed *(Wave 88)*
+- [ ] **Insight listener: use KB retrieval** — insightListener falls back to raw knowledgeBase field; should call retrieveRelevantKnowledge for better context (matches old actionExecutor behavior)
 
 ---
 
@@ -158,5 +160,6 @@
 | 85 | 2026-04-02 | CI fix retry limit, AI normalization, org KB retrieval + UI, pipeline dashboard detail |
 | 86 | 2026-04-02 | Refinement UX (epic selection, diff view), stale branch detection, merge_pr tests, status audit |
 | 87 | 2026-04-02 | External merge post-actions, flat plan deps, premium gating, license tests |
+| 88 | 2026-04-03 | Parallel execution, requireEntity auth guards, insight extraction, stale PR SSE |
 
 Full wave details in `changelog.md`.

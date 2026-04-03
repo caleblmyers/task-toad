@@ -4,6 +4,32 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-04-03 (Wave 88 — Parallel Execution + Auth Guards + Insight Extraction)
+
+### Wave 88: Parallel Execution + Refactors (3 workers, 3 tasks)
+
+**Worker 1 — task-001: Parallel execution streams:**
+- Orchestrator now starts multiple eligible tasks per cycle (up to maxConcurrent)
+- Plan-aware: free=1 (sequential), paid=MAX_CONCURRENT_PER_PROJECT (3)
+- Dependency-aware: only starts tasks with all blockers satisfied
+- Advisory lock still prevents race conditions between orchestration cycles
+
+**Worker 2 — task-002: Resolver auth guards:**
+- `requireEntity<T>()` helper added to resolvers/helpers.ts — type-safe entity loading with org ownership check
+- Applied to 6 mutations across task and project resolvers
+- Delegate pattern: caller passes find function, gets typed result without casting
+
+**Worker 3 — task-003: Insight extraction + stale PR SSE:**
+- Insight generation moved from inline in actionExecutor to async `insightListener.ts`
+- Registered as event listener on `task.action_plan_completed` — no longer blocks executor
+- Stale PR health alerts now emit `health.alert` SSE events (matching stuck plan behavior)
+
+### Open follow-ups
+- insightListener uses raw `project.knowledgeBase` instead of `retrieveRelevantKnowledge()` — quality trade-off for async execution
+- merge-worker.sh needs `--skip-integration` flag (DB not running blocks validation)
+
+---
+
 ## 2026-04-02 (Wave 87 — External Merge + Premium Gating + Flat Plan Deps)
 
 ### Wave 87: Pipeline + Licensing + Refactor (3 workers, 3 tasks)
@@ -80,32 +106,7 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
-## 2026-04-01 (Wave 84 — CI Recovery + Iterative Refinement + Global KB)
-
-### Wave 84: CI Recovery + Plan Refinement + Cleanup (3 workers, 3 tasks)
-
-**Worker 1 — task-001: CI failure recovery:**
-- `task.ci_failed` webhook event now triggers `monitor_ci` action failure in the orchestrator
-- If `fix_ci` is the next action in the plan, it gets enqueued automatically
-- If no `fix_ci` exists, plan fails and auto-replan (Wave 81) takes over
-- Full CI recovery loop: CI fails (webhook) → fix_ci → re-monitor → merge
-
-**Worker 2 — task-002: Iterative plan refinement:**
-- New `refineHierarchicalPlan` mutation: accepts taskIds + refinementPrompt
-- Prompt includes selected tasks for re-planning + existing tasks as context
-- HierarchicalPlanEditor has checkbox selection mode with "Refine selected" button
-- Refined tasks replace selected tasks in the editor, keeping unselected intact
-
-**Worker 3 — task-003: Global org KB + concurrent plan check optimization:**
-- `KnowledgeEntry.projectId` made nullable — org-level KB entries now supported
-- Migration created for optional project_id
-- `knowledgeEntries` query supports `orgOnly` filter
-- `createKnowledgeEntry` allows optional projectId
-- `checkProjectBusy` combined into single query (was two sequential calls)
-
-### Open follow-ups
-- Include DataLoader files when making Prisma fields nullable
-- Feed org-level KB entries into planning prompts (retrieval integration)
+## 2026-04-01 (Wave 84) — CI failure recovery, iterative plan refinement, global org KB, concurrent plan check optimization
 
 ---
 
