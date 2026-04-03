@@ -3,6 +3,7 @@ import { gql } from '../api/client';
 import {
   PREVIEW_HIERARCHICAL_PLAN_QUERY,
   COMMIT_HIERARCHICAL_PLAN_MUTATION,
+  REFINE_HIERARCHICAL_PLAN_MUTATION,
 } from '../api/queries';
 import type { Task } from '../types';
 import Modal from './shared/Modal';
@@ -12,6 +13,8 @@ import {
   HierarchicalPlanEditor,
   countUnresolvedDecisions,
   type HierarchicalPlanPreview,
+  type HierarchicalTaskPreview,
+  type RefinementDiff,
 } from './HierarchicalPlanEditor';
 import { useSSEListener } from '../hooks/useEventSource';
 
@@ -40,6 +43,98 @@ export default function HierarchicalPlanDialog({
   const [committing, setCommitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [refining, setRefining] = useState(false);
+  const [refinementDiff, setRefinementDiff] = useState<RefinementDiff | null>(null);
+
+  const handleRefine = async (selectedTaskKeys: Set<string>, refinementPrompt: string) => {
+    if (!plan) return;
+    setRefining(true);
+    setError(null);
+    try {
+      const taskIds = [...selectedTaskKeys];
+      const data = await gql<{
+        refineHierarchicalPlan: HierarchicalPlanPreview;
+      }>(REFINE_HIERARCHICAL_PLAN_MUTATION, {
+        projectId,
+        taskIds,
+        refinementPrompt,
+      });
+
+      // Build diff: map selected original tasks and refined tasks by key (epic:task title)
+      const originals = new Map<string, HierarchicalTaskPreview>();
+      const refined = new Map<string, HierarchicalTaskPreview>();
+      const added = new Set<string>();
+      const removed = new Set<string>();
+
+      // Collect originals from selected keys
+      for (const epic of plan.epics) {
+        for (const task of epic.tasks ?? []) {
+          const key = `${epic.title}::${task.title}`;
+          if (selectedTaskKeys.has(key)) {
+            originals.set(key, task);
+          }
+        }
+      }
+
+      // Collect refined tasks
+      for (const epic of data.refineHierarchicalPlan.epics) {
+        for (const task of epic.tasks ?? []) {
+          const key = `${epic.title}::${task.title}`;
+          refined.set(key, task);
+          if (!originals.has(key)) {
+            added.add(key);
+          }
+        }
+      }
+
+      // Find removed tasks
+      for (const key of originals.keys()) {
+        if (!refined.has(key)) {
+          removed.add(key);
+        }
+      }
+
+      setRefinementDiff({ originals, refined, added, removed });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to refine plan');
+    } finally {
+      setRefining(false);
+    }
+  };
+
+  const handleAcceptRefinement = () => {
+    if (!plan || !refinementDiff) return;
+    // Apply refined tasks into the plan, replacing originals
+    const newEpics = plan.epics.map((epic) => {
+      const newTasks = (epic.tasks ?? []).map((task) => {
+        const key = `${epic.title}::${task.title}`;
+        if (refinementDiff.refined.has(key)) {
+          return refinementDiff.refined.get(key)!;
+        }
+        return task;
+      }).filter((task) => {
+        const key = `${epic.title}::${task.title}`;
+        return !refinementDiff.removed.has(key);
+      });
+
+      // Add new tasks from refinement
+      for (const addedKey of refinementDiff.added) {
+        const [epicTitle] = addedKey.split('::');
+        if (epicTitle === epic.title && refinementDiff.refined.has(addedKey)) {
+          newTasks.push(refinementDiff.refined.get(addedKey)!);
+        }
+      }
+
+      return { ...epic, tasks: newTasks };
+    });
+
+    setPlan({ epics: newEpics });
+    setRefinementDiff(null);
+  };
+
+  const handleDiscardRefinement = () => {
+    setRefinementDiff(null);
+  };
 
   const handleGenerate = async () => {
     const text = state === 'prompt' ? prompt : `${prompt}\n\nFeedback: ${feedback}`;
@@ -263,7 +358,15 @@ export default function HierarchicalPlanDialog({
                 {totalSubtasks} subtask{totalSubtasks !== 1 ? 's' : ''}
               </p>
             </div>
-            <HierarchicalPlanEditor plan={plan} onChange={setPlan} />
+            <HierarchicalPlanEditor
+              plan={plan}
+              onChange={setPlan}
+              onRefine={handleRefine}
+              refining={refining}
+              refinementDiff={refinementDiff}
+              onAcceptRefinement={handleAcceptRefinement}
+              onDiscardRefinement={handleDiscardRefinement}
+            />
 
             {showFeedback && (
               <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-700">

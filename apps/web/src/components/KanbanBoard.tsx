@@ -485,7 +485,7 @@ export default function KanbanBoard({ columns, tasks, subtasks, selectedTask, on
                         <span className="ml-auto text-slate-400 flex-shrink-0">{groupTasks.length}</span>
                       </button>
                       {!isCollapsed && (
-                        <div className="space-y-2 mt-1">
+                        <div className="space-y-2 mt-1 max-h-[300px] overflow-y-auto">
                           {renderTaskList(groupTasks, style, col)}
                         </div>
                       )}
