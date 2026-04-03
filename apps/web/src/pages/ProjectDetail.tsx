@@ -463,7 +463,7 @@ export default function ProjectDetail() {
       {/* Main content row */}
       <div className="flex flex-1 min-h-0">
         {/* Left: board / backlog / dashboard / states */}
-        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+        <div className="flex-1 min-w-0 flex flex-col overflow-x-auto overflow-y-hidden">
           {activePanel === 'standup' && projectData.projectId ? (
             <Suspense fallback={lazyFallback}>
               <StandupReportPanel

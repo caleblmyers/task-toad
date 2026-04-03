@@ -121,6 +121,9 @@ export function SSEProvider({ children }: { children: ReactNode }) {
     function becomeLeader() {
       if (isLeader || aborted) return;
       isLeader = true;
+      if (import.meta.env.DEV) {
+        document.body.classList.add('sse-leader');
+      }
       channel.postMessage({ type: 'leader-claim', tabId } satisfies BroadcastMessage);
       startLeaderHeartbeat();
       stopLeaderCheck();
@@ -132,6 +135,9 @@ export function SSEProvider({ children }: { children: ReactNode }) {
     function resignLeadership() {
       if (!isLeader) return;
       isLeader = false;
+      if (import.meta.env.DEV) {
+        document.body.classList.remove('sse-leader');
+      }
       stopLeaderHeartbeat();
       if (sseCleanup) {
         sseCleanup();
@@ -226,6 +232,9 @@ export function SSEProvider({ children }: { children: ReactNode }) {
         channel.postMessage({ type: 'leader-resign', tabId } satisfies BroadcastMessage);
       }
       resignLeadership();
+      if (import.meta.env.DEV) {
+        document.body.classList.remove('sse-leader');
+      }
       stopLeaderCheck();
       if (electionTimeout) clearTimeout(electionTimeout);
       channel.close();

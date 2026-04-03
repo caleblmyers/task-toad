@@ -22,3 +22,15 @@ body {
   margin: 0;
   font-family: system-ui, -apple-system, sans-serif;
 }
+
+body.sse-leader::after {
+  content: 'SSE Leader';
+  position: fixed;
+  bottom: 4px;
+  right: 4px;
+  font-size: 10px;
+  color: #22c55e;
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 9999;
+}
