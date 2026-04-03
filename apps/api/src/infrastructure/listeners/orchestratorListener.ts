@@ -14,6 +14,7 @@ import { abortPlan } from '../jobs/actionExecutor.js';
 import { deleteBranch } from '../../github/githubCommitService.js';
 import type { GitHubRepoLink } from '../../github/githubTypes.js';
 import { replanFailedTask } from '../../actions/replanService.js';
+import { isPremiumEnabled } from '../../utils/license.js';
 
 const log = createChildLogger('orchestrator-listener');
 
@@ -291,24 +292,27 @@ async function orchestrateProject(
     if (filteredEligible.length === 0) return;
   }
 
+  // Get the org's API key and plan
+  const org = await prisma.org.findUnique({
+    where: { orgId },
+    select: { anthropicApiKeyEncrypted: true, promptLoggingEnabled: true, plan: true },
+  });
+  if (!org?.anthropicApiKeyEncrypted) {
+    log.warn({ orgId }, 'No API key configured for org, skipping auto-complete');
+    return;
+  }
+
+  // Plan-aware concurrency: free=1 (sequential), paid=MAX_CONCURRENT_PER_PROJECT
+  const maxConcurrent = isPremiumEnabled(org.plan) ? MAX_CONCURRENT_PER_PROJECT : 1;
+
   // Check concurrency limit
   const executing = await prisma.taskActionPlan.count({
     where: { task: { projectId }, status: 'executing' },
   });
-  const slots = MAX_CONCURRENT_PER_PROJECT - executing;
+  const slots = maxConcurrent - executing;
   if (slots <= 0) {
     orchestratorConcurrencyLimitHits.inc();
-    log.info({ projectId, executing }, 'Concurrency limit reached, skipping orchestration');
-    return;
-  }
-
-  // Get the org's API key
-  const org = await prisma.org.findUnique({
-    where: { orgId },
-    select: { anthropicApiKeyEncrypted: true, promptLoggingEnabled: true },
-  });
-  if (!org?.anthropicApiKeyEncrypted) {
-    log.warn({ orgId }, 'No API key configured for org, skipping auto-complete');
+    log.info({ projectId, executing, maxConcurrent }, 'Concurrency limit reached, skipping orchestration');
     return;
   }
 
