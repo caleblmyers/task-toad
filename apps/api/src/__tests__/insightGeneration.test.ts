@@ -131,7 +131,7 @@ describe('actionExecutor — insight generation', () => {
     vi.clearAllMocks();
   });
 
-  it('calls generateTaskInsights after successful generate_code action', async () => {
+  it('emits task.action_completed event after successful generate_code action (insight generation handled by listener)', async () => {
     const prisma = createMockPrisma();
     const handler = createHandler(prisma as never);
 
@@ -143,33 +143,17 @@ describe('actionExecutor — insight generation', () => {
       },
     });
 
-    mockGenerateTaskInsights.mockResolvedValue({
-      insights: [
-        { type: 'dependency', content: 'This task affects Sibling task A', targetTaskTitle: 'Sibling task A' },
-      ],
-    });
-
     await handler(defaultPayload);
 
-    expect(mockGenerateTaskInsights).toHaveBeenCalledOnce();
-    expect(mockGenerateTaskInsights).toHaveBeenCalledWith(
-      'test-api-key',
-      'Implement feature X',
-      'Build it',
-      [{ path: 'src/feature.ts', language: 'typescript' }],
-      'Implemented feature X',
-      ['Sibling task A', 'Sibling task B'],
-      'Test Project',
-      null, // knowledgeContext
-    );
-    expect(prisma.taskInsight.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        sourceTaskId: 'task-1',
-        targetTaskId: 'sibling-1',
-        type: 'dependency',
-        content: 'This task affects Sibling task A',
+    // Insight generation moved to insightListener (Wave 88)
+    // Verify the event is emitted so the listener can pick it up
+    expect(mockEmit).toHaveBeenCalledWith(
+      'task.action_completed',
+      expect.objectContaining({
+        taskId: 'task-1',
+        success: true,
       }),
-    });
+    );
   });
 
   it('does NOT generate insights for non-generate_code actions', async () => {
@@ -256,7 +240,7 @@ describe('actionExecutor — insight generation', () => {
     );
   });
 
-  it('creates TaskInsight records with matched target task IDs', async () => {
+  it('emits action_completed event with result data for insight listener to process', async () => {
     const prisma = createMockPrisma();
     const handler = createHandler(prisma as never);
 
@@ -268,30 +252,18 @@ describe('actionExecutor — insight generation', () => {
       },
     });
 
-    mockGenerateTaskInsights.mockResolvedValue({
-      insights: [
-        { type: 'impact', content: 'Affects Sibling task B', targetTaskTitle: 'Sibling task B' },
-        { type: 'warning', content: 'General warning', targetTaskTitle: null },
-      ],
-    });
-
     await handler(defaultPayload);
 
-    // First insight matched to sibling-2
-    expect(prisma.taskInsight.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        targetTaskId: 'sibling-2',
-        type: 'impact',
+    // Insight creation moved to insightListener (Wave 88)
+    // Verify event emitted with action result so listener has the data it needs
+    expect(mockEmit).toHaveBeenCalledWith(
+      'task.action_completed',
+      expect.objectContaining({
+        taskId: 'task-1',
+        actionType: 'generate_code',
+        success: true,
       }),
-    });
-    // Second insight has no target
-    expect(prisma.taskInsight.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        targetTaskId: null,
-        type: 'warning',
-      }),
-    });
-    expect(prisma.taskInsight.create).toHaveBeenCalledTimes(2);
+    );
   });
 
   it('skips insight generation when no sibling tasks exist', async () => {
