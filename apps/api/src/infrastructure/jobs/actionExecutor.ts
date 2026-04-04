@@ -396,6 +396,26 @@ export function createHandler(prisma: PrismaClient) {
       });
 
       if (!result.success) {
+        const errorMessage = (result.data.error as string) || 'Action failed';
+
+        // Retry at step level before failing the plan
+        const MAX_STEP_RETRIES = 3;
+        const retryCount = action.retryCount ?? 0;
+        if (result.retryable && retryCount < MAX_STEP_RETRIES) {
+          await prisma.taskAction.update({
+            where: { id: actionId },
+            data: { retryCount: retryCount + 1, errorMessage: `Retry ${retryCount + 1}/${MAX_STEP_RETRIES}: ${errorMessage}` },
+          });
+          const delay = [3000, 10000, 30000][retryCount] ?? 30000;
+          log.info({ actionId, planId, retryCount: retryCount + 1, delay }, 'Retrying failed action at step level');
+          setTimeout(() => {
+            const queue = getJobQueue();
+            queue.enqueue('action-execute', { planId, actionId, orgId, userId });
+          }, delay);
+          return;
+        }
+
+        // Step retries exhausted or non-retryable — fail the plan
         activeControllers.delete(planId);
         kbCache.delete(planId);
         await prisma.taskActionPlan.update({
@@ -413,7 +433,7 @@ export function createHandler(prisma: PrismaClient) {
           taskTitle: task.title,
           lastFailedActionId: actionId,
           lastFailedActionType: action.actionType,
-          errorMessage: (result.data.error as string) || 'Action failed',
+          errorMessage,
         });
         return;
       }
@@ -581,8 +601,26 @@ export function createHandler(prisma: PrismaClient) {
       const errorCode = err instanceof GraphQLError ? (err.extensions?.code as string) : undefined;
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       const isRetryable = isRetryableAIError(err);
+      const isAbort = err instanceof DOMException && err.name === 'AbortError';
 
       log.error({ err, actionId, planId, errorCode, isRetryable }, 'Action execution failed');
+
+      // Step-level retry for retryable errors (AI rate limits, transient failures)
+      const MAX_STEP_RETRIES = 3;
+      const retryCount = action.retryCount ?? 0;
+      if (isRetryable && !isAbort && retryCount < MAX_STEP_RETRIES) {
+        await prisma.taskAction.update({
+          where: { id: actionId },
+          data: { retryCount: retryCount + 1, errorMessage: `Retry ${retryCount + 1}/${MAX_STEP_RETRIES}: ${errorMessage}` },
+        });
+        const delay = [3000, 10000, 30000][retryCount] ?? 30000;
+        log.info({ actionId, planId, retryCount: retryCount + 1, delay }, 'Retrying failed action (thrown error)');
+        setTimeout(() => {
+          const queue = getJobQueue();
+          queue.enqueue('action-execute', { planId, actionId, orgId, userId });
+        }, delay);
+        return;
+      }
 
       await prisma.taskAction.update({
         where: { id: actionId },

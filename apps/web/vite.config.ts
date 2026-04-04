@@ -46,12 +46,15 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
+      // Dev proxy: forward /api/* to the API server with path preserved.
+      // Vite strips the proxy key by default — rewrite: (path) => path prevents this.
+      // In production, both frontend and API are served from the same Express server.
       '/api': {
         target: 'http://localhost:3001',
         changeOrigin: true,
-        // No path rewrite — server handles /api/* paths directly
+        rewrite: (path: string) => path,
         configure: (proxy) => {
-          // SSE support: prevent proxy from buffering event-stream responses
+          // SSE: prevent proxy from buffering event-stream responses
           proxy.on('proxyRes', (proxyRes) => {
             if (proxyRes.headers['content-type']?.includes('text/event-stream')) {
               proxyRes.headers['cache-control'] = 'no-cache';

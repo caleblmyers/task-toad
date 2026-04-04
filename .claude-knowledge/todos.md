@@ -35,6 +35,13 @@
 - [ ] **Stripe webhook idempotency** — add idempotency key handling for webhook retries
 - [ ] **`me` query: expose `trialEndsAt`** — the auth resolver adds it but the `User` GraphQL type may not include it; verify frontend can query it
 
+### Pipeline Bugs
+- [ ] **review_pr: retry on PR diff 404** — `getPullRequestDiff` throws non-retryable error on 404, but this is often a transient race condition (PR just created, diff not ready). Make 404 retryable with a short delay, or add a brief wait between `create_pr` and `review_pr`
+- [ ] **Auto-replan vs step retry** — failed actions should retry at the step level first (the job queue supports this via `executeWithRetry`). Only escalate to full replan after step retries are exhausted. Currently any non-retryable failure triggers a full replan immediately.
+
+### UX Polish
+- [ ] **Rebrand sprint UI for autopilot context** — "Plan Sprint" → "Plan Session", "Create Sprint" → "Create Session". Sprints are a human-team concept; sessions are the autopilot concept. Both coexist but the default language should favor sessions for autopilot users. See autopilot-pillars.md "Sessions vs Sprints" section.
+
 ### Future
 - [ ] **Multi-org support** — users can only belong to one org (`user.orgId` is a single field). Freelancers/contractors who work on personal projects AND join a client's team can't do both. Needs: join table, org switcher UI, auth context per-org, billing per-org. Build when team adoption creates demand.
 - [ ] Scheduled report delivery

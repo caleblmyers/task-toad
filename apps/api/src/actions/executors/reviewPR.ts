@@ -58,16 +58,25 @@ export const reviewPRExecutor: ActionExecutor = {
       return { success: false, data: { error: 'No GitHub repository connected to project' } };
     }
 
-    // Fetch the PR diff
-    const diff = await getPullRequestDiff(
-      project.githubInstallationId,
-      project.githubRepositoryOwner,
-      project.githubRepositoryName,
-      prResult.number,
-    );
+    // Fetch the PR diff — may 404 briefly after PR creation (race condition)
+    let diff: string;
+    try {
+      diff = await getPullRequestDiff(
+        project.githubInstallationId,
+        project.githubRepositoryOwner,
+        project.githubRepositoryName,
+        prResult.number,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      if (msg.includes('404')) {
+        return { success: false, retryable: true, data: { error: `PR diff not available yet: ${msg}` } };
+      }
+      throw err;
+    }
 
     if (!diff || diff.trim().length === 0) {
-      return { success: false, data: { error: 'PR diff is empty' } };
+      return { success: false, retryable: true, data: { error: 'PR diff is empty' } };
     }
 
     // Check for cancellation before calling AI

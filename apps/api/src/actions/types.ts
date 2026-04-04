@@ -26,6 +26,7 @@ export interface ActionContext {
 export interface ActionResult {
   success: boolean;
   data: Record<string, unknown>;
+  retryable?: boolean; // If true and success=false, retry the step instead of failing the plan
 }
 
 export interface ActionExecutor {
