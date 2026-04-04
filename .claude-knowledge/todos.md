@@ -36,6 +36,7 @@
 - [ ] **`me` query: expose `trialEndsAt`** — the auth resolver adds it but the `User` GraphQL type may not include it; verify frontend can query it
 
 ### Future
+- [ ] **Multi-org support** — users can only belong to one org (`user.orgId` is a single field). Freelancers/contractors who work on personal projects AND join a client's team can't do both. Needs: join table, org switcher UI, auth context per-org, billing per-org. Build when team adoption creates demand.
 - [ ] Scheduled report delivery
 - [ ] Multi-project decomposition — goals spanning multiple repos/projects
 - [ ] Replace stacked modals with single-panel wizard (step 1 of N)
