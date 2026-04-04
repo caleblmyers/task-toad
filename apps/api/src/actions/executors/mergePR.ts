@@ -182,6 +182,7 @@ export const mergePRExecutor: ActionExecutor = {
 
         return {
           success: false,
+          retryable: true,
           data: {
             error: 'Failed to merge PR after updating branch — check branch protection rules',
             errorReason: retryResult.errorReason,
@@ -191,8 +192,9 @@ export const mergePRExecutor: ActionExecutor = {
 
       return {
         success: false,
+        retryable: true,
         data: {
-          error: 'PR is out of date and branch update failed — manual update required',
+          error: 'PR is out of date and branch update failed — retrying',
           errorReason: 'out_of_date',
         },
       };
@@ -200,6 +202,7 @@ export const mergePRExecutor: ActionExecutor = {
 
     return {
       success: false,
+      retryable: true,
       data: {
         error: 'GitHub refused to merge — check for merge conflicts or branch protection rules',
         errorReason: result.errorReason,
