@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { useConfirmDialog } from './shared/ConfirmDialog';
 import { Link } from 'react-router-dom';
 import { gql } from '../api/client';
-import { AUTO_START_PROJECT_MUTATION, DELETE_FILTER_MUTATION, UPDATE_FILTER_MUTATION } from '../api/queries';
+import { DELETE_FILTER_MUTATION, UPDATE_FILTER_MUTATION } from '../api/queries';
 import type { ProjectData } from '../hooks/useProjectData';
 import type { TaskFiltering } from '../hooks/useTaskFiltering';
 import type { GitHubRepoLink } from '../types';
@@ -12,7 +12,7 @@ import FilterBar, { type SavedFilter } from './shared/FilterBar';
 import SavedViewPicker from './shared/SavedViewPicker';
 import Button from './shared/Button';
 import DropdownMenu, { type DropdownMenuItem } from './shared/DropdownMenu';
-import { IconList, IconBoard, IconTable, IconCalendar, IconClose, IconPlus, IconRefresh, IconSummary, IconFilter, IconKeyboard, IconGitHub, IconSparkle, IconClock } from './shared/Icons';
+import { IconList, IconBoard, IconTable, IconCalendar, IconClose, IconPlus, IconFilter, IconKeyboard, IconGitHub, IconClock } from './shared/Icons';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 
 const activeClass = 'px-3 py-1 text-sm rounded-md bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-medium shadow-sm';
@@ -100,7 +100,8 @@ export default function ProjectToolbar({
   const [templateTitle, setTemplateTitle] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [bootstrapping, setBootstrapping] = useState(false);
-  const [autoStarting, setAutoStarting] = useState(false);
+  const [showOverflowMenu, setShowOverflowMenu] = useState(false);
+  const overflowMenuRef = useRef<HTMLDivElement>(null);
   const templateMenuRef = useRef<HTMLDivElement>(null);
   const templateSelectRef = useRef<HTMLSelectElement>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
@@ -149,6 +150,25 @@ export default function ProjectToolbar({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showExportMenu]);
+
+  // Close overflow menu on click-outside or Escape
+  useEffect(() => {
+    if (!showOverflowMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (overflowMenuRef.current && !overflowMenuRef.current.contains(e.target as Node)) {
+        setShowOverflowMenu(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowOverflowMenu(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showOverflowMenu]);
 
   const handleProjectNameSave = async () => {
     if (!editProjectNameValue.trim()) return;
@@ -338,86 +358,89 @@ export default function ProjectToolbar({
             {projectData.showAddForm ? <><IconClose className="w-3.5 h-3.5" /> Cancel</> : <><IconPlus className="w-3.5 h-3.5" /> Add task</>}
           </Button>
 
-          {/* AI actions dropdown */}
-          <DropdownMenu
-            trigger={
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded transition-colors text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-200">
-                <IconSparkle className="w-3.5 h-3.5" />
-                AI
-                <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 5l3 3 3-3" /></svg>
-              </span>
-            }
-            items={[
-              { label: projectData.previewLoading ? 'Planning…' : 'Regenerate', icon: <IconRefresh className="w-3.5 h-3.5" />, onClick: () => projectData.openPreview(), disabled: projectData.isGenerating },
-              { label: projectData.summarizing ? 'Summarizing…' : 'Summarize', icon: <IconSummary className="w-3.5 h-3.5" />, onClick: () => { projectData.handleSummarize(); projectData.setShowAddForm(false); }, disabled: projectData.isGenerating },
-              { label: 'Standup', onClick: () => onOpenModal('standup'), disabled: projectData.isGenerating },
-              { label: 'Health', onClick: () => onOpenModal('health'), disabled: projectData.isGenerating },
-              { label: 'Trends', onClick: () => onOpenModal('trends'), disabled: projectData.isGenerating },
-              { label: 'Cycle Time', onClick: () => onOpenModal('cycle-time'), disabled: projectData.isGenerating },
-              ...(projectData.activeSprint ? [
-                { label: 'Transition', onClick: () => onOpenModal(`transition:${projectData.activeSprint!.sprintId}:${projectData.activeSprint!.name}`), disabled: projectData.isGenerating },
-                { label: 'Close Sprint', onClick: () => projectData.setCloseSprintId(projectData.activeSprint!.sprintId), disabled: projectData.isGenerating },
-              ] : []),
-              { label: 'Notes', onClick: () => onOpenModal('meeting-notes'), disabled: projectData.isGenerating },
-              { label: 'Bug Report', onClick: () => onOpenModal('bug-report'), disabled: projectData.isGenerating },
-              { label: 'PRD Breakdown', onClick: () => onOpenModal('prd-breakdown'), disabled: projectData.isGenerating },
-              { label: 'Hierarchical Plan', onClick: () => onOpenModal('hierarchical-plan'), disabled: projectData.isGenerating },
-              { label: 'Execution Dashboard', onClick: () => onOpenModal('execution-dashboard') },
-              { label: "What's Next?", onClick: () => onOpenModal('what-next'), disabled: projectData.isGenerating },
-              ...(gitHubRepo && projectData.rootTasks.length < 5 ? [{
-                label: bootstrapping ? 'Bootstrapping…' : 'Bootstrap from Repo',
-                onClick: async () => {
-                  if (!await confirm({ title: 'Bootstrap from repo', message: 'Analyze linked repo and generate initial tasks?', confirmLabel: 'Bootstrap', variant: 'warning' as const })) return;
-                  setBootstrapping(true);
-                  try {
-                    await projectData.handleBootstrapFromRepo();
-                    addToast('success', 'Tasks generated from repo');
-                  } catch (err) {
-                    addToast('error', err instanceof Error ? err.message : 'Bootstrap failed');
-                  } finally {
-                    setBootstrapping(false);
-                  }
-                },
-                disabled: projectData.isGenerating || bootstrapping,
-              }] : []),
-              ...(gitHubRepo ? [{
-                label: autoStarting ? 'Starting…' : 'Auto-Start Project',
-                onClick: async () => {
-                  if (!projectData.projectId) return;
-                  setAutoStarting(true);
-                  try {
-                    await gql<{ autoStartProject: { projectId: string } }>(
-                      AUTO_START_PROJECT_MUTATION,
-                      { projectId: projectData.projectId }
-                    );
-                    addToast('success', 'Project auto-start triggered — tasks will begin executing');
-                  } catch (err) {
-                    addToast('error', err instanceof Error ? err.message : 'Auto-start failed');
-                  } finally {
-                    setAutoStarting(false);
-                  }
-                },
-                disabled: projectData.isGenerating || autoStarting,
-              }] : []),
-            ] satisfies DropdownMenuItem[]}
-          />
-
           {/* Overflow menu */}
-          <DropdownMenu
-            trigger={
-              <span className="inline-flex items-center px-2 py-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded transition-colors" title="More actions">
-                <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="8" r="1.5" /><circle cx="8" cy="8" r="1.5" /><circle cx="13" cy="8" r="1.5" /></svg>
-              </span>
-            }
-            items={[
-              { label: 'Template', onClick: () => { previousFocusRef.current = document.activeElement as HTMLElement; setShowTemplateMenu((v) => { if (!v) loadTemplates(); return !v; }); setShowExportMenu(false); }, disabled: projectData.isGenerating },
-              { label: 'Import/Export', onClick: () => { previousFocusRef.current = document.activeElement as HTMLElement; setShowExportMenu((v) => !v); setShowTemplateMenu(false); } },
-              { label: 'Project Settings', onClick: () => onOpenModal('project-settings'), disabled: !projectData.can('MANAGE_PROJECT_SETTINGS') },
-              { label: 'Knowledge Base', onClick: () => onOpenModal('knowledge-base') },
-              { label: gitHubRepo ? `GitHub: ${gitHubRepo.repositoryOwner}/${gitHubRepo.repositoryName}` : 'Connect GitHub', icon: <IconGitHub className="w-3.5 h-3.5" />, onClick: () => onOpenModal('github') },
-              { label: 'Keyboard Shortcuts', icon: <IconKeyboard className="w-3.5 h-3.5" />, onClick: () => onOpenModal('shortcut-help') },
-            ] satisfies DropdownMenuItem[]}
-          />
+          <div className="relative" ref={overflowMenuRef}>
+            <button
+              type="button"
+              onClick={() => setShowOverflowMenu((v) => !v)}
+              className="inline-flex items-center px-2 py-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded transition-colors"
+              title="More actions"
+              aria-haspopup="true"
+              aria-expanded={showOverflowMenu}
+            >
+              <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="8" r="1.5" /><circle cx="8" cy="8" r="1.5" /><circle cx="13" cy="8" r="1.5" /></svg>
+            </button>
+            {showOverflowMenu && (
+              <div role="menu" className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 z-50 min-w-[220px]">
+                {/* Project section */}
+                <p className="px-3 py-1 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Project</p>
+                <button role="menuitem" className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled={!projectData.can('MANAGE_PROJECT_SETTINGS')} onClick={() => { onOpenModal('project-settings'); setShowOverflowMenu(false); }}>
+                  Project Settings
+                </button>
+                <button role="menuitem" className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700" onClick={() => { onOpenModal('knowledge-base'); setShowOverflowMenu(false); }}>
+                  Knowledge Base
+                </button>
+                <button role="menuitem" className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2" onClick={() => { onOpenModal('github'); setShowOverflowMenu(false); }}>
+                  <IconGitHub className="w-3.5 h-3.5" />
+                  {gitHubRepo ? `GitHub: ${gitHubRepo.repositoryOwner}/${gitHubRepo.repositoryName}` : 'Connect GitHub'}
+                </button>
+                {projectData.activeSprint && (
+                  <button role="menuitem" className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled={projectData.isGenerating} onClick={() => { projectData.setCloseSprintId(projectData.activeSprint!.sprintId); setShowOverflowMenu(false); }}>
+                    Close Session
+                  </button>
+                )}
+
+                <hr className="my-1 border-slate-100 dark:border-slate-700" />
+
+                {/* AI Tools section */}
+                <p className="px-3 py-1 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">AI Tools</p>
+                <button role="menuitem" className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled={projectData.isGenerating} onClick={() => { onOpenModal('hierarchical-plan'); setShowOverflowMenu(false); }}>
+                  Hierarchical Plan
+                </button>
+                <button role="menuitem" className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled={projectData.isGenerating} onClick={() => { onOpenModal('prd-breakdown'); setShowOverflowMenu(false); }}>
+                  PRD Breakdown
+                </button>
+                {gitHubRepo && projectData.rootTasks.length < 5 && (
+                  <button role="menuitem" className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled={projectData.isGenerating || bootstrapping} onClick={async () => {
+                    if (!await confirm({ title: 'Bootstrap from repo', message: 'Analyze linked repo and generate initial tasks?', confirmLabel: 'Bootstrap', variant: 'warning' as const })) return;
+                    setBootstrapping(true);
+                    setShowOverflowMenu(false);
+                    try {
+                      await projectData.handleBootstrapFromRepo();
+                      addToast('success', 'Tasks generated from repo');
+                    } catch (err) {
+                      addToast('error', err instanceof Error ? err.message : 'Bootstrap failed');
+                    } finally {
+                      setBootstrapping(false);
+                    }
+                  }}>
+                    {bootstrapping ? 'Bootstrapping…' : 'Bootstrap from Repo'}
+                  </button>
+                )}
+                <button role="menuitem" className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled={projectData.isGenerating} onClick={() => { onOpenModal('bug-report'); setShowOverflowMenu(false); }}>
+                  Bug Report
+                </button>
+                <button role="menuitem" className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled={projectData.isGenerating} onClick={() => { onOpenModal('meeting-notes'); setShowOverflowMenu(false); }}>
+                  Meeting Notes
+                </button>
+
+                <hr className="my-1 border-slate-100 dark:border-slate-700" />
+
+                {/* Data section */}
+                <p className="px-3 py-1 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Data</p>
+                <button role="menuitem" className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700" onClick={() => { previousFocusRef.current = document.activeElement as HTMLElement; setShowExportMenu((v) => !v); setShowTemplateMenu(false); setShowOverflowMenu(false); }}>
+                  Import/Export
+                </button>
+                <button role="menuitem" className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled={projectData.isGenerating} onClick={() => { previousFocusRef.current = document.activeElement as HTMLElement; setShowTemplateMenu((v) => { if (!v) loadTemplates(); return !v; }); setShowExportMenu(false); setShowOverflowMenu(false); }}>
+                  Template
+                </button>
+                <button role="menuitem" className="w-full text-left px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2" onClick={() => { onOpenModal('shortcut-help'); setShowOverflowMenu(false); }}>
+                  <IconKeyboard className="w-3.5 h-3.5" />
+                  Keyboard Shortcuts
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Template menu overlay */}
           {showTemplateMenu && (
