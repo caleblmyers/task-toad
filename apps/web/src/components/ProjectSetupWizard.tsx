@@ -348,9 +348,14 @@ export default function ProjectSetupWizard({
                   )}
 
                   {isUserAccount && githubLogin && (
-                    <div className="text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded p-2">
+                    <button
+                      type="button"
+                      onClick={handleConnectGitHub}
+                      className="w-full text-left text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded p-2 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                    >
                       Connected as <span className="font-medium">{githubLogin}</span>
-                    </div>
+                      <span className="text-green-500 dark:text-green-500 text-xs ml-2">(click to reconnect)</span>
+                    </button>
                   )}
 
                   <button
