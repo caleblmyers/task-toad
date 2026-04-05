@@ -222,18 +222,14 @@ export function useProjectData(): ProjectData {
   }, [projectId]);
 
   // Default to backlog view when project has no sprints (initial load only)
+  // Track that sprint data has loaded (no longer forces view switch — autopilot is always valid)
   const sprintCheckDone = useRef(false);
   useEffect(() => {
     if (sprintCheckDone.current) return;
-    if (sprintMgmt.sprints.length === 0 && projectState.project) {
-      sprintCheckDone.current = true;
-      if (projectState.view !== 'backlog') {
-        projectState.switchView('backlog');
-      }
-    } else if (sprintMgmt.sprints.length > 0) {
+    if (projectState.project) {
       sprintCheckDone.current = true;
     }
-  }, [sprintMgmt.sprints, projectState.project, projectState.view, projectState.switchView]);
+  }, [projectState.project]);
 
   const { ConfirmDialogPortal } = useProjectEffects({
     projectId,
