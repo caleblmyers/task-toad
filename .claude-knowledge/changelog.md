@@ -4,6 +4,44 @@ Summaries of work completed each session. Most recent first. Only the last 5 wav
 
 ---
 
+## 2026-04-05 (Wave 93 — UX Redesign: Autopilot View + Nav Consolidation)
+
+### Wave 93: UX Overhaul (3 workers, 3 tasks)
+
+**Worker 1 — task-001: AutopilotView:**
+- New default project view combining pipeline stats, session controls, active plans, and task list
+- Pipeline status bar with compact stat cards (Todo, Executing, In Review, Done, Failed, Blocked)
+- Quick Start button prominent when no session active, progress bar when running
+- Task list grouped by execution status with action plan badges
+- Registered as default view in ProjectDetail
+
+**Worker 2 — task-002: Navigation consolidation:**
+- 9 tabs → 3 primary (Autopilot, Board, Backlog) + More dropdown
+- More contains: Table, Calendar, Timeline, Epics, Releases, Timesheet, Analytics
+- Autopilot set as default view on project open
+- Autopilot tab has distinct primary styling
+
+**Worker 3 — task-003: Menu cleanup + sprint → session rename:**
+- AI dropdown removed entirely — items redistributed to sectioned overflow menu
+- Overflow menu organized: Project, AI Tools, Data sections with separators
+- Sprint → Session in autopilot-facing UI labels (BacklogView, ExecutionDashboard, board toolbar)
+- Sprint terminology preserved in non-autopilot contexts
+
+---
+
+## 2026-04-05 (Wave 92 — Remove Premium Gating)
+
+### Wave 92: Open Source Pivot (1 worker, 1 task)
+
+- getEffectivePlan() always returns 'paid' — all features free
+- Free tier limits removed (project count, team size)
+- useLicenseFeatures() returns all features for all users
+- Billing tab hidden from OrgSettings
+- Stripe code preserved in codebase (demonstrates billing engineering)
+- MIT license added
+
+---
+
 ## 2026-04-03 (Wave 91 — Stripe Billing + Free Tier Limits + Trial)
 
 ### Wave 91: Billing Integration (3 workers, 3 tasks)

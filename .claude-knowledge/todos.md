@@ -1,6 +1,6 @@
 # TaskToad — Remaining Work
 
-91 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Autopilot pipeline feature-complete. All three pillars implemented. Backlog nearly empty.
+93 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Autopilot pipeline feature-complete. All three pillars implemented. Backlog nearly empty.
 
 ---
 
@@ -49,7 +49,13 @@
 - [ ] **Reduce manual_step usage in action plans** — planner generates manual_step for things like "gather API keys" which blocks the pipeline. Instead, the AI should research and document what's needed (which APIs, signup links, scopes) as a deferred task or knowledge entry, then continue with the pipeline. manual_step should only be used for things that genuinely can't proceed without human input (e.g., "deploy to production")
 
 ### UX Polish
-- [ ] **Rebrand sprint UI for autopilot context** — "Plan Sprint" → "Plan Session", "Create Sprint" → "Create Session". Sprints are a human-team concept; sessions are the autopilot concept. Both coexist but the default language should favor sessions for autopilot users. See autopilot-pillars.md "Sessions vs Sprints" section.
+- [x] **Redesign primary navigation** — consolidated 9 tabs to 3 primary (Autopilot, Board, Backlog) + More dropdown. AutopilotView is the default view (Wave 92)
+- [x] **Simplify action menus** — removed AI dropdown, redistributed to sectioned overflow menu (Project, AI Tools, Data) and contextual views (Wave 92)
+- [x] **Rebrand sprint UI for autopilot context** — "AI Plan Sprints" → "AI Plan Session", "Close Sprint" → "Close Session" in autopilot-facing UI (Wave 92)
+- [ ] **AutopilotView: drag-and-drop task reordering** — task list currently uses TaskRow but doesn't support drag-and-drop reordering like BacklogView does
+- [ ] **AutopilotView: inline task editing** — BacklogView supports click-to-edit title, status dropdown, priority, assignee; AutopilotView should match
+- [ ] **Extract ViewType to shared types** — the `ViewType` union is defined in 3 files (useProjectState, useProjectData, ProjectToolbar); extract to a single source of truth
+- [ ] **Analytics items from old AI dropdown** — Standup, Health, Trends, Cycle Time, and Summarize were removed from toolbar but not yet added to the Analytics/Dashboard view
 
 ### Future
 - [ ] **Multi-org support** — users can only belong to one org (`user.orgId` is a single field). Freelancers/contractors who work on personal projects AND join a client's team can't do both. Needs: join table, org switcher UI, auth context per-org, billing per-org. Build when team adoption creates demand.
@@ -123,5 +129,7 @@
 | 89 | 2026-04-03 | Insight KB retrieval, AI feature registry, refinement wiring, swimlane overflow |
 | 90 | 2026-04-03 | Release notes manual entry, time entry admin-only, SSE leader indicator, mobile scroll, auth test, lockfile detection |
 | 91 | 2026-04-03 | Stripe billing integration, free tier limits (3 projects, 3 members), 14-day Pro trial, upgrade UI |
+| 92 | 2026-04-05 | Remove premium gating, MIT license, open source pivot |
+| 93 | 2026-04-05 | UX redesign: AutopilotView, nav consolidation (3 tabs + More), AI dropdown removed, sprint → session |
 
 Full wave details in `changelog.md`.
