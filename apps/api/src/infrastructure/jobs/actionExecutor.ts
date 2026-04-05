@@ -404,7 +404,7 @@ export function createHandler(prisma: PrismaClient) {
         if (result.retryable && retryCount < MAX_STEP_RETRIES) {
           await prisma.taskAction.update({
             where: { id: actionId },
-            data: { retryCount: retryCount + 1, errorMessage: `Retry ${retryCount + 1}/${MAX_STEP_RETRIES}: ${errorMessage}` },
+            data: { status: 'pending', retryCount: retryCount + 1, errorMessage: `Retry ${retryCount + 1}/${MAX_STEP_RETRIES}: ${errorMessage}` },
           });
           const delay = [3000, 10000, 30000][retryCount] ?? 30000;
           log.info({ actionId, planId, retryCount: retryCount + 1, delay }, 'Retrying failed action at step level');
@@ -611,7 +611,7 @@ export function createHandler(prisma: PrismaClient) {
       if (isRetryable && !isAbort && retryCount < MAX_STEP_RETRIES) {
         await prisma.taskAction.update({
           where: { id: actionId },
-          data: { retryCount: retryCount + 1, errorMessage: `Retry ${retryCount + 1}/${MAX_STEP_RETRIES}: ${errorMessage}` },
+          data: { status: 'pending', retryCount: retryCount + 1, errorMessage: `Retry ${retryCount + 1}/${MAX_STEP_RETRIES}: ${errorMessage}` },
         });
         const delay = [3000, 10000, 30000][retryCount] ?? 30000;
         log.info({ actionId, planId, retryCount: retryCount + 1, delay }, 'Retrying failed action (thrown error)');
