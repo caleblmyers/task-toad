@@ -28,12 +28,15 @@
 - [ ] Verify concurrent plan execution doesn't corrupt branch state
 - [ ] Verify failed plan leaves branch in recoverable state
 
-### Billing Polish
+### Billing Polish (low priority — all features free post-pivot)
 - [ ] **Hide Stripe internal IDs from GraphQL** — `stripeCustomerId` and `stripeSubscriptionId` are exposed in the Org type; only admins should see these (or remove from public schema)
-- [ ] **Upgrade prompts at limit boundaries** — show UpgradePrompt in createProject UI when at 3 projects, in invite UI when at 3 members
-- [ ] **`getEffectivePlan` in more resolvers** — session concurrency limit, SLA policies, and other paid features should check effective plan (not raw `org.plan`)
+- [x] ~~**Upgrade prompts at limit boundaries**~~ — moot, all features free (Wave 92)
+- [x] ~~**`getEffectivePlan` in more resolvers**~~ — moot, always returns 'paid' (Wave 92)
 - [ ] **Stripe webhook idempotency** — add idempotency key handling for webhook retries
-- [ ] **`me` query: expose `trialEndsAt`** — the auth resolver adds it but the `User` GraphQL type may not include it; verify frontend can query it
+- [x] ~~**`me` query: expose `trialEndsAt`**~~ — moot, no trial logic (Wave 92)
+
+### Test Reliability
+- [ ] **Fix SMTP timeout in integration tests** — tests that create users trigger email verification with 3x retry + backoff, consuming the 5000ms test timeout. Mock email transport in test setup or skip sending when SMTP_HOST is not configured
 
 ### Pipeline Bugs
 - [x] **review_pr: retry on PR diff 404** — now returns retryable: true, step-level retry handles it *(fixed in session)*
