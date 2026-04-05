@@ -35,7 +35,7 @@ export default function SprintReportPanel({ projectId, sprintId, sprintName, onC
       );
       setReport(data.generateSprintReport);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate sprint report');
+      setError(err instanceof Error ? err.message : 'Failed to generate session report');
     } finally {
       setLoading(false);
     }

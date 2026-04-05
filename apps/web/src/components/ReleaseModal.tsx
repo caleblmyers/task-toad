@@ -53,7 +53,7 @@ export default function ReleaseModal({ initialRelease, onSubmit, onClose }: Rele
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-green"
-            placeholder="e.g. Sprint 5 Release"
+            placeholder="e.g. Session 5 Release"
             required
           />
         </div>

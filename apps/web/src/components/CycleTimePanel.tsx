@@ -132,7 +132,7 @@ export default function CycleTimePanel({ projectId, sprints, disabled, onClose }
               onChange={(e) => setSprintFilter(e.target.value)}
               className="text-sm border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 bg-white dark:bg-slate-800 dark:text-slate-200"
             >
-              <option value="">All sprints</option>
+              <option value="">All sessions</option>
               {sprints.map((s) => (
                 <option key={s.sprintId} value={s.sprintId}>{s.name}</option>
               ))}

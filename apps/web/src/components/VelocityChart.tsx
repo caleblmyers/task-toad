@@ -13,7 +13,7 @@ interface VelocityChartProps {
 
 export default function VelocityChart({ data }: VelocityChartProps) {
   if (data.length < 2) {
-    return <p className="text-xs text-slate-400 py-4 text-center">Need at least 2 closed sprints for velocity chart</p>;
+    return <p className="text-xs text-slate-400 py-4 text-center">Need at least 2 closed sessions for velocity chart</p>;
   }
 
   const maxVal = Math.max(...data.map((d) => d.totalTasks), 1);

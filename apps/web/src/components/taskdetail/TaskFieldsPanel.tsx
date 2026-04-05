@@ -220,7 +220,7 @@ export default function TaskFieldsPanel({
       <div className="mb-4">
         <label htmlFor="task-session-select" className="text-xs font-medium text-slate-500 uppercase tracking-wide">Session</label>
         <select
-          id="task-sprint-select"
+          id="task-session-select"
           value={task.sprintId ?? ''}
           onChange={(e) => onAssignSprint(task.taskId, e.target.value || null)}
           className="block mt-1 border border-slate-300 rounded px-2 py-1 text-sm"

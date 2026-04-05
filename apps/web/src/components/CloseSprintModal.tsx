@@ -181,7 +181,7 @@ export default function CloseSprintModal({
                     className="flex-1 text-xs border border-slate-300 rounded px-2 py-1 focus:outline-none"
                   >
                     <option value="backlog">Move to Backlog</option>
-                    {otherSprints.length > 0 && <option value="sprint">Move to Sprint</option>}
+                    {otherSprints.length > 0 && <option value="sprint">Move to Session</option>}
                     <option value="archive">Archive</option>
                   </select>
                   {globalAction === 'sprint' && (
@@ -214,7 +214,7 @@ export default function CloseSprintModal({
                           className={`text-xs border border-slate-300 rounded px-2 py-1 focus:outline-none flex-shrink-0 ${actionColor[d.action]}`}
                         >
                           <option value="backlog">Backlog</option>
-                          {otherSprints.length > 0 && <option value="sprint">Move to Sprint</option>}
+                          {otherSprints.length > 0 && <option value="sprint">Move to Session</option>}
                           <option value="archive">Archive</option>
                         </select>
                         {d.action === 'sprint' && (

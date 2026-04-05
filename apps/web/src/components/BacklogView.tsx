@@ -257,7 +257,7 @@ export default function BacklogView({
 
         {openSprints.length === 0 && (
           <div className="text-sm text-slate-400 bg-slate-50 dark:bg-slate-800 rounded-lg p-4 text-center">
-            No sprints yet. Create a sprint to organize your work into time-boxed periods.
+            No sessions yet. Create a session to organize your work.
           </div>
         )}
 
