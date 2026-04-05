@@ -161,7 +161,7 @@ function PipelineStatsBar({ status }: { status: PipelineStatus }) {
           style={{ width: `${completionPct}%` }}
         />
       </div>
-      <div className="grid grid-cols-6 gap-2">
+      <div className="grid grid-cols-3 sm:grid-cols-6 xl:grid-cols-3 2xl:grid-cols-3 gap-2">
         {cards.map((card) => (
           <div key={card.label} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-center">
             <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">{card.label}</p>
@@ -515,10 +515,10 @@ export default function AutopilotView({
 
   return (
     <div className="flex-1 overflow-hidden px-6 py-4">
-      {/* Side-by-side on large screens, stacked on small */}
-      <div className="h-full flex flex-col lg:flex-row gap-4 max-w-7xl mx-auto">
-        {/* Left panel: Execution controls */}
-        <div className="lg:w-80 xl:w-96 flex-shrink-0 space-y-4 lg:overflow-y-auto lg:h-full lg:pr-2">
+      {/* Side-by-side on xl screens, stacked below */}
+      <div className="h-full flex flex-col xl:flex-row gap-4 max-w-[1600px] mx-auto">
+        {/* Left panel: Execution controls — generous width to avoid cramping */}
+        <div className="xl:w-[480px] 2xl:w-[560px] flex-shrink-0 space-y-4 xl:overflow-y-auto xl:h-full xl:pr-2">
           {/* Pipeline Stats Bar */}
           {pipelineStatus && <PipelineStatsBar status={pipelineStatus} />}
 
@@ -539,7 +539,7 @@ export default function AutopilotView({
         </div>
 
         {/* Right panel: Scrollable task list */}
-        <div className="flex-1 min-w-0 overflow-y-auto lg:h-full space-y-4">
+        <div className="flex-1 min-w-0 overflow-y-auto xl:h-full space-y-4">
         {taskGroups.map((group) => (
           <div key={group.status} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
             <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
