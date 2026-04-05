@@ -6,7 +6,7 @@ import type { OrgUser, Project, ProjectStats, Epic } from '../types';
 
 const VIEW_KEY = 'task-toad-view';
 
-type ViewType = 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar' | 'epics' | 'releases' | 'timesheet';
+type ViewType = 'autopilot' | 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar' | 'epics' | 'releases' | 'timesheet';
 
 interface UseProjectStateOptions {
   projectId: string | undefined;
@@ -20,9 +20,9 @@ export function useProjectState({ projectId, setErr }: UseProjectStateOptions) {
   const [epics, setEpics] = useState<Epic[]>([]);
 
   const stored = localStorage.getItem(VIEW_KEY);
-  const validViews = ['backlog', 'board', 'dashboard', 'table', 'calendar', 'epics', 'releases', 'timesheet'];
+  const validViews = ['autopilot', 'backlog', 'board', 'dashboard', 'table', 'calendar', 'epics', 'releases', 'timesheet'];
   const [view, setView] = useState<ViewType>(
-    validViews.includes(stored ?? '') ? (stored as ViewType) : 'backlog'
+    validViews.includes(stored ?? '') ? (stored as ViewType) : 'autopilot'
   );
 
   const projectStatuses: string[] = useMemo(() => {
