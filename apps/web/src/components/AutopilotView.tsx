@@ -6,6 +6,7 @@ import {
   PROJECT_ACTION_PLANS_QUERY,
   SESSIONS_QUERY,
   PAUSE_SESSION_MUTATION,
+  START_SESSION_MUTATION,
   CANCEL_SESSION_MUTATION,
   CANCEL_ACTION_PLAN_MUTATION,
 } from '../api/queries';
@@ -181,6 +182,7 @@ function SessionControls({
   onQuickStart,
   onConfigureSession,
   onPause,
+  onResume,
   onCancel,
 }: {
   session: Session | null;
@@ -190,6 +192,7 @@ function SessionControls({
   onQuickStart: () => void;
   onConfigureSession: () => void;
   onPause: () => void;
+  onResume: () => void;
   onCancel: () => void;
 }) {
   if (!session) {
@@ -254,6 +257,11 @@ function SessionControls({
           {isRunning && (
             <button onClick={onPause} className="text-xs px-3 py-1.5 bg-amber-500 text-white rounded hover:bg-amber-600">
               Pause
+            </button>
+          )}
+          {isPaused && (
+            <button onClick={onResume} className="text-xs px-3 py-1.5 bg-green-500 text-white rounded hover:bg-green-600">
+              Resume
             </button>
           )}
           {(isRunning || isPaused) && (
@@ -459,6 +467,13 @@ export default function AutopilotView({
     void fetchSessions();
   }, [activeSession, fetchSessions]);
 
+  const handleResumeSession = useCallback(async () => {
+    if (!activeSession) return;
+    await gql<{ startSession: Session }>(START_SESSION_MUTATION, { sessionId: activeSession.id });
+    void fetchSessions();
+    void fetchPipelineStatus();
+  }, [activeSession, fetchSessions, fetchPipelineStatus]);
+
   const handleCancelSession = useCallback(async () => {
     if (!activeSession) return;
     await gql<{ cancelSession: Session }>(CANCEL_SESSION_MUTATION, { sessionId: activeSession.id });
@@ -535,6 +550,7 @@ export default function AutopilotView({
             onQuickStart={() => void handleQuickStart()}
             onConfigureSession={() => onOpenModal('execution-dashboard')}
             onPause={() => void handlePauseSession()}
+            onResume={() => void handleResumeSession()}
             onCancel={() => void handleCancelSession()}
           />
 
