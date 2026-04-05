@@ -56,7 +56,7 @@ export default function BulkActionBar({
         onChange={(e) => { if (e.target.value !== '') onBulkUpdate({ sprintId: e.target.value || null }); e.target.value = ''; }}
         className="bg-slate-700 text-white text-xs rounded px-2 py-1 border border-slate-600 cursor-pointer"
       >
-        <option value="" disabled>Sprint…</option>
+        <option value="" disabled>Session…</option>
         <option value="">Backlog</option>
         {sprints.filter((s) => !s.closedAt).map((s) => (
           <option key={s.sprintId} value={s.sprintId}>{s.name}</option>

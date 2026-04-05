@@ -297,7 +297,7 @@ export default function ProjectDetail() {
   };
   const handleAssignSprint = async (taskId: string, sprintId: string | null) => {
     await projectData.handleAssignSprint(taskId, sprintId);
-    addToast('success', sprintId ? 'Moved to sprint' : 'Moved to backlog');
+    addToast('success', sprintId ? 'Moved to session' : 'Moved to backlog');
   };
 
   const handleToggleTaskId = (taskId: string) => {
@@ -678,15 +678,15 @@ export default function ProjectDetail() {
           ) : (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center space-y-3">
-                <p className="text-slate-500 dark:text-slate-300 text-sm">No active sprint. Set a sprint as active to see the board.</p>
+                <p className="text-slate-500 dark:text-slate-300 text-sm">No active session. Create a session to see the board.</p>
                 <button
                   type="button"
                   onClick={() => projectData.setShowSprintModal(true)}
                   disabled={!projectData.can('MANAGE_SPRINTS')}
-                  title={!projectData.can('MANAGE_SPRINTS') ? "You don't have permission to manage sprints" : undefined}
+                  title={!projectData.can('MANAGE_SPRINTS') ? "You don't have permission to manage sessions" : undefined}
                   className="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-200 px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
                 >
-                  + Create Sprint
+                  + Create Session
                 </button>
               </div>
             </div>
@@ -768,7 +768,7 @@ export default function ProjectDetail() {
         onClearSelection={() => projectData.setSelectedTaskIds(new Set())}
       />
 
-      {/* Sprint create modal */}
+      {/* Session create modal */}
       {projectData.showSprintModal && projectData.projectId && (
         <Suspense fallback={lazyFallback}>
           <SprintCreateModal
@@ -780,7 +780,7 @@ export default function ProjectDetail() {
         </Suspense>
       )}
 
-      {/* Sprint edit modal */}
+      {/* Session edit modal */}
       {projectData.editingSprint && projectData.projectId && (
         <Suspense fallback={lazyFallback}>
           <SprintCreateModal
@@ -793,7 +793,7 @@ export default function ProjectDetail() {
         </Suspense>
       )}
 
-      {/* Sprint plan modal */}
+      {/* Session plan modal */}
       {projectData.showSprintPlanModal && projectData.projectId && (
         <Suspense fallback={lazyFallback}>
           <SprintPlanModal
@@ -875,7 +875,7 @@ export default function ProjectDetail() {
         </Suspense>
       )}
 
-      {/* Sprint transition modal */}
+      {/* Session transition modal */}
       {showTransition && (
         <Suspense fallback={lazyFallback}>
           <SprintTransitionModal

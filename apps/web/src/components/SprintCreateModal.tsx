@@ -19,7 +19,7 @@ const DEFAULT_COLUMNS = ['To Do', 'In Progress', 'In Review', 'Done'];
 
 function computeDefaults(prev?: { name: string; endDate?: string | null; startDate?: string | null }) {
   if (!prev) return { name: '', startDate: '', endDate: '' };
-  // Auto-increment name: "Sprint 1" → "Sprint 2", "Sprint 10" → "Sprint 11"
+  // Auto-increment name: "Session 1" → "Session 2", "Session 10" → "Session 11"
   const nameMatch = prev.name.match(/^(.+?)(\d+)$/);
   const nextName = nameMatch ? `${nameMatch[1]}${parseInt(nameMatch[2], 10) + 1}` : `${prev.name} 2`;
   // Start date = day after previous end date
@@ -129,10 +129,10 @@ export default function SprintCreateModal({ projectId, initialSprint, previousSp
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title={isEdit ? 'Edit Sprint' : 'Create Sprint'} size="sm">
+    <Modal isOpen={true} onClose={onClose} title={isEdit ? 'Edit Session' : 'Create Session'} size="sm">
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">{isEdit ? 'Edit Sprint' : 'Create Sprint'}</h2>
+          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">{isEdit ? 'Edit Session' : 'Create Session'}</h2>
           <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-lg" aria-label="Close">✕</button>
         </div>
 
@@ -144,7 +144,7 @@ export default function SprintCreateModal({ projectId, initialSprint, previousSp
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Sprint 1"
+              placeholder="Session 1"
               required
               autoFocus
               className="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green"
@@ -152,7 +152,7 @@ export default function SprintCreateModal({ projectId, initialSprint, previousSp
           </div>
 
           <div>
-            <label htmlFor="sprint-goal" className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Sprint Goal (optional)</label>
+            <label htmlFor="sprint-goal" className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Session Goal (optional)</label>
             <textarea
               id="sprint-goal"
               value={goal}
@@ -278,7 +278,7 @@ export default function SprintCreateModal({ projectId, initialSprint, previousSp
               loading={loading}
               disabled={!name.trim()}
             >
-              {loading ? (isEdit ? 'Saving…' : 'Creating…') : (isEdit ? 'Save Changes' : 'Create Sprint')}
+              {loading ? (isEdit ? 'Saving…' : 'Creating…') : (isEdit ? 'Save Changes' : 'Create Session')}
             </Button>
           </div>
         </form>

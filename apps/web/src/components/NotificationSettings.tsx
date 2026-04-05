@@ -18,7 +18,7 @@ const NOTIFICATION_TYPE_LABELS: Record<string, string> = {
   commented: 'New comment',
   mentioned: 'Mentioned',
   due_date_reminder: 'Due date reminder',
-  sprint_event: 'Sprint event',
+  sprint_event: 'Session event',
 };
 
 export default function NotificationSettings() {

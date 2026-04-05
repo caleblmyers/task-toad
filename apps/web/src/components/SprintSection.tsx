@@ -252,7 +252,7 @@ export const TaskRow = memo(function TaskRow({
           tabIndex={-1}
           className="absolute right-0 top-full mt-1 z-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 min-w-[160px] outline-none"
           role="listbox"
-          aria-label="Select sprint"
+          aria-label="Select session"
           aria-activedescendant={activeOptionId}
           onClick={(e) => e.stopPropagation()}
           onKeyDown={handleDropdownKeyDown}
@@ -388,7 +388,7 @@ export default function SprintSection({
                 type="button"
                 onClick={async () => { if (await confirm({ title: 'Delete sprint', message: `Delete sprint "${sprint.name}"? Tasks will be moved to the backlog.`, confirmLabel: 'Delete', variant: 'danger' })) onDeleteSprint(sprint.sprintId); }}
                 className="text-xs text-slate-400 hover:text-red-600 px-2 py-1 border border-slate-200 rounded hover:border-red-300 hover:bg-red-50"
-                title="Delete sprint"
+                title="Delete session"
               >Delete</button>
             </>
           )}

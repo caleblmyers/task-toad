@@ -62,10 +62,10 @@ export default function SprintReportPanel({ projectId, sprintId, sprintName, onC
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title={`Sprint Report — ${sprintName}`} size="md">
+    <Modal isOpen={true} onClose={onClose} title={`Session Report — ${sprintName}`} size="md">
       <div className="flex items-center justify-between p-4 border-b border-slate-100">
         <div>
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Sprint Report</p>
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Session Report</p>
           <p className="text-sm font-semibold text-slate-800">{sprintName}</p>
         </div>
         <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label="Close">

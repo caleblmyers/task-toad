@@ -102,7 +102,7 @@ export default function CloseSprintModal({
       onClosed(data.closeSprint);
       setStep('done');
     } catch (error) {
-      setErr(error instanceof Error ? error.message : 'Failed to close sprint');
+      setErr(error instanceof Error ? error.message : 'Failed to close session');
     } finally {
       setLoading(false);
     }
@@ -115,12 +115,12 @@ export default function CloseSprintModal({
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title={step === 'review' ? 'Close Sprint' : 'Sprint Closed'} size="md">
+    <Modal isOpen={true} onClose={onClose} title={step === 'review' ? 'Close Session' : 'Session Closed'} size="md">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 flex-shrink-0">
         <div>
           <h2 className="text-lg font-semibold text-slate-800">
-            {step === 'review' ? 'Close Sprint' : 'Sprint Closed'}
+            {step === 'review' ? 'Close Session' : 'Session Closed'}
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">{sprint.name}</p>
         </div>
@@ -259,7 +259,7 @@ export default function CloseSprintModal({
               Cancel
             </button>
             <Button size="sm" onClick={handleClose} disabled={loading}>
-              {loading ? 'Closing…' : 'Close Sprint'}
+              {loading ? 'Closing…' : 'Close Session'}
             </Button>
           </div>
         </>

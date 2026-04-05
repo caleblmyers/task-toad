@@ -105,3 +105,13 @@ Non-obvious choices and their rationale. Only decisions where the "why" isn't ap
 **Schema-first generation:** When a Prisma schema or equivalent exists, the AI must be constrained to use exactly those models. Without this, each task invents its own model names.
 
 **Sprint close reconciliation:** After all tasks in a sprint merge, a consistency check should verify the codebase builds and imports resolve. This fits naturally in the `closeSprint` flow — detect issues, auto-generate a reconciliation PR if needed.
+
+---
+
+## Sprint vs Session Naming
+
+**UI says "Session", code says "Sprint".** All user-facing labels use "Session" (Create Session, Close Session, Session Velocity, etc.) but all code identifiers, GraphQL schema fields, Prisma models, variable names, and prop names use `sprint` (sprintId, createSprint, Sprint model, etc.).
+
+**Why:** The product concept is "sessions" (scope-boxed autopilot execution), but the underlying data model was built as "sprints." Renaming the data layer would touch 45+ files, 770+ references, GraphQL schema, Prisma migrations, and the database. Not worth it — the user never sees the code. The UI label change is sufficient.
+
+**Rule:** When adding new UI text, use "Session." When writing code, use `sprint` for the data model. Never mix — don't create a `Session` model or `sessionId` field that conflicts with the existing `Session` model (which is the orchestration session, a different concept).

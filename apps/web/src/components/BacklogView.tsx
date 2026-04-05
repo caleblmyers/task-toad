@@ -250,7 +250,7 @@ export default function BacklogView({
               ✦ AI Plan Session
             </button>
             <button type="button" onClick={onCreateSprint} disabled={!can('MANAGE_SPRINTS')} title={!can('MANAGE_SPRINTS') ? "You don't have permission to manage sprints" : undefined} className="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-200 px-3 py-1 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50">
-              + Create Sprint
+              + Create Session
             </button>
           </div>
         </div>

@@ -195,15 +195,15 @@ export default function ProjectDashboard({ stats, activities, loading, projectId
         {/* Velocity Chart */}
         {closedSprints.length >= 2 && (
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Sprint Velocity</p>
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Session Velocity</p>
             <VelocityChart data={velocityData} />
           </div>
         )}
 
-        {/* Sprint Forecast */}
+        {/* Session Forecast */}
         {closedSprints.length >= 3 && activeSprint && (
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Sprint Forecast</p>
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Session Forecast</p>
             <SprintForecastPanel
               projectId={projectId}
               sprintId={activeSprint.sprintId}
@@ -223,7 +223,7 @@ export default function ProjectDashboard({ stats, activities, loading, projectId
                   onChange={(e) => setSelectedBurndownSprint(e.target.value)}
                   className="text-xs border border-slate-200 rounded px-2 py-0.5"
                 >
-                  <option value="">Active Sprint</option>
+                  <option value="">Active Session</option>
                   {sprintsWithDates.map((s) => (
                     <option key={s.sprintId} value={s.sprintId}>{s.name}</option>
                   ))}

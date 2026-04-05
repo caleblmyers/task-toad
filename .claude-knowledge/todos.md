@@ -51,7 +51,7 @@
 ### UX Polish
 - [x] **Redesign primary navigation** — consolidated 9 tabs to 3 primary (Autopilot, Board, Backlog) + More dropdown. AutopilotView is the default view (Wave 92)
 - [x] **Simplify action menus** — removed AI dropdown, redistributed to sectioned overflow menu (Project, AI Tools, Data) and contextual views (Wave 92)
-- [x] **Rebrand sprint UI for autopilot context** — "AI Plan Sprints" → "AI Plan Session", "Close Sprint" → "Close Session" in autopilot-facing UI (Wave 92)
+- [x] **Rebrand sprint → session everywhere in UI** — all user-facing "Sprint" labels renamed to "Session". Code identifiers, GraphQL schema, Prisma model, variable/prop names remain as `sprint` (API contract). See decisions.md or CLAUDE.md for the convention.
 - [ ] **AutopilotView: drag-and-drop task reordering** — task list currently uses TaskRow but doesn't support drag-and-drop reordering like BacklogView does
 - [ ] **AutopilotView: inline task editing** — BacklogView supports click-to-edit title, status dropdown, priority, assignee; AutopilotView should match
 - [ ] **Extract ViewType to shared types** — the `ViewType` union is defined in 3 files (useProjectState, useProjectData, ProjectToolbar); extract to a single source of truth

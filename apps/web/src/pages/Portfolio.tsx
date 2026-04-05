@@ -177,14 +177,14 @@ export default function Portfolio() {
               <p className="text-2xl font-bold text-slate-800 mt-1">{formatCycleTime(rollup.avgCycleTimeHours)}</p>
             </div>
             <div className="bg-white rounded-xl border border-slate-200 p-4">
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Active Sprints</p>
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Active Sessions</p>
               <p className="text-2xl font-bold text-slate-800 mt-1">
                 {rollup.teamSprintProgress.activeSprints}
                 <span className="text-sm font-normal text-slate-400 ml-1">/ {rollup.teamSprintProgress.totalSprints}</span>
               </p>
             </div>
             <div className="bg-white rounded-xl border border-slate-200 p-4">
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Sprint Progress</p>
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Session Progress</p>
               <p className="text-2xl font-bold text-slate-800 mt-1">{Math.round(rollup.teamSprintProgress.avgCompletionPercent)}%</p>
             </div>
           </div>

@@ -109,7 +109,7 @@ export default function SprintTransitionModal({ sprintId, sprintName, onApply, o
 
             {analysis.carryOver.length > 0 && (
               <div>
-                <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Carry Over to Next Sprint</h3>
+                <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Carry Over to Next Session</h3>
                 <div className="space-y-1.5">
                   {analysis.carryOver.map((t) => (
                     <label key={t.taskId} className="flex items-start gap-2 p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer">
