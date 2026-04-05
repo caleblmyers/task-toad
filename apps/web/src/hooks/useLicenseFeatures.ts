@@ -1,5 +1,3 @@
-import { useAuth } from '../auth/context';
-
 const PREMIUM_FEATURES = [
   'slack',
   'initiatives',
@@ -12,14 +10,11 @@ const PREMIUM_FEATURES = [
   'parallel_execution',
 ];
 
+// All features free — TaskToad is now open source
 export function useLicenseFeatures() {
-  const { user, loading } = useAuth();
-  const isPaid = user?.orgPlan === 'paid';
-  const features = isPaid ? PREMIUM_FEATURES : [];
-
   return {
-    features,
-    hasFeature: (f: string) => isPaid && PREMIUM_FEATURES.includes(f),
-    loading,
+    features: PREMIUM_FEATURES,
+    hasFeature: (_f: string) => true,
+    loading: false,
   };
 }

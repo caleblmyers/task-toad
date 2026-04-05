@@ -481,11 +481,8 @@ export default function OrgSettings() {
             label: 'Knowledge Base',
             content: <OrgKnowledgeBaseTab />,
           },
-          {
-            id: 'billing',
-            label: 'Billing',
-            content: <BillingTab org={org} />,
-          },
+          // Billing tab hidden — all features free (open source pivot)
+          // Stripe code preserved in BillingTab component for portfolio reference
         ]}
       />
     </div>
@@ -503,7 +500,8 @@ const PREMIUM_FEATURE_LIST = [
   { key: 'project_roles', label: 'Project member roles' },
 ];
 
-function BillingTab({ org }: { org: OrgBilling }) {
+// Billing tab hidden (open source pivot) — component preserved for portfolio reference
+export function BillingTab({ org }: { org: OrgBilling }) {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
