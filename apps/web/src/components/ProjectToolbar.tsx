@@ -255,11 +255,11 @@ export default function ProjectToolbar({
           <span className="hidden sm:inline">Autopilot</span>
         </span>
       </button>
-      <button onClick={() => { projectData.switchView('board'); setTimelineView(false); }} className={projectData.view === 'board' && !timelineView ? activeClass : inactiveClass} disabled={projectData.isGenerating} title="Board">
-        <span className="flex items-center gap-1"><IconBoard className="w-3.5 h-3.5" /><span className="hidden sm:inline">Board</span></span>
-      </button>
       <button onClick={() => { projectData.switchView('backlog'); setTimelineView(false); }} className={projectData.view === 'backlog' && !timelineView ? activeClass : inactiveClass} disabled={projectData.isGenerating} title="Backlog">
         <span className="flex items-center gap-1"><IconList className="w-3.5 h-3.5" /><span className="hidden sm:inline">Backlog</span></span>
+      </button>
+      <button onClick={() => { projectData.switchView('board'); setTimelineView(false); }} className={projectData.view === 'board' && !timelineView ? activeClass : inactiveClass} disabled={projectData.isGenerating} title="Board">
+        <span className="flex items-center gap-1"><IconBoard className="w-3.5 h-3.5" /><span className="hidden sm:inline">Board</span></span>
       </button>
       <DropdownMenu
         trigger={
