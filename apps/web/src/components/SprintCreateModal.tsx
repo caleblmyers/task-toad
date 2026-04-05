@@ -96,7 +96,7 @@ export default function SprintCreateModal({ projectId, initialSprint, previousSp
         onCreated(data.createSprint);
       }
     } catch (error) {
-      setErr(error instanceof Error ? error.message : isEdit ? 'Failed to update sprint' : 'Failed to create sprint');
+      setErr(error instanceof Error ? error.message : isEdit ? 'Failed to update session' : 'Failed to create session');
     } finally {
       setLoading(false);
     }
@@ -138,9 +138,9 @@ export default function SprintCreateModal({ projectId, initialSprint, previousSp
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="sprint-name" className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Name *</label>
+            <label htmlFor="session-name" className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Name *</label>
             <input
-              id="sprint-name"
+              id="session-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -152,12 +152,12 @@ export default function SprintCreateModal({ projectId, initialSprint, previousSp
           </div>
 
           <div>
-            <label htmlFor="sprint-goal" className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Session Goal (optional)</label>
+            <label htmlFor="session-goal" className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Session Goal (optional)</label>
             <textarea
-              id="sprint-goal"
+              id="session-goal"
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
-              placeholder="What is this sprint's objective?"
+              placeholder="What is this session's objective?"
               rows={2}
               className="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green resize-none"
             />
@@ -165,9 +165,9 @@ export default function SprintCreateModal({ projectId, initialSprint, previousSp
 
           <div className="flex gap-3">
             <div className="flex-1">
-              <label htmlFor="sprint-start-date" className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Start Date</label>
+              <label htmlFor="session-start-date" className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Start Date</label>
               <input
-                id="sprint-start-date"
+                id="session-start-date"
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
@@ -175,9 +175,9 @@ export default function SprintCreateModal({ projectId, initialSprint, previousSp
               />
             </div>
             <div className="flex-1">
-              <label htmlFor="sprint-end-date" className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">End Date</label>
+              <label htmlFor="session-end-date" className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">End Date</label>
               <input
-                id="sprint-end-date"
+                id="session-end-date"
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
@@ -216,7 +216,7 @@ export default function SprintCreateModal({ projectId, initialSprint, previousSp
             </div>
             <div className="flex gap-2">
               <input
-                id="sprint-add-column"
+                id="session-add-column"
                 type="text"
                 value={newCol}
                 onChange={(e) => setNewCol(e.target.value)}

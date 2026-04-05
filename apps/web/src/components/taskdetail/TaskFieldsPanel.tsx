@@ -218,7 +218,7 @@ export default function TaskFieldsPanel({
 
       {/* Sprint */}
       <div className="mb-4">
-        <label htmlFor="task-sprint-select" className="text-xs font-medium text-slate-500 uppercase tracking-wide">Session</label>
+        <label htmlFor="task-session-select" className="text-xs font-medium text-slate-500 uppercase tracking-wide">Session</label>
         <select
           id="task-sprint-select"
           value={task.sprintId ?? ''}

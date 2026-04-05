@@ -237,10 +237,10 @@ export const TaskRow = memo(function TaskRow({
               });
             }}
             className="text-xs text-slate-400 hover:text-slate-600 px-1.5 py-0.5 border border-slate-200 rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-            aria-label={`Move task "${task.title}" to another sprint`}
+            aria-label={`Move task "${task.title}" to another session`}
             aria-expanded={showSprintPicker}
             aria-haspopup="listbox"
-            title="Move to sprint (M)"
+            title="Move to session (M)"
           >
             ⇅
           </button>
@@ -376,8 +376,8 @@ export default function SprintSection({
               </svg>
             </button>
           )}
-          <button type="button" onClick={() => onSprintReport(sprint.sprintId)} className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1 border border-slate-200 rounded hover:bg-white" title="Generate sprint report">Report</button>
-          <button type="button" onClick={() => onEditSprint(sprint)} className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1 border border-slate-200 rounded hover:bg-white" title="Edit sprint">Edit</button>
+          <button type="button" onClick={() => onSprintReport(sprint.sprintId)} className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1 border border-slate-200 rounded hover:bg-white" title="Generate session report">Report</button>
+          <button type="button" onClick={() => onEditSprint(sprint)} className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1 border border-slate-200 rounded hover:bg-white" title="Edit session">Edit</button>
           {sprint.isActive && (
             <button type="button" onClick={() => onCloseSprint(sprint.sprintId)} className="text-xs text-slate-500 hover:text-red-600 px-2 py-1 border border-slate-300 rounded hover:border-red-300 hover:bg-red-50">Close Sprint</button>
           )}

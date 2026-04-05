@@ -135,10 +135,10 @@ export default function SprintPlanModal({
       <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex-shrink-0">
         <div className="flex gap-4 items-end">
           <div>
-            <label htmlFor="sprint-plan-length" className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Session Length</label>
+            <label htmlFor="session-plan-length" className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Session Length</label>
             <div className="flex items-center gap-2">
               <input
-                id="sprint-plan-length"
+                id="session-plan-length"
                 type="number"
                 min={1}
                 max={8}
@@ -150,10 +150,10 @@ export default function SprintPlanModal({
             </div>
           </div>
           <div>
-            <label htmlFor="sprint-plan-team-size" className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Team Size</label>
+            <label htmlFor="session-plan-team-size" className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Team Size</label>
             <div className="flex items-center gap-2">
               <input
-                id="sprint-plan-team-size"
+                id="session-plan-team-size"
                 type="number"
                 min={1}
                 max={20}
@@ -165,10 +165,10 @@ export default function SprintPlanModal({
             </div>
           </div>
           <div>
-            <label htmlFor="sprint-plan-max-tasks" className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Max Tasks</label>
+            <label htmlFor="session-plan-max-tasks" className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Max Tasks</label>
             <div className="flex items-center gap-2">
               <input
-                id="sprint-plan-max-tasks"
+                id="session-plan-max-tasks"
                 type="number"
                 min={1}
                 max={20}

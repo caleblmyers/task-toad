@@ -102,7 +102,7 @@ export default function TableView({
               <th className={thClass} onClick={() => handleSort('assignee')}>Assignee{sortIndicator('assignee')}</th>
               <th className={thClass} onClick={() => handleSort('dueDate')}>Due Date{sortIndicator('dueDate')}</th>
               <th className={thClass} onClick={() => handleSort('estimatedHours')}>Estimate{sortIndicator('estimatedHours')}</th>
-              <th className={thClass} onClick={() => handleSort('sprint')}>Sprint{sortIndicator('sprint')}</th>
+              <th className={thClass} onClick={() => handleSort('sprint')}>Session{sortIndicator('sprint')}</th>
               <th className={thClass}>Labels</th>
             </tr>
           </thead>

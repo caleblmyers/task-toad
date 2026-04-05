@@ -47,7 +47,7 @@ export default function SprintTransitionModal({ sprintId, sprintName, onApply, o
         setSelectedCarryOver(new Set(data.analyzeSprintTransition.carryOver.map((t) => t.taskId)));
         setSelectedDeprioritize(new Set(data.analyzeSprintTransition.deprioritize.map((t) => t.taskId)));
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to analyze sprint');
+        setError(err instanceof Error ? err.message : 'Failed to analyze session');
       } finally {
         setLoading(false);
       }
@@ -86,9 +86,9 @@ export default function SprintTransitionModal({ sprintId, sprintName, onApply, o
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title={`Sprint Transition: ${sprintName}`} size="md">
+    <Modal isOpen={true} onClose={onClose} title={`Session Transition: ${sprintName}`} size="md">
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-600 flex-shrink-0">
-        <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">Sprint Transition: {sprintName}</h2>
+        <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">Session Transition: {sprintName}</h2>
         <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" aria-label="Close">
           <IconClose className="w-4 h-4" />
         </button>

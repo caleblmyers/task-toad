@@ -192,7 +192,7 @@ export default function ProjectChatPanel({ projectId, onClose, onSelectTask, add
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }}
-              placeholder="Ask about tasks, sprints, progress..."
+              placeholder="Ask about tasks, sessions, progress..."
               className="flex-1 px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-green"
               disabled={loading}
             />
