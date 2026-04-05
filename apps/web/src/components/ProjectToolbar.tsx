@@ -214,44 +214,43 @@ export default function ProjectToolbar({
     }
   };
 
+  const isMoreView = ['table', 'calendar', 'epics', 'releases', 'timesheet', 'dashboard'].includes(projectData.view) || timelineView;
+  const autopilotActiveClass = 'px-3 py-1 text-sm rounded-md bg-brand-green text-white font-medium shadow-sm';
+
+  const moreDropdownItems: DropdownMenuItem[] = [
+    { label: 'Table', icon: <IconTable className="w-3.5 h-3.5" />, onClick: () => { projectData.switchView('table'); setTimelineView(false); }, disabled: projectData.isGenerating },
+    { label: 'Calendar', icon: <IconCalendar className="w-3.5 h-3.5" />, onClick: () => { projectData.switchView('calendar'); setTimelineView(false); }, disabled: projectData.isGenerating },
+    { label: 'Timeline', icon: <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="3" width="14" height="2" rx="0.5" /><rect x="4" y="7" width="10" height="2" rx="0.5" /><rect x="2" y="11" width="8" height="2" rx="0.5" /></svg>, onClick: () => { projectData.switchView('calendar'); setTimelineView(true); }, disabled: projectData.isGenerating },
+    { label: 'Epics', icon: <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" />, onClick: () => { projectData.switchView('epics'); setTimelineView(false); }, disabled: projectData.isGenerating },
+    { label: 'Releases', icon: <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 3h10v10H3z" /><path d="M3 7h10M7 3v10" /></svg>, onClick: () => { projectData.switchView('releases'); setTimelineView(false); }, disabled: projectData.isGenerating },
+    { label: 'Timesheet', icon: <IconClock className="w-3.5 h-3.5" />, onClick: () => { projectData.switchView('timesheet'); setTimelineView(false); }, disabled: projectData.isGenerating },
+    { label: 'Analytics', icon: <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 14V8h3v6H2zM7 14V4h3v10H7zM12 14V1h3v13h-3z" /></svg>, onClick: () => { projectData.switchView('dashboard'); setTimelineView(false); onLoadProjectActivities(); }, disabled: projectData.isGenerating },
+  ];
+
   const viewToggle = (
     <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
-      <button onClick={() => { projectData.switchView('backlog'); setTimelineView(false); }} className={projectData.view === 'backlog' && !timelineView ? activeClass : inactiveClass} disabled={projectData.isGenerating} title="Backlog">
-        <span className="flex items-center gap-1"><IconList className="w-3.5 h-3.5" /><span className="hidden sm:inline">Backlog</span></span>
+      <button onClick={() => { projectData.switchView('autopilot'); setTimelineView(false); }} className={projectData.view === 'autopilot' && !timelineView ? autopilotActiveClass : inactiveClass} disabled={projectData.isGenerating} title="Autopilot">
+        <span className="flex items-center gap-1">
+          <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2l10 6-10 6V2z" /></svg>
+          <span className="hidden sm:inline">Autopilot</span>
+        </span>
       </button>
       <button onClick={() => { projectData.switchView('board'); setTimelineView(false); }} className={projectData.view === 'board' && !timelineView ? activeClass : inactiveClass} disabled={projectData.isGenerating} title="Board">
         <span className="flex items-center gap-1"><IconBoard className="w-3.5 h-3.5" /><span className="hidden sm:inline">Board</span></span>
       </button>
-      <button onClick={() => { projectData.switchView('table'); setTimelineView(false); }} className={projectData.view === 'table' && !timelineView ? activeClass : inactiveClass} disabled={projectData.isGenerating} title="Table">
-        <span className="flex items-center gap-1"><IconTable className="w-3.5 h-3.5" /><span className="hidden sm:inline">Table</span></span>
+      <button onClick={() => { projectData.switchView('backlog'); setTimelineView(false); }} className={projectData.view === 'backlog' && !timelineView ? activeClass : inactiveClass} disabled={projectData.isGenerating} title="Backlog">
+        <span className="flex items-center gap-1"><IconList className="w-3.5 h-3.5" /><span className="hidden sm:inline">Backlog</span></span>
       </button>
-      <button onClick={() => { projectData.switchView('calendar'); setTimelineView(false); }} className={projectData.view === 'calendar' && !timelineView ? activeClass : inactiveClass} disabled={projectData.isGenerating} title="Calendar">
-        <span className="flex items-center gap-1"><IconCalendar className="w-3.5 h-3.5" /><span className="hidden sm:inline">Calendar</span></span>
-      </button>
-      <button onClick={() => { projectData.switchView('calendar'); setTimelineView(true); }} className={timelineView ? activeClass : inactiveClass} disabled={projectData.isGenerating} title="Timeline">
-        <span className="flex items-center gap-1">
-          <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="3" width="14" height="2" rx="0.5" /><rect x="4" y="7" width="10" height="2" rx="0.5" /><rect x="2" y="11" width="8" height="2" rx="0.5" /></svg>
-          <span className="hidden sm:inline">Timeline</span>
-        </span>
-      </button>
-      <button onClick={() => { projectData.switchView('epics'); setTimelineView(false); }} className={projectData.view === 'epics' && !timelineView ? activeClass : inactiveClass} disabled={projectData.isGenerating} title="Epics">
-        <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" />
-          <span className="hidden sm:inline">Epics</span>
-        </span>
-      </button>
-      <button onClick={() => { projectData.switchView('releases'); setTimelineView(false); }} className={projectData.view === 'releases' && !timelineView ? activeClass : inactiveClass} disabled={projectData.isGenerating} title="Releases">
-        <span className="flex items-center gap-1">
-          <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 3h10v10H3z" /><path d="M3 7h10M7 3v10" /></svg>
-          <span className="hidden sm:inline">Releases</span>
-        </span>
-      </button>
-      <button onClick={() => { projectData.switchView('timesheet'); setTimelineView(false); }} className={projectData.view === 'timesheet' && !timelineView ? activeClass : inactiveClass} disabled={projectData.isGenerating} title="Timesheet">
-        <span className="flex items-center gap-1"><IconClock className="w-3.5 h-3.5" /><span className="hidden sm:inline">Timesheet</span></span>
-      </button>
-      <button onClick={() => { projectData.switchView('dashboard'); setTimelineView(false); onLoadProjectActivities(); }} className={projectData.view === 'dashboard' && !timelineView ? activeClass : inactiveClass} disabled={projectData.isGenerating} title="Dashboard">
-        <span className="flex items-center gap-1">📊<span className="hidden sm:inline">Dashboard</span></span>
-      </button>
+      <DropdownMenu
+        trigger={
+          <span className={`flex items-center gap-1 px-3 py-1 text-sm rounded-md ${isMoreView ? activeClass : inactiveClass}`}>
+            <span className="hidden sm:inline">More</span>
+            <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 5l3 3 3-3" /></svg>
+          </span>
+        }
+        items={moreDropdownItems}
+        align="left"
+      />
     </div>
   );
 
