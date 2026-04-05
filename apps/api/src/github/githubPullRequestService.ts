@@ -297,7 +297,7 @@ export async function mergePullRequest(
     let errorReason: MergeErrorReason = 'unknown';
     if (msg.includes('already been merged') || msg.includes('pull request is in an unmergeable state')) {
       errorReason = 'already_merged';
-    } else if (msg.includes('not up to date') || msg.includes('out-of-date') || msg.includes('head ref must be a ref')) {
+    } else if (msg.includes('not up to date') || msg.includes('out-of-date') || msg.includes('out of date') || msg.includes('head ref must be a ref')) {
       errorReason = 'out_of_date';
     } else if (msg.includes('merge conflict') || msg.includes('not mergeable')) {
       errorReason = 'conflict';
