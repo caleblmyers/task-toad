@@ -36,8 +36,14 @@
 - [ ] **`me` query: expose `trialEndsAt`** — the auth resolver adds it but the `User` GraphQL type may not include it; verify frontend can query it
 
 ### Pipeline Bugs
-- [ ] **review_pr: retry on PR diff 404** — `getPullRequestDiff` throws non-retryable error on 404, but this is often a transient race condition (PR just created, diff not ready). Make 404 retryable with a short delay, or add a brief wait between `create_pr` and `review_pr`
-- [ ] **Auto-replan vs step retry** — failed actions should retry at the step level first (the job queue supports this via `executeWithRetry`). Only escalate to full replan after step retries are exhausted. Currently any non-retryable failure triggers a full replan immediately.
+- [x] **review_pr: retry on PR diff 404** — now returns retryable: true, step-level retry handles it *(fixed in session)*
+- [x] **Auto-replan vs step retry** — executor now retries failed steps up to 3x before escalating to plan failure *(fixed in session)*
+- [ ] **Planner generates redundant setup tasks after scaffold** — AI planner doesn't know the scaffold already created the app. Planning prompt should include repo state or scaffold output to avoid "Set up X application" tasks that duplicate scaffolded work
+- [ ] **AI review hallucinating issues on clean code** — review_pr prompt is too aggressive, inventing "hardcoded secrets" and "XSS vulnerabilities" on boilerplate scaffold code. Calibrate the review prompt to focus on actual PR diff changes, not imagined problems
+- [ ] **merge_pr reports false conflicts** — executor reports "merge conflicts that require manual resolution" but GitHub shows clean PR. Investigate timing/state check accuracy
+- [ ] **Reset stuck actions on server startup** — when server crashes mid-execution, actions stay in "executing" forever. On startup, find actions stuck in "executing" for >5 minutes and reset them to "failed" so they can be retried
+- [ ] **Clean up stale PRs/branches on replan** — when a plan fails and replans, the old PR and feature branch stay open on GitHub. Replan should close the old PR and delete the branch before creating a new plan
+- [ ] **Reduce manual_step usage in action plans** — planner generates manual_step for things like "gather API keys" which blocks the pipeline. Instead, the AI should research and document what's needed (which APIs, signup links, scopes) as a deferred task or knowledge entry, then continue with the pipeline. manual_step should only be used for things that genuinely can't proceed without human input (e.g., "deploy to production")
 
 ### UX Polish
 - [ ] **Rebrand sprint UI for autopilot context** — "Plan Sprint" → "Plan Session", "Create Sprint" → "Create Session". Sprints are a human-team concept; sessions are the autopilot concept. Both coexist but the default language should favor sessions for autopilot users. See autopilot-pillars.md "Sessions vs Sprints" section.
