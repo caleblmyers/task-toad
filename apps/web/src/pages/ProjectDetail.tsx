@@ -45,6 +45,7 @@ const SprintTransitionModal = lazyWithRetry(() => import('../components/SprintTr
 const ActionPlanDialog = lazyWithRetry(() => import('../components/ActionPlanDialog'));
 const ReleaseListPanel = lazyWithRetry(() => import('../components/ReleaseListPanel'));
 const ReleaseModal = lazyWithRetry(() => import('../components/ReleaseModal'));
+const AutopilotView = lazyWithRetry(() => import('../components/AutopilotView'));
 const ExecutionDashboard = lazyWithRetry(() => import('../components/ExecutionDashboard'));
 const WhatNextPanel = lazyWithRetry(() => import('../components/WhatNextPanel'));
 const ProjectChatPanel = lazyWithRetry(() => import('../components/ProjectChatPanel'));
@@ -529,6 +530,24 @@ export default function ProjectDetail() {
               <GanttChart
                 tasks={filtering.filteredTasks}
                 onSelectTask={projectData.selectTask}
+              />
+            </Suspense>
+          ) : projectData.view === 'autopilot' ? (
+            <Suspense fallback={lazyFallback}>
+              <AutopilotView
+                projectId={projectData.projectId!}
+                tasks={filtering.filteredTasks}
+                orgUsers={projectData.orgUsers}
+                selectedTask={projectData.selectedTask}
+                selectedTaskIds={projectData.selectedTaskIds}
+                onSelectTask={projectData.selectTask}
+                onToggleTaskId={handleToggleTaskId}
+                onToggleAll={handleToggleAll}
+                onAutoComplete={projectData.handlePreviewActionPlan}
+                autoCompleteLoading={projectData.actionPlanPreviewLoading}
+                isProjectBusy={projectData.isProjectBusy}
+                onOpenModal={handleOpenModal}
+                epicMap={projectData.epicMap}
               />
             </Suspense>
           ) : projectData.view === 'dashboard' ? (

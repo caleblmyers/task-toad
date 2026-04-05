@@ -35,7 +35,7 @@ export interface ProjectData {
   isGenerating: boolean;
   epics: Epic[];
   epicMap: Map<string, string>;
-  view: 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar' | 'epics' | 'releases' | 'timesheet';
+  view: 'autopilot' | 'backlog' | 'board' | 'dashboard' | 'table' | 'calendar' | 'epics' | 'releases' | 'timesheet';
   editingTitle: boolean;
   editTitleValue: string;
   showAddForm: boolean;
