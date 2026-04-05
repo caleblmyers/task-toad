@@ -55,7 +55,7 @@ async function readSessionProgress(
 }
 
 /** Max concurrent executing action plans per project */
-const MAX_CONCURRENT_PER_PROJECT = 3;
+const MAX_CONCURRENT_PER_PROJECT = 1;
 
 /**
  * Simple string hash → positive int, used to create per-project advisory lock IDs.
