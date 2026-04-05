@@ -19,7 +19,6 @@ import {
   ValidationError,
   ConflictError,
 } from '../errors.js';
-import { getEffectivePlan } from '../../utils/license.js';
 import { validatePassword } from '../../utils/passwordPolicy.js';
 import { getPermissionsForProject } from '../../auth/permissions.js';
 import { auditLog } from '../../utils/auditLog.js';
@@ -258,17 +257,7 @@ export const authMutations = {
     if (user.role !== 'org:admin') {
       throw new AuthorizationError('Admin role required');
     }
-    if (context.org) {
-      const effectivePlan = getEffectivePlan(context.org);
-      if (effectivePlan === 'free') {
-        const memberCount = await context.prisma.user.count({
-          where: { orgId: user.orgId },
-        });
-        if (memberCount >= 3) {
-          throw new ValidationError('Free plan is limited to 3 team members. Upgrade to Pro for unlimited members.');
-        }
-      }
-    }
+    // Free tier member limit removed — all features free (open source pivot)
     const existingUser = await context.prisma.user.findUnique({ where: { email: args.email } });
     if (existingUser?.orgId) {
       throw new ConflictError('This email already belongs to an org member');

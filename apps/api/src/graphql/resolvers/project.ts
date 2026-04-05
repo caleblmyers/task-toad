@@ -3,7 +3,6 @@ import type { Context } from '../context.js';
 // These match the GraphQL response shapes consumed by the web client.
 export type { Project as SharedProject } from '@tasktoad/shared-types';
 import { AuthorizationError, ValidationError } from '../errors.js';
-import { getEffectivePlan } from '../../utils/license.js';
 import { requireAuth, requireOrg, requireProjectAccess, requireApiKey } from './auth.js';
 import { requireEntity } from './helpers.js';
 import { parseInput, CreateProjectInput, requireProject } from '../../utils/resolverHelpers.js';
@@ -442,17 +441,7 @@ export const projectMutations = {
     if (user.role !== 'org:admin') {
       throw new AuthorizationError('Admin role required');
     }
-    if (context.org) {
-      const effectivePlan = getEffectivePlan(context.org);
-      if (effectivePlan === 'free') {
-        const projectCount = await context.prisma.project.count({
-          where: { orgId: user.orgId, archived: false },
-        });
-        if (projectCount >= 3) {
-          throw new ValidationError('Free plan is limited to 3 projects. Upgrade to Pro for unlimited projects.');
-        }
-      }
-    }
+    // Free tier project limit removed — all features free (open source pivot)
     return context.prisma.project.create({
       data: { name: args.name, orgId: user.orgId },
     });
