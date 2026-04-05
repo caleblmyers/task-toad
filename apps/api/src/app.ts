@@ -294,11 +294,11 @@ app.use('/api/uploads', uploadRouter);
 // API documentation
 app.use('/api/docs', docsRouter);
 
-// Global rate limit: 600 requests per minute per IP (generous for autopilot SSE polling)
+// Global rate limit: 300 requests per minute per IP
 app.use(
   rateLimit({
     windowMs: 60_000,
-    limit: 600,
+    limit: 300,
     standardHeaders: 'draft-7',
     legacyHeaders: false,
   })

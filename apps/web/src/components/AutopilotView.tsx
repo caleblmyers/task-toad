@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { gql } from '../api/client';
 import {
   PROJECT_PIPELINE_STATUS_QUERY,
@@ -420,11 +420,15 @@ export default function AutopilotView({
   useEffect(() => { void fetchSessions(); }, [fetchSessions]);
   useEffect(() => { void fetchActivePlans(); }, [fetchActivePlans]);
 
-  // SSE refresh
+  // SSE refresh — debounced to avoid flooding the API with queries on rapid events
+  const sseDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useSSEListener(SSE_REFRESH_EVENTS, useCallback(() => {
-    void fetchPipelineStatus();
-    void fetchSessions();
-    void fetchActivePlans();
+    if (sseDebounceRef.current) clearTimeout(sseDebounceRef.current);
+    sseDebounceRef.current = setTimeout(() => {
+      void fetchPipelineStatus();
+      void fetchSessions();
+      void fetchActivePlans();
+    }, 500);
   }, [fetchPipelineStatus, fetchSessions, fetchActivePlans]));
 
   // Quick Start
