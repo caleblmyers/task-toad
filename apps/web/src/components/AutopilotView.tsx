@@ -514,27 +514,32 @@ export default function AutopilotView({
   const todoTaskCount = pipelineStatus?.todoTasks ?? 0;
 
   return (
-    <div className="flex-1 overflow-y-auto px-6 py-4">
-      <div className="max-w-3xl mx-auto space-y-4">
-        {/* Pipeline Stats Bar */}
-        {pipelineStatus && <PipelineStatsBar status={pipelineStatus} />}
+    <div className="flex-1 overflow-hidden px-6 py-4">
+      {/* Side-by-side on large screens, stacked on small */}
+      <div className="h-full flex flex-col lg:flex-row gap-4 max-w-7xl mx-auto">
+        {/* Left panel: Execution controls */}
+        <div className="lg:w-80 xl:w-96 flex-shrink-0 space-y-4 lg:overflow-y-auto lg:h-full lg:pr-2">
+          {/* Pipeline Stats Bar */}
+          {pipelineStatus && <PipelineStatsBar status={pipelineStatus} />}
 
-        {/* Session Controls */}
-        <SessionControls
-          session={activeSession}
-          todoTaskCount={todoTaskCount}
-          quickStarting={quickStarting}
-          quickStartError={quickStartError}
-          onQuickStart={() => void handleQuickStart()}
-          onConfigureSession={() => onOpenModal('execution-dashboard')}
-          onPause={() => void handlePauseSession()}
-          onCancel={() => void handleCancelSession()}
-        />
+          {/* Session Controls */}
+          <SessionControls
+            session={activeSession}
+            todoTaskCount={todoTaskCount}
+            quickStarting={quickStarting}
+            quickStartError={quickStartError}
+            onQuickStart={() => void handleQuickStart()}
+            onConfigureSession={() => onOpenModal('execution-dashboard')}
+            onPause={() => void handlePauseSession()}
+            onCancel={() => void handleCancelSession()}
+          />
 
-        {/* Active Plans */}
-        <ActivePlansList plans={activePlans} onCancel={handleCancelPlan} />
+          {/* Active Plans */}
+          <ActivePlansList plans={activePlans} onCancel={handleCancelPlan} />
+        </div>
 
-        {/* Task List grouped by status */}
+        {/* Right panel: Scrollable task list */}
+        <div className="flex-1 min-w-0 overflow-y-auto lg:h-full space-y-4">
         {taskGroups.map((group) => (
           <div key={group.status} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
             <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
@@ -599,6 +604,7 @@ export default function AutopilotView({
             No tasks yet. Create tasks to get started with the autopilot.
           </div>
         )}
+        </div>
       </div>
     </div>
   );
