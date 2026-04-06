@@ -108,6 +108,26 @@ Non-obvious choices and their rationale. Only decisions where the "why" isn't ap
 
 ---
 
+## Pipeline Reliability
+
+**Step-level retry before plan-level replan:** When an action fails, retry the same step up to 3 times (3s, 10s, 30s delays) before escalating to a full plan replan. Most failures are transient (GitHub 404, rate limits, branch out-of-date) and resolve on retry. Full replans regenerate the entire action plan from scratch — wasteful for a temporary hiccup.
+
+**Retryable error classification:** Executors return `{ success: false, retryable: true }` for transient failures. Non-retryable failures (merge conflicts, missing config) skip straight to plan failure. This keeps the retry logic in the executor framework, not in individual executors.
+
+**Startup recovery:** On server start, reset stuck state from before a crash: actions in "executing" >5 min → failed, orphaned in_progress tasks → todo, orphaned running sessions → paused. Prevents stale state from blocking the pipeline after deploys or crashes.
+
+**Webhook-driven CI over polling:** GitHub `check_suite` webhooks notify instantly when CI passes/fails. Polling (`monitor_ci`) is the fallback. Webhooks reduce latency from 30-second poll intervals to near-instant.
+
+---
+
+## Open Source Pivot
+
+**GitHub ate the category (April 2026).** Copilot Coding Agent, /fleet (parallel multi-agent), Mission Control, and Agentic Code Review cover the same space with 100M+ user distribution. A standalone tool can't compete on distribution. Pivoted to open source portfolio piece.
+
+**All features free, billing code preserved.** `getEffectivePlan()` always returns 'paid'. `requireLicense()` calls remain in resolvers as documentation. Stripe integration code stays in the codebase — demonstrates billing engineering without being active. No feature gating, no premium tier.
+
+---
+
 ## Sprint vs Session Naming
 
 **UI says "Session", code says "Sprint".** All user-facing labels use "Session" (Create Session, Close Session, Session Velocity, etc.) but all code identifiers, GraphQL schema fields, Prisma models, variable names, and prop names use `sprint` (sprintId, createSprint, Sprint model, etc.).
