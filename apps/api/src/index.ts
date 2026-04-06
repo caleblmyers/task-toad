@@ -65,32 +65,55 @@ async function main() {
   cronScheduler.start();
   slaBreachChecker.start();
 
-  // Recover stuck monitor_ci actions from before a restart
-  // Any action in "executing" state for > 35 minutes with type monitor_ci is likely abandoned
-  const stuckCutoff = new Date(Date.now() - 35 * 60 * 1000);
-  prisma.taskAction.findMany({
-    where: {
-      status: 'executing',
-      actionType: 'monitor_ci',
-      startedAt: { lt: stuckCutoff },
-    },
-    include: { plan: true },
-  }).then(async (stuckActions) => {
-    for (const action of stuckActions) {
-      logger.warn({ actionId: action.id, planId: action.planId, startedAt: action.startedAt }, 'Recovering stuck monitor_ci action');
-      await prisma.taskAction.update({
-        where: { id: action.id },
-        data: { status: 'failed', errorMessage: 'CI monitoring interrupted by server restart' },
+  // Recover stuck state from before a server restart.
+  // Any action in "executing" for >5 min is likely abandoned (in-memory state lost).
+  // Any session in "running" with no executing plans is orphaned.
+  const stuckCutoff = new Date(Date.now() - 5 * 60 * 1000);
+  (async () => {
+    try {
+      // Reset stuck actions
+      const stuckActions = await prisma.taskAction.updateMany({
+        where: { status: 'executing', startedAt: { lt: stuckCutoff } },
+        data: { status: 'failed', errorMessage: 'Interrupted by server restart — retry to continue' },
       });
-      await prisma.taskActionPlan.update({
-        where: { id: action.planId },
+      if (stuckActions.count > 0) {
+        logger.info({ count: stuckActions.count }, 'Reset stuck executing actions');
+      }
+
+      // Fail plans that had executing actions
+      const stuckPlans = await prisma.taskActionPlan.updateMany({
+        where: {
+          status: 'executing',
+          updatedAt: { lt: stuckCutoff },
+          actions: { none: { status: { in: ['pending', 'executing'] } } },
+        },
         data: { status: 'failed' },
       });
+      if (stuckPlans.count > 0) {
+        logger.info({ count: stuckPlans.count }, 'Reset stuck executing plans');
+      }
+
+      // Cancel orphaned running sessions (no executing plans)
+      const runningSessions = await prisma.session.findMany({
+        where: { status: 'running', startedAt: { lt: stuckCutoff } },
+      });
+      for (const session of runningSessions) {
+        const taskIds = JSON.parse(session.taskIds) as string[];
+        const activePlans = await prisma.taskActionPlan.count({
+          where: { taskId: { in: taskIds }, status: { in: ['approved', 'executing'] } },
+        });
+        if (activePlans === 0) {
+          await prisma.session.update({
+            where: { id: session.id },
+            data: { status: 'paused', pausedAt: new Date() },
+          });
+          logger.info({ sessionId: session.id }, 'Paused orphaned running session');
+        }
+      }
+    } catch (err) {
+      logger.warn({ err }, 'Failed to recover stuck state on startup');
     }
-    if (stuckActions.length > 0) {
-      logger.info({ count: stuckActions.length }, 'Recovered stuck monitor_ci actions');
-    }
-  }).catch((err) => logger.warn({ err }, 'Failed to recover stuck monitor_ci actions'));
+  })();
 
   const server = app.listen(PORT, () => {
     logger.info({ port: PORT }, `TaskToad API listening on http://localhost:${PORT}`);
