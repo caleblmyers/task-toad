@@ -34,3 +34,8 @@ vite.config.d.ts
 .ai/bugs/*
 !.ai/bugs/.gitkeep
 .ai/e2e-test-results-*.md
+
+# Claude knowledge — keep changelog and decisions, ignore the rest
+.claude-knowledge/*
+!.claude-knowledge/changelog.md
+!.claude-knowledge/decisions.md
