@@ -110,6 +110,34 @@ export default function OrgSettings() {
       .finally(() => setLinkingInstallation(false));
   };
 
+  // Handle GitHub App callback — must run before auth guard since the popup
+  // may not have auth context loaded yet when the effect first fires
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const callbackInstallationId = params.get('installation_id');
+    if (!callbackInstallationId) return;
+
+    // Clean URL
+    window.history.replaceState({}, '', window.location.pathname);
+
+    // If this is a popup, notify the opener and close
+    if (window.opener) {
+      window.opener.postMessage(
+        { type: 'github-installation', installationId: callbackInstallationId },
+        window.location.origin
+      );
+      window.close();
+      return;
+    }
+
+    // Otherwise handle inline (direct navigation fallback)
+    linkInstallation(callbackInstallationId, () => {
+      gql<{ githubInstallations: GitHubInstallation[] }>(GITHUB_INSTALLATIONS_QUERY)
+        .then((data) => setInstallations(data.githubInstallations))
+        .catch(() => {/* non-critical */});
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (user?.role !== 'org:admin') {
       navigate('/home', { replace: true });
@@ -125,7 +153,6 @@ export default function OrgSettings() {
       .then((data) => setInvites(data.orgInvites))
       .catch(() => {/* non-critical */});
 
-    // Load GitHub installations
     const loadInstallations = () => {
       setLoadingInstallations(true);
       gql<{ githubInstallations: GitHubInstallation[] }>(GITHUB_INSTALLATIONS_QUERY)
@@ -133,31 +160,7 @@ export default function OrgSettings() {
         .catch(() => {/* non-critical */})
         .finally(() => setLoadingInstallations(false));
     };
-
-    // Handle GitHub App callback — auto-link installation
-    // This runs both in the main window AND in the popup window
-    const params = new URLSearchParams(window.location.search);
-    const callbackInstallationId = params.get('installation_id');
-    if (callbackInstallationId) {
-      // Clean URL
-      window.history.replaceState({}, '', window.location.pathname);
-
-      // If this is a popup, notify the opener and close
-      if (window.opener) {
-        window.opener.postMessage(
-          { type: 'github-installation', installationId: callbackInstallationId },
-          window.location.origin
-        );
-        window.close();
-        return;
-      }
-
-      // Otherwise handle inline (direct navigation fallback)
-      // Defer to avoid setState-during-render lint warning
-      setTimeout(() => linkInstallation(callbackInstallationId, loadInstallations), 0);
-    } else {
-      loadInstallations();
-    }
+    loadInstallations();
 
     // Listen for messages from popup window
     const handleMessage = (event: MessageEvent) => {
