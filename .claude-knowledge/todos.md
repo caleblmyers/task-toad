@@ -1,67 +1,33 @@
-# TaskToad — Remaining Work
+# TaskToad — Status
 
-93 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Autopilot pipeline feature-complete. All three pillars implemented. Backlog nearly empty.
+94 swarm waves complete. Production deployed on Railway at `tasktoad.app`. Open source portfolio piece (MIT license). All three autopilot pillars implemented.
 
----
-
-## Launch Blockers
-
-- [ ] **Landing page polish** — current version is functional but needs professional design work
-- [ ] **Test signup flow on prod** — verify Resend emails arrive, full signup→verify→login works
-- [x] **Stripe integration for billing** — checkout, webhooks, portal, upgrade UI (Wave 91)
+**Status: Feature complete.** No further development planned. Remaining items documented as known issues for future reference.
 
 ---
 
-## Remaining Work
+## Known Issues (not planned to fix)
 
 ### Pipeline
-- [ ] **Hierarchical plan streaming results** — stream partial results (epics first, then tasks) instead of waiting for full response
+- Planner generates redundant setup tasks after scaffold (needs repo context in prompt)
+- AI review hallucinating issues on clean code (prompt calibration needed)
+- merge_pr reports false conflicts occasionally (timing issue)
+- Stale PRs/branches not cleaned up on replan
+- manual_step blocks pipeline for things AI could plan around
+- GitHub OAuth token expiry not surfaced in UI
 
-### Orchestration
-- [ ] **Agent abstraction** — pluggable AI backends (Claude Code, Codex, local LLMs). Phase 4
+### UX
+- AutopilotView missing drag-and-drop task reordering and inline editing
+- Analytics items (Standup, Health, Trends, Cycle Time) removed from toolbar but not added to Dashboard view
+- ViewType union defined in 3 files (should be extracted to shared types)
+- Landing page needs professional design
 
-### Refactors
-- [ ] **Resolver auth guards: broader adoption** — requireEntity applied to ~13 mutations; ~15+ more could benefit
-- [ ] **AI feature registry: broader adoption** — 8 functions converted to callAIFeature; remaining complex functions still direct
-
-### Manual Testing
-- [ ] Verify concurrent plan execution doesn't corrupt branch state
-- [ ] Verify failed plan leaves branch in recoverable state
-
-### Billing Polish (low priority — all features free post-pivot)
-- [ ] **Hide Stripe internal IDs from GraphQL** — `stripeCustomerId` and `stripeSubscriptionId` are exposed in the Org type; only admins should see these (or remove from public schema)
-- [x] ~~**Upgrade prompts at limit boundaries**~~ — moot, all features free (Wave 92)
-- [x] ~~**`getEffectivePlan` in more resolvers**~~ — moot, always returns 'paid' (Wave 92)
-- [ ] **Stripe webhook idempotency** — add idempotency key handling for webhook retries
-- [x] ~~**`me` query: expose `trialEndsAt`**~~ — moot, no trial logic (Wave 92)
-
-### Test Reliability
-- [ ] **Fix SMTP timeout in integration tests** — tests that create users trigger email verification with 3x retry + backoff, consuming the 5000ms test timeout. Mock email transport in test setup or skip sending when SMTP_HOST is not configured
-
-### Pipeline Bugs
-- [x] **review_pr: retry on PR diff 404** — now returns retryable: true, step-level retry handles it *(fixed in session)*
-- [x] **Auto-replan vs step retry** — executor now retries failed steps up to 3x before escalating to plan failure *(fixed in session)*
-- [ ] **Planner generates redundant setup tasks after scaffold** — AI planner doesn't know the scaffold already created the app. Planning prompt should include repo state or scaffold output to avoid "Set up X application" tasks that duplicate scaffolded work
-- [ ] **AI review hallucinating issues on clean code** — review_pr prompt is too aggressive, inventing "hardcoded secrets" and "XSS vulnerabilities" on boilerplate scaffold code. Calibrate the review prompt to focus on actual PR diff changes, not imagined problems
-- [ ] **merge_pr reports false conflicts** — executor reports "merge conflicts that require manual resolution" but GitHub shows clean PR. Investigate timing/state check accuracy
-- [ ] **Reset stuck actions on server startup** — when server crashes mid-execution, actions stay in "executing" forever. On startup, find actions stuck in "executing" for >5 minutes and reset them to "failed" so they can be retried
-- [ ] **Clean up stale PRs/branches on replan** — when a plan fails and replans, the old PR and feature branch stay open on GitHub. Replan should close the old PR and delete the branch before creating a new plan
-- [ ] **Reduce manual_step usage in action plans** — planner generates manual_step for things like "gather API keys" which blocks the pipeline. Instead, the AI should research and document what's needed (which APIs, signup links, scopes) as a deferred task or knowledge entry, then continue with the pipeline. manual_step should only be used for things that genuinely can't proceed without human input (e.g., "deploy to production")
-
-### UX Polish
-- [x] **Redesign primary navigation** — consolidated 9 tabs to 3 primary (Autopilot, Board, Backlog) + More dropdown. AutopilotView is the default view (Wave 92)
-- [x] **Simplify action menus** — removed AI dropdown, redistributed to sectioned overflow menu (Project, AI Tools, Data) and contextual views (Wave 92)
-- [x] **Rebrand sprint → session everywhere in UI** — all user-facing "Sprint" labels renamed to "Session". Code identifiers, GraphQL schema, Prisma model, variable/prop names remain as `sprint` (API contract). See decisions.md or CLAUDE.md for the convention.
-- [ ] **AutopilotView: drag-and-drop task reordering** — task list currently uses TaskRow but doesn't support drag-and-drop reordering like BacklogView does
-- [ ] **AutopilotView: inline task editing** — BacklogView supports click-to-edit title, status dropdown, priority, assignee; AutopilotView should match
-- [ ] **Extract ViewType to shared types** — the `ViewType` union is defined in 3 files (useProjectState, useProjectData, ProjectToolbar); extract to a single source of truth
-- [ ] **Analytics items from old AI dropdown** — Standup, Health, Trends, Cycle Time, and Summarize were removed from toolbar but not yet added to the Analytics/Dashboard view
-
-### Future
-- [ ] **Multi-org support** — users can only belong to one org (`user.orgId` is a single field). Freelancers/contractors who work on personal projects AND join a client's team can't do both. Needs: join table, org switcher UI, auth context per-org, billing per-org. Build when team adoption creates demand.
-- [ ] Scheduled report delivery
-- [ ] Multi-project decomposition — goals spanning multiple repos/projects
-- [ ] Replace stacked modals with single-panel wizard (step 1 of N)
+### Technical Debt
+- Resolver auth guards only applied to ~13 mutations (~15+ more could benefit)
+- AI feature registry only covers 8 of 40+ functions
+- Stripe webhook idempotency not implemented
+- SMTP timeout in integration tests (email retry consumes test timeout)
+- Hierarchical plan streaming (partial results) not implemented
 
 ---
 
@@ -128,8 +94,9 @@
 | 88 | 2026-04-03 | Parallel execution, requireEntity auth guards, insight extraction, stale PR SSE |
 | 89 | 2026-04-03 | Insight KB retrieval, AI feature registry, refinement wiring, swimlane overflow |
 | 90 | 2026-04-03 | Release notes manual entry, time entry admin-only, SSE leader indicator, mobile scroll, auth test, lockfile detection |
-| 91 | 2026-04-03 | Stripe billing integration, free tier limits (3 projects, 3 members), 14-day Pro trial, upgrade UI |
+| 91 | 2026-04-03 | Stripe billing integration, free tier limits, 14-day Pro trial, upgrade UI |
 | 92 | 2026-04-05 | Remove premium gating, MIT license, open source pivot |
-| 93 | 2026-04-05 | UX redesign: AutopilotView, nav consolidation (3 tabs + More), AI dropdown removed, sprint → session |
+| 93 | 2026-04-05 | UX redesign: AutopilotView, nav consolidation, AI dropdown removed, sprint → session |
+| 94 | 2026-04-06 | AI-enhanced create task modal wizard, pipeline fixes, startup recovery, SSE debounce |
 
 Full wave details in `changelog.md`.
