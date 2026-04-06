@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { createChildLogger } from './logger.js';
 
 const log = createChildLogger('email');
@@ -9,9 +9,9 @@ function escapeHtml(str: string): string {
 }
 
 export async function sendEmail(to: string, subject: string, text: string, html?: string): Promise<void> {
-  const smtpHost = process.env.SMTP_HOST;
+  const apiKey = process.env.RESEND_API_KEY;
 
-  if (!smtpHost) {
+  if (!apiKey) {
     // Extract link from text for clean console output
     const linkMatch = text.match(/https?:\/\/\S+/);
     const link = linkMatch ? linkMatch[0] : '';
@@ -19,28 +19,17 @@ export async function sendEmail(to: string, subject: string, text: string, html?
     return;
   }
 
-  const transport = nodemailer.createTransport({
-    host: smtpHost,
-    port: Number(process.env.SMTP_PORT ?? 587),
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
+  const resend = new Resend(apiKey);
+  const from = process.env.EMAIL_FROM ?? 'noreply@tasktoad.app';
 
   const RETRY_DELAYS = [1_000, 5_000, 15_000];
   const MAX_ATTEMPTS = 3;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      const info = await transport.sendMail({
-        from: process.env.EMAIL_FROM ?? 'noreply@tasktoad.app',
-        to,
-        subject,
-        text,
-        html,
-      });
-      log.info({ to, subject, messageId: info.messageId }, 'Email sent successfully');
+      const { data, error } = await resend.emails.send({ from, to, subject, text, html });
+      if (error) throw new Error(error.message);
+      log.info({ to, subject, emailId: data?.id }, 'Email sent successfully');
       return;
     } catch (err) {
       if (attempt < MAX_ATTEMPTS) {
