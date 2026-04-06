@@ -111,7 +111,9 @@ export default function OrgSettings() {
   };
 
   // Handle GitHub App callback — must run before auth guard since the popup
-  // may not have auth context loaded yet when the effect first fires
+  // may not have auth context loaded yet when the effect first fires.
+  // Uses localStorage instead of postMessage because browsers null out
+  // window.opener after cross-origin navigation (github.com → app).
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const callbackInstallationId = params.get('installation_id');
@@ -120,17 +122,11 @@ export default function OrgSettings() {
     // Clean URL
     window.history.replaceState({}, '', window.location.pathname);
 
-    // If this is a popup, notify the opener and close
-    if (window.opener) {
-      window.opener.postMessage(
-        { type: 'github-installation', installationId: callbackInstallationId },
-        window.location.origin
-      );
-      window.close();
-      return;
-    }
+    // Signal the parent window via localStorage and close
+    localStorage.setItem('github-installation-id', callbackInstallationId);
+    window.close();
 
-    // Otherwise handle inline (direct navigation fallback)
+    // If window.close() didn't work (not a popup), handle inline
     linkInstallation(callbackInstallationId, () => {
       gql<{ githubInstallations: GitHubInstallation[] }>(GITHUB_INSTALLATIONS_QUERY)
         .then((data) => setInstallations(data.githubInstallations))
@@ -162,15 +158,15 @@ export default function OrgSettings() {
     };
     loadInstallations();
 
-    // Listen for messages from popup window
-    const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
-      if (event.data?.type === 'github-installation') {
-        linkInstallation(event.data.installationId, loadInstallations);
+    // Listen for localStorage signal from popup window
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === 'github-installation-id' && event.newValue) {
+        localStorage.removeItem('github-installation-id');
+        linkInstallation(event.newValue, loadInstallations);
       }
     };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, [user, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleInstallGitHubApp = () => {
