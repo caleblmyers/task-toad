@@ -93,6 +93,23 @@ async function main() {
         logger.info({ count: stuckPlans.count }, 'Reset stuck executing plans');
       }
 
+      // Reset orphaned in_progress tasks (no active plans)
+      const orphanedTasks = await prisma.$queryRaw<Array<{ task_id: string }>>`
+        SELECT t.task_id FROM tasks t
+        WHERE t.status = 'in_progress'
+        AND NOT EXISTS (
+          SELECT 1 FROM task_action_plans p
+          WHERE p.task_id = t.task_id AND p.status IN ('approved', 'executing')
+        )
+      `;
+      if (orphanedTasks.length > 0) {
+        await prisma.task.updateMany({
+          where: { taskId: { in: orphanedTasks.map(t => t.task_id) } },
+          data: { status: 'todo' },
+        });
+        logger.info({ count: orphanedTasks.length }, 'Reset orphaned in_progress tasks to todo');
+      }
+
       // Cancel orphaned running sessions (no executing plans)
       const runningSessions = await prisma.session.findMany({
         where: { status: 'running', startedAt: { lt: stuckCutoff } },
