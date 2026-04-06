@@ -33,13 +33,14 @@ export async function sendEmail(to: string, subject: string, text: string, html?
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      await transport.sendMail({
+      const info = await transport.sendMail({
         from: process.env.EMAIL_FROM ?? 'noreply@tasktoad.app',
         to,
         subject,
         text,
         html,
       });
+      log.info({ to, subject, messageId: info.messageId }, 'Email sent successfully');
       return;
     } catch (err) {
       if (attempt < MAX_ATTEMPTS) {
