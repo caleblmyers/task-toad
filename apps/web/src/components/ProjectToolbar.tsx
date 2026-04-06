@@ -12,7 +12,7 @@ import FilterBar, { type SavedFilter } from './shared/FilterBar';
 import SavedViewPicker from './shared/SavedViewPicker';
 import Button from './shared/Button';
 import DropdownMenu, { type DropdownMenuItem } from './shared/DropdownMenu';
-import { IconList, IconBoard, IconTable, IconCalendar, IconClose, IconPlus, IconFilter, IconKeyboard, IconGitHub, IconClock } from './shared/Icons';
+import { IconList, IconBoard, IconTable, IconCalendar, IconPlus, IconFilter, IconKeyboard, IconGitHub, IconClock } from './shared/Icons';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 
 const activeClass = 'px-3 py-1 text-sm rounded-md bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-medium shadow-sm';
@@ -354,8 +354,8 @@ export default function ProjectToolbar({
           )}
         </div>
         <div className="relative flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => projectData.setShowAddForm(!projectData.showAddForm)} disabled={projectData.isGenerating || !projectData.can('CREATE_TASKS')} title={!projectData.can('CREATE_TASKS') ? "You don't have permission to create tasks" : undefined}>
-            {projectData.showAddForm ? <><IconClose className="w-3.5 h-3.5" /> Cancel</> : <><IconPlus className="w-3.5 h-3.5" /> Add task</>}
+          <Button variant="ghost" size="sm" onClick={() => onOpenModal('create-task')} disabled={projectData.isGenerating || !projectData.can('CREATE_TASKS')} title={!projectData.can('CREATE_TASKS') ? "You don't have permission to create tasks" : undefined}>
+            <IconPlus className="w-3.5 h-3.5" /> Add task
           </Button>
 
           {/* Overflow menu */}

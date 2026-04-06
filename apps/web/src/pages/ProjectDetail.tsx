@@ -50,6 +50,7 @@ const ExecutionDashboard = lazyWithRetry(() => import('../components/ExecutionDa
 const WhatNextPanel = lazyWithRetry(() => import('../components/WhatNextPanel'));
 const ProjectChatPanel = lazyWithRetry(() => import('../components/ProjectChatPanel'));
 const TimesheetView = lazyWithRetry(() => import('../components/TimesheetView'));
+const CreateTaskModal = lazyWithRetry(() => import('../components/CreateTaskModal'));
 import { TaskListSkeleton, KanbanBoardSkeleton } from '../components/Skeleton';
 import ToastContainer from '../components/shared/ToastContainer';
 import KeyboardShortcutHelp from '../components/shared/KeyboardShortcutHelp';
@@ -130,6 +131,7 @@ export default function ProjectDetail() {
   const [gitHubInstallations, setGitHubInstallations] = useState<GitHubInstallation[]>([]);
   const [showTransition, setShowTransition] = useState<{ sprintId: string; sprintName: string } | null>(null);
   const [showChat, setShowChat] = useState(false);
+  const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
 
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -138,7 +140,7 @@ export default function ProjectDetail() {
     selectedTask: projectData.selectedTask,
     onSelectTask: projectData.selectTask,
     onCloseTask: () => projectData.setSelectedTask(null),
-    onNewTask: () => projectData.setShowAddForm(true),
+    onNewTask: () => setShowCreateTaskModal(true),
     onFocusSearch: () => searchRef.current?.focus(),
     onShowHelp: () => setActiveModal((v) => v === 'shortcut-help' ? null : 'shortcut-help'),
     enabled: !projectData.isGenerating,
@@ -271,6 +273,10 @@ export default function ProjectDetail() {
     }
     if (modal === 'chat') {
       setShowChat(true);
+      return;
+    }
+    if (modal === 'create-task') {
+      setShowCreateTaskModal(true);
       return;
     }
     // Sprint transition carries data
@@ -430,25 +436,15 @@ export default function ProjectDetail() {
         tqlError={projectData.err && projectData.err.includes('TQL parse error') ? projectData.err : null}
       />
 
-      {/* Inline add form */}
-      {projectData.showAddForm && !projectData.isGenerating && (
-        <div className="px-6 py-3 bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 flex-shrink-0">
-          <form onSubmit={projectData.handleAddTask} className="flex items-center gap-2">
-            <input
-              type="text"
-              value={projectData.newTaskTitle}
-              onChange={(e) => projectData.setNewTaskTitle(e.target.value)}
-              placeholder="Task title"
-              className="flex-1 max-w-sm px-2 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded focus:outline-none focus:ring-1 focus:ring-brand-green dark:bg-slate-700 dark:text-slate-200"
-              required
-              autoFocus
-            />
-            <button type="submit" className="px-3 py-1.5 bg-brand-green text-white text-sm rounded hover:bg-brand-green-hover">
-              Add
-            </button>
-            {projectData.addErr && <p className="text-xs text-red-600">{projectData.addErr}</p>}
-          </form>
-        </div>
+      {/* Create task modal */}
+      {showCreateTaskModal && projectData.projectId && (
+        <Suspense fallback={null}>
+          <CreateTaskModal
+            projectId={projectData.projectId}
+            onCreated={() => { void projectData.loadTasks(filterInput); }}
+            onClose={() => setShowCreateTaskModal(false)}
+          />
+        </Suspense>
       )}
 
       {/* Error banner */}
